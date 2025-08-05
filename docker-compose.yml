@@ -1,0 +1,55 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Your existing Payload CMS
+  payload:
+    build: ./alkebu-load
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URI=${DATABASE_URI}
+      - PAYLOAD_SECRET=${PAYLOAD_SECRET}
+      - SQUARE_ACCESS_TOKEN=${SQUARE_ACCESS_TOKEN}
+    volumes:
+      - ./alkebu-load:/app
+      - /app/node_modules
+
+  # Future MedusaJS service
+  medusa:
+    build: ./alkebu-commerce
+    ports:
+      - "9000:9000"
+    environment:
+      - DATABASE_URL=${MEDUSA_DATABASE_URL}
+    depends_on:
+      - payload
+    # Will be activated when alkebu-commerce is ready
+
+  # Future SvelteKit frontend
+  frontend:
+    build: ./alkebu-web
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_PAYLOAD_API_URL=http://payload:3000
+      - VITE_MEDUSA_API_URL=http://medusa:9000
+    depends_on:
+      - payload
+      - medusa
+    # Will be activated when alkebu-web is ready
+
+  # Shared development database
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=alkebulanimages
+      - POSTGRES_USER=alkebulanimages
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
