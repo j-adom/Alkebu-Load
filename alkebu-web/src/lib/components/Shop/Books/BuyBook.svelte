@@ -21,6 +21,6 @@
   productType="books"
   quantity={quantity}
   customization={customization}
-  className="thm-btn hover:text-thm-base"
+  className="btn-primary"
   label="Add to Cart"
 />

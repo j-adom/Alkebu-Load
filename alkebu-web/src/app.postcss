@@ -1,78 +1,317 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* Modern Afrocentric Design System for Alkebu-Lan Images */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
- 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
+    /* Afrocentric Color Palette */
+    --kente-gold: 44 75% 52%;
+    --kente-terracotta: 19 56% 49%;
+    --kente-forest: 146 33% 27%;
+    --kente-indigo: 222 34% 37%;
+    --kente-cream: 36 100% 97%;
+    
+    /* Theme Colors - Warm Earthy Tones */
+    --background: 36 60% 98%;
+    --foreground: 20 14% 20%;
+
+    --muted: 30 20% 92%;
+    --muted-foreground: 20 10% 45%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
+    --popover-foreground: 20 14% 20%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
- 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
-    --destructive: 0 72.2% 50.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
+    --card-foreground: 20 14% 20%;
+
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+
+    /* Primary - Kente Gold */
+    --primary: 44 75% 52%;
+    --primary-foreground: 20 14% 10%;
+
+    /* Secondary - Terracotta */
+    --secondary: 19 56% 49%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Accent - Forest Green */
+    --accent: 146 33% 27%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 44 75% 52%;
+
+    --radius: 0.75rem;
+    
+    /* Typography */
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: 'Outfit', var(--font-sans);
+    --font-serif: 'Lora', Georgia, serif;
+    
+    /* Spacing */
+    --section-padding: 5rem;
+    
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
   }
- 
+
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
- 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
- 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
- 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
- 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --ring: 212.7 26.8% 83.9%;
+    --background: 20 14% 8%;
+    --foreground: 36 25% 95%;
+
+    --muted: 20 14% 15%;
+    --muted-foreground: 30 15% 65%;
+
+    --popover: 20 14% 10%;
+    --popover-foreground: 36 25% 95%;
+
+    --card: 20 14% 12%;
+    --card-foreground: 36 25% 95%;
+
+    --border: 20 14% 18%;
+    --input: 20 14% 18%;
+
+    --primary: 44 75% 55%;
+    --primary-foreground: 20 14% 10%;
+
+    --secondary: 19 45% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 146 33% 35%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 44 75% 55%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Improved focus states for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+  
+  /* Heading styles with display font */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight;
+  }
+  
+  h4, h5, h6 {
+    @apply font-semibold;
+  }
+  
+  /* Selection colors */
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+@layer components {
+  /* Modern Button Styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 
+           px-6 py-3 rounded-xl font-semibold text-base
+           transition-all duration-200 ease-smooth
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground 
+           hover:bg-primary/90 hover:shadow-glow hover:-translate-y-0.5
+           active:translate-y-0;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground 
+           hover:bg-secondary/90 hover:shadow-glow-terracotta hover:-translate-y-0.5
+           active:translate-y-0;
+  }
+  
+  .btn-outline {
+    @apply btn border-2 border-primary text-primary bg-transparent
+           hover:bg-primary hover:text-primary-foreground hover:-translate-y-0.5
+           active:translate-y-0;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent text-foreground
+           hover:bg-muted hover:text-foreground;
+  }
+  
+  .btn-sm {
+    @apply px-4 py-2 text-sm rounded-lg;
+  }
+  
+  .btn-lg {
+    @apply px-8 py-4 text-lg rounded-2xl;
+  }
+  
+  /* Card Styles */
+  .card-modern {
+    @apply bg-card rounded-2xl border border-border/50 overflow-hidden
+           shadow-soft transition-all duration-300 ease-smooth
+           hover:shadow-medium hover:-translate-y-1;
+  }
+  
+  /* Product Card Styles */
+  .product-card {
+    @apply card-modern group relative;
+  }
+  
+  .product-card-image {
+    @apply aspect-[3/4] w-full overflow-hidden bg-muted;
+  }
+  
+  .product-card-image img {
+    @apply w-full h-full object-cover transition-transform duration-500 ease-smooth
+           group-hover:scale-105;
+  }
+  
+  .product-card-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent
+           opacity-0 transition-opacity duration-300 ease-smooth
+           group-hover:opacity-100;
+  }
+  
+  .product-card-actions {
+    @apply absolute bottom-4 left-4 right-4 flex gap-2
+           transform translate-y-4 opacity-0 
+           transition-all duration-300 ease-smooth
+           group-hover:translate-y-0 group-hover:opacity-100;
+  }
+  
+  .product-card-content {
+    @apply p-4 space-y-2;
+  }
+  
+  .product-card-title {
+    @apply font-semibold text-foreground line-clamp-2 
+           transition-colors duration-200
+           group-hover:text-primary;
+  }
+  
+  .product-card-price {
+    @apply text-lg font-bold text-primary;
+  }
+  
+  /* Section Styles */
+  .section {
+    @apply py-16 md:py-24;
+  }
+  
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-4;
+    font-family: var(--font-display);
+  }
+  
+  .section-subtitle {
+    @apply text-lg text-muted-foreground text-center max-w-2xl mx-auto mb-12;
+  }
+  
+  /* Input Styles */
+  .input-modern {
+    @apply w-full px-4 py-3 rounded-xl border border-input bg-background
+           text-foreground placeholder:text-muted-foreground
+           transition-all duration-200 ease-smooth
+           focus:border-primary focus:ring-2 focus:ring-primary/20;
+  }
+  
+  /* Badge Styles */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply badge bg-primary/10 text-primary;
+  }
+  
+  .badge-secondary {
+    @apply badge bg-secondary/10 text-secondary;
+  }
+  
+  /* Loading Skeleton */
+  .skeleton {
+    @apply bg-muted animate-pulse rounded-lg;
+  }
+  
+  /* Toast Notification */
+  .toast {
+    @apply fixed bottom-6 right-6 z-50 px-6 py-4 rounded-2xl
+           bg-card border border-border shadow-strong
+           animate-slide-in-right;
+  }
+  
+  /* Cart Badge */
+  .cart-badge {
+    @apply absolute -top-2 -right-2 w-5 h-5 
+           bg-secondary text-secondary-foreground text-xs font-bold
+           rounded-full flex items-center justify-center
+           animate-scale-in;
+  }
+}
+
+@layer utilities {
+  /* Smooth transition utilities */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-smooth;
+  }
+  
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent;
+  }
+  
+  /* Glass effect */
+  .glass {
+    @apply bg-white/80 dark:bg-black/80 backdrop-blur-md border border-white/20;
+  }
+  
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Line clamp utilities */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }

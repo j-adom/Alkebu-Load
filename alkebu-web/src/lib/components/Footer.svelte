@@ -1,113 +1,199 @@
 <script>
+  import { Facebook, Twitter, Instagram, MapPin, Mail, Phone, Send, ArrowRight } from 'lucide-svelte';
 
+  let email = $state('');
+  let isSubmitting = $state(false);
+  let submitted = $state(false);
+
+  async function handleNewsletterSubmit(e) {
+    e.preventDefault();
+    if (!email) return;
+    
+    isSubmitting = true;
+    // TODO: Implement actual newsletter signup
+    await new Promise(r => setTimeout(r, 1000));
+    submitted = true;
+    isSubmitting = false;
+  }
 </script>
 
-<footer class="site-footer">
-    <!-- <div class="site-footer_farm_image"><img src="/assets/images/resources/site-footer-farm.png"
-            alt="Farm"></div> -->
-    <div class="container mx-12">
-        <div class="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-10 gap-0">
-            <div class="col-span-12 md:col-span-4 lg:col-span-3 pb-6">
-                <div class="footer-widget__column footer-widget__about wow fadeInUp" data-wow-delay="100ms">
-                    <div class="footer-widget__title">
-                       <a href="/about/"><h3>About</h3></a> 
-                    </div>
-                    <div class="footer-widget_about_text">
-                        <p>Since 1986, Alkebu-Lan Images has been Nashville's center for 
-                        promoting positivity in Black culture and empowering Black lifestyles.</p>
-                        <br>
-                        
-                    </div>
-                    <form>
-                        <p class="text-white">Submit your email below to join our mailing list and keep up-to-date 
-                            with our growth!</p>
-                        <div class="footer_input-box">
-                        <input type="email" placeholder="Email Address" aria-label="Email address" required>
-                        <button type="submit" class="button" aria-label="Submit email to join mailing list"><i class="fa fa-check" aria-hidden="true"></i></button>
-                        </div>
-                    </form>
-                </div>
+<footer class="bg-gradient-to-b from-card to-muted/50 border-t border-border">
+  <div class="container mx-auto px-4 py-12 md:py-16">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+      
+      <!-- About Section -->
+      <div class="lg:col-span-1">
+        <h3 class="text-lg font-bold text-foreground mb-4 font-display">About Alkebu-Lan Images</h3>
+        <p class="text-muted-foreground text-sm leading-relaxed mb-6">
+          Since 1986, Nashville's center for promoting positivity in Black culture and empowering Black lifestyles through books, art, and community.
+        </p>
+        
+        <!-- Newsletter Signup -->
+        <div class="mt-6">
+          <p class="text-sm text-foreground font-medium mb-3">Join our newsletter</p>
+          {#if submitted}
+            <div class="bg-accent/10 text-accent rounded-xl p-3 text-sm animate-fade-in">
+              ✓ Thanks for subscribing!
             </div>
-            <div class="col-span-12 md:col-span-2 lg:col-span-2">
-                <div class="footer-widget__column footer-widget__link wow fadeInUp" data-wow-delay="200ms">
-                    <div class="footer-widget__title">
-                        <h3>Explore</h3>
-                    </div>
-                    <ul class="footer-widget__links-list list-unstyled leading-8">
-                    <!-- Page links -->
-                        <li><a href="/about/">About Us</a></li>
-                        <li><a href="/search/">Search</a></li>
-                        <li><a href="/shop/books/">Shop Books</a></li>
-                        <!-- <li><a href="/news/">Latest News</a></li> -->
-                        <li><a href="/return-policy/">Return Policy</a></li>
-                        <li><a href="/contact/">Contact</a></li>
-                    </ul>
-                </div>
-            </div>
-            <!-- Blog section -->
-            <div class="col-span-12 md:col-span-4 lg:col-span-3">
-                <div class="footer-widget__column footer-widget__news wow fadeInUp" data-wow-delay="300ms">
-                    <div class="footer-widget__title">
-                        <h3>News</h3>
-                    </div>
-                    <!-- <ul class="footer-widget__news list-unstyled">
-                        <li>
-                            <div class="footer-widget__news_image">
-                                <img src="/assets/images/resources/footer-1-img-1.jpg" alt="">
-                            </div>
-                            <div class="footer-widget__news_text">
-                                <p><a href="news_detail.html"> Learn 10 Best Tips for New Formers</a></p>
-                            </div>
-                            <div class="footer-widget__news_date_box">
-                                <p>30 Oct, 2019</p>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="footer-widget__news_image">
-                                <img src="/assets/images/resources/footer-1-img-2.jpg" alt="">
-                            </div>
-                            <div class="footer-widget__news_text">
-                                <p><a href="news_detail.html">Farmer Sentiment Darkens Hopes Fade</a></p>
-                            </div>
-                            <div class="footer-widget__news_date_box">
-                                <p>30 Oct, 2019</p>
-                            </div>
-                        </li>
-                    </ul> -->
-                </div>
-            </div>
-            <div class="col-span-12 md:col-span-2">
-                <div class="footer-widget__column footer-widget__contact wow fadeInUp" data-wow-delay="400ms">
-                    <div class="footer-widget__title">
-                        <a href="/contact/"><h3>Contact</h3></a>
-                    </div>
-                    <div class="footer-widget_contact">
-                        <p>2721 Jefferson St<br>Nashville, TN 37208</p>
-                        <a href="mailto:info@alkebulanimages.com">info@alkebulanimages.com</a><br>
-                        <a href="tel:615-321-4111">615 321 4111</a>
-                        <div class="site-footer__social">
-                            <a href="https://www.facebook.com/AlkebulanImages/" aria-label="Follow Alkebu-Lan Images on Facebook"><i class="fab fa-facebook-square" aria-hidden="true"></i></a>
-                            <a href="http://www.twitter.com/alkebulanimages" aria-label="Follow Alkebu-Lan Images on Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
-                            <a href="http://www.instagram.com/alkebulanimages" aria-label="Follow Alkebu-Lan Images on Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
-                            <a href="https://www.pinterest.com/alkebulanimages" aria-label="Follow Alkebu-Lan Images on Pinterest"><i class="fab fa-pinterest" aria-hidden="true"></i></a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          {:else}
+            <form onsubmit={handleNewsletterSubmit} class="flex gap-2">
+              <input 
+                type="email" 
+                placeholder="Enter your email" 
+                bind:value={email}
+                required
+                class="input-modern flex-1 text-sm py-2.5"
+                aria-label="Email address for newsletter"
+              >
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                class="btn-primary btn-sm px-3"
+                aria-label="Subscribe to newsletter"
+              >
+                {#if isSubmitting}
+                  <span class="animate-spin">⋯</span>
+                {:else}
+                  <Send size={16} />
+                {/if}
+              </button>
+            </form>
+          {/if}
         </div>
+      </div>
+      
+      <!-- Quick Links -->
+      <div>
+        <h3 class="text-lg font-bold text-foreground mb-4 font-display">Explore</h3>
+        <ul class="space-y-3">
+          <li>
+            <a href="/about/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              About Us
+            </a>
+          </li>
+          <li>
+            <a href="/shop/books/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Shop Books
+            </a>
+          </li>
+          <li>
+            <a href="/blog/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Blog
+            </a>
+          </li>
+          <li>
+            <a href="/events/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Events
+            </a>
+          </li>
+          <li>
+            <a href="/search/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Search
+            </a>
+          </li>
+        </ul>
+      </div>
+      
+      <!-- Customer Service -->
+      <div>
+        <h3 class="text-lg font-bold text-foreground mb-4 font-display">Customer Service</h3>
+        <ul class="space-y-3">
+          <li>
+            <a href="/contact/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Contact Us
+            </a>
+          </li>
+          <li>
+            <a href="/return-policy/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Return Policy
+            </a>
+          </li>
+          <li>
+            <a href="/privacy/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Privacy Policy
+            </a>
+          </li>
+          <li>
+            <a href="/terms-of-service/" class="text-muted-foreground hover:text-primary transition-colors text-sm inline-flex items-center gap-1 group">
+              <ArrowRight size={14} class="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+              Terms of Service
+            </a>
+          </li>
+        </ul>
+      </div>
+      
+      <!-- Contact Info -->
+      <div>
+        <h3 class="text-lg font-bold text-foreground mb-4 font-display">Visit Us</h3>
+        <div class="space-y-4">
+          <div class="flex gap-3">
+            <MapPin size={18} class="text-primary shrink-0 mt-0.5" />
+            <p class="text-sm text-muted-foreground">
+              2721 Jefferson St<br>Nashville, TN 37208
+            </p>
+          </div>
+          <a href="mailto:info@alkebulanimages.com" class="flex gap-3 text-muted-foreground hover:text-primary transition-colors">
+            <Mail size={18} class="shrink-0" />
+            <span class="text-sm">info@alkebulanimages.com</span>
+          </a>
+          <a href="tel:615-321-4111" class="flex gap-3 text-muted-foreground hover:text-primary transition-colors">
+            <Phone size={18} class="shrink-0" />
+            <span class="text-sm">615-321-4111</span>
+          </a>
+          
+          <!-- Social Links -->
+          <div class="flex gap-3 pt-2">
+            <a 
+              href="https://www.facebook.com/AlkebulanImages/" 
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-10 h-10 rounded-full bg-muted/80 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              aria-label="Follow us on Facebook"
+            >
+              <Facebook size={18} />
+            </a>
+            <a 
+              href="http://www.twitter.com/alkebulanimages" 
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-10 h-10 rounded-full bg-muted/80 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              aria-label="Follow us on Twitter"
+            >
+              <Twitter size={18} />
+            </a>
+            <a 
+              href="http://www.instagram.com/alkebulanimages" 
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-10 h-10 rounded-full bg-muted/80 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              aria-label="Follow us on Instagram"
+            >
+              <Instagram size={18} />
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
+  
+  <!-- Bottom Bar -->
+  <div class="border-t border-border bg-muted/30">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+        <p>© {new Date().getFullYear()} Alkebu-Lan Images. All rights reserved.</p>
+        <div class="flex gap-6">
+          <a href="/privacy/" class="hover:text-primary transition-colors">Privacy</a>
+          <a href="/terms-of-service/" class="hover:text-primary transition-colors">Terms</a>
+        </div>
+      </div>
+    </div>
+  </div>
 </footer>
-
-<div class="site-footer_bottom">
-    <div class="container mx-12">
-        <div class="site-footer_bottom_copyright">
-            <p>Copyright &copy; 2020, <a href="https://alkebulanimages.com">Alkebu-Lan Images</a></p>
-        </div>
-        <div class="site-footer_bottom_menu">
-            <ul class="list-unstyled">
-                <li><a href="/privacy">Privacy Policy</a></li>
-                <li><a href="/terms-of-service">Terms of Service</a></li>
-            </ul>
-        </div>
-    </div>
-</div>

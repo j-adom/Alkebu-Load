@@ -1,6 +1,7 @@
 <script lang="ts">
   import { cart } from '$lib/stores/cart';
   import { cartDrawer } from '$lib/stores/cartDrawer';
+  import { ShoppingCart, Check, Loader2 } from 'lucide-svelte';
 
   type Customization = Record<string, unknown> | undefined;
 
@@ -25,13 +26,13 @@
     productType = 'books',
     quantity = 1,
     customization,
-    className = 'thm-btn',
+    className = 'btn-primary',
     disabled = false,
     iconOnly = false,
     label = 'Add to Cart',
     loadingLabel = 'Adding…',
     successLabel = 'Added!',
-    iconClass = 'icon-shopping-cart',
+    iconClass = '',
     onsuccess,
     onerror,
   }: Props = $props();
@@ -84,19 +85,34 @@
 
 <button
   type="button"
-  class={className}
+  class="{className} {showSuccessState ? 'bg-accent text-accent-foreground' : ''}"
   disabled={computedDisabled}
   onclick={handleAdd}
   aria-live="polite"
   aria-label={accessibleLabel}
 >
   {#if iconOnly}
-    <span class={iconClass} aria-hidden="true"></span>
+    {#if isAdding}
+      <Loader2 size={20} class="animate-spin" />
+    {:else if showSuccessState}
+      <Check size={20} />
+    {:else}
+      <ShoppingCart size={20} />
+    {/if}
   {:else}
-    {buttonText}
+    <span class="inline-flex items-center gap-2">
+      {#if isAdding}
+        <Loader2 size={18} class="animate-spin" />
+      {:else if showSuccessState}
+        <Check size={18} />
+      {:else}
+        <ShoppingCart size={18} />
+      {/if}
+      {buttonText}
+    </span>
   {/if}
 </button>
 
 {#if errorMessage}
-  <p class="mt-1 text-sm text-red-600">{errorMessage}</p>
+  <p class="mt-2 text-sm text-destructive animate-fade-in">{errorMessage}</p>
 {/if}

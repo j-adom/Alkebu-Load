@@ -43,7 +43,7 @@
 							<div class="sub-title" in:fly="{{y:200, delay: 1500, duration: 1500}}" >Elevating Black Lifestyles</div>
 							<h1 in:fly="{{y:200, delay: 1000, duration: 1500}}">Welcome to<br> Alkebu-Lan Images</h1>
 							<div class="link-box">
-								<a href="/shop" class="thm-btn" in:fly="{{y:200, delay: 2000, duration: 1500}}">Shop Now</a>
+								<a href="/shop" class="btn-primary btn-lg" in:fly="{{y:200, delay: 2000, duration: 1500}}">Shop Now</a>
 							</div>
 						</div>
 					</div>
@@ -109,7 +109,7 @@
 						Afrocentric lifestyles.</p>
 					</div>
 					<div class="about1__button-block">
-						<a href="/about" class="thm-btn about_one__btn">Learn More</a>
+						<a href="/about" class="btn-outline">Learn More</a>
 					</div>
 				</div>
 			</div>

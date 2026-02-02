@@ -6,6 +6,7 @@
   import CartTotals from '$lib/components/cart/CartTotals.svelte';
   import { Button } from '$lib/components/ui/button';
   import Meta from '$lib/components/Meta.svelte';
+  import { ShoppingBag, ArrowLeft, Trash2, CreditCard } from 'lucide-svelte';
 
   let cartState = $state({
     items: [],
@@ -40,13 +41,11 @@
 
   function handleContinueShopping() {
     cartDrawer.close();
-    // Navigate to shop page
     window.location.href = '/shop';
   }
 
   function handleCheckout() {
     cartDrawer.close();
-    // Navigate to checkout page
     window.location.href = '/checkout';
   }
 
@@ -59,106 +58,104 @@
   canonicalUrl="{$page.url.origin}/cart"
 />
 
-<div class="min-h-screen bg-gray-50 px-4 py-8 sm:px-6 lg:px-8">
-  <div class="mx-auto max-w-4xl">
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-      <p class="mt-2 text-gray-600">
-        {cartState.itemCount} {cartState.itemCount === 1 ? 'item' : 'items'} in your cart
-      </p>
+<div class="min-h-screen bg-background">
+  <!-- Header -->
+  <div class="border-b border-border bg-card">
+    <div class="container mx-auto px-4 py-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl md:text-4xl font-bold text-foreground font-display">Shopping Cart</h1>
+          <p class="mt-1 text-muted-foreground">
+            {cartState.itemCount} {cartState.itemCount === 1 ? 'item' : 'items'} in your cart
+          </p>
+        </div>
+        <a href="/shop" class="btn-ghost btn-sm hidden sm:inline-flex">
+          <ArrowLeft size={18} />
+          Continue Shopping
+        </a>
+      </div>
     </div>
+  </div>
 
+  <div class="container mx-auto px-4 py-8">
     {#if isEmpty}
       <!-- Empty Cart State -->
-      <div class="rounded-lg border border-gray-200 bg-white p-12 text-center">
-        <svg
-          class="mx-auto h-16 w-16 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-          />
-        </svg>
-        <h3 class="mt-4 text-lg font-semibold text-gray-900">Your cart is empty</h3>
-        <p class="mt-2 text-gray-600">Start shopping to add items to your cart</p>
-        <Button
-          on:click={handleContinueShopping}
-          variant="default"
-          class="mt-6"
-        >
-          Continue Shopping
-        </Button>
+      <div class="max-w-md mx-auto text-center py-16">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+          <ShoppingBag size={48} class="text-muted-foreground" />
+        </div>
+        <h2 class="text-2xl font-bold text-foreground mb-2">Your cart is empty</h2>
+        <p class="text-muted-foreground mb-8">
+          Looks like you haven't added anything to your cart yet. Start shopping to discover amazing books and products.
+        </p>
+        <a href="/shop" class="btn-primary btn-lg">
+          <ShoppingBag size={20} />
+          Start Shopping
+        </a>
       </div>
     {:else}
       <!-- Cart Contents -->
       <div class="grid gap-8 lg:grid-cols-3">
         <!-- Cart Items -->
-        <div class="lg:col-span-2">
-          <div class="space-y-4">
-            {#each cartState.items as item (item.id)}
-              <CartLineItem {item} />
-            {/each}
-          </div>
+        <div class="lg:col-span-2 space-y-4">
+          {#each cartState.items as item (item.id)}
+            <CartLineItem {item} />
+          {/each}
 
           <!-- Clear Cart Option -->
-          <div class="mt-6 border-t border-gray-200 pt-6">
+          <div class="pt-4 flex items-center justify-between border-t border-border">
+            <a href="/shop" class="btn-ghost btn-sm">
+              <ArrowLeft size={16} />
+              Continue Shopping
+            </a>
             <button
-              on:click={handleClearCart}
+              onclick={handleClearCart}
               disabled={isClearing}
-              class="text-sm text-red-600 hover:text-red-800 disabled:text-gray-400"
+              class="btn btn-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
             >
-              {isClearing ? 'Clearing...' : 'Clear cart'}
+              <Trash2 size={16} />
+              {isClearing ? 'Clearing...' : 'Clear Cart'}
             </button>
-            {#if clearError}
-              <p class="mt-2 text-sm text-red-600">{clearError}</p>
-            {/if}
           </div>
+          
+          {#if clearError}
+            <p class="text-sm text-destructive animate-fade-in">{clearError}</p>
+          {/if}
         </div>
 
         <!-- Cart Summary -->
-        <div class="h-fit rounded-lg border border-gray-200 bg-white p-6 lg:sticky lg:top-4">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+        <div class="lg:col-span-1">
+          <div class="card-modern p-6 lg:sticky lg:top-6">
+            <h2 class="text-xl font-bold text-foreground mb-6">Order Summary</h2>
 
-          <CartTotals
-            subtotal={cartState.subtotal}
-            tax={cartState.tax}
-            total={cartState.total}
-          />
+            <CartTotals
+              subtotal={cartState.subtotal}
+              tax={cartState.tax}
+              total={cartState.total}
+            />
 
-          <div class="mt-6 space-y-3">
-            <Button
-              on:click={handleCheckout}
-              variant="default"
-              class="w-full"
-            >
-              Proceed to Checkout
-            </Button>
-            <Button
-              on:click={handleContinueShopping}
-              variant="outline"
-              class="w-full"
-            >
-              Continue Shopping
-            </Button>
-          </div>
+            <div class="mt-6 space-y-3">
+              <button
+                onclick={handleCheckout}
+                class="btn-primary w-full"
+              >
+                <CreditCard size={18} />
+                Proceed to Checkout
+              </button>
+            </div>
 
-          <!-- Cart Note -->
-          <div class="mt-6 border-t border-gray-200 pt-4">
-            <p class="text-xs text-gray-500">
-              Taxes and shipping will be calculated at checkout.
-            </p>
+            <!-- Security Note -->
+            <div class="mt-6 pt-4 border-t border-border">
+              <p class="text-xs text-muted-foreground text-center">
+                🔒 Secure checkout powered by Stripe
+              </p>
+              <p class="text-xs text-muted-foreground text-center mt-1">
+                Taxes and shipping calculated at checkout
+              </p>
+            </div>
           </div>
         </div>
       </div>
     {/if}
   </div>
 </div>
-
-<style>
-  :global(body) {
-    background-color: rgb(249, 250, 251);
-  }
-</style>

@@ -90,7 +90,7 @@
             <AddToCartButton
               productId={book?.id || book?._id}
               productType="books"
-              className="thm-btn hover:text-thm-base"
+              className="btn-primary"
               label="Add to Cart"
             />
           </div>

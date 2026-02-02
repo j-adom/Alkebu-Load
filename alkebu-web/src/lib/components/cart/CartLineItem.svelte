@@ -2,6 +2,7 @@
   import PayloadImage from '$lib/components/PayloadImage.svelte';
   import { cart } from '$lib/stores/cart';
   import { formatCurrency } from '$lib/utils/currency';
+  import { Minus, Plus, Trash2, Loader2 } from 'lucide-svelte';
 
   interface Props {
     item: any;
@@ -80,34 +81,38 @@
   });
 </script>
 
-<article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-  <div class="flex flex-col gap-4 md:flex-row">
-    <div class="w-full rounded-lg bg-gray-50 p-3 md:w-32">
-      {#if image?.url}
-        <PayloadImage image={image} alt={title} maxWidth={320} class="rounded-md" />
-      {:else}
-        <div class="flex h-28 items-center justify-center rounded-md bg-gray-100 text-sm text-gray-500">
-          No image
-        </div>
-      {/if}
+<article class="card-modern p-4 {isUpdating ? 'opacity-70' : ''}">
+  <div class="flex flex-col gap-4 sm:flex-row">
+    <!-- Product Image -->
+    <div class="w-full sm:w-28 shrink-0">
+      <div class="aspect-square rounded-xl bg-muted overflow-hidden">
+        {#if image?.url}
+          <PayloadImage image={image} alt={title} maxWidth={320} class="w-full h-full object-cover" />
+        {:else}
+          <div class="flex h-full items-center justify-center text-sm text-muted-foreground">
+            No image
+          </div>
+        {/if}
+      </div>
     </div>
 
-    <div class="flex flex-1 flex-col gap-3">
-      <div class="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
-        <div>
+    <!-- Product Details -->
+    <div class="flex-1 flex flex-col gap-3">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <div class="flex-1">
           {#if productPath}
-            <a href={productPath} class="text-lg font-semibold leading-tight text-thm-black hover:text-thm-primary">
+            <a href={productPath} class="font-semibold text-foreground hover:text-primary transition-colors line-clamp-2">
               {title}
             </a>
           {:else}
-            <p class="text-lg font-semibold leading-tight text-thm-black">{title}</p>
+            <p class="font-semibold text-foreground line-clamp-2">{title}</p>
           {/if}
-          <p class="text-sm text-gray-500 capitalize">
+          <p class="text-sm text-muted-foreground capitalize mt-0.5">
             {item?.productType?.replace(/-/g, ' ') || 'Product'}
           </p>
 
           {#if customizationEntries.length}
-            <ul class="mt-2 text-sm text-gray-600">
+            <ul class="mt-2 text-sm text-muted-foreground space-y-0.5">
               {#each customizationEntries as [key, value]}
                 <li><span class="font-medium capitalize">{key}:</span> {value as string}</li>
               {/each}
@@ -115,45 +120,57 @@
           {/if}
         </div>
 
-        <div class="text-right">
-          <p class="text-sm text-gray-500">Unit price</p>
-          <p class="text-lg font-semibold">{formatCurrency(unitPrice)}</p>
+        <div class="text-sm sm:text-right">
+          <span class="text-muted-foreground">@ </span>
+          <span class="font-medium">{formatCurrency(unitPrice)}</span>
         </div>
       </div>
 
-      <div class="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div class="flex items-center gap-3">
+      <!-- Quantity Controls & Subtotal -->
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border">
+        <!-- Quantity Selector -->
+        <div class="inline-flex items-center rounded-xl bg-muted/50">
           <button
             type="button"
-            class="rounded-full border border-gray-300 px-3 py-1 text-lg leading-none text-gray-700 disabled:opacity-50"
+            class="p-2 text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
             onclick={() => updateQuantity(quantity - 1)}
             disabled={isUpdating || quantity <= 1}
             aria-label="Decrease quantity"
           >
-            -
+            <Minus size={16} />
           </button>
-          <div class="min-w-[3rem] text-center text-lg font-semibold">{quantity}</div>
+          <span class="min-w-[2.5rem] text-center font-semibold">
+            {#if isUpdating}
+              <Loader2 size={16} class="animate-spin mx-auto" />
+            {:else}
+              {quantity}
+            {/if}
+          </span>
           <button
             type="button"
-            class="rounded-full border border-gray-300 px-3 py-1 text-lg leading-none text-gray-700 disabled:opacity-50"
+            class="p-2 text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
             onclick={() => updateQuantity(quantity + 1)}
             disabled={isUpdating}
             aria-label="Increase quantity"
           >
-            +
+            <Plus size={16} />
           </button>
         </div>
 
-        <div class="text-right">
-          <p class="text-sm text-gray-500">Subtotal</p>
-          <p class="text-xl font-semibold">{formatCurrency(lineTotal)}</p>
+        <!-- Subtotal & Remove -->
+        <div class="flex items-center gap-4">
+          <div class="text-right">
+            <p class="text-xs text-muted-foreground">Subtotal</p>
+            <p class="text-lg font-bold text-primary">{formatCurrency(lineTotal)}</p>
+          </div>
           <button
             type="button"
-            class="mt-1 text-sm text-red-600 hover:text-red-500"
+            class="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
             onclick={removeItem}
             disabled={isUpdating}
+            aria-label="Remove item"
           >
-            Remove
+            <Trash2 size={18} />
           </button>
         </div>
       </div>
@@ -161,6 +178,6 @@
   </div>
 
   {#if errorMessage}
-    <p class="mt-3 text-sm text-red-600">{errorMessage}</p>
+    <p class="mt-3 text-sm text-destructive animate-fade-in">{errorMessage}</p>
   {/if}
 </article>

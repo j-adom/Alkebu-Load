@@ -271,7 +271,7 @@
             <div class="flex flex-col gap-2">
               <button
                 type="submit"
-                class="thm-btn w-full text-center"
+                class="btn-primary w-full"
                 disabled={isCheckingOut}
               >
                 {isCheckingOut ? `Redirecting to ${paymentProvider.name}…` : `Checkout with ${paymentProvider.name}`}
