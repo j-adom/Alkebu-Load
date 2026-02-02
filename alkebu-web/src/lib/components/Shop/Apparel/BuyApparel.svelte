@@ -30,7 +30,7 @@
     size,
     color,
   }));
-  const buttonClass = $derived(icon ? 'all_product_icon' : 'thm-btn');
+  const buttonClass = $derived(icon ? 'all_product_icon' : 'btn-primary');
 </script>
 
 <AddToCartButton

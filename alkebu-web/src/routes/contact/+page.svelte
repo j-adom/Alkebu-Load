@@ -16,13 +16,6 @@
 </script>
 
 <style>
-    button{
-        background-color: var(--thm-base);
-    }
-    .thm-btn:hover{
-        background-color: var(--thm-black);
-        color: #ffffff;
-    }
     .input-group :last-child {
         border-top-left-radius: var(--rounded-btn, 0.5rem);
         border-top-right-radius: var(--rounded-btn, 0.5rem);
@@ -125,7 +118,7 @@
                             </div>
                             <div class="col-span-2">
                                 <div class="input-group contact__btn">
-                                    <button type="submit" class="thm-btn rounded-md">Send message</button>
+                                    <button type="submit" class="btn-primary">Send message</button>
                                 </div>
                             </div>
                         </div>
@@ -152,7 +145,7 @@
                         </p>
                     </div>
                     <div class="have_questions_btn">
-                        <a href="/about/" class="thm-btn">Learn More</a>
+                        <a href="/about/" class="btn-outline">Learn More</a>
                     </div>
                 </div>
             </div>

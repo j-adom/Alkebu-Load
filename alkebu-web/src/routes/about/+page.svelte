@@ -243,7 +243,7 @@
 			<h1>Providing our customers a Well-Curated <br>range of products that elevate Black Lifestyles</h1>
 			<p>Browse our online store to see just what we're talking about</p>
 			<div class="cta_one__button-block">
-				<a href="." class="thm-btn cta_one__btn">Discover More</a>
+				<a href="/shop" class="btn-primary btn-lg">Discover More</a>
 			</div>
 		</div>
 	</div>
