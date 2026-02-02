@@ -89,37 +89,25 @@
                             <img loading="lazy" src="/assets/images/resources/leaf.png" alt="">
                         </div>
                     </div>
-                    <form method="POST" data-netlify="true" name="contact" class="contact-one__form">
-                        <div class="grid grid-cols-2 gap-2 box-border">
-                            <div class="col-span-1">
-                                <div class="input-group">
-                                    <input type="text" name="name" placeholder="Your Name">
-                                </div>
+                    <form method="POST" data-netlify="true" name="contact" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <input type="text" name="name" placeholder="Your Name" class="input-modern" required>
                             </div>
-                            <div class="col-span-1">
-                                <div class="input-group">
-                                    <input type="text" name="email" placeholder="Email Address">
-                                </div>
+                            <div>
+                                <input type="email" name="email" placeholder="Email Address" class="input-modern" required>
                             </div>
-                            <div class="col-span-1">
-                                <div class="input-group">
-                                    <input type="text" name="phone" placeholder="Phone Number">
-                                </div>
+                            <div>
+                                <input type="tel" name="phone" placeholder="Phone Number" class="input-modern">
                             </div>
-                            <div class="col-span-1">
-                                <div class="input-group">
-                                    <input type="text" name="subject" placeholder="Subject">
-                                </div>
+                            <div>
+                                <input type="text" name="subject" placeholder="Subject" class="input-modern" required>
                             </div>
-                            <div class="col-span-2">
-                                <div class="input-group">
-                                    <textarea name="message" placeholder="Write Message"></textarea>
-                                </div>
+                            <div class="md:col-span-2">
+                                <textarea name="message" placeholder="Write your message..." class="textarea-modern" rows="5" required></textarea>
                             </div>
-                            <div class="col-span-2">
-                                <div class="input-group contact__btn">
-                                    <button type="submit" class="btn-primary">Send message</button>
-                                </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" class="btn-primary w-full md:w-auto">Send Message</button>
                             </div>
                         </div>
                     </form>

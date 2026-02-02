@@ -56,10 +56,10 @@
         <h1 class="text-3xl font-bold text-thm-black">What&apos;s happening</h1>
       </div>
 
-      <form method="GET" class="flex flex-wrap items-center gap-3">
+      <form method="GET" class="flex flex-wrap items-end gap-4">
         <div>
-          <label class="block text-sm text-gray-700 mb-1" for="type">Event type</label>
-          <select id="type" name="type" class="border border-gray-300 rounded px-3 py-2">
+          <label class="block text-sm font-medium text-foreground mb-2" for="type">Event type</label>
+          <select id="type" name="type" class="select-modern min-w-[140px]">
             <option value="">All</option>
             {#each eventTypes as type}
               <option value={type.value} selected={type.value === currentType}>{type.label}</option>
@@ -67,13 +67,13 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm text-gray-700 mb-1" for="timing">Timing</label>
-          <select id="timing" name="upcoming" class="border border-gray-300 rounded px-3 py-2">
+          <label class="block text-sm font-medium text-foreground mb-2" for="timing">Timing</label>
+          <select id="timing" name="upcoming" class="select-modern min-w-[140px]">
             <option value="true" selected={upcoming !== false}>Upcoming</option>
             <option value="false" selected={upcoming === false}>Past</option>
           </select>
         </div>
-        <div class="self-end">
+        <div>
           <button type="submit" class="btn-primary btn-sm">Apply filters</button>
         </div>
       </form>
