@@ -1,0 +1,560 @@
+[
+  {
+    "squareId": "LLCLTIAMHMFBJCFW4QCXILHH",
+    "type": "ITEM_VARIATION",
+    "version": "1720487868971",
+    "updatedAt": "2024-07-09T01:17:48.971Z",
+    "variation": {
+      "name": "",
+      "sku": "2100000004966",
+      "itemId": "ONE6W64Z6XBVU5XJANKC6SEI",
+      "price": {
+        "amount": "400",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "TXNZR2SX7DA4U3V2ITZQVRQL",
+    "type": "ITEM_VARIATION",
+    "version": "1720487861563",
+    "updatedAt": "2024-07-09T01:17:41.563Z",
+    "variation": {
+      "name": "",
+      "itemId": "YVMF7PNGCW3DY7KUHASD6FWH",
+      "price": {
+        "amount": "799",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "RDBL2F6PCCQZBLO3Z4ZQ5YOQ",
+    "type": "ITEM_VARIATION",
+    "version": "1753047164878",
+    "updatedAt": "2025-07-20T21:32:44.878Z",
+    "variation": {
+      "name": "L, Red, Unisex T-shirt",
+      "sku": "210000010303",
+      "itemId": "DNJS5VIVIFLS5GSSEUSJRRLK",
+      "price": {
+        "amount": "2500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "GBG3FFYFVEYLC6VX5SGSVK7B",
+    "type": "ITEM_VARIATION",
+    "version": "1753042815393",
+    "updatedAt": "2025-07-20T20:20:15.393Z",
+    "variation": {
+      "name": "2XL, Grey, Unisex T-shirt",
+      "sku": "210000007725",
+      "itemId": "SMJVQHFW6VRAF4TPECUDUXSF",
+      "price": {
+        "amount": "2500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "5NLAGL7XTEZZJOIGFVBI62DU",
+    "type": "ITEM_VARIATION",
+    "version": "1740181900364",
+    "updatedAt": "2025-02-21T23:51:40.364Z",
+    "variation": {
+      "name": "Speechless",
+      "sku": "210000009723",
+      "itemId": "RUWPOV7YWEGFZADZEAPVUUFN",
+      "price": {
+        "amount": "2575",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "C77FD7VDCG7GFCQISWODIDLG",
+    "type": "ITEM_VARIATION",
+    "version": "1744837139208",
+    "updatedAt": "2025-04-16T20:58:59.208Z",
+    "variation": {
+      "name": "",
+      "sku": "796515877816",
+      "itemId": "O5V3644625N7A3KWANOZRY7F",
+      "price": {
+        "amount": "1000",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "YG3BNALC7UZXZIZHJAU5TZPA",
+    "type": "ITEM_VARIATION",
+    "version": "1696727184129",
+    "updatedAt": "2023-10-08T01:06:24.129Z",
+    "variation": {
+      "name": "",
+      "sku": "210000009622",
+      "itemId": "GM4D6OYPRTOFEK6MKD3FBPCB",
+      "price": {
+        "amount": "600",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+    "type": "ITEM_VARIATION",
+    "version": "1744313338768",
+    "updatedAt": "2025-04-10T19:28:58.768Z",
+    "variation": {
+      "name": "",
+      "sku": "R941751",
+      "upc": "187314000121",
+      "itemId": "P7W4OILUI6SU2G4M7OTC3MJY",
+      "price": {
+        "amount": "500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "WBHW4LGAVN622LCUIPSRF3IE",
+    "type": "ITEM_VARIATION",
+    "version": "1753042815393",
+    "updatedAt": "2025-07-20T20:20:15.393Z",
+    "variation": {
+      "name": "Beautifully Blessed",
+      "upc": "9781684380275",
+      "itemId": "LD5DDWDEXVL2RGPCO75LAWKP",
+      "price": {
+        "amount": "2000",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "SA7S3QS3RP7W4WQHUTH2FAAQ",
+    "type": "ITEM_VARIATION",
+    "version": "1748990955088",
+    "updatedAt": "2025-06-03T22:49:15.088Z",
+    "variation": {
+      "name": "Frank/Myrrh",
+      "sku": "210000009368",
+      "itemId": "JF2ZYENOOVXUH33MFPMKOLR2",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "UARRCXTUAQIF4DFKENDLH4U6",
+    "type": "ITEM_VARIATION",
+    "version": "1746726006887",
+    "updatedAt": "2025-05-08T17:40:06.887Z",
+    "variation": {
+      "name": "",
+      "sku": "210000009584",
+      "itemId": "EXVWA4N5JEXEDC5TMLOCCVGK",
+      "price": {
+        "amount": "100",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "45RRD6PBT427OND75SYS7MY3",
+    "type": "ITEM_VARIATION",
+    "version": "1748990955088",
+    "updatedAt": "2025-06-03T22:49:15.088Z",
+    "variation": {
+      "name": "Mango Butter",
+      "sku": "210000006216",
+      "itemId": "ELIMGFIJXLOKDAW5ESNM2LI6",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "RWGGVRDF2LUKLFYPOFIEGWRO",
+    "type": "ITEM_VARIATION",
+    "version": "1720488504487",
+    "updatedAt": "2024-07-09T01:28:24.487Z",
+    "variation": {
+      "name": "1/4 oz",
+      "sku": "210000005666",
+      "itemId": "A5XCKURN6OSTRHMKIZFDYBF2",
+      "price": {
+        "amount": "500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "QA4J45LAI2HO2O6NOVZN6OFW",
+    "type": "ITEM_VARIATION",
+    "version": "1715363313789",
+    "updatedAt": "2024-05-10T17:48:33.789Z",
+    "variation": {
+      "name": "Pineapple",
+      "sku": "210000006219",
+      "itemId": "YVZPMA3GZ2VPAWDV43CGJKQ3",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "KD4ASZDYTFOI5HUDN25TT5AR",
+    "type": "ITEM_VARIATION",
+    "version": "1748990955088",
+    "updatedAt": "2025-06-03T22:49:15.088Z",
+    "variation": {
+      "name": "Midnight Pomegranate",
+      "sku": "210000006225",
+      "itemId": "BCOAIEQA2TJCAJWIZEFZWP6C",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+    "type": "ITEM_VARIATION",
+    "version": "1748990955088",
+    "updatedAt": "2025-06-03T22:49:15.088Z",
+    "variation": {
+      "name": "Black Woman",
+      "sku": "210000006803",
+      "itemId": "TE3LYXA24UXLL34WPWQW6TTJ",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "QTJ43ZJTBA57KIZMUR3INGXS",
+    "type": "ITEM_VARIATION",
+    "version": "1744070513044",
+    "updatedAt": "2025-04-08T00:01:53.044Z",
+    "variation": {
+      "name": "White Sage & Lavender",
+      "sku": "210000011040",
+      "itemId": "Y56VUR4TEQ4ORD4V5SS6RI4T",
+      "price": {
+        "amount": "500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+    "type": "ITEM_VARIATION",
+    "version": "1720487868971",
+    "updatedAt": "2024-07-09T01:17:48.971Z",
+    "variation": {
+      "name": "",
+      "sku": "M16",
+      "upc": "187314000480",
+      "itemId": "DUYO7KIVDAQ2BMQ3ZARTQ63G",
+      "price": {
+        "amount": "200",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "2HZQHO4IYZWWKGPDJWFNPVRD",
+    "type": "ITEM_VARIATION",
+    "version": "1751413194091",
+    "updatedAt": "2025-07-01T23:39:54.091Z",
+    "variation": {
+      "name": "",
+      "sku": "1670598",
+      "itemId": "PQSV7F2G6ZB57CPPXUXLIWGV",
+      "price": {
+        "amount": "2000",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "2NN2J5J6ML6F7MFMKAPB7THI",
+    "type": "ITEM_VARIATION",
+    "version": "1740181891803",
+    "updatedAt": "2025-02-21T23:51:31.803Z",
+    "variation": {
+      "name": "",
+      "sku": "5877992",
+      "itemId": "7JG5LQH2FZVHULIQXO2ZN4YK",
+      "price": {
+        "amount": "4999",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "CFGTVMB2HICIYO6CEWWHRYJY",
+    "type": "ITEM_VARIATION",
+    "version": "1752331932767",
+    "updatedAt": "2025-07-12T14:52:12.767Z",
+    "variation": {
+      "name": "White",
+      "sku": "N943935",
+      "itemId": "ASQJ7DFJEZYG44UJWAHP6UQC",
+      "price": {
+        "amount": "600",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "L5I3UG3W3OIRY3LQFAR23KWH",
+    "type": "ITEM_VARIATION",
+    "version": "1748990955088",
+    "updatedAt": "2025-06-03T22:49:15.088Z",
+    "variation": {
+      "name": "Golden Sand",
+      "sku": "N544806",
+      "itemId": "ONJ3QT4I7E3G4LEQAJIEJZ6P",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "736E5YGKGXHHSEUL2YALKMIS",
+    "type": "ITEM_VARIATION",
+    "version": "1752786699367",
+    "updatedAt": "2025-07-17T21:11:39.367Z",
+    "variation": {
+      "name": "Sweet Baby",
+      "sku": "X425551",
+      "itemId": "FDGBDPAXZGKXDEYNP6X5OZ5U",
+      "price": {
+        "amount": "1075",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "KA5TOGJEMUXLETBGTKEK3X44",
+    "type": "ITEM_VARIATION",
+    "version": "1751319608304",
+    "updatedAt": "2025-06-30T21:40:08.304Z",
+    "variation": {
+      "name": "Speechless",
+      "sku": "8389450",
+      "itemId": "FDGBDPAXZGKXDEYNP6X5OZ5U",
+      "price": {
+        "amount": "1075",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "PWC62RJKXHKLYNEI2S3RVE2R",
+    "type": "ITEM_VARIATION",
+    "version": "1752938039683",
+    "updatedAt": "2025-07-19T15:13:59.683Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "8114531",
+      "itemId": "7ENDS3TGNEOPESOCWYQLB4XU",
+      "price": {
+        "amount": "1200",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+    "type": "ITEM_VARIATION",
+    "version": "1696724430769",
+    "updatedAt": "2023-10-08T00:20:30.769Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "T416514",
+      "itemId": "3MXNU5MO2VOZV7ZEFEER2VWJ",
+      "price": {
+        "amount": "1000",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "C22C6BEYGMQBG3RZGPUHKOWM",
+    "type": "ITEM_VARIATION",
+    "version": "1752331932767",
+    "updatedAt": "2025-07-12T14:52:12.767Z",
+    "variation": {
+      "name": "Citronella Incense",
+      "sku": "S811527",
+      "upc": "8904245401436",
+      "itemId": "RQIBKE3JL3SB5MHQIFQKK5TQ",
+      "price": {
+        "amount": "200",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "F3B5IRIMUIFQBAI6JOO5GTAH",
+    "type": "ITEM_VARIATION",
+    "version": "1753042815393",
+    "updatedAt": "2025-07-20T20:20:15.393Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "E027949",
+      "upc": "9781481438292",
+      "itemId": "ZKHEUQILUYOIUUKHTP5XYNHE",
+      "price": {
+        "amount": "899",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "ZEJIOHA3UMHO66DPO3FCC64H",
+    "type": "ITEM_VARIATION",
+    "version": "1738945840159",
+    "updatedAt": "2025-02-07T16:30:40.159Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "K827497",
+      "itemId": "TH3NPYYHKFLYUI4K7JVHDBSE",
+      "price": {
+        "amount": "2500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "ZED4PXLRKHLF7KO3RZ6TZVHP",
+    "type": "ITEM_VARIATION",
+    "version": "1741189577347",
+    "updatedAt": "2025-03-05T15:46:17.347Z",
+    "variation": {
+      "name": "I Love Myself When...",
+      "sku": "335831S",
+      "itemId": "DYSBXG7YKLRPED7NWQU66XPZ",
+      "price": {
+        "amount": "300",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "NOMDJ3LJQ2Y4LD2DNRPWZ6OM",
+    "type": "ITEM_VARIATION",
+    "version": "1741189577347",
+    "updatedAt": "2025-03-05T15:46:17.347Z",
+    "variation": {
+      "name": "Resist",
+      "sku": "337049E",
+      "itemId": "DYSBXG7YKLRPED7NWQU66XPZ",
+      "price": {
+        "amount": "250",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "M2X4UJ4FXVQWRDL43ISR6DSS",
+    "type": "ITEM_VARIATION",
+    "version": "1748990955088",
+    "updatedAt": "2025-06-03T22:49:15.088Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "7221921",
+      "itemId": "TFAKKCKHOKCOELZFKBBNFHZ3",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "K3EZWWJ3YTFVEFSIXW5XAL3Q",
+    "type": "ITEM_VARIATION",
+    "version": "1750856565701",
+    "updatedAt": "2025-06-25T13:02:45.701Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "4704182",
+      "itemId": "JRAL3WIFVP6HQPMX4RDAMKRF",
+      "price": {
+        "amount": "1399",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "TDJKGTMJAIU4VZNB63A4RSKE",
+    "type": "ITEM_VARIATION",
+    "version": "1753039356810",
+    "updatedAt": "2025-07-20T19:22:36.81Z",
+    "variation": {
+      "name": "Kasrambas premium",
+      "sku": "228022H",
+      "itemId": "UVDKBNYSGOLZQOGIDFT7UTX7",
+      "price": {
+        "amount": "9500",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "3QNPQAMEVWHENPLSKYHUAY3H",
+    "type": "ITEM_VARIATION",
+    "version": "1752020165547",
+    "updatedAt": "2025-07-09T00:16:05.547Z",
+    "variation": {
+      "name": "leather",
+      "sku": "R183767",
+      "itemId": "3OWRPPSUA2UNUYZLRJ4XDCYD",
+      "price": {
+        "amount": "400",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "3RJ65NMCJQG5GXXCTKN3RLOQ",
+    "type": "ITEM_VARIATION",
+    "version": "1752786701593",
+    "updatedAt": "2025-07-17T21:11:41.593Z",
+    "variation": {
+      "name": "King of the Grill",
+      "sku": "9781684388134",
+      "itemId": "ZBBDBGPZWGXGQVQLZYPN3YHP",
+      "price": {
+        "amount": "2300",
+        "currency": "USD"
+      }
+    }
+  },
+  {
+    "squareId": "7D44KLSVBKSC6XUDPSJJAL34",
+    "type": "ITEM_VARIATION",
+    "version": "1753043506107",
+    "updatedAt": "2025-07-20T20:31:46.107Z",
+    "variation": {
+      "name": "Regular",
+      "sku": "W819472",
+      "itemId": "LQO3XN44ZVGMGLRFSCENY3K5",
+      "price": {
+        "amount": "3800",
+        "currency": "USD"
+      }
+    }
+  }
+]

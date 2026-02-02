@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/jadom/Coding/alkebulanimages2.0"
+      ],
+      "description": "Filesystem access for alkebulanimages2.0 project",
+      "enabled": true
+    },
+    "svelte": {
+      "url": "https://mcp.svelte.dev/mcp",
+      "transport": "sse",
+      "description": "Official Svelte MCP server for Svelte 5 and SvelteKit documentation, code analysis, and best practices",
+      "enabled": true
+    },
+    "tailwindcss-server": {
+      "command": "tailwindcss-server"
+    }
+  }
+}

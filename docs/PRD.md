@@ -1,8 +1,8 @@
-# Alkebulanimages 2.0 - Product Requirements Document
+# Alkebulanimages 2.0 - Product Requirements Document (Payload-Only Architecture)
 
 ## Executive Summary
 
-Alkebulanimages 2.0 is a comprehensive digital platform for a Nashville-based Black-owned bookstore and cultural hub. The platform combines e-commerce, content management, community engagement, and inventory management into a unified system that supports both the physical store operations and online presence. The architecture is designed with modularity and reusability in mind to support future expansion into a Nashville Black news and events platform.
+Alkebulanimages 2.0 is a comprehensive digital platform for a Nashville-based Black-owned bookstore and cultural hub. The platform combines e-commerce, content management, community engagement, and inventory management into a unified system built entirely on **Payload CMS** as the backend. The architecture emphasizes simplicity, performance, and scalability while supporting both current bookstore operations and future expansion into Nashville's Black community digital infrastructure.
 
 ## Project Overview
 
@@ -10,757 +10,473 @@ Alkebulanimages 2.0 is a comprehensive digital platform for a Nashville-based Bl
 Create a modern, scalable digital platform that serves as the cornerstone for Alkebulanimages' online presence while fostering community engagement and supporting local Black businesses and culture.
 
 ### Mission
-- **Primary**: Enhance the Alkebulanimages bookstore experience through seamless online-to-offline integration
-- **Secondary**: Build reusable components for Nashville Black community digital infrastructure
+- **Primary**: Deliver seamless online-to-offline integration for retail, events, and cultural content
+- **Secondary**: Build reusable digital infrastructure for Black community commerce and media
+- **Tertiary**: Enable B2B functionality for institutions (schools, nonprofits, churches) with special pricing
 
 ### Success Metrics
-- **E-commerce**: Increase online sales by 300% within first year
-- **Community Engagement**: Build directory of 100+ local Black businesses
-- **Content**: Publish 2-3 blog posts weekly with >1000 monthly readers
-- **Events**: Manage 12+ annual community events with online registration
+- **E-commerce**: 300% increase in online sales within first year
+- **Community Engagement**: Directory of 100+ local Black businesses
+- **Content**: 2-3 blog posts weekly with 1,000+ monthly readers
+- **Events**: 12+ annual community events with online registration
 - **Technical**: 99.9% uptime, <2s page load times, mobile-first responsive design
+- **B2B**: 3+ institutional accounts active within year one (Phase 2)
 
 ## Technical Architecture
 
-### Multi-Repository Structure
+### Technology Stack
+- **Backend**: Payload CMS 3.54.0 with PostgreSQL
+- **Frontend**: SvelteKit with Svelte 5 and shadcn-svelte
+- **Hosting**: Hostinger VPS KVM 4 with Coolify
+- **CDN**: Cloudflare Pages for frontend, R2 for media storage
+- **Payments**: Stripe Embedded Checkout (no redirect)
+- **POS Integration**: Square (inventory sync only, not payments)
+- **Authentication**: Payload JWT (OAuth future phase)
+- **Email**: Resend for transactional, Listmonk for marketing
+- **Search**: FlexSearch + PostgreSQL FTS + External Book APIs
+- **Analytics**: Plausible (self-hosted, privacy-focused)
+- **Monitoring**: Uptime Kuma (self-hosted)
+- **Shipping**: Shippo API (multi-carrier, Square POS integration)
+- **Events & Ticketing**: hi.events (external instance at tickets.alkebulanimages.com)
 
-#### Repository 1: `alkebu-load` (Payload CMS Backend) ✅ **IN PROGRESS**
-- **Purpose**: Headless CMS and data orchestration hub
-- **Current Status**: Advanced - webhook system, inventory sync, relationship management
-- **Technology**: PayloadCMS, Node.js, SQLite/PostgreSQL
-
-#### Repository 2: `alkebu-commerce` (MedusaJS Backend) 🆕
-- **Purpose**: E-commerce engine and order management
-- **Technology**: MedusaJS, Node.js, PostgreSQL
-- **Integration**: Connects to Payload CMS for product data
-
-#### Repository 3: `alkebu-web` (SvelteKit Frontend) 🆕
-- **Purpose**: Customer-facing website and admin interfaces
-- **Technology**: SvelteKit, TypeScript, TailwindCSS
-- **Integration**: Consumes APIs from both Payload and Medusa
-
-#### Repository 4: `alkebu-shared` (Shared Types & Utilities) 🆕
-- **Purpose**: Shared TypeScript types, utilities, and reusable components
-- **Technology**: TypeScript, utility functions
-- **Usage**: Imported by all other repositories
+### Repository Structure
+- **`alkebu-load`**: Payload CMS backend with integrated e-commerce
+- **`alkebu-web`**: SvelteKit frontend consuming Payload APIs
+- **`alkebu-shared`**: Shared TypeScript types and utilities
 
 ### Data Flow Architecture
 ```
-Square POS → Payload CMS (via webhooks) → MedusaJS (product sync) → SvelteKit (display)
+Square POS → Payload CMS (inventory sync via webhooks)
                 ↓
-        Blog Content, Events, Directory
+    Products, Orders, Customers
                 ↓
-        SvelteKit (content display)
+    Stripe (payment processing)
+                ↓
+    SvelteKit Frontend (display)
 ```
 
 ## Core Features & User Stories
 
 ### 1. E-Commerce Platform
-**Primary Users**: Customers, Store Staff
 
 #### Customer Features
-- **Product Browsing**: "As a customer, I want to browse books by genre, author, and publisher so I can discover new reads"
-- **Advanced Search**: "As a customer, I want to search by ISBN, title, or topic to find specific items"
-- **Detailed Product Pages**: "As a customer, I want to see book summaries, author bios, and reviews before purchasing"
-- **Shopping Cart**: "As a customer, I want to add multiple items and save my cart for later"
-- **Checkout Process**: "As a customer, I want secure payment options and shipping/pickup choices"
-- **Account Management**: "As a customer, I want to track orders and maintain wishlists"
+- **Product Browsing**: Browse books by genre, author, publisher, and curated collections
+- **Advanced Search**: FlexSearch with typo tolerance, voice search, barcode scanning
+- **External Book Discovery**: Auto-search ISBNdb, Google Books, Open Library for unavailable titles
+- **Quote Requests**: One-click quotes for books found externally (24-72hr response)
+- **Shopping Cart**: Persistent carts with Local API for <50ms operations
+- **Checkout**: Stripe Embedded Checkout with automatic Tennessee tax calculation
+- **Account Management**: Order history, wishlists, Payload authentication (OAuth future phase)
 
-#### Staff Features  
-- **Inventory Sync**: "As staff, I want inventory to automatically sync between Square POS and website"
-- **Product Management**: "As staff, I want enriched product data without manual entry"
-- **Order Fulfillment**: "As staff, I want to see online orders in my POS system"
+#### Staff Features
+- **Inventory Sync**: Real-time Square POS inventory updates via webhooks
+- **Multi-Location Tracking**: Main Store vs Warehouse vs Store 2 inventory
+- **Order Consolidation**: View all orders (online + POS) in Payload admin
+- **Consignment Reporting**: Auto-generated vendor sales reports
+- **Abandoned Cart Recovery**: Email campaigns for carts inactive >1 hour
+
+### 1b. Shipping Management
+
+#### Customer Features
+- **Shipping Options Display**: Real-time carrier rates (USPS, UPS, FedEx) from Shippo API
+- **Promotional Shipping Rules**: Free shipping over $50, tiered discounts by weight/region
+- **Delivery Estimates**: Transparent delivery timelines during checkout
+- **Multi-Source Fulfillment**: Combined pricing when orders require dropship fulfillment
+- **Digital Item Handling**: Zero shipping for event tickets with optional service fees displayed
+- **Order Tracking**: Integration with Shippo tracking webhooks for real-time updates
+
+#### Staff Features
+- **Shipping Rules Engine**: Configure promotional rules, threshold-based discounts, regional pricing
+- **Location-Based Fulfillment**: Route orders to appropriate warehouse/store with optimized shipping costs
+- **Carrier Management**: Configure rates, cutoff times, and service levels per carrier
+- **Batch Label Generation**: Create and download shipping labels from Payload admin
+- **Return Management**: Pre-filled return labels for refund processing
+- **Shipping Analytics**: Track costs vs revenue, carrier performance, delivery success rates
 
 ### 2. Content Management System
-**Primary Users**: Content Creators, Customers
 
-#### Blog & Reviews
-- **Article Publishing**: "As a content creator, I want to publish book reviews and lifestyle articles with rich media"
-- **Categorization**: "As a content creator, I want to organize content by topics (books, wellness, culture, events)"
-- **SEO Optimization**: "As a content creator, I want automatic SEO optimization for better discoverability"
-- **Reader Engagement**: "As a reader, I want to comment on articles and engage with the community"
+#### Blog & Articles
+- **Rich Content**: Book reviews, cultural articles, wellness guides
+- **SEO Optimization**: Auto-generated meta tags, structured data
+- **Product Relationships**: Link articles to relevant products
+- **Comment System**: Auto-approved with Perspective API filtering
 
-#### Content Types
-- **Book Reviews**: Professional and community reviews
-- **Product Education**: Uses of essential oils, incense, wellness products
-- **Cultural Articles**: African diaspora history, Nashville Black culture
-- **Lifestyle Content**: Fashion, wellness, spiritual practices
-- **Event Coverage**: Store events, community happenings
+#### Content Categories
+- Book Reviews & Literary Criticism
+- African Diaspora Culture & History
+- Nashville Black Community News
+- Wellness & Spiritual Practices
+- Fashion & Lifestyle
 
 ### 3. Community Directory
-**Primary Users**: Business Owners, Community Members
 
 #### Business Directory Features
-- **Business Profiles**: "As a business owner, I want a detailed profile with services, hours, and contact info"
-- **Category Organization**: "As a community member, I want to find businesses by type (restaurants, services, retail)"
-- **Reviews & Ratings**: "As a customer, I want to leave reviews for local businesses"
-- **Featured Businesses**: "As a directory admin, I want to highlight exceptional businesses"
-- **Map Integration**: "As a user, I want to see business locations on an interactive map"
-
-#### Directory Categories
-- Restaurants & Food
-- Professional Services
-- Retail & Shopping
-- Health & Wellness
-- Arts & Entertainment
-- Spiritual & Religious
-- Education & Childcare
+- **Business Profiles**: Detailed listings with hours, services, contact info
+- **Categories**: Restaurants, Services, Retail, Health, Arts, Religious, Education
+- **Reviews & Ratings**: Moderated user reviews with reputation scoring
+- **Map Integration**: Interactive location mapping
+- **Featured Businesses**: Highlighted exceptional businesses
 
 ### 4. Events Management
-**Primary Users**: Event Organizers, Community Members
 
 #### Event Features
-- **Event Creation**: "As an organizer, I want to create events with rich details and media"
-- **Registration System**: "As an attendee, I want to register and receive confirmations"
-- **Calendar Integration**: "As a user, I want to add events to my personal calendar"
-- **Event Types**: Book launches, author readings, wellness workshops, community meetings
-- **Recurring Events**: Monthly book clubs, weekly meditation sessions
+- **Event Types**: Book launches, author readings, workshops, community meetings
+- **Calendar Display**: On-site calendar showing all upcoming events with descriptions
+- **External Ticketing**: Seamless links to hi.events instance (tickets.alkebulanimages.com) for ticket purchases
+- **Recurring Events**: Support for monthly book clubs, weekly meditation sessions
+- **Calendar Integration**: Add to personal calendar functionality (Google, iCal)
+- **Venue Management**: Track locations, capacity, and event logistics
 
-### 5. User Engagement & Community
-**Primary Users**: All Users
+### 5. User Engagement & Moderation
 
-#### Comment System
-- **Universal Comments**: Comments across blog posts, business reviews, event pages
-- **Moderation Tools**: Spam filtering, community guidelines enforcement
-- **User Profiles**: Basic profiles for commenters and reviewers
-- **Notification System**: Email notifications for responses and updates
-
-#### Social Features
-- **Content Sharing**: Social media integration for articles and events
-- **Wishlist Sharing**: Share book wishlists with friends
-- **Event Sharing**: Promote events across social platforms
+#### Comment System (Payload-Native)
+- **Universal Comments**: Across products, articles, events, businesses
+- **Moderation Queue**: Manual review for product/event/business comments
+- **Auto-Filtering**: Perspective API for toxicity detection (0.7 threshold)
+- **User Reputation**: Trust scoring based on comment history
+- **Spam Prevention**: hCaptcha integration
 
 ## Technical Requirements
 
 ### Performance Requirements
-- **Page Load Speed**: <2 seconds for 90th percentile
-- **Mobile Performance**: Lighthouse score >90
-- **SEO Score**: Lighthouse SEO score >95
+- **Page Load**: <2 seconds (90th percentile)
+- **Search Response**: <50ms client-side, <200ms server-side
+- **Cart Operations**: <50ms using Local API
+- **Mobile Score**: Lighthouse >90
+- **SEO Score**: Lighthouse >95
 - **Accessibility**: WCAG 2.1 AA compliance
 
 ### Scalability Requirements
-- **Concurrent Users**: Support 1000+ simultaneous users
-- **Database**: Handle 100k+ products, 10k+ blog posts, 1k+ businesses
-- **API Performance**: <200ms response time for 95th percentile
-- **CDN Integration**: Global content delivery for media assets
+- **Concurrent Users**: 1000+ simultaneous
+- **Database Size**: 100k+ products, 10k+ posts, 1k+ businesses
+- **API Performance**: <200ms response (95th percentile)
+- **Search Performance**: Handle 2-3 second external API fallbacks gracefully
 
 ### Security Requirements
-- **Payment Security**: PCI DSS compliance
+- **Payment Security**: PCI DSS via Stripe (no card data stored)
+- **Authentication**: Payload JWT tokens (OAuth future phase)
 - **Data Protection**: GDPR/CCPA compliance features
-- **Authentication**: Secure user authentication and authorization
-- **API Security**: Rate limiting, input validation, SQL injection prevention
+- **API Security**: Rate limiting, input validation
+- **Moderation**: hCaptcha + Perspective API for spam/abuse
 
 ### Integration Requirements
-- **Square POS**: Real-time inventory sync, order management
-- **Payment Processing**: Stripe, PayPal, Square payments
-- **Email Services**: Transactional emails, newsletters
-- **Analytics**: Google Analytics, custom event tracking
-- **Social Media**: Open Graph, Twitter Cards, social sharing
 
-## Repository-Specific Requirements
+#### Square POS Integration (Inventory Only)
+```javascript
+// Required Square webhooks
+webhooks: [
+  'inventory.count.updated',    // Stock level changes
+  'catalog.item.updated',       // Product updates
+  'customer.created',           // Loyalty sync
+  'customer.updated',          // Profile updates
+  'order.created',            // Order consolidation
+  'location.updated'          // Multi-location support
+]
+```
 
-### Repository 1: `alkebu-load` (Payload CMS) - **ENHANCE EXISTING**
+#### Stripe Payment Integration
+- Embedded Checkout (no redirects)
+- Automatic tax calculation for Tennessee (7% state tax)
+- Support for tax-exempt institutional accounts
+- Webhook handling for order fulfillment
 
-#### Current Strengths (Maintain)
-- ✅ Square webhook integration
-- ✅ Product enrichment system (books via ISBN APIs)
-- ✅ Intelligent author/publisher/vendor relationship management
-- ✅ Multi-collection architecture (Books, Wellness, Fashion/Jewelry)
+#### Shippo Shipping Integration
+```javascript
+// Required Shippo features
+features: [
+  'multi_carrier_rates',        // Real-time rates from USPS, UPS, FedEx
+  'shipment_tracking',         // Webhook updates for delivery status
+  'label_generation',          // Create/download shipping labels
+  'batch_operations',          // Process multiple shipments
+  'return_labels',             // Pre-filled return shipping
+  'square_pos_sync'            // Unified POS + online fulfillment
+]
 
-#### Required Enhancements
-1. **Blog Management**
-   - Rich text editor for articles
-   - Category and tag management
-   - Author attribution system
-   - SEO metadata fields
-   - Featured image handling
-   - Publishing workflow (draft/review/published)
+// Carrier Configuration
+carriers: [
+  'usps',      // Cost-effective for lighter books/items
+  'ups',       // Reliable for heavier orders
+  'fedex'      // Regional backup option
+]
+```
 
-2. **Events Management**
-   - Event creation and management
-   - Registration system integration
-   - Calendar integration
-   - Recurring event support
-   - Venue management
+#### External Book APIs
+- **ISBNdb**: Primary source ($10-25/month)
+- **Google Books**: Free fallback
+- **Open Library**: Free comprehensive backup
+- **Priority**: ISBNdb → Google Books → Open Library (tiebreaker)
 
-3. **Directory Management**
-   - Business profile creation
-   - Category taxonomy
-   - Contact information management
-   - Hours of operation
-   - Review aggregation
-   - Featured business system
+#### hi.events Integration
+```javascript
+// Integration approach
+ticketingArchitecture: {
+  instance: 'tickets.alkebulanimages.com',
+  purpose: 'Dedicated ticketing platform',
+  features: [
+    'event_creation_and_management',
+    'ticket_sales_and_fulfillment',
+    'attendee_check_in',
+    'qr_code_generation',
+    'automated_reminders',
+    'ticket_scanning_app'
+  ]
+}
 
-4. **User Management**
-   - Customer account creation
-   - Profile management
-   - Permission levels (customer, business owner, content creator, admin)
-   - Authentication integration
-
-5. **Media Management**
-   - Fix current image upload issues
-   - Support for multiple image formats
-   - Video content support
-   - CDN integration
-   - Image optimization
-
-6. **Enhanced Search System**
-   - **FlexSearch Integration**: Replace current search with FlexSearch for client-side
-   - **PostgreSQL Full-Text Search**: Enhance existing database search capabilities
-   - **External Book Lookup**: ISBNdb, Google Books, Open Library API integration
-   - **Quote Request System**: Automated workflow for books not in stock
-   - **Search Analytics**: Track search behavior and popular queries
-   - **Voice Search Support**: Web Speech API integration for mobile
-   - **Barcode Scanner**: ISBN lookup via camera for in-store use
-
-#### New Collections Needed
-- **BlogPosts** - Article content and metadata
-- **Events** - Event information and registration
-- **Businesses** - Directory entries
-- **Comments** - User comments across collections
-- **Users** - Customer accounts and profiles
-- **Categories** - Universal category system
-- **Tags** - Flexible tagging system
-- **SearchAnalytics** - Search behavior tracking
-- **BookQuotes** - External book quote requests
-- **ExternalBooks** - Cached external book data
-
-#### External API Integrations
-- **ISBNdb API** - Primary external book database ($10-25/month)
-- **Google Books API** - Free fallback book source
-- **Open Library API** - Free comprehensive book database
-- **Bookshop.org Scraping** - Ethical availability checking (rate-limited)
-
-### Repository 2: `alkebu-commerce` (MedusaJS) - **CREATE NEW**
-
-#### Core E-Commerce Features
-1. **Product Management**
-   - Sync products from Payload CMS
-   - Inventory tracking with Square POS
-   - Product variants (size, color, format)
-   - Pricing and discount management
-   - Stock level monitoring
-
-2. **Shopping Cart & Checkout**
-   - Persistent shopping carts
-   - Guest and registered checkout
-   - Multiple payment methods
-   - Tax calculation
-   - Shipping options (pickup, local delivery, shipping)
-
-3. **Order Management**
-   - Order processing workflow
-   - Inventory reservation
-   - Square POS integration for fulfillment
-   - Order status tracking
-   - Return/refund processing
-
-4. **Customer Management**
-   - Customer accounts
-   - Order history
-   - Wishlist functionality
-   - Loyalty program integration
-   - Customer service tools
-
-5. **Reporting & Analytics**
-   - Sales analytics
-   - Inventory reports
-   - Customer insights
-   - Product performance metrics
-
-#### Integration Points
-- **Payload CMS**: Product data synchronization
-- **Square POS**: Inventory sync, order fulfillment
-- **Payment Processors**: Stripe, PayPal, Square
-- **Shipping Services**: Local delivery tracking
-- **Email Services**: Order confirmations, shipping notifications
-
-### Repository 3: `alkebu-web` (SvelteKit) - **CREATE NEW**
-
-#### Public Website Features
-1. **Homepage**
-   - Hero section with store branding
-   - Featured products carousel
-   - Latest blog posts preview
-   - Upcoming events highlight
-   - Community directory showcase
-
-2. **E-Commerce Pages**
-   - Product catalog with filtering/search
-   - Individual product pages
-   - Shopping cart and checkout
-   - User account dashboard
-   - Order tracking
-
-3. **Content Pages**
-   - Blog with category filtering
-   - Individual article pages
-   - Author pages
-   - Search functionality
-   - Related content suggestions
-
-4. **Community Pages**
-   - Business directory with search/filtering
-   - Individual business profiles
-   - Map view of businesses
-   - Review and rating system
-
-5. **Events Pages**
-   - Events calendar
-   - Event detail pages
-   - Registration system
-   - Event search and filtering
-
-6. **Utility Pages**
-   - About page
-   - Contact page
-   - Privacy policy
-   - Terms of service
-   - Store location and hours
-
-#### Admin Interface Features
-1. **Content Management**
-   - Blog post creation/editing
-   - Event management
-   - Business directory moderation
-   - Comment moderation
-
-2. **E-Commerce Management**
-   - Order management
-   - Customer service tools
-   - Inventory monitoring
-   - Analytics dashboard
-
-3. **User Management**
-   - User roles and permissions
-   - Account management
-   - Support ticket system
-
-#### Technical Features
-- **SEO Optimization**: Server-side rendering, meta tags, structured data
-- **Performance**: Image optimization, lazy loading, code splitting
-- **Accessibility**: WCAG 2.1 AA compliance
-- **Mobile Experience**: Progressive Web App features
-- **Analytics**: Google Analytics, custom event tracking
-
-### Repository 4: `alkebu-shared` - **CREATE NEW**
-
-#### Shared TypeScript Types
-- Product types (books, wellness, fashion)
-- User and authentication types
-- Blog and content types
-- Event and business directory types
-- API response types
-- Configuration types
-
-#### Shared Utilities
-- Date/time formatting
-- Currency formatting
-- Text processing (slugs, excerpts)
-- Validation schemas
-- Image processing utilities
-- SEO helpers
-
-#### Shared Components (Framework Agnostic)
-- Data validation functions
-- API client configurations
-- Error handling utilities
-- Logging utilities
-- Configuration management
-
-## Detailed Search User Experience
-
-### The Hybrid Search System from User Perspective
-
-Users interact with **one intelligent search interface** that seamlessly combines multiple search technologies:
-
-#### Scenario 1: Instant Product Discovery
-**User Experience**: Customer types "maya angelou"
-- **Real-time dropdown** appears after 2 characters
-- **Mixed results** show instantly (<50ms):
-  ```
-  📚 I Know Why the Caged Bird Sings - Maya Angelou - $14.99
-  📰 "Maya Angelou's Legacy" (Blog Post)
-  📅 Maya Angelou Book Club Meeting - March 15
-  ```
-- **Click → Navigate** directly to product/article/event
-
-#### Scenario 2: Comprehensive Search Results
-**User Experience**: Customer clicks "View all results"
-- **Detailed results page** with advanced filtering
-- **Rich metadata**: descriptions, reviews, stock levels, ratings
-- **Cross-content discovery**: books, articles, events, businesses
-- **Smart filters**: price ranges, availability, categories
-
-#### Scenario 3: Mobile Shopping Experience
-- **Touch-optimized** search with large tap targets
-- **Voice search**: "Hey, search for lavender essential oils"
-- **Barcode scanner**: Scan products in-store for online reviews
-- **Location awareness**: "Available for pickup today"
-
-#### Scenario 4: Complex Query Handling
-**User Experience**: "african american poetry published after 2020 under $20"
-- **Natural language processing** understands complex queries
-- **Intelligent filtering** by genre, author demographics, publication date, price
-- **Related content suggestions**: articles, events, community resources
-
-#### Scenario 5: Search Failure Recovery
-**User Experience**: Types "toni morrisn" (typo)
-- **Auto-correction**: "Did you mean: toni morrison?"
-- **Smart suggestions** when no results found
-- **Request system**: "Email us to special order this book"
-- **Alternative discovery**: suggests similar available items
-
-### Advanced Search Features
-
-#### External Book Discovery System
-When users search for books not in inventory:
-
-1. **Automatic External Lookup**:
-   ```
-   🔍 "quantum physics textbook"
-   
-   😔 Not currently in stock
-   🔍 SEARCHING EXTERNAL SOURCES...
-   
-   📚 FOUND IN PUBLISHER CATALOGS:
-   ├── "Introduction to Quantum Mechanics" - $89.99
-   │   📊 Available from Ingram (via bookshop.org lookup)
-   │   🕐 Estimated arrival: 3-5 business days
-   │   [📧 REQUEST QUOTE] [💾 ADD TO WISHLIST]
-   
-   ├── "Quantum Physics for Beginners" - $24.99  
-   │   📊 Available via Google Books API
-   │   📖 Preview available
-   │   [📧 REQUEST QUOTE] [👁️ PREVIEW]
-   ```
-
-2. **Quote Request System**:
-   - **One-click quotes** for books found externally
-   - **Email notifications** when quotes are ready
-   - **Price comparison** across multiple sources
-   - **Special order tracking** system
-
-#### Performance Timeline
-- **0-100ms**: Instant dropdown suggestions (FlexSearch)
-- **100-500ms**: Comprehensive internal results (PostgreSQL)
-- **500ms-2s**: External book lookup (APIs + scraping)
-- **2s+**: Quote generation and email notifications
-
-### Search Context Awareness
-- **Homepage**: Popular searches, featured categories
-- **Product pages**: Similar items, same author/genre
-- **Blog articles**: Related products mentioned in content
-- **Events pages**: Related workshops and community activities
-
-## External Book Sources Integration
-
-### Primary Sources Strategy
-
-#### 1. ISBNdb API Integration
-**Cost**: $10-25/month for search API access
-**Features**:
-- **Comprehensive database** with 30+ million books
-- **Rich metadata**: descriptions, categories, author info
-- **Availability indicators** from multiple sources
-- **Price comparison** across vendors
-
-```typescript
-// ISBNdb integration
-async function searchISBNdb(query: string) {
-  const response = await fetch(`https://api2.isbndb.com/books/${query}`, {
-    headers: { Authorization: process.env.ISBNDB_API_KEY }
-  })
-  
-  return response.json().then(data => ({
-    found: data.books || [],
-    source: 'ISBNdb',
-    canOrder: true,
-    estimatedArrival: '3-5 business days'
-  }))
+// On-site integration
+siteIntegration: {
+  calendar: 'Display events with basic info (date, time, venue)',
+  ctaButton: 'Link to hi.events ticket page',
+  noCheckout: 'Tickets NOT sold through Payload/Stripe checkout',
+  dataSync: 'Event details fetched via hi.events API for display'
 }
 ```
 
-#### 2. Google Books API (Free Fallback)
-**Cost**: Free with rate limits
-**Features**:
-- **Free access** to millions of books
-- **Preview capabilities** for many titles
-- **Publisher information** and availability
-- **Limited commercial data**
+## Payload CMS Collections
 
-```typescript
-// Google Books integration
-async function searchGoogleBooks(query: string) {
-  const response = await fetch(
-    `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${process.env.GOOGLE_BOOKS_API_KEY}`
-  )
-  
-  return response.json().then(data => ({
-    found: data.items || [],
-    source: 'Google Books',
-    canOrder: 'contact_for_quote',
-    hasPreview: true
-  }))
-}
-```
+### Commerce Collections
+- **Products** (Books, WellnessLifestyle, FashionJewelry, OilsIncense, digital property for shipping rules)
+- **Carts** & **CartItems** (Local API optimized)
+- **Orders** (Stripe integration, Square sync, shipping details)
+- **Customers** (Extended users with addresses, tax status)
+- **ShippingRules** (Promotional rules, thresholds, regional pricing)
+- **ShippingRates** (Cached Shippo rates, fallback rates)
+- **ShippingLabels** (Generated labels, tracking numbers, carrier data)
+- **Fulfillment** (Order routing, multi-location fulfillment tracking)
 
-#### 3. Open Library API (Free Comprehensive)
-**Cost**: Free
-**Features**:
-- **3+ million books** in database
-- **Multiple edition tracking**
-- **Library availability** information
-- **Full bibliographic data**
+### Content Collections
+- **BlogPosts** (Rich text, SEO, product relationships)
+- **Events** (Registration, recurring, venues)
+- **Businesses** (Directory listings, reviews)
+- **Comments** (Universal, moderated)
 
-```typescript
-// Open Library integration
-async function searchOpenLibrary(query: string) {
-  const response = await fetch(
-    `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`
-  )
-  
-  return response.json().then(data => ({
-    found: data.docs || [],
-    source: 'Open Library',
-    canOrder: 'special_request',
-    libraryAvailable: true
-  }))
-}
-```
+### Support Collections
+- **ExternalBooks** (Cached API results)
+- **BookQuotes** (Quote request tracking)
+- **SearchAnalytics** (Behavior tracking)
+- **Authors**, **Publishers**, **Vendors** (Relationships)
+- **Categories**, **Tags** (Taxonomy)
 
-#### 4. Bookshop.org Lookup Strategy
-**Approach**: Ethical web scraping with rate limiting
-**Legal Considerations**: Check robots.txt and terms of service
-**Features**:
-- **Direct Ingram availability** (your primary supplier)
-- **Real-time pricing** information
-- **Independent bookstore support** alignment
+### B2B Collections (Phase 2)
+- **Institutions** (Schools, nonprofits, churches)
+- **PurchaseOrders** (Draft → Approved → Invoiced)
+- **Invoices** (Net terms tracking)
 
-```typescript
-// Ethical Bookshop.org lookup (respecting robots.txt)
-async function checkBookshopAvailability(isbn: string) {
-  // Rate limited to 1 request per 2 seconds
-  await rateLimiter.acquire()
-  
-  try {
-    const response = await fetch(`https://bookshop.org/search?keywords=${isbn}`, {
-      headers: {
-        'User-Agent': 'Alkebulanimages-BookSearch/1.0 (contact@alkebulanimages.com)',
-        'Accept': 'text/html',
-      }
-    })
-    
-    // Parse response carefully, extract availability only
-    const availability = parseBookshopResponse(await response.text())
-    
-    return {
-      available: availability.inStock,
-      price: availability.price,
-      source: 'Bookshop.org (Ingram)',
-      canOrder: availability.inStock,
-      note: 'Available from our primary supplier'
-    }
-  } catch (error) {
-    console.log('Bookshop lookup failed, using fallback sources')
-    return null
-  }
-}
-```
+## Search Implementation
 
-### Quote Request Workflow
+### Three-Tier Search System
 
-#### Customer-Facing Flow
-1. **Search finds external book**
-2. **"Request Quote" button** prominently displayed
-3. **Quick form**: Name, email, quantity desired
-4. **Auto-email** to staff with book details and customer info
-5. **24-hour response** commitment to customer
+#### Tier 1: Instant Client-Side (0-50ms)
+- FlexSearch with pre-indexed catalog
+- Typo tolerance (2 character difference)
+- Phonetic matching
+- Field boosting: Title/Author (3x) > ISBN/Tags (2x) > Description (1x)
 
-#### Staff Workflow
-1. **Email notification** with book details and customer info
-2. **One-click Ingram lookup** through your existing ordering system
-3. **Quote generation** with pricing and availability
-4. **Customer notification** via automated email
-5. **Order tracking** if customer proceeds
+#### Tier 2: Server Database (50-200ms)
+- PostgreSQL Full-Text Search
+- Complex filters (price, availability, location)
+- Cross-collection search (products, articles, events)
 
-### Implementation in Search Results
+#### Tier 3: External APIs (500ms-3s)
+- Triggered when no internal results
+- Parallel API calls to ISBNdb, Google, Open Library
+- Auto-create products from ISBN data
+- Quote request system for unavailable books
 
-```typescript
-// Enhanced search that includes external sources
-async function performHybridSearch(query: string) {
-  // Phase 1: Internal search (instant)
-  const internalResults = await searchInternal(query)
-  
-  if (internalResults.length === 0) {
-    // Phase 2: External search (when no internal matches)
-    const [isbnResults, googleResults, openLibResults] = await Promise.all([
-      searchISBNdb(query),
-      searchGoogleBooks(query),
-      searchOpenLibrary(query)
-    ])
-    
-    // Phase 3: Bookshop availability check (rate limited)
-    const externalBooks = [...isbnResults.found, ...googleResults.found]
-    const availabilityChecks = await Promise.all(
-      externalBooks.slice(0, 5).map(book => 
-        checkBookshopAvailability(book.isbn)
-      )
-    )
-    
-    return {
-      internal: internalResults,
-      external: combineExternalResults(isbnResults, googleResults, availabilityChecks),
-      canRequestQuotes: true
-    }
-  }
-  
-  return { internal: internalResults, external: [], canRequestQuotes: false }
-}
-```
-
-## User Experience Design
-
-### Design System Requirements
-- **Brand Consistency**: Reflect Alkebulanimages' cultural and aesthetic values
-- **Accessibility**: High contrast, screen reader support, keyboard navigation
-- **Mobile-First**: Responsive design optimized for mobile users
-- **Performance**: Optimized images, minimal JavaScript, fast loading
-- **Search-First**: Prominent search functionality on every page
-
-### User Journey Mapping
-
-#### Customer Purchase Journey
-1. **Discovery**: Browse homepage → Find products via search/categories
-2. **Research**: Read product details, reviews, related blog posts
-3. **Decision**: Add to cart, create account (optional)
-4. **Purchase**: Secure checkout with multiple payment options
-5. **Fulfillment**: Order confirmation, pickup/shipping tracking
-6. **Engagement**: Receive follow-up content, join community
-
-#### Community Engagement Journey
-1. **Arrival**: Discover community features through navigation
-2. **Exploration**: Browse business directory, upcoming events
-3. **Participation**: Register for events, comment on content
-4. **Contribution**: Submit business listings, write reviews
-5. **Connection**: Build relationships through repeated engagement
+### Search Features
+- **Voice Search**: Web Speech API for mobile/desktop
+- **Barcode Scanner**: Camera-based ISBN lookup
+- **Search Analytics**: Track queries, click-through, conversions
+- **Smart Suggestions**: "Did you mean..." for typos
+- **Out-of-Stock Handling**: Show with clear status, enable quote requests
 
 ## Development Phases
 
-### Phase 1: Foundation & Search (Months 1-2)
-**Repositories**: `alkebu-shared`, enhance `alkebu-load`
-- Set up shared types and utilities
-- Enhance Payload CMS with new collections
-- Fix image upload issues
-- **Implement FlexSearch + PostgreSQL FTS hybrid search**
-- **Integrate external book APIs (ISBNdb, Google Books, Open Library)**
-- **Build quote request system for external books**
-- Create basic blog and events management
+### Phase 1: Foundation & Migration (Month 1)
+✅ **Already Complete**:
+- Payload CMS setup with collections
+- Square webhook integration
+- Book import system with ISBN enrichment
+- FlexSearch implementation
 
-### Phase 2: E-Commerce Core (Months 2-3)
-**Repository**: `alkebu-commerce`
-- Set up MedusaJS backend
-- Implement product sync from Payload
-- Build shopping cart and checkout
-- Integrate with Square POS
-- **Connect external book ordering to MedusaJS workflow**
+**To Add**:
+- E-commerce collections (Carts, Orders)
+- Stripe webhook handlers
+- Local API cart operations
+- Fix media upload issues
 
-### Phase 3: Frontend Development (Months 3-4)
-**Repository**: `alkebu-web`
-- Build SvelteKit application structure
-- **Implement advanced search UI with instant results, external lookup, and quote requests**
-- **Add voice search and barcode scanning for mobile**
-- Implement product catalog and shopping
-- Create blog and content pages
-- Build responsive design system
+### Phase 2: E-Commerce Core (Month 2)
+- Stripe Embedded Checkout integration
+- Tax calculation (Tennessee 7% + local)
+- Order management workflow
+- Customer account system with Payload authentication
+- Abandoned cart recovery
+- **Shipping Integration**: Shippo API setup, carrier configuration, shipping rules engine
+- **Promotional Shipping**: Free shipping over $50, regional pricing
+- **Multi-Location Fulfillment**: Location-based order routing with cost optimization
 
-### Phase 4: Community Features (Months 4-5)
-- Implement business directory
-- Build events management system
-- Create user registration and profiles
-- Implement comment system
-- **Deploy search analytics and optimization features**
+### Phase 3: Frontend Development (Months 2-3)
+- SvelteKit with Svelte 5 and shadcn-svelte
+- Product catalog with filtering
+- Shopping cart with Local API
+- Responsive design (mobile/tablet/desktop)
+- Cloudflare Pages deployment
 
-### Phase 5: Integration & Testing (Months 5-6)
-- End-to-end integration testing
-- **Search performance optimization and external API rate limiting**
+### Phase 4: MVP Features (Months 3-4)
+- **Business Directory** (MUST HAVE)
+- **Events System** (MUST HAVE)
+- Blog with auto-moderation
+- Comment system with moderation queue
+- Search with external book lookups
+
+### Phase 5: Enhanced Features (Months 4-5)
+- Consignment vendor reports
+- Inventory aging analysis
+- Email campaigns with Listmonk
+- Voice search & barcode scanning
+- Customer loyalty integration
+
+### Phase 6: Launch Preparation (Month 5-6)
 - Performance optimization
-- SEO implementation
-- Accessibility compliance
-- Security testing
+- Security hardening
+- Automated backups to Cloudflare R2
+- Staff training
+- Soft launch with select customers
 
-### Phase 6: Launch & Optimization (Month 6+)
-- Production deployment
-- Monitoring and analytics setup
-- **Search behavior analysis and optimization**
-- User feedback collection
-- Iterative improvements
+### Post-Launch: B2B Features (Month 7+)
+- Institutional accounts
+- Purchase order workflows
+- Custom pricing tiers
+- Invoice generation
+- Net terms management
 
-## Future Expansion Considerations
+## Infrastructure & Deployment
 
-### Nashville Black News Site Reusability
-The architecture is designed to support easy adaptation for a news and events platform:
+### Hostinger VPS KVM 4 Configuration
+```yaml
+Resources:
+  - Payload CMS: 2GB RAM
+  - PostgreSQL: 1GB RAM
+  - Redis Cache: 512MB RAM
+  - Listmonk: 256MB RAM
+  
+Services:
+  - Coolify: Container orchestration
+  - Uptime Kuma: Monitoring
+  - Plausible: Analytics
+  - Automated backups to Cloudflare R2
+```
 
-- **Content Management**: Blog system can be extended for news articles
-- **Events System**: Already built for community events
-- **Business Directory**: Can showcase local organizations and nonprofits
-- **User Engagement**: Comment and community features ready for news discussions
-- **Technical Architecture**: Modular design allows easy customization
+### Cloudflare Setup
+- **Pages**: SvelteKit frontend hosting (free)
+- **R2**: Media storage and backups
+- **Workers**: Edge caching and functions
+- **DNS**: Domain management
 
-### Potential Extensions
-- **Mobile App**: React Native or Flutter app using existing APIs
-- **Multiple Locations**: Multi-tenant architecture for franchise expansion
-- **Wholesale Portal**: B2B features for business customers
-- **Subscription Services**: Book clubs, monthly product boxes
-- **Podcast Integration**: Audio content management and distribution
+## Key Implementation Details
 
-## Success Metrics & KPIs
+### Cart Performance Optimization
+- Use Payload Local API (no HTTP overhead)
+- Server-side operations <50ms
+- Session-based guest carts
+- Redis caching for active carts
 
-### Business Metrics
-- **Revenue Growth**: 300% increase in online sales
-- **Customer Acquisition**: 50% increase in new customers
-- **Community Engagement**: 1000+ monthly active users
-- **Content Engagement**: 2x increase in blog readership
-- **External Book Orders**: 20% of searches result in quote requests, 60% conversion rate on quotes
+### Tennessee Tax Calculation
+- State tax: 7%
+- Local tax: Variable by city
+- Tax-exempt status for institutions
+- Manual international order review
 
-### Technical Metrics
-- **Search Performance**: 
-  - Client search: <50ms response time
-  - Server search: <200ms response time
-  - External API queries: <2s response time
-- **Search Success Rate**: 85% of searches return relevant results
-- **External Book Discovery**: Successfully find 70% of unavailable books through external sources
-- **Performance**: <2s page load time, >95 Lighthouse score
-- **Reliability**: 99.9% uptime, <1% error rate, 99.5% API availability
-- **Security**: Zero security incidents, PCI compliance
-- **SEO**: 50% improvement in organic search traffic
+### Inventory Management
+- Multi-location tracking (Store, Warehouse)
+- Consignment flagging and reporting
+- Automatic reorder suggestions
+- Aging reports (items >6 months)
 
-### Community Metrics
-- **Directory Growth**: 100+ businesses listed within 6 months
-- **Event Participation**: 80% online registration adoption
-- **User Engagement**: 5+ comments per blog post average
-- **Social Sharing**: 2x increase in social media engagement
-- **Quote Conversion**: 60% of book quote requests result in purchases
+### Shipping Calculation & Optimization
+
+#### Real-Time Rate Calculation
+- Query Shippo API for live carrier rates on checkout
+- Cache rates for 30 minutes to minimize API calls
+- Fallback to pre-configured rates if API unavailable
+- Filter carriers based on package weight/dimensions
+
+#### Promotional Shipping Rules
+```javascript
+// Rule Engine Priority (first match applies)
+rules: [
+  { condition: 'free_over_threshold', value: 50 },      // Free shipping >$50
+  { condition: 'regional_discount', region: 'TN', discount: 0.1 }, // 10% TN shipping
+  { condition: 'weight_based', max_lbs: 3, fixed_rate: 5.99 },    // Flat $5.99 ≤3lbs
+  { condition: 'carrier_discount', carrier: 'usps', discount: 0.05 } // 5% USPS
+]
+```
+
+#### Multi-Location Fulfillment Pricing
+- **Single Location**: Direct shipment at Shippo rates
+- **Split Orders**: Calculate cost for each warehouse, show combined rate
+  - Example: Main store $5.50 + Warehouse $3.25 = displayed $8.50 (optimized logic may reduce)
+  - Server-side logic combines shipments when possible (same carrier, nearby destinations)
+- **Dropship Integration**: Markup option (+10-15%) for 3rd-party fulfillment
+- **Real-time Optimization**: Choose lowest-cost route while meeting delivery expectations
+
+#### Digital Item Handling
+- Products marked as `digital: true` have `shipping_type: 'none'`
+- Digital products (books, ebooks, downloads) show zero shipping
+- Event tickets are sold exclusively through hi.events and not included in on-site orders
+- Multiple items: shipping fee applies only once per order (aggregate calculation)
+- Mixed orders: Shipping calculated for physical items only
+
+### Moderation Strategy
+- **Auto-approve**: Blog comments (with Perspective API)
+- **Queue for review**: Product, event, business comments
+- **Trust scoring**: +10 approved, -20 flagged
+- **Trusted threshold**: 100 points
 
 ## Risk Mitigation
 
 ### Technical Risks
-- **Integration Complexity**: Phased development approach, extensive testing
-- **Performance Issues**: Early performance testing, CDN implementation
-- **Security Vulnerabilities**: Regular security audits, compliance monitoring
+- **Cart performance**: Local API + Redis caching
+- **Search latency**: Client-side index + graceful fallbacks
+- **Payment failures**: Stripe webhook retry logic
+- **Inventory sync issues**: Queue system with error handling
 
 ### Business Risks
-- **User Adoption**: Gradual rollout, user feedback integration
-- **Content Quality**: Editorial guidelines, content review process
-- **Community Moderation**: Clear guidelines, automated moderation tools
+- **Scope creep**: Strict MVP focus, B2B deferred
+- **User adoption**: Soft launch with feedback loops
+- **Content moderation**: Clear guidelines + automation
+- **Staff training**: Phased rollout with documentation
 
 ### Operational Risks
-- **Staff Training**: Comprehensive training program for new systems
-- **Data Migration**: Careful migration plan with backups
-- **Downtime**: Staged deployment, rollback procedures
+- **Database growth**: Automated cleanup jobs
+- **Media storage costs**: Image optimization + CDN
+- **API rate limits**: Caching + request queuing
+- **Backup failures**: Multiple backup destinations
+
+## Success Metrics & KPIs
+
+### Business Metrics
+- **Revenue**: 300% increase in online sales (Year 1)
+- **Customers**: 50% increase in new customers
+- **Community**: 1000+ monthly active users
+- **Directory**: 100+ businesses listed (6 months)
+- **Events**: 80% online registration adoption
+
+### Technical Metrics
+- **Performance**: <2s page load, >95 Lighthouse
+- **Search Success**: 85% queries return relevant results
+- **Cart Conversion**: 70% cart-to-order rate
+- **API Uptime**: 99.9% availability
+- **External Books**: 60% quote-to-purchase conversion
+
+### Engagement Metrics
+- **Comments**: 5+ per blog post average
+- **Reviews**: 30% of customers leave reviews
+- **Social Shares**: 2x increase in social traffic
+- **Newsletter**: 40% open rate, 10% click rate
+- **Search**: 20% of searches → quote requests
 
 ## Conclusion
 
-Alkebulanimages 2.0 represents a comprehensive digital transformation that will position the store as a leader in community-focused e-commerce and cultural content. The modular, scalable architecture ensures long-term sustainability while providing immediate business value through enhanced customer experience and operational efficiency.
+This Payload-only architecture simplifies the technical stack while maintaining all required functionality. By eliminating MedusaJS and leveraging Payload's Local API for e-commerce operations, we reduce complexity and improve performance. The phased approach ensures MVP delivery within 6 months while laying groundwork for future B2B expansion.
 
-The multi-repository approach allows for focused development while maintaining system cohesion, and the design considerations for reusability ensure future expansion opportunities. With careful execution of this PRD, Alkebulanimages will have a robust digital platform that serves both immediate business needs and long-term community building goals.
+The integration of Square for inventory management, Stripe for payments, and external book APIs for discovery creates a comprehensive solution that serves both immediate business needs and long-term community building goals. The focus on performance optimization, particularly for search and cart operations, ensures excellent user experience even on the modest VPS infrastructure.

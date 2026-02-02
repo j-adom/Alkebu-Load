@@ -1,0 +1,197 @@
+{
+	"/": [
+		"src/routes/+page.server.ts",
+		"src/routes/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/about": [
+		"src/routes/about/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/api/cart/add": [
+		"src/routes/api/cart/add/+server.ts"
+	],
+	"/api/cart/clear": [
+		"src/routes/api/cart/clear/+server.ts"
+	],
+	"/api/cart/remove": [
+		"src/routes/api/cart/remove/+server.ts"
+	],
+	"/api/cart/summary": [
+		"src/routes/api/cart/summary/+server.ts"
+	],
+	"/api/cart/update": [
+		"src/routes/api/cart/update/+server.ts"
+	],
+	"/api/checkout": [
+		"src/routes/api/checkout/+server.ts"
+	],
+	"/api/media/file/[...path]": [
+		"src/routes/api/media/file/[...path]/+server.ts"
+	],
+	"/blog": [
+		"src/routes/+layout.server.ts"
+	],
+	"/blog/[slug]": [
+		"src/routes/+layout.server.ts"
+	],
+	"/cart": [
+		"src/routes/cart/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/checkout": [
+		"src/routes/checkout/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/checkout/success": [
+		"src/routes/checkout/success/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/contact": [
+		"src/routes/contact/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/directory": [
+		"src/routes/directory/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/directory/[slug]": [
+		"src/routes/directory/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/events": [
+		"src/routes/events/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/events/[slug]": [
+		"src/routes/events/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/login": [
+		"src/routes/login/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/privacy": [
+		"src/routes/+layout.server.ts"
+	],
+	"/return-policy": [
+		"src/routes/+layout.server.ts"
+	],
+	"/robots.txt": [
+		"src/routes/robots.txt/+server.ts"
+	],
+	"/search": [
+		"src/routes/search/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop": [
+		"src/routes/shop/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/apparel": [
+		"src/routes/shop/apparel/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/apparel/brands/[slug]": [
+		"src/routes/shop/apparel/brands/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/apparel/categories/[slug]": [
+		"src/routes/shop/apparel/categories/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/apparel/tags/[slug]": [
+		"src/routes/shop/apparel/tags/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/apparel/[...slug]": [
+		"src/routes/shop/apparel/[...slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books": [
+		"src/routes/shop/books/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/authors": [
+		"src/routes/shop/books/authors/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/authors/[slug]": [
+		"src/routes/shop/books/authors/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/collections": [
+		"src/routes/shop/books/collections/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/collections/[slug]": [
+		"src/routes/shop/books/collections/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/genres": [
+		"src/routes/shop/books/genres/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/genres/[slug]": [
+		"src/routes/shop/books/genres/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/tags": [
+		"src/routes/shop/books/tags/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/tags/[slug]": [
+		"src/routes/shop/books/tags/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/[slug]/[isbn]": [
+		"src/routes/shop/books/[slug]/[isbn]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/books/[...slug]": [
+		"src/routes/shop/books/[...slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/health-and-beauty": [
+		"src/routes/shop/health-and-beauty/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/health-and-beauty/collections/[slug]": [
+		"src/routes/shop/health-and-beauty/collections/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/health-and-beauty/tags/[slug]": [
+		"src/routes/shop/health-and-beauty/tags/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/health-and-beauty/types/[slug]": [
+		"src/routes/shop/health-and-beauty/types/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/health-and-beauty/[...slug]": [
+		"src/routes/shop/health-and-beauty/[...slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/home-goods": [
+		"src/routes/shop/home-goods/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/home-goods/tags/[slug]": [
+		"src/routes/shop/home-goods/tags/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/home-goods/types/[slug]": [
+		"src/routes/shop/home-goods/types/[slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/shop/home-goods/[...slug]": [
+		"src/routes/shop/home-goods/[...slug]/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/sitemap.xml": [
+		"src/routes/sitemap.xml/+server.ts"
+	],
+	"/terms-of-service": [
+		"src/routes/+layout.server.ts"
+	]
+}

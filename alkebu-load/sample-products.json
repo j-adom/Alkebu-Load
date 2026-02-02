@@ -1,0 +1,121 @@
+[
+  {
+    "title": "Speechless",
+    "description": "Hair & Skincare / Soaps",
+    "price": 25.75,
+    "currency": "USD",
+    "sku": "210000009723",
+    "squareVariationId": "5NLAGL7XTEZZJOIGFVBI62DU",
+    "squareItemId": "RUWPOV7YWEGFZADZEAPVUUFN",
+    "variationName": "Speechless",
+    "isActive": false,
+    "squareVersion": "1754863061357",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 13,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "slug": "speechless",
+    "featured": false,
+    "tags": [
+      "square-import",
+      "active"
+    ]
+  },
+  {
+    "title": "Gold w/ Elderberry & Ginger, 8oz",
+    "description": "Wild-harvested St. Lucian sea moss soaked in Alkaline water and Key Lime juice",
+    "price": 18,
+    "currency": "USD",
+    "sku": "Q760189",
+    "squareVariationId": "NNPPF3DN6TEOIW4F6ONUAQIS",
+    "squareItemId": "S4ZEAOJVOTY5OAKAHOOMR23Z",
+    "variationName": "Gold w/ Elderberry & Ginger, 8oz",
+    "isActive": true,
+    "squareVersion": "1759516203139",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 30,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "slug": "gold-w-elderberry-ginger-8oz",
+    "featured": true,
+    "tags": [
+      "square-import",
+      "active"
+    ]
+  },
+  {
+    "title": "Turmeric + Pepper + Seamoss",
+    "price": 40,
+    "currency": "USD",
+    "sku": "2982193",
+    "squareVariationId": "ZTQGKWLDFE3M7N4MHKMTPRGO",
+    "squareItemId": "G7YPE5NEGIQQXPGHYOBOQHX7",
+    "variationName": "Turmeric + Pepper + Seamoss",
+    "isActive": false,
+    "squareVersion": "1759780972593",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 11,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "slug": "turmeric-pepper-seamoss",
+    "featured": false,
+    "tags": [
+      "square-import",
+      "active"
+    ]
+  },
+  {
+    "title": "Lick Me All Over",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 13.99,
+    "currency": "USD",
+    "sku": "210000006690",
+    "squareVariationId": "6YDBOS5XBIWMG7WPGPKN6THC",
+    "squareItemId": "MSCFOBAZ45CDIJUVOE4CRJST",
+    "variationName": "Lick Me All Over",
+    "isActive": false,
+    "squareVersion": "1754863056784",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -98,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "slug": "lick-me-all-over",
+    "featured": false,
+    "tags": [
+      "square-import",
+      "active"
+    ]
+  },
+  {
+    "title": "White Sage",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000010087",
+    "squareVariationId": "6U2LE4WRSKEFYB6PBZIOJE3B",
+    "squareItemId": "3C4F4ONIFWRYE5TFC6OTLWTD",
+    "variationName": "White Sage",
+    "isActive": false,
+    "squareVersion": "1754863060728",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -10,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "slug": "white-sage",
+    "featured": false,
+    "tags": [
+      "square-import",
+      "active"
+    ]
+  }
+]

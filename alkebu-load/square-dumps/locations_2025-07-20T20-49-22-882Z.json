@@ -1,0 +1,153 @@
+{
+  "locations": [
+    {
+      "id": "LC2AKZX32H2ZA",
+      "name": "Alkebu-Lan Images",
+      "address": {
+        "addressLine1": "2721 Jefferson St, Nashville, Nashville, Tennessee",
+        "locality": "Nashville",
+        "administrativeDistrictLevel1": "TN",
+        "postalCode": "37208",
+        "country": "US"
+      },
+      "timezone": "America/Chicago",
+      "capabilities": [
+        "CREDIT_CARD_PROCESSING"
+      ],
+      "status": "ACTIVE",
+      "createdAt": "2022-04-16T15:34:35.747Z",
+      "merchantId": "MLDJXBYZCPT4Y",
+      "country": "US",
+      "languageCode": "en-US",
+      "currency": "USD",
+      "phoneNumber": "+1 615-321-4111",
+      "businessName": "Alkebu-Lan Images",
+      "type": "PHYSICAL",
+      "websiteUrl": "alkebulanimages.com",
+      "businessHours": {
+        "periods": [
+          {
+            "dayOfWeek": "SUN",
+            "startLocalTime": "00:00:00",
+            "endLocalTime": "18:00:00"
+          },
+          {
+            "dayOfWeek": "MON",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "TUE",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "WED",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "THU",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "FRI",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "SAT",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "18:00:00"
+          }
+        ]
+      },
+      "businessEmail": "info@alkebulanimages.com",
+      "description": "Proudly serving as Nashville's center for positive Black culture and knowledge for over 35 years",
+      "twitterUsername": "alkebulanimages",
+      "instagramUsername": "alkebulanimages",
+      "facebookUrl": "facebook.com/AlkebulanImages/",
+      "coordinates": {
+        "latitude": 36.1674827,
+        "longitude": -86.82042009999999
+      },
+      "logoUrl": "https://square-web-production-f.squarecdn.com/files/47f13cb11df8acb46862ae5659b321d550f73d30/original.jpeg",
+      "mcc": "5999",
+      "fullFormatLogoUrl": "https://square-web-production-f.squarecdn.com/files/47f13cb11df8acb46862ae5659b321d550f73d30/original.jpeg"
+    },
+    {
+      "id": "LRA8RTBE0ZCM6",
+      "name": "Main",
+      "address": {
+        "addressLine1": "2721 Jefferson St",
+        "locality": "Nashville",
+        "administrativeDistrictLevel1": "TN",
+        "postalCode": "37208-2828",
+        "country": "US"
+      },
+      "timezone": "America/Chicago",
+      "capabilities": [
+        "CREDIT_CARD_PROCESSING",
+        "AUTOMATIC_TRANSFERS"
+      ],
+      "status": "INACTIVE",
+      "createdAt": "2022-06-10T04:42:29.447Z",
+      "merchantId": "MLDJXBYZCPT4Y",
+      "country": "US",
+      "languageCode": "en-US",
+      "currency": "USD",
+      "businessName": "Alkebu-Lan Images",
+      "type": "PHYSICAL",
+      "websiteUrl": "alkebulanimages.com",
+      "businessHours": {
+        "periods": [
+          {
+            "dayOfWeek": "SUN",
+            "startLocalTime": "00:00:00",
+            "endLocalTime": "18:00:00"
+          },
+          {
+            "dayOfWeek": "MON",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "TUE",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "WED",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "THU",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "FRI",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "19:00:00"
+          },
+          {
+            "dayOfWeek": "SAT",
+            "startLocalTime": "10:00:00",
+            "endLocalTime": "18:00:00"
+          }
+        ]
+      },
+      "twitterUsername": "alkebulanimages",
+      "instagramUsername": "alkebulanimages",
+      "coordinates": {
+        "latitude": 36.167513,
+        "longitude": -86.820427
+      },
+      "logoUrl": "https://square-web-production-f.squarecdn.com/files/cbf23ce08a462562162f04d6bb0a493e86108b9d/original.jpeg",
+      "mcc": "5192",
+      "fullFormatLogoUrl": "https://square-web-production-f.squarecdn.com/files/cbf23ce08a462562162f04d6bb0a493e86108b9d/original.jpeg"
+    }
+  ]
+}

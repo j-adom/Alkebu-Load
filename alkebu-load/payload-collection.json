@@ -1,0 +1,109 @@
+{
+  "slug": "products",
+  "labels": {
+    "singular": "Product",
+    "plural": "Products"
+  },
+  "fields": [
+    {
+      "name": "title",
+      "type": "text",
+      "required": true,
+      "label": "Product Title"
+    },
+    {
+      "name": "description",
+      "type": "richText",
+      "label": "Description"
+    },
+    {
+      "name": "price",
+      "type": "number",
+      "required": true,
+      "label": "Price"
+    },
+    {
+      "name": "currency",
+      "type": "select",
+      "options": [
+        "USD",
+        "CAD",
+        "EUR"
+      ],
+      "defaultValue": "USD",
+      "label": "Currency"
+    },
+    {
+      "name": "sku",
+      "type": "text",
+      "label": "SKU",
+      "unique": true
+    },
+    {
+      "name": "inventory",
+      "type": "group",
+      "fields": [
+        {
+          "name": "quantity",
+          "type": "number",
+          "label": "Quantity"
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "label": "State"
+        },
+        {
+          "name": "locationId",
+          "type": "text",
+          "label": "Location ID"
+        }
+      ]
+    },
+    {
+      "name": "squareData",
+      "type": "group",
+      "label": "Square Integration",
+      "fields": [
+        {
+          "name": "variationId",
+          "type": "text",
+          "label": "Variation ID"
+        },
+        {
+          "name": "itemId",
+          "type": "text",
+          "label": "Item ID"
+        },
+        {
+          "name": "version",
+          "type": "text",
+          "label": "Version"
+        },
+        {
+          "name": "lastSyncAt",
+          "type": "date",
+          "label": "Last Sync"
+        }
+      ]
+    },
+    {
+      "name": "images",
+      "type": "array",
+      "label": "Product Images",
+      "fields": [
+        {
+          "name": "image",
+          "type": "upload",
+          "relationTo": "media"
+        }
+      ]
+    },
+    {
+      "name": "isActive",
+      "type": "checkbox",
+      "defaultValue": true,
+      "label": "Active"
+    }
+  ]
+}

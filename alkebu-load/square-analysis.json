@@ -1,0 +1,20 @@
+{
+  "summary": {
+    "totalProducts": 0,
+    "productsWithGTIN": 0,
+    "categorized": {
+      "books": 0,
+      "fashionJewelry": 0,
+      "wellnessLifestyle": 0,
+      "unknown": 0
+    }
+  },
+  "allProducts": [],
+  "productsWithGTIN": [],
+  "categorized": {
+    "books": [],
+    "fashionJewelry": [],
+    "wellnessLifestyle": [],
+    "unknown": []
+  }
+}

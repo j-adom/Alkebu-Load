@@ -1,0 +1,13 @@
+{
+  "totalSquareBooks": 4504,
+  "totalSanityBooks": 0,
+  "matched": 0,
+  "enrichedFromISBNdb": 3692,
+  "enrichedFromGoogle": 0,
+  "needsManualReview": 538,
+  "missingISBN": 337,
+  "missingImages": 430,
+  "highConfidence": 3692,
+  "mediumConfidence": 4,
+  "lowConfidence": 426
+}

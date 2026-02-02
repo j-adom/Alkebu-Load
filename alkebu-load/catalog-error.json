@@ -1,0 +1,8 @@
+{
+  "error": {
+    "name": "ReferenceError",
+    "message": "body is not defined",
+    "stack": "ReferenceError: body is not defined\n    at analyzeOrderProducts (/home/jadom/Coding/alkebu-load/scripts/square-order-simple.ts:68:78)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+  },
+  "timestamp": "2025-07-20T22:07:20.478Z"
+}

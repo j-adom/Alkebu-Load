@@ -1,0 +1,837 @@
+{
+  "orders": [
+    {
+      "id": "HNZdvwE3QSfKFYEMOzfueAIKqiMZY",
+      "locationId": "LC2AKZX32H2ZA",
+      "lineItems": [
+        {
+          "uid": "b0570fd4-1e12-4c69-938a-64596a50f8cc",
+          "catalogObjectId": "CFGTVMB2HICIYO6CEWWHRYJY",
+          "catalogVersion": "BigInt(1752331932767)",
+          "quantity": "1",
+          "name": "7 Day Candle",
+          "variationName": "White",
+          "basePriceMoney": {
+            "amount": "BigInt(600)",
+            "currency": "USD"
+          },
+          "grossSalesMoney": {
+            "amount": "BigInt(600)",
+            "currency": "USD"
+          },
+          "totalTaxMoney": {
+            "amount": "BigInt(58)",
+            "currency": "USD"
+          },
+          "totalDiscountMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          },
+          "totalMoney": {
+            "amount": "BigInt(658)",
+            "currency": "USD"
+          },
+          "variationTotalPriceMoney": {
+            "amount": "BigInt(600)",
+            "currency": "USD"
+          },
+          "appliedTaxes": [
+            {
+              "uid": "7a86cd10-eab8-497d-97e1-877eff99ddd1",
+              "taxUid": "15cba3a0-5780-43f4-b40f-b0b992c61c23",
+              "appliedMoney": {
+                "amount": "BigInt(58)",
+                "currency": "USD"
+              },
+              "auto_applied": true
+            }
+          ],
+          "itemType": "ITEM",
+          "totalServiceChargeMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          }
+        },
+        {
+          "uid": "fcb727bd-8f5c-43e7-8e88-a3aa709cd4f3",
+          "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+          "catalogVersion": "BigInt(1752109794859)",
+          "quantity": "1",
+          "name": "Glass Seed Beads",
+          "variationName": "Regular",
+          "basePriceMoney": {
+            "amount": "BigInt(1000)",
+            "currency": "USD"
+          },
+          "grossSalesMoney": {
+            "amount": "BigInt(1000)",
+            "currency": "USD"
+          },
+          "totalTaxMoney": {
+            "amount": "BigInt(98)",
+            "currency": "USD"
+          },
+          "totalDiscountMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          },
+          "totalMoney": {
+            "amount": "BigInt(1098)",
+            "currency": "USD"
+          },
+          "variationTotalPriceMoney": {
+            "amount": "BigInt(1000)",
+            "currency": "USD"
+          },
+          "appliedTaxes": [
+            {
+              "uid": "15cba3a0-5780-43f4-b40f-b0b992c61c23",
+              "taxUid": "15cba3a0-5780-43f4-b40f-b0b992c61c23",
+              "appliedMoney": {
+                "amount": "BigInt(98)",
+                "currency": "USD"
+              },
+              "auto_applied": true
+            }
+          ],
+          "itemType": "ITEM",
+          "totalServiceChargeMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          }
+        }
+      ],
+      "taxes": [
+        {
+          "uid": "15cba3a0-5780-43f4-b40f-b0b992c61c23",
+          "catalogObjectId": "UPG6DSUQJ4GDGKYA4RASV54S",
+          "catalogVersion": "BigInt(1749357986409)",
+          "name": "Tennessee",
+          "percentage": "9.75",
+          "type": "ADDITIVE",
+          "appliedMoney": {
+            "amount": "BigInt(156)",
+            "currency": "USD"
+          },
+          "scope": "LINE_ITEM"
+        }
+      ],
+      "createdAt": "2025-07-20T20:38:15.194Z",
+      "updatedAt": "2025-07-20T20:38:19.000Z",
+      "state": "COMPLETED",
+      "version": 5,
+      "totalTaxMoney": {
+        "amount": "BigInt(156)",
+        "currency": "USD"
+      },
+      "totalDiscountMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalTipMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalMoney": {
+        "amount": "BigInt(1756)",
+        "currency": "USD"
+      },
+      "closedAt": "2025-07-20T20:38:17.934Z",
+      "tenders": [
+        {
+          "id": "FAFbafGfjlk7powhWpO8sispnlRZY",
+          "locationId": "LC2AKZX32H2ZA",
+          "transactionId": "HNZdvwE3QSfKFYEMOzfueAIKqiMZY",
+          "createdAt": "2025-07-20T20:38:15Z",
+          "amountMoney": {
+            "amount": "BigInt(1756)",
+            "currency": "USD"
+          },
+          "type": "CARD",
+          "cardDetails": {
+            "status": "CAPTURED",
+            "card": {
+              "cardBrand": "MASTERCARD",
+              "last4": "0150",
+              "expMonth": "BigInt(12)",
+              "expYear": "BigInt(2027)",
+              "fingerprint": "sq-1-4QZgTr5Wf-Gqz5jgKtItGS3j3hJOHwIqN7Qfzni4nrYVMZBNOsPbxHuEH9YGcU9wrw",
+              "cardType": "CREDIT",
+              "prepaidType": "NOT_PREPAID",
+              "bin": "521415"
+            },
+            "entryMethod": "CONTACTLESS"
+          },
+          "paymentId": "FAFbafGfjlk7powhWpO8sispnlRZY"
+        }
+      ],
+      "totalServiceChargeMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "netAmounts": {
+        "totalMoney": {
+          "amount": "BigInt(1756)",
+          "currency": "USD"
+        },
+        "taxMoney": {
+          "amount": "BigInt(156)",
+          "currency": "USD"
+        },
+        "discountMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "tipMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "serviceChargeMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        }
+      },
+      "source": {},
+      "customerId": "TC61H9FRSDYFD774Z6A4YR4Q1W",
+      "netAmountDueMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "bn5LQSxW7NA9yE4cd6ozxPpwtb8YY",
+      "locationId": "LC2AKZX32H2ZA",
+      "lineItems": [
+        {
+          "uid": "7614a10a-0d36-49e9-b1cb-f3dfa21411b7",
+          "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+          "catalogVersion": "BigInt(1740181909129)",
+          "quantity": "1",
+          "name": "Pants",
+          "variationName": "",
+          "basePriceMoney": {
+            "amount": "BigInt(4999)",
+            "currency": "USD"
+          },
+          "grossSalesMoney": {
+            "amount": "BigInt(4999)",
+            "currency": "USD"
+          },
+          "totalTaxMoney": {
+            "amount": "BigInt(458)",
+            "currency": "USD"
+          },
+          "totalDiscountMoney": {
+            "amount": "BigInt(300)",
+            "currency": "USD"
+          },
+          "totalMoney": {
+            "amount": "BigInt(5157)",
+            "currency": "USD"
+          },
+          "variationTotalPriceMoney": {
+            "amount": "BigInt(4999)",
+            "currency": "USD"
+          },
+          "appliedTaxes": [
+            {
+              "uid": "b59fd817-cd89-440e-920c-a18e64967ab4",
+              "taxUid": "b59fd817-cd89-440e-920c-a18e64967ab4",
+              "appliedMoney": {
+                "amount": "BigInt(458)",
+                "currency": "USD"
+              },
+              "auto_applied": true
+            }
+          ],
+          "appliedDiscounts": [
+            {
+              "uid": "15e8fb6c-7aed-4ae9-833a-be1054f3c4ef",
+              "discountUid": "f51dbdef-aa3d-410e-a56f-838b7236909f",
+              "appliedMoney": {
+                "amount": "BigInt(300)",
+                "currency": "USD"
+              }
+            }
+          ],
+          "itemType": "ITEM",
+          "totalServiceChargeMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          }
+        }
+      ],
+      "taxes": [
+        {
+          "uid": "b59fd817-cd89-440e-920c-a18e64967ab4",
+          "catalogObjectId": "UPG6DSUQJ4GDGKYA4RASV54S",
+          "catalogVersion": "BigInt(1749357986409)",
+          "name": "Tennessee",
+          "percentage": "9.75",
+          "type": "ADDITIVE",
+          "appliedMoney": {
+            "amount": "BigInt(458)",
+            "currency": "USD"
+          },
+          "scope": "LINE_ITEM"
+        }
+      ],
+      "discounts": [
+        {
+          "uid": "f51dbdef-aa3d-410e-a56f-838b7236909f",
+          "catalogObjectId": "HM6K64VUUCZZT6E2S2MN3I3F",
+          "catalogVersion": "BigInt(1655959817724)",
+          "name": "$3.00 off entire sale",
+          "amountMoney": {
+            "amount": "BigInt(300)",
+            "currency": "USD"
+          },
+          "appliedMoney": {
+            "amount": "BigInt(300)",
+            "currency": "USD"
+          },
+          "type": "FIXED_AMOUNT",
+          "scope": "ORDER",
+          "rewardIds": [
+            "01a732e2-7303-3136-b091-86220eb599d3"
+          ],
+          "pricingRuleId": "BBBCOWDRMZYGQUWOZEDYNIYN"
+        }
+      ],
+      "createdAt": "2025-07-20T20:35:14.269Z",
+      "updatedAt": "2025-07-20T20:35:27.000Z",
+      "state": "COMPLETED",
+      "version": 7,
+      "totalTaxMoney": {
+        "amount": "BigInt(458)",
+        "currency": "USD"
+      },
+      "totalDiscountMoney": {
+        "amount": "BigInt(300)",
+        "currency": "USD"
+      },
+      "totalTipMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalMoney": {
+        "amount": "BigInt(5157)",
+        "currency": "USD"
+      },
+      "closedAt": "2025-07-20T20:35:25.636Z",
+      "tenders": [
+        {
+          "id": "rnbf7uW5UxVsWMTRQn7bm0g3kz9YY",
+          "locationId": "LC2AKZX32H2ZA",
+          "transactionId": "bn5LQSxW7NA9yE4cd6ozxPpwtb8YY",
+          "createdAt": "2025-07-20T20:35:14Z",
+          "amountMoney": {
+            "amount": "BigInt(5157)",
+            "currency": "USD"
+          },
+          "type": "CARD",
+          "cardDetails": {
+            "status": "CAPTURED",
+            "card": {
+              "cardBrand": "VISA",
+              "last4": "8007",
+              "expMonth": "BigInt(12)",
+              "expYear": "BigInt(2027)",
+              "fingerprint": "sq-1-JttIlqQ4pTGAoJPYXT8K3Xl8b60N-O03mWk7ffYAOu2bDo-TnYWyMiR8LFnf-l6uVA",
+              "cardType": "DEBIT",
+              "prepaidType": "PREPAID",
+              "bin": "441707"
+            },
+            "entryMethod": "CONTACTLESS"
+          },
+          "paymentId": "rnbf7uW5UxVsWMTRQn7bm0g3kz9YY"
+        }
+      ],
+      "totalServiceChargeMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "netAmounts": {
+        "totalMoney": {
+          "amount": "BigInt(5157)",
+          "currency": "USD"
+        },
+        "taxMoney": {
+          "amount": "BigInt(458)",
+          "currency": "USD"
+        },
+        "discountMoney": {
+          "amount": "BigInt(300)",
+          "currency": "USD"
+        },
+        "tipMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "serviceChargeMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        }
+      },
+      "source": {},
+      "customerId": "9D46YWBX910GQ8FRM05408GGHC",
+      "rewards": [
+        {
+          "id": "01a732e2-7303-3136-b091-86220eb599d3",
+          "rewardTierId": "d0b7843b-b76a-472e-b4da-c41b0d8e615e"
+        }
+      ],
+      "netAmountDueMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "LtIh3HuAwoZ7QZN0BMy2S3zCGL7YY",
+      "locationId": "LC2AKZX32H2ZA",
+      "lineItems": [
+        {
+          "uid": "08cd29c1-8193-41af-bb0e-33ed03f9a35b",
+          "catalogObjectId": "7D44KLSVBKSC6XUDPSJJAL34",
+          "catalogVersion": "BigInt(1752764439672)",
+          "quantity": "1",
+          "name": "Pink Angel Figurine",
+          "variationName": "Regular",
+          "basePriceMoney": {
+            "amount": "BigInt(3800)",
+            "currency": "USD"
+          },
+          "grossSalesMoney": {
+            "amount": "BigInt(3800)",
+            "currency": "USD"
+          },
+          "totalTaxMoney": {
+            "amount": "BigInt(370)",
+            "currency": "USD"
+          },
+          "totalDiscountMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          },
+          "totalMoney": {
+            "amount": "BigInt(4170)",
+            "currency": "USD"
+          },
+          "variationTotalPriceMoney": {
+            "amount": "BigInt(3800)",
+            "currency": "USD"
+          },
+          "appliedTaxes": [
+            {
+              "uid": "0b7c2596-f536-4200-8acd-198ce9d34e13",
+              "taxUid": "0b7c2596-f536-4200-8acd-198ce9d34e13",
+              "appliedMoney": {
+                "amount": "BigInt(370)",
+                "currency": "USD"
+              },
+              "auto_applied": true
+            }
+          ],
+          "itemType": "ITEM",
+          "totalServiceChargeMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          }
+        }
+      ],
+      "taxes": [
+        {
+          "uid": "0b7c2596-f536-4200-8acd-198ce9d34e13",
+          "catalogObjectId": "UPG6DSUQJ4GDGKYA4RASV54S",
+          "catalogVersion": "BigInt(1749357986409)",
+          "name": "Tennessee",
+          "percentage": "9.75",
+          "type": "ADDITIVE",
+          "appliedMoney": {
+            "amount": "BigInt(370)",
+            "currency": "USD"
+          },
+          "scope": "LINE_ITEM"
+        }
+      ],
+      "createdAt": "2025-07-20T20:31:36.732Z",
+      "updatedAt": "2025-07-20T20:31:39.000Z",
+      "state": "COMPLETED",
+      "version": 5,
+      "totalTaxMoney": {
+        "amount": "BigInt(370)",
+        "currency": "USD"
+      },
+      "totalDiscountMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalTipMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalMoney": {
+        "amount": "BigInt(4170)",
+        "currency": "USD"
+      },
+      "closedAt": "2025-07-20T20:31:37.741Z",
+      "tenders": [
+        {
+          "id": "VO4RXEzVOeFzZ5PJEj8HoxEokSfZY",
+          "locationId": "LC2AKZX32H2ZA",
+          "transactionId": "LtIh3HuAwoZ7QZN0BMy2S3zCGL7YY",
+          "createdAt": "2025-07-20T20:31:37Z",
+          "amountMoney": {
+            "amount": "BigInt(4170)",
+            "currency": "USD"
+          },
+          "type": "CASH",
+          "cashDetails": {
+            "buyerTenderedMoney": {
+              "amount": "BigInt(10000)",
+              "currency": "USD"
+            },
+            "changeBackMoney": {
+              "amount": "BigInt(5830)",
+              "currency": "USD"
+            }
+          },
+          "paymentId": "VO4RXEzVOeFzZ5PJEj8HoxEokSfZY"
+        }
+      ],
+      "totalServiceChargeMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "netAmounts": {
+        "totalMoney": {
+          "amount": "BigInt(4170)",
+          "currency": "USD"
+        },
+        "taxMoney": {
+          "amount": "BigInt(370)",
+          "currency": "USD"
+        },
+        "discountMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "tipMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "serviceChargeMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        }
+      },
+      "source": {},
+      "customerId": "KQ0XCV6GPX3J7BPEXMMXDCDNQC",
+      "netAmountDueMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "zXnVG4EKKRgxkOlZ8j6huAqux7YZY",
+      "locationId": "LC2AKZX32H2ZA",
+      "lineItems": [
+        {
+          "uid": "a98242c1-4a06-4406-9470-5dfdf306bc9b",
+          "catalogObjectId": "M2X4UJ4FXVQWRDL43ISR6DSS",
+          "catalogVersion": "BigInt(1748990955088)",
+          "quantity": "1",
+          "name": "Whipped Shea Black Love",
+          "variationName": "Regular",
+          "basePriceMoney": {
+            "amount": "BigInt(1399)",
+            "currency": "USD"
+          },
+          "grossSalesMoney": {
+            "amount": "BigInt(1399)",
+            "currency": "USD"
+          },
+          "totalTaxMoney": {
+            "amount": "BigInt(136)",
+            "currency": "USD"
+          },
+          "totalDiscountMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          },
+          "totalMoney": {
+            "amount": "BigInt(1535)",
+            "currency": "USD"
+          },
+          "variationTotalPriceMoney": {
+            "amount": "BigInt(1399)",
+            "currency": "USD"
+          },
+          "appliedTaxes": [
+            {
+              "uid": "8a2e71a1-f92d-4b43-8a10-0ad7d95aef52",
+              "taxUid": "8a2e71a1-f92d-4b43-8a10-0ad7d95aef52",
+              "appliedMoney": {
+                "amount": "BigInt(136)",
+                "currency": "USD"
+              },
+              "auto_applied": true
+            }
+          ],
+          "itemType": "ITEM",
+          "totalServiceChargeMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          }
+        }
+      ],
+      "taxes": [
+        {
+          "uid": "8a2e71a1-f92d-4b43-8a10-0ad7d95aef52",
+          "catalogObjectId": "UPG6DSUQJ4GDGKYA4RASV54S",
+          "catalogVersion": "BigInt(1749357986409)",
+          "name": "Tennessee",
+          "percentage": "9.75",
+          "type": "ADDITIVE",
+          "appliedMoney": {
+            "amount": "BigInt(136)",
+            "currency": "USD"
+          },
+          "scope": "LINE_ITEM"
+        }
+      ],
+      "createdAt": "2025-07-20T20:27:49.370Z",
+      "updatedAt": "2025-07-20T20:27:53.000Z",
+      "state": "COMPLETED",
+      "version": 5,
+      "totalTaxMoney": {
+        "amount": "BigInt(136)",
+        "currency": "USD"
+      },
+      "totalDiscountMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalTipMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalMoney": {
+        "amount": "BigInt(1535)",
+        "currency": "USD"
+      },
+      "closedAt": "2025-07-20T20:27:51.672Z",
+      "tenders": [
+        {
+          "id": "VI9tNjwUOSIYgQTCgjjdet6ClqHZY",
+          "locationId": "LC2AKZX32H2ZA",
+          "transactionId": "zXnVG4EKKRgxkOlZ8j6huAqux7YZY",
+          "createdAt": "2025-07-20T20:27:49Z",
+          "amountMoney": {
+            "amount": "BigInt(1535)",
+            "currency": "USD"
+          },
+          "type": "CARD",
+          "cardDetails": {
+            "status": "CAPTURED",
+            "card": {
+              "cardBrand": "VISA",
+              "last4": "2839",
+              "expMonth": "BigInt(3)",
+              "expYear": "BigInt(2031)",
+              "fingerprint": "sq-1-JbB3q0Nc2iYr_q5Yd3FsS3ERBVdzA-6OclPhxwK6JSzUx6O_5IgfHNdfvDxANKhsYg",
+              "cardType": "DEBIT",
+              "prepaidType": "NOT_PREPAID",
+              "bin": "410492"
+            },
+            "entryMethod": "CONTACTLESS"
+          },
+          "paymentId": "VI9tNjwUOSIYgQTCgjjdet6ClqHZY"
+        }
+      ],
+      "totalServiceChargeMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "netAmounts": {
+        "totalMoney": {
+          "amount": "BigInt(1535)",
+          "currency": "USD"
+        },
+        "taxMoney": {
+          "amount": "BigInt(136)",
+          "currency": "USD"
+        },
+        "discountMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "tipMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "serviceChargeMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        }
+      },
+      "source": {},
+      "customerId": "TKZABHDJE9Y10FF2XA02Q6PKEW",
+      "netAmountDueMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "tUXjRwXePCayJeMtOHdZdv44bjMZY",
+      "locationId": "LC2AKZX32H2ZA",
+      "lineItems": [
+        {
+          "uid": "56518c53-995f-4fad-a493-0f4460018b5b",
+          "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+          "catalogVersion": "BigInt(1752109934114)",
+          "quantity": "1",
+          "name": "Whipped Shea Butter Black Woman",
+          "variationName": "Black Woman",
+          "basePriceMoney": {
+            "amount": "BigInt(1399)",
+            "currency": "USD"
+          },
+          "grossSalesMoney": {
+            "amount": "BigInt(1399)",
+            "currency": "USD"
+          },
+          "totalTaxMoney": {
+            "amount": "BigInt(136)",
+            "currency": "USD"
+          },
+          "totalDiscountMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          },
+          "totalMoney": {
+            "amount": "BigInt(1535)",
+            "currency": "USD"
+          },
+          "variationTotalPriceMoney": {
+            "amount": "BigInt(1399)",
+            "currency": "USD"
+          },
+          "appliedTaxes": [
+            {
+              "uid": "f30ba93a-4a08-47fe-87fe-56e8b8c33232",
+              "taxUid": "f30ba93a-4a08-47fe-87fe-56e8b8c33232",
+              "appliedMoney": {
+                "amount": "BigInt(136)",
+                "currency": "USD"
+              },
+              "auto_applied": true
+            }
+          ],
+          "itemType": "ITEM",
+          "totalServiceChargeMoney": {
+            "amount": "BigInt(0)",
+            "currency": "USD"
+          }
+        }
+      ],
+      "taxes": [
+        {
+          "uid": "f30ba93a-4a08-47fe-87fe-56e8b8c33232",
+          "catalogObjectId": "UPG6DSUQJ4GDGKYA4RASV54S",
+          "catalogVersion": "BigInt(1749357986409)",
+          "name": "Tennessee",
+          "percentage": "9.75",
+          "type": "ADDITIVE",
+          "appliedMoney": {
+            "amount": "BigInt(136)",
+            "currency": "USD"
+          },
+          "scope": "LINE_ITEM"
+        }
+      ],
+      "createdAt": "2025-07-20T20:26:34.797Z",
+      "updatedAt": "2025-07-20T20:26:38.000Z",
+      "state": "COMPLETED",
+      "version": 5,
+      "totalTaxMoney": {
+        "amount": "BigInt(136)",
+        "currency": "USD"
+      },
+      "totalDiscountMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalTipMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "totalMoney": {
+        "amount": "BigInt(1535)",
+        "currency": "USD"
+      },
+      "closedAt": "2025-07-20T20:26:37.059Z",
+      "tenders": [
+        {
+          "id": "XFDBXWcWUcmnXWB3VrMCt0GFvsWZY",
+          "locationId": "LC2AKZX32H2ZA",
+          "transactionId": "tUXjRwXePCayJeMtOHdZdv44bjMZY",
+          "createdAt": "2025-07-20T20:26:35Z",
+          "amountMoney": {
+            "amount": "BigInt(1535)",
+            "currency": "USD"
+          },
+          "type": "CARD",
+          "cardDetails": {
+            "status": "CAPTURED",
+            "card": {
+              "cardBrand": "VISA",
+              "last4": "4753",
+              "expMonth": "BigInt(5)",
+              "expYear": "BigInt(2029)",
+              "fingerprint": "sq-1-Oxk6KaCUMg0b59YOB3IIQzhbiJmnCTj83C_c2XUQ8Mjwpj59R5M81FVVr45SZVRtwg",
+              "cardType": "DEBIT",
+              "prepaidType": "NOT_PREPAID",
+              "bin": "423223"
+            },
+            "entryMethod": "EMV"
+          },
+          "paymentId": "XFDBXWcWUcmnXWB3VrMCt0GFvsWZY"
+        }
+      ],
+      "totalServiceChargeMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      },
+      "netAmounts": {
+        "totalMoney": {
+          "amount": "BigInt(1535)",
+          "currency": "USD"
+        },
+        "taxMoney": {
+          "amount": "BigInt(136)",
+          "currency": "USD"
+        },
+        "discountMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "tipMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        },
+        "serviceChargeMoney": {
+          "amount": "BigInt(0)",
+          "currency": "USD"
+        }
+      },
+      "source": {},
+      "customerId": "01Z6G26CQ3A9Y47EJ97JVMT03C",
+      "netAmountDueMoney": {
+        "amount": "BigInt(0)",
+        "currency": "USD"
+      }
+    }
+  ],
+  "cursor": "EuQ8KyI3Lf8GEbcuChXQLujT6r22oVkDG5TnWdb0IVpDDpj5BLIGTCyGPw6MInrKzD7y8u1eBveCtPf"
+}

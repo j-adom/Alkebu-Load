@@ -1,0 +1,1176 @@
+{
+  "response": {
+    "counts": [
+      {
+        "catalogObjectId": "2HZQHO4IYZWWKGPDJWFNPVRD",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "15",
+        "calculatedAt": "2025-07-20T19:26:45.313Z"
+      },
+      {
+        "catalogObjectId": "2HZQHO4IYZWWKGPDJWFNPVRD",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "81",
+        "calculatedAt": "2025-07-01T23:39:54.472Z"
+      },
+      {
+        "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-86",
+        "calculatedAt": "2025-07-20T20:35:31.534Z"
+      },
+      {
+        "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "1",
+        "calculatedAt": "2025-02-03T16:41:55.134Z"
+      },
+      {
+        "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-08-10T20:09:40.581Z"
+      },
+      {
+        "catalogObjectId": "3QNPQAMEVWHENPLSKYHUAY3H",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-1",
+        "calculatedAt": "2025-07-20T19:23:25.839Z"
+      },
+      {
+        "catalogObjectId": "3RJ65NMCJQG5GXXCTKN3RLOQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "1",
+        "calculatedAt": "2025-07-20T20:20:14.985Z"
+      },
+      {
+        "catalogObjectId": "3RJ65NMCJQG5GXXCTKN3RLOQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-17T21:11:40.517Z"
+      },
+      {
+        "catalogObjectId": "45RRD6PBT427OND75SYS7MY3",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-217",
+        "calculatedAt": "2025-07-20T20:58:25.941Z"
+      },
+      {
+        "catalogObjectId": "45RRD6PBT427OND75SYS7MY3",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "193",
+        "calculatedAt": "2025-06-03T22:47:21.567Z"
+      },
+      {
+        "catalogObjectId": "5NLAGL7XTEZZJOIGFVBI62DU",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "18",
+        "calculatedAt": "2025-07-20T21:49:47.248Z"
+      },
+      {
+        "catalogObjectId": "5NLAGL7XTEZZJOIGFVBI62DU",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "24",
+        "calculatedAt": "2025-07-08T14:07:55.881Z"
+      },
+      {
+        "catalogObjectId": "736E5YGKGXHHSEUL2YALKMIS",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "4",
+        "calculatedAt": "2025-07-20T21:49:47.249Z"
+      },
+      {
+        "catalogObjectId": "736E5YGKGXHHSEUL2YALKMIS",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "6",
+        "calculatedAt": "2025-07-17T21:11:38.275Z"
+      },
+      {
+        "catalogObjectId": "7D44KLSVBKSC6XUDPSJJAL34",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-20T20:31:45.455Z"
+      },
+      {
+        "catalogObjectId": "7D44KLSVBKSC6XUDPSJJAL34",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-17T15:00:38.537Z"
+      },
+      {
+        "catalogObjectId": "C22C6BEYGMQBG3RZGPUHKOWM",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "21",
+        "calculatedAt": "2025-07-20T19:22:35.598Z"
+      },
+      {
+        "catalogObjectId": "C22C6BEYGMQBG3RZGPUHKOWM",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-12T14:52:13.499Z"
+      },
+      {
+        "catalogObjectId": "C77FD7VDCG7GFCQISWODIDLG",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-24",
+        "calculatedAt": "2025-07-20T19:26:45.312Z"
+      },
+      {
+        "catalogObjectId": "CFGTVMB2HICIYO6CEWWHRYJY",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "3",
+        "calculatedAt": "2025-07-20T20:38:23.193Z"
+      },
+      {
+        "catalogObjectId": "CFGTVMB2HICIYO6CEWWHRYJY",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-12T14:52:13.517Z"
+      },
+      {
+        "catalogObjectId": "F3B5IRIMUIFQBAI6JOO5GTAH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-20T20:20:14.983Z"
+      },
+      {
+        "catalogObjectId": "F3B5IRIMUIFQBAI6JOO5GTAH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2024-12-28T00:21:36.538Z"
+      },
+      {
+        "catalogObjectId": "GBG3FFYFVEYLC6VX5SGSVK7B",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "1",
+        "calculatedAt": "2025-07-20T20:20:14.98Z"
+      },
+      {
+        "catalogObjectId": "GBG3FFYFVEYLC6VX5SGSVK7B",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-12-15T21:03:56.82Z"
+      },
+      {
+        "catalogObjectId": "K3EZWWJ3YTFVEFSIXW5XAL3Q",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-10",
+        "calculatedAt": "2025-07-20T20:24:44.147Z"
+      },
+      {
+        "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-193",
+        "calculatedAt": "2025-07-20T20:26:46.187Z"
+      },
+      {
+        "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-05-10T22:07:59.511Z"
+      },
+      {
+        "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "121",
+        "calculatedAt": "2025-06-03T22:47:21.561Z"
+      },
+      {
+        "catalogObjectId": "KA5TOGJEMUXLETBGTKEK3X44",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "10",
+        "calculatedAt": "2025-07-20T21:49:47.25Z"
+      },
+      {
+        "catalogObjectId": "KA5TOGJEMUXLETBGTKEK3X44",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "34",
+        "calculatedAt": "2025-07-08T14:11:20.416Z"
+      },
+      {
+        "catalogObjectId": "KD4ASZDYTFOI5HUDN25TT5AR",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-94",
+        "calculatedAt": "2025-07-20T19:23:25.84Z"
+      },
+      {
+        "catalogObjectId": "KD4ASZDYTFOI5HUDN25TT5AR",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-05-18T20:41:36.504Z"
+      },
+      {
+        "catalogObjectId": "KD4ASZDYTFOI5HUDN25TT5AR",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "114",
+        "calculatedAt": "2025-06-03T22:47:21.584Z"
+      },
+      {
+        "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-121",
+        "calculatedAt": "2025-07-20T19:41:00.8Z"
+      },
+      {
+        "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-03-15T17:36:26.46Z"
+      },
+      {
+        "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "78",
+        "calculatedAt": "2025-06-03T22:47:21.588Z"
+      },
+      {
+        "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "WASTE",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "15",
+        "calculatedAt": "2022-11-22T17:58:22.872Z"
+      },
+      {
+        "catalogObjectId": "LLCLTIAMHMFBJCFW4QCXILHH",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-50",
+        "calculatedAt": "2025-07-20T19:23:59.326Z"
+      },
+      {
+        "catalogObjectId": "M2X4UJ4FXVQWRDL43ISR6DSS",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-28",
+        "calculatedAt": "2025-07-20T20:27:57.655Z"
+      },
+      {
+        "catalogObjectId": "M2X4UJ4FXVQWRDL43ISR6DSS",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "39",
+        "calculatedAt": "2025-06-03T22:47:21.579Z"
+      },
+      {
+        "catalogObjectId": "NOMDJ3LJQ2Y4LD2DNRPWZ6OM",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "5",
+        "calculatedAt": "2025-07-20T19:22:35.59Z"
+      },
+      {
+        "catalogObjectId": "NOMDJ3LJQ2Y4LD2DNRPWZ6OM",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-03-05T15:46:18.355Z"
+      },
+      {
+        "catalogObjectId": "PWC62RJKXHKLYNEI2S3RVE2R",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-17",
+        "calculatedAt": "2025-07-20T20:20:14.99Z"
+      },
+      {
+        "catalogObjectId": "QA4J45LAI2HO2O6NOVZN6OFW",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-64",
+        "calculatedAt": "2025-07-20T20:58:25.94Z"
+      },
+      {
+        "catalogObjectId": "QA4J45LAI2HO2O6NOVZN6OFW",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-05-10T22:07:59.513Z"
+      },
+      {
+        "catalogObjectId": "QA4J45LAI2HO2O6NOVZN6OFW",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "39",
+        "calculatedAt": "2025-05-05T15:34:23.815Z"
+      },
+      {
+        "catalogObjectId": "QTJ43ZJTBA57KIZMUR3INGXS",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "5",
+        "calculatedAt": "2025-07-20T20:20:14.98Z"
+      },
+      {
+        "catalogObjectId": "QTJ43ZJTBA57KIZMUR3INGXS",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-12T14:52:13.514Z"
+      },
+      {
+        "catalogObjectId": "RDBL2F6PCCQZBLO3Z4ZQ5YOQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-1",
+        "calculatedAt": "2025-07-20T21:32:44.431Z"
+      },
+      {
+        "catalogObjectId": "RDBL2F6PCCQZBLO3Z4ZQ5YOQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-08-10T20:23:00.957Z"
+      },
+      {
+        "catalogObjectId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-2056",
+        "calculatedAt": "2025-07-20T19:35:00.575Z"
+      },
+      {
+        "catalogObjectId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2024-06-07T18:55:52.43Z"
+      },
+      {
+        "catalogObjectId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-03T14:43:35.446Z"
+      },
+      {
+        "catalogObjectId": "RWGGVRDF2LUKLFYPOFIEGWRO",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-6",
+        "calculatedAt": "2025-07-20T20:58:25.936Z"
+      },
+      {
+        "catalogObjectId": "SA7S3QS3RP7W4WQHUTH2FAAQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-27",
+        "calculatedAt": "2025-07-20T19:26:45.312Z"
+      },
+      {
+        "catalogObjectId": "SA7S3QS3RP7W4WQHUTH2FAAQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "26",
+        "calculatedAt": "2025-06-03T22:47:21.582Z"
+      },
+      {
+        "catalogObjectId": "TDJKGTMJAIU4VZNB63A4RSKE",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-07-20T19:22:35.596Z"
+      },
+      {
+        "catalogObjectId": "TDJKGTMJAIU4VZNB63A4RSKE",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-06-19T20:00:24.538Z"
+      },
+      {
+        "catalogObjectId": "TXNZR2SX7DA4U3V2ITZQVRQL",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "3",
+        "calculatedAt": "2025-07-20T20:20:14.984Z"
+      },
+      {
+        "catalogObjectId": "UARRCXTUAQIF4DFKENDLH4U6",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2022-06-13T20:06:54.002Z"
+      },
+      {
+        "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "22",
+        "calculatedAt": "2025-07-20T20:38:23.194Z"
+      },
+      {
+        "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-11-01T17:05:08.205Z"
+      },
+      {
+        "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2023-08-10T20:13:42.738Z"
+      },
+      {
+        "catalogObjectId": "WBHW4LGAVN622LCUIPSRF3IE",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-3",
+        "calculatedAt": "2025-07-20T20:20:14.986Z"
+      },
+      {
+        "catalogObjectId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-88",
+        "calculatedAt": "2025-07-20T19:42:45.176Z"
+      },
+      {
+        "catalogObjectId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "RETURNED_BY_CUSTOMER",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "2",
+        "calculatedAt": "2025-03-08T18:59:55.563Z"
+      },
+      {
+        "catalogObjectId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "60",
+        "calculatedAt": "2025-07-03T14:43:35.444Z"
+      },
+      {
+        "catalogObjectId": "YG3BNALC7UZXZIZHJAU5TZPA",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "-84",
+        "calculatedAt": "2025-07-20T20:58:25.942Z"
+      },
+      {
+        "catalogObjectId": "ZED4PXLRKHLF7KO3RZ6TZVHP",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "5",
+        "calculatedAt": "2025-07-20T19:22:35.599Z"
+      },
+      {
+        "catalogObjectId": "ZED4PXLRKHLF7KO3RZ6TZVHP",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-03-05T15:46:18.346Z"
+      },
+      {
+        "catalogObjectId": "ZEJIOHA3UMHO66DPO3FCC64H",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "IN_STOCK",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "6",
+        "calculatedAt": "2025-07-20T20:01:23.961Z"
+      },
+      {
+        "catalogObjectId": "ZEJIOHA3UMHO66DPO3FCC64H",
+        "catalogObjectType": "ITEM_VARIATION",
+        "state": "ORDERED_FROM_VENDOR",
+        "locationId": "LC2AKZX32H2ZA",
+        "quantity": "0",
+        "calculatedAt": "2025-02-07T16:30:39.316Z"
+      }
+    ]
+  },
+  "data": [
+    {
+      "catalogObjectId": "2HZQHO4IYZWWKGPDJWFNPVRD",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "15",
+      "calculatedAt": "2025-07-20T19:26:45.313Z"
+    },
+    {
+      "catalogObjectId": "2HZQHO4IYZWWKGPDJWFNPVRD",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "81",
+      "calculatedAt": "2025-07-01T23:39:54.472Z"
+    },
+    {
+      "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-86",
+      "calculatedAt": "2025-07-20T20:35:31.534Z"
+    },
+    {
+      "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "1",
+      "calculatedAt": "2025-02-03T16:41:55.134Z"
+    },
+    {
+      "catalogObjectId": "2NN2J5J6ML6F7MFMKAPB7THI",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-08-10T20:09:40.581Z"
+    },
+    {
+      "catalogObjectId": "3QNPQAMEVWHENPLSKYHUAY3H",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-1",
+      "calculatedAt": "2025-07-20T19:23:25.839Z"
+    },
+    {
+      "catalogObjectId": "3RJ65NMCJQG5GXXCTKN3RLOQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "1",
+      "calculatedAt": "2025-07-20T20:20:14.985Z"
+    },
+    {
+      "catalogObjectId": "3RJ65NMCJQG5GXXCTKN3RLOQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-17T21:11:40.517Z"
+    },
+    {
+      "catalogObjectId": "45RRD6PBT427OND75SYS7MY3",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-217",
+      "calculatedAt": "2025-07-20T20:58:25.941Z"
+    },
+    {
+      "catalogObjectId": "45RRD6PBT427OND75SYS7MY3",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "193",
+      "calculatedAt": "2025-06-03T22:47:21.567Z"
+    },
+    {
+      "catalogObjectId": "5NLAGL7XTEZZJOIGFVBI62DU",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "18",
+      "calculatedAt": "2025-07-20T21:49:47.248Z"
+    },
+    {
+      "catalogObjectId": "5NLAGL7XTEZZJOIGFVBI62DU",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "24",
+      "calculatedAt": "2025-07-08T14:07:55.881Z"
+    },
+    {
+      "catalogObjectId": "736E5YGKGXHHSEUL2YALKMIS",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "4",
+      "calculatedAt": "2025-07-20T21:49:47.249Z"
+    },
+    {
+      "catalogObjectId": "736E5YGKGXHHSEUL2YALKMIS",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "6",
+      "calculatedAt": "2025-07-17T21:11:38.275Z"
+    },
+    {
+      "catalogObjectId": "7D44KLSVBKSC6XUDPSJJAL34",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-20T20:31:45.455Z"
+    },
+    {
+      "catalogObjectId": "7D44KLSVBKSC6XUDPSJJAL34",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-17T15:00:38.537Z"
+    },
+    {
+      "catalogObjectId": "C22C6BEYGMQBG3RZGPUHKOWM",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "21",
+      "calculatedAt": "2025-07-20T19:22:35.598Z"
+    },
+    {
+      "catalogObjectId": "C22C6BEYGMQBG3RZGPUHKOWM",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-12T14:52:13.499Z"
+    },
+    {
+      "catalogObjectId": "C77FD7VDCG7GFCQISWODIDLG",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-24",
+      "calculatedAt": "2025-07-20T19:26:45.312Z"
+    },
+    {
+      "catalogObjectId": "CFGTVMB2HICIYO6CEWWHRYJY",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "3",
+      "calculatedAt": "2025-07-20T20:38:23.193Z"
+    },
+    {
+      "catalogObjectId": "CFGTVMB2HICIYO6CEWWHRYJY",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-12T14:52:13.517Z"
+    },
+    {
+      "catalogObjectId": "F3B5IRIMUIFQBAI6JOO5GTAH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-20T20:20:14.983Z"
+    },
+    {
+      "catalogObjectId": "F3B5IRIMUIFQBAI6JOO5GTAH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2024-12-28T00:21:36.538Z"
+    },
+    {
+      "catalogObjectId": "GBG3FFYFVEYLC6VX5SGSVK7B",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "1",
+      "calculatedAt": "2025-07-20T20:20:14.98Z"
+    },
+    {
+      "catalogObjectId": "GBG3FFYFVEYLC6VX5SGSVK7B",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-12-15T21:03:56.82Z"
+    },
+    {
+      "catalogObjectId": "K3EZWWJ3YTFVEFSIXW5XAL3Q",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-10",
+      "calculatedAt": "2025-07-20T20:24:44.147Z"
+    },
+    {
+      "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-193",
+      "calculatedAt": "2025-07-20T20:26:46.187Z"
+    },
+    {
+      "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-05-10T22:07:59.511Z"
+    },
+    {
+      "catalogObjectId": "K7WK4RUWCPHDS6CAKQQB7SMX",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "121",
+      "calculatedAt": "2025-06-03T22:47:21.561Z"
+    },
+    {
+      "catalogObjectId": "KA5TOGJEMUXLETBGTKEK3X44",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "10",
+      "calculatedAt": "2025-07-20T21:49:47.25Z"
+    },
+    {
+      "catalogObjectId": "KA5TOGJEMUXLETBGTKEK3X44",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "34",
+      "calculatedAt": "2025-07-08T14:11:20.416Z"
+    },
+    {
+      "catalogObjectId": "KD4ASZDYTFOI5HUDN25TT5AR",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-94",
+      "calculatedAt": "2025-07-20T19:23:25.84Z"
+    },
+    {
+      "catalogObjectId": "KD4ASZDYTFOI5HUDN25TT5AR",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-05-18T20:41:36.504Z"
+    },
+    {
+      "catalogObjectId": "KD4ASZDYTFOI5HUDN25TT5AR",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "114",
+      "calculatedAt": "2025-06-03T22:47:21.584Z"
+    },
+    {
+      "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-121",
+      "calculatedAt": "2025-07-20T19:41:00.8Z"
+    },
+    {
+      "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-03-15T17:36:26.46Z"
+    },
+    {
+      "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "78",
+      "calculatedAt": "2025-06-03T22:47:21.588Z"
+    },
+    {
+      "catalogObjectId": "L5I3UG3W3OIRY3LQFAR23KWH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "WASTE",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "15",
+      "calculatedAt": "2022-11-22T17:58:22.872Z"
+    },
+    {
+      "catalogObjectId": "LLCLTIAMHMFBJCFW4QCXILHH",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-50",
+      "calculatedAt": "2025-07-20T19:23:59.326Z"
+    },
+    {
+      "catalogObjectId": "M2X4UJ4FXVQWRDL43ISR6DSS",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-28",
+      "calculatedAt": "2025-07-20T20:27:57.655Z"
+    },
+    {
+      "catalogObjectId": "M2X4UJ4FXVQWRDL43ISR6DSS",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "39",
+      "calculatedAt": "2025-06-03T22:47:21.579Z"
+    },
+    {
+      "catalogObjectId": "NOMDJ3LJQ2Y4LD2DNRPWZ6OM",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "5",
+      "calculatedAt": "2025-07-20T19:22:35.59Z"
+    },
+    {
+      "catalogObjectId": "NOMDJ3LJQ2Y4LD2DNRPWZ6OM",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-03-05T15:46:18.355Z"
+    },
+    {
+      "catalogObjectId": "PWC62RJKXHKLYNEI2S3RVE2R",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-17",
+      "calculatedAt": "2025-07-20T20:20:14.99Z"
+    },
+    {
+      "catalogObjectId": "QA4J45LAI2HO2O6NOVZN6OFW",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-64",
+      "calculatedAt": "2025-07-20T20:58:25.94Z"
+    },
+    {
+      "catalogObjectId": "QA4J45LAI2HO2O6NOVZN6OFW",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-05-10T22:07:59.513Z"
+    },
+    {
+      "catalogObjectId": "QA4J45LAI2HO2O6NOVZN6OFW",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "39",
+      "calculatedAt": "2025-05-05T15:34:23.815Z"
+    },
+    {
+      "catalogObjectId": "QTJ43ZJTBA57KIZMUR3INGXS",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "5",
+      "calculatedAt": "2025-07-20T20:20:14.98Z"
+    },
+    {
+      "catalogObjectId": "QTJ43ZJTBA57KIZMUR3INGXS",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-12T14:52:13.514Z"
+    },
+    {
+      "catalogObjectId": "RDBL2F6PCCQZBLO3Z4ZQ5YOQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-1",
+      "calculatedAt": "2025-07-20T21:32:44.431Z"
+    },
+    {
+      "catalogObjectId": "RDBL2F6PCCQZBLO3Z4ZQ5YOQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-08-10T20:23:00.957Z"
+    },
+    {
+      "catalogObjectId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-2056",
+      "calculatedAt": "2025-07-20T19:35:00.575Z"
+    },
+    {
+      "catalogObjectId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2024-06-07T18:55:52.43Z"
+    },
+    {
+      "catalogObjectId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-03T14:43:35.446Z"
+    },
+    {
+      "catalogObjectId": "RWGGVRDF2LUKLFYPOFIEGWRO",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-6",
+      "calculatedAt": "2025-07-20T20:58:25.936Z"
+    },
+    {
+      "catalogObjectId": "SA7S3QS3RP7W4WQHUTH2FAAQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-27",
+      "calculatedAt": "2025-07-20T19:26:45.312Z"
+    },
+    {
+      "catalogObjectId": "SA7S3QS3RP7W4WQHUTH2FAAQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "26",
+      "calculatedAt": "2025-06-03T22:47:21.582Z"
+    },
+    {
+      "catalogObjectId": "TDJKGTMJAIU4VZNB63A4RSKE",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-07-20T19:22:35.596Z"
+    },
+    {
+      "catalogObjectId": "TDJKGTMJAIU4VZNB63A4RSKE",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-06-19T20:00:24.538Z"
+    },
+    {
+      "catalogObjectId": "TXNZR2SX7DA4U3V2ITZQVRQL",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "3",
+      "calculatedAt": "2025-07-20T20:20:14.984Z"
+    },
+    {
+      "catalogObjectId": "UARRCXTUAQIF4DFKENDLH4U6",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2022-06-13T20:06:54.002Z"
+    },
+    {
+      "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "22",
+      "calculatedAt": "2025-07-20T20:38:23.194Z"
+    },
+    {
+      "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-11-01T17:05:08.205Z"
+    },
+    {
+      "catalogObjectId": "UGJVYCL6XMVJ4H7QYPC6LLFZ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2023-08-10T20:13:42.738Z"
+    },
+    {
+      "catalogObjectId": "WBHW4LGAVN622LCUIPSRF3IE",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-3",
+      "calculatedAt": "2025-07-20T20:20:14.986Z"
+    },
+    {
+      "catalogObjectId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-88",
+      "calculatedAt": "2025-07-20T19:42:45.176Z"
+    },
+    {
+      "catalogObjectId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "RETURNED_BY_CUSTOMER",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "2",
+      "calculatedAt": "2025-03-08T18:59:55.563Z"
+    },
+    {
+      "catalogObjectId": "YDFSP7VSPJIFZTRHDN4NOASQ",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "60",
+      "calculatedAt": "2025-07-03T14:43:35.444Z"
+    },
+    {
+      "catalogObjectId": "YG3BNALC7UZXZIZHJAU5TZPA",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "-84",
+      "calculatedAt": "2025-07-20T20:58:25.942Z"
+    },
+    {
+      "catalogObjectId": "ZED4PXLRKHLF7KO3RZ6TZVHP",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "5",
+      "calculatedAt": "2025-07-20T19:22:35.599Z"
+    },
+    {
+      "catalogObjectId": "ZED4PXLRKHLF7KO3RZ6TZVHP",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-03-05T15:46:18.346Z"
+    },
+    {
+      "catalogObjectId": "ZEJIOHA3UMHO66DPO3FCC64H",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "6",
+      "calculatedAt": "2025-07-20T20:01:23.961Z"
+    },
+    {
+      "catalogObjectId": "ZEJIOHA3UMHO66DPO3FCC64H",
+      "catalogObjectType": "ITEM_VARIATION",
+      "state": "ORDERED_FROM_VENDOR",
+      "locationId": "LC2AKZX32H2ZA",
+      "quantity": "0",
+      "calculatedAt": "2025-02-07T16:30:39.316Z"
+    }
+  ]
+}

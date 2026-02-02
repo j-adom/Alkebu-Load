@@ -1,0 +1,51 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Local development
+.env
+.env.local
+.env.*.local
+alkebulanimages.db
+alkebulanimages.db-*
+*.backup
+
+# Build outputs
+.next
+out
+dist
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Testing
+coverage
+.nyc_output
+test/
+tests/
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+
+# Media (don't include in image, use volume)
+media/*
+!media/.gitkeep

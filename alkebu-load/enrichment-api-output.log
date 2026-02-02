@@ -1,0 +1,18 @@
+[dotenv@17.2.3] injecting env (41) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+🚀 BATCH ENRICHMENT via API - Processing books in batches of 400
+
+🔌 Connecting to Payload API at http://localhost:3000...
+💥 Fatal error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at async batchEnrichBooks (/home/jadom/Coding/alkebulanimages2.0/alkebu-load/scripts/enrich-books-batch-api.ts:166:21) {
+  [cause]: HeadersTimeoutError: Headers Timeout Error
+      at FastTimer.onParserTimeout [as _onTimeout] (node:internal/deps/undici/undici:6249:32)
+      at Timeout.onTick [as _onTimeout] (node:internal/deps/undici/undici:2210:17)
+      at listOnTimeout (node:internal/timers:588:17)
+      at process.processTimers (node:internal/timers:523:7) {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at async batchEnrichBooks (/home/jadom/Coding/alkebulanimages2.0/alkebu-load/scripts/enrich-books-batch-api.ts:166:21)

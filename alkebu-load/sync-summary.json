@@ -1,0 +1,17 @@
+{
+  "syncedAt": "2025-10-08T22:39:00.172Z",
+  "totalProducts": 66,
+  "productsWithInventory": 66,
+  "productsWithImages": 7,
+  "categoriesFound": [],
+  "priceRange": {
+    "min": 0,
+    "max": 145,
+    "average": 16.310303030303032
+  },
+  "currencies": [
+    "USD"
+  ],
+  "sourceOrders": 50,
+  "squareLocation": "LC2AKZX32H2ZA"
+}

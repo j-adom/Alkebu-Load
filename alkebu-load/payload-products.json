@@ -1,0 +1,1200 @@
+[
+  {
+    "title": "Speechless",
+    "description": "Hair & Skincare / Soaps",
+    "price": 25.75,
+    "currency": "USD",
+    "sku": "210000009723",
+    "squareVariationId": "5NLAGL7XTEZZJOIGFVBI62DU",
+    "squareItemId": "RUWPOV7YWEGFZADZEAPVUUFN",
+    "variationName": "Speechless",
+    "isActive": false,
+    "squareVersion": "1754863061357",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 13,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Gold w/ Elderberry & Ginger, 8oz",
+    "description": "Wild-harvested St. Lucian sea moss soaked in Alkaline water and Key Lime juice",
+    "price": 18,
+    "currency": "USD",
+    "sku": "Q760189",
+    "squareVariationId": "NNPPF3DN6TEOIW4F6ONUAQIS",
+    "squareItemId": "S4ZEAOJVOTY5OAKAHOOMR23Z",
+    "variationName": "Gold w/ Elderberry & Ginger, 8oz",
+    "isActive": true,
+    "squareVersion": "1759516203139",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 30,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Turmeric + Pepper + Seamoss",
+    "price": 40,
+    "currency": "USD",
+    "sku": "2982193",
+    "squareVariationId": "ZTQGKWLDFE3M7N4MHKMTPRGO",
+    "squareItemId": "G7YPE5NEGIQQXPGHYOBOQHX7",
+    "variationName": "Turmeric + Pepper + Seamoss",
+    "isActive": false,
+    "squareVersion": "1759780972593",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 11,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Lick Me All Over",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 13.99,
+    "currency": "USD",
+    "sku": "210000006690",
+    "squareVariationId": "6YDBOS5XBIWMG7WPGPKN6THC",
+    "squareItemId": "MSCFOBAZ45CDIJUVOE4CRJST",
+    "variationName": "Lick Me All Over",
+    "isActive": false,
+    "squareVersion": "1754863056784",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -98,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "White Sage",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000010087",
+    "squareVariationId": "6U2LE4WRSKEFYB6PBZIOJE3B",
+    "squareItemId": "3C4F4ONIFWRYE5TFC6OTLWTD",
+    "variationName": "White Sage",
+    "isActive": false,
+    "squareVersion": "1754863060728",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -10,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Eucalyptus Essential Oil",
+    "description": "Hair & Skincare",
+    "price": 8.99,
+    "currency": "USD",
+    "sku": "210000009455",
+    "squareVariationId": "AUY2QDFN46IL7U67SWURMCIW",
+    "squareItemId": "OOFMKHA7KA2AAC4EV7TGEVI6",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863028624",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 46,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Mr. Obama type",
+    "price": 2,
+    "currency": "USD",
+    "sku": "M16",
+    "upc": "187314000480",
+    "squareVariationId": "RKB3R5MTFJDNEVSYK3CBLQ3D",
+    "squareItemId": "DUYO7KIVDAQ2BMQ3ZARTQ63G",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863076315",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -2353,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 35,
+    "currency": "USD",
+    "sku": "D976560",
+    "upc": "735255112948",
+    "squareVariationId": "HAAMQGSHR5OOMO6BTHFEK5PP",
+    "squareItemId": "ACXUBWWU5CUQZK6UFQRS6EGN",
+    "variationName": "Regular",
+    "isActive": true,
+    "squareVersion": "1754863151266",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 17,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 56.95,
+    "currency": "USD",
+    "sku": "971137E",
+    "squareVariationId": "X6JPUNYHFYQIWTX5ZSZ3ZA3J",
+    "squareItemId": "MVN4KM6BJCPLGCOBQOZQU3DX",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1754863275073",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 5,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "The Destruction of Black Civilization",
+    "description": "Chancellor Williams -\nAfrican Studies",
+    "price": 19.95,
+    "currency": "USD",
+    "upc": "9780883780305",
+    "squareVariationId": "OXJY6SY4AVIIRVMFY6EZKACC",
+    "squareItemId": "LFJSJ5ESDSVGZKVI7ARBHDOI",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754862921486",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 16,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Soursop Bitters",
+    "price": 40,
+    "currency": "USD",
+    "sku": "880406V",
+    "upc": "064455887975",
+    "squareVariationId": "H4T3MHVCKA2R4UCLRLJWZTPW",
+    "squareItemId": "MIIPA65M7HBNS2A7VFCAIATG",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863084720",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 57,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 30,
+    "currency": "USD",
+    "sku": "178785X",
+    "squareVariationId": "XNFXE5QRADZAOZI6ULP4CAKR",
+    "squareItemId": "RVPPNS6UNNQQUC5IRCWCDEP3",
+    "variationName": "Regular",
+    "isActive": true,
+    "squareVersion": "1754863295880",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": 3,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1 oz",
+    "description": "Incense & Oils",
+    "price": 15,
+    "currency": "USD",
+    "sku": "210000005652",
+    "squareVariationId": "JYKYCHUYQRYPMMOH4EZENBMQ",
+    "squareItemId": "4YAW6ET4QAGJ3HIGUSUMHXO3",
+    "variationName": "1 oz",
+    "isActive": false,
+    "squareVersion": "1754863031257",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -85,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Hardback",
+    "description": "“Bold and imaginative.” —Tananarive Due\n“This stunning allegory will spark much discussion.” —Publishers Weekly (starred review)\n“A truly powerful and riveting story.” —Booklist\n\nIn a world without white people, what does it mean to be Black?\n\nOne day, a cataclysmic event occurs: all of the white people in America walk into the nearest body of water. A year later, Charlie Brunton is a Black man living in an entirely new world. Having served time in prison for a wrongful conviction, he’s now a professor of electric and solar power systems at Howard University when he receives a call from someone he wasn’t even sure existed: his daughter Sidney, a nineteen-year-old left behind by her white mother and step-family.\n\nTraumatized by the event, and terrified of the outside world, Sidney has spent a year in isolation in Wisconsin. Desperate for help, she turns to the father she never met, a man she has always resented. Sidney and Charlie meet for the first time as they embark on a journey across a truly “post-racial” America in search for answers. But neither of them are prepared for this new world and how they see themselves in it.\n\nHeading south toward what is now called the Kingdom of Alabama, everything Charlie and Sidney thought they knew about themselves, and the world, will be turned upside down. Brimming with heart and humor, Cebo Campbell’s astonishing debut novel is about the power of community and connection, about healing and self-actualization, and a reckoning with what it means to be Black in America, in both their world and ours.",
+    "price": 27.99,
+    "currency": "USD",
+    "sku": "D353524",
+    "upc": "9781668034927",
+    "squareVariationId": "UMXSUKKFE7UIHUB76UKXHD7A",
+    "squareItemId": "IJFC4YMNEVFZAA543BGKTZ2C",
+    "variationName": "Hardback",
+    "isActive": false,
+    "squareVersion": "1759246657694",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -4,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "XYBYTT4AFS6V6TJ2TJ3NYWAE"
+    ]
+  },
+  {
+    "title": "Regular",
+    "price": 3,
+    "currency": "USD",
+    "sku": "V389658",
+    "squareVariationId": "LHR3B3S6FEEDZUGPQSGS3UUN",
+    "squareItemId": "X6LXYX5IEXPBJADAYR5ITJQ2",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1754863308427",
+    "lastSyncAt": "2025-10-08T22:39:00.170Z",
+    "inventory": {
+      "quantity": -4,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "SIG",
+    "description": "Health & Wellness",
+    "price": 6,
+    "currency": "USD",
+    "sku": "616440Q",
+    "upc": "8906142981875",
+    "squareVariationId": "F7EBIABAF4G4Z3SUR7APUZMD",
+    "squareItemId": "BLFQW7WD6GD6N5DAZNIXWCFI",
+    "variationName": "SIG",
+    "isActive": false,
+    "squareVersion": "1756503905307",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -7,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 8,
+    "currency": "USD",
+    "sku": "A622114",
+    "squareVariationId": "K7UXU3QOBGUWPVT3FUQJUK4H",
+    "squareItemId": "BEVX2MYICP2KGRJ6VBBGTG3T",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1754863280616",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 30,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Gold w/ Turmeric & Ginger, 16oz",
+    "description": "Wild-harvested St. Lucian sea moss soaked in Alkaline water and Key Lime juice",
+    "price": 30,
+    "currency": "USD",
+    "sku": "6024648",
+    "squareVariationId": "E3GPIRCFDY3RJMZQEUDODP56",
+    "squareItemId": "S4ZEAOJVOTY5OAKAHOOMR23Z",
+    "variationName": "Gold w/ Turmeric & Ginger, 16oz",
+    "isActive": true,
+    "squareVersion": "1759516203139",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 44,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Large Sage Bundle",
+    "description": "Incense & Oils",
+    "price": 10,
+    "currency": "USD",
+    "sku": "210000010682",
+    "squareVariationId": "QS5RUTVIJED6FVPKDVIOHZAG",
+    "squareItemId": "S2LQBZVUSUQXKPADMOZIMJE3",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863049384",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 171,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Watermelon Juice",
+    "description": "Nutrition / Miscellaneous Beverages",
+    "price": 8,
+    "currency": "USD",
+    "sku": "210000009626",
+    "squareVariationId": "LZY6EBBVEA3ZVP53FYBTOHA3",
+    "squareItemId": "CYN6Q6JPRUBKOLJJXBZJXRQ4",
+    "variationName": "Watermelon Juice",
+    "isActive": false,
+    "squareVersion": "1759351490701",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -10,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Morocco",
+    "price": 13.5,
+    "currency": "USD",
+    "sku": "835503T",
+    "squareVariationId": "F73V363AV2IXN3WBBLR3L6BS",
+    "squareItemId": "S626EK2VLBF22WNWWIKLICL5",
+    "variationName": "Morocco",
+    "isActive": false,
+    "squareVersion": "1754863137199",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 4,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1/4 oz",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000005687",
+    "squareVariationId": "VG67IYG653INLLY4RZATM2LC",
+    "squareItemId": "VBUC5JOLVIOTRBBNMNLWNNH3",
+    "variationName": "1/4 oz",
+    "isActive": false,
+    "squareVersion": "1754863023282",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -30,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Nag Champa Incense",
+    "price": 2,
+    "currency": "USD",
+    "sku": "8904245400477",
+    "upc": "8904245404024",
+    "squareVariationId": "DQNKCSFXLVU2VAXRXEDRFMYL",
+    "squareItemId": "RQIBKE3JL3SB5MHQIFQKK5TQ",
+    "variationName": "Nag Champa Incense",
+    "isActive": false,
+    "squareVersion": "1754863266711",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -26,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "XGYAEVNJGUBRGPUDNCV36NAR"
+    ]
+  },
+  {
+    "title": "Madina African Shea Butter Cream",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 6.5,
+    "currency": "USD",
+    "sku": "M83",
+    "upc": "187314000329",
+    "squareVariationId": "HGNLKNOWDPGL5A4LBIV2O3XI",
+    "squareItemId": "T75UCRWZPCKBPZDF4SE7WT3U",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1759533087147",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 2,
+    "currency": "USD",
+    "sku": "7369721",
+    "upc": "8904245404253",
+    "squareVariationId": "I3VHTUTM2UCEEUTU26TFMBFY",
+    "squareItemId": "4TXC6FO2BSZNSJ7DUUUXE53R",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1757958390698",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -6,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "C4WXPPCS66F2A42O6B2BVZBK"
+    ]
+  },
+  {
+    "title": "Citronella Incense",
+    "price": 2,
+    "currency": "USD",
+    "sku": "S811527",
+    "upc": "8904245401436",
+    "squareVariationId": "C22C6BEYGMQBG3RZGPUHKOWM",
+    "squareItemId": "RQIBKE3JL3SB5MHQIFQKK5TQ",
+    "variationName": "Citronella Incense",
+    "isActive": false,
+    "squareVersion": "1754863266711",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 4,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "XGYAEVNJGUBRGPUDNCV36NAR"
+    ]
+  },
+  {
+    "title": "Satya Eucalyptus Incense",
+    "price": 2,
+    "currency": "USD",
+    "sku": "879073W",
+    "upc": "8904245404024",
+    "squareVariationId": "2ELBYWZMFIYZ47CZTGZ4W6AS",
+    "squareItemId": "7IMHQPNKCGL4M4QSU4ICJ5DF",
+    "variationName": "",
+    "isActive": true,
+    "squareVersion": "1754863113359",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -82,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 145,
+    "currency": "USD",
+    "sku": "7610942",
+    "squareVariationId": "PXXW4UQNXZ4YO6PTXNZE46FB",
+    "squareItemId": "NADBTNKDJVIK45HUSVVRM2GO",
+    "variationName": "Regular",
+    "isActive": true,
+    "squareVersion": "1754863134191",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 2,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "4 oz",
+    "description": "This oil was specifically created to feed the scalp with vital nutrients for optimal health. It helps to relieve flakiness, irritation, dandruff and itchiness. Coconut and neem oils are easily absorbed by the skin and reduce residue and fungus on the scalp. Antibacterial tea tree, peppermint and lemon essential oils stimulate and tone, reducing excess oil. Lavender and rosewood oils condition. Antioxidants such as Vitamin E contribute to overall scalp health, while herbs such as nettle, horsetail and sage, high in hair-loving nutrients, further complete this amazing formula.",
+    "price": 34,
+    "currency": "USD",
+    "sku": "8118527",
+    "squareVariationId": "XYPVQAM7ID6UFOJYMFL2ILVQ",
+    "squareItemId": "IK6NWSUWEETOGYXCG7BLO77Y",
+    "variationName": "4 oz",
+    "isActive": true,
+    "squareVersion": "1754863091397",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -11,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "2 oz",
+    "price": 0,
+    "currency": "USD",
+    "sku": "341291L",
+    "squareVariationId": "DHPUBDQZGKBZKOYOOGIH3SGY",
+    "squareItemId": "JMNZWODFA56ZFVCQNZDV34CR",
+    "variationName": "2 oz",
+    "isActive": false,
+    "squareVersion": "1754863250499",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -3,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1/2 oz",
+    "price": 0,
+    "currency": "USD",
+    "sku": "P258087",
+    "squareVariationId": "SJQVLUGCOU3FGSKZYITWMXBK",
+    "squareItemId": "JMNZWODFA56ZFVCQNZDV34CR",
+    "variationName": "1/2 oz",
+    "isActive": false,
+    "squareVersion": "1754863250499",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -12,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Raw Black Soap LB",
+    "description": "Hair & Skincare / Soaps",
+    "price": 10,
+    "currency": "USD",
+    "sku": "210000005938",
+    "squareVariationId": "EMVZHVJ2BJLHBWVZ5E5UZI54",
+    "squareItemId": "3MXQMPGQT7COAF2LB2XNUFXN",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863057448",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -106,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Water Refill",
+    "description": "Nutrition / Alkaline Water",
+    "price": 1,
+    "currency": "USD",
+    "sku": "210000009584",
+    "squareVariationId": "UARRCXTUAQIF4DFKENDLH4U6",
+    "squareItemId": "EXVWA4N5JEXEDC5TMLOCCVGK",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863050623",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 0,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 6,
+    "currency": "USD",
+    "sku": "W782635",
+    "upc": "8906142982018",
+    "squareVariationId": "4UZ2ELBXSCEFOK5XEGEHXJIG",
+    "squareItemId": "FGYE33Q24VP3XHUQ63NP676D",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1759957099339",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -22,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1/4 oz",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000005290",
+    "squareVariationId": "NKX7FW5WMYBK2HUC6NEK4WQI",
+    "squareItemId": "VXORXDAL5MX7C2BLUTWK45U2",
+    "variationName": "1/4 oz",
+    "isActive": false,
+    "squareVersion": "1754863035006",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -160,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1/4 oz",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000005546",
+    "squareVariationId": "TRVAF3XG3LJUPNOGFBLLUNQY",
+    "squareItemId": "H3MOEFLAW2NDOUCNO7XN34DZ",
+    "variationName": "1/4 oz",
+    "isActive": false,
+    "squareVersion": "1754863055487",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -15,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Baby Powder",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 13.99,
+    "currency": "USD",
+    "sku": "210000011102",
+    "squareVariationId": "ZFAHV6Z4MGBCAVNSSDVFWNSL",
+    "squareItemId": "55Q3CHYTR2ZKNB2ULHT3KPIY",
+    "variationName": "Baby Powder",
+    "isActive": false,
+    "squareVersion": "1754863063301",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -223,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Plain",
+    "description": "St. Lucian Purple Seamoss, Almond Milk, Coconut Cream, and Spices",
+    "price": 9,
+    "currency": "USD",
+    "sku": "576154M",
+    "squareVariationId": "NBDV3C4IVCI5BUPNINPAV4OI",
+    "squareItemId": "EVR4XNBNHTPJYBYGFEKLTO4L",
+    "variationName": "Plain",
+    "isActive": true,
+    "squareVersion": "1754863086611",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 51,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 12.99,
+    "currency": "USD",
+    "sku": "852986008729",
+    "upc": "10852986008726",
+    "squareVariationId": "5BCUGC7J4IAC5GUIKTLJQPHE",
+    "squareItemId": "L5YIY2DRHN52CWOAQUYY7JFJ",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1756133186511",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Packet",
+    "price": 6.99,
+    "currency": "USD",
+    "sku": "B668483",
+    "upc": "00710071512110",
+    "squareVariationId": "KUEN4PPJGV4LIJ2ZNOQVZHVM",
+    "squareItemId": "NJ2WPFWJGMGU4JISN4LWPGUY",
+    "variationName": "Packet",
+    "isActive": false,
+    "squareVersion": "1754863306212",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -64,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 0,
+    "currency": "USD",
+    "sku": "Z450270",
+    "upc": "9780545872294",
+    "squareVariationId": "HBVFGMMF46UZCUR6OVYF3ZZ5",
+    "squareItemId": "J34A32UHKRSGI7Z7YLQP5IGU",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1759335846559",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "KS2MBYQJWW7USYUHVRLF6WGG"
+    ]
+  },
+  {
+    "title": "Regular",
+    "price": 8.99,
+    "currency": "USD",
+    "sku": "L391332",
+    "upc": "9781338672398",
+    "squareVariationId": "LGZA4WQGJZ3KYTWUA5AAFO4S",
+    "squareItemId": "FK6IT7R3I72P5JTWNC6RIXSC",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1759336056397",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "UA3JK7DE6X4AIGX3MCPE5TNU"
+    ]
+  },
+  {
+    "title": "Regular",
+    "price": 7.99,
+    "currency": "USD",
+    "sku": "V846871",
+    "upc": "9780316412933",
+    "squareVariationId": "SZAN4PPU6I2DESRCLSL4HEGX",
+    "squareItemId": "SEZBS44L3VUOD66H7UNJ7Q4X",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1758120005661",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 2,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    },
+    "images": [
+      "MG5HT56NCXKT4BBUFCUGXK22"
+    ]
+  },
+  {
+    "title": "32oz, White",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 18,
+    "currency": "USD",
+    "sku": "6805925",
+    "upc": "855978001128",
+    "squareVariationId": "ISCIG2XNJ4QFFIQ64TZAS3UH",
+    "squareItemId": "LLIJOHOEFNEPGIPCZABKDHDE",
+    "variationName": "32oz, White",
+    "isActive": false,
+    "squareVersion": "1754863057448",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -83,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 30,
+    "currency": "USD",
+    "sku": "629332Y",
+    "squareVariationId": "OJEP3UEMF5UW6N3KYZTODVF4",
+    "squareItemId": "PZCX2ELETSYHJ3RWTCL465UT",
+    "variationName": "Regular",
+    "isActive": true,
+    "squareVersion": "1754863295369",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 48,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Purple, 2oz",
+    "description": "St. Lucian Seamoss",
+    "price": 15.99,
+    "currency": "USD",
+    "sku": "210000010716",
+    "squareVariationId": "PHLOTEL4C2FLYKPW4HRGS3RJ",
+    "squareItemId": "PQIHRJHQ2VIY52DNGHU7MXL6",
+    "variationName": "Purple, 2oz",
+    "isActive": false,
+    "squareVersion": "1758729274545",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 6,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 7.99,
+    "currency": "USD",
+    "sku": "852986008026",
+    "squareVariationId": "K2XJYPDS3E4IZ3OST5OV5DOA",
+    "squareItemId": "DMTDGL5URYDMTD22YMV6CEY5",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1756133252886",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -11,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 30,
+    "currency": "USD",
+    "sku": "K258228",
+    "squareVariationId": "ORPWYWGFZEQB4NJYLWN35LUD",
+    "squareItemId": "ZR5W3QIUGW4EUYDUXW4EJLQR",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1754863144457",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 25,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1 oz",
+    "description": "Incense & Oils",
+    "price": 15,
+    "currency": "USD",
+    "sku": "210000005600",
+    "squareVariationId": "5P3YEEA7OKMN2IX3FQGY6GPV",
+    "squareItemId": "ZVXFKDRBT4LJJWUNG3YERX74",
+    "variationName": "1 oz",
+    "isActive": false,
+    "squareVersion": "1754863021261",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -48,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 65,
+    "currency": "USD",
+    "sku": "987340D",
+    "squareVariationId": "WDA6ADTZRSPE2L6W2SXBEHBU",
+    "squareItemId": "GKSXWZ2MT5KTWX2HN33ZMYFZ",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1754863161436",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -20,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Amor, L",
+    "description": "Hair, Body, and Bath Oil",
+    "price": 27,
+    "currency": "USD",
+    "sku": "A362610",
+    "upc": "899732001184",
+    "squareVariationId": "YVZFP5G3OULMWCIL6I5BDGEU",
+    "squareItemId": "HSNLNOYP4XM2ZWVJQB2LDE7Q",
+    "variationName": "Amor, L",
+    "isActive": true,
+    "squareVersion": "1754863091397",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 5,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Amethyst",
+    "price": 5,
+    "currency": "USD",
+    "sku": "9926137",
+    "squareVariationId": "GRAPBBLCHQFETGEELUL5EO2I",
+    "squareItemId": "EDAPF5DV633A2FKHZCOKHSQA",
+    "variationName": "Amethyst",
+    "isActive": false,
+    "squareVersion": "1754863079905",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -39,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Blue Sage",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000009573",
+    "squareVariationId": "HHJFNU2QKAHIVBUHIOUDZ65H",
+    "squareItemId": "Y56VUR4TEQ4ORD4V5SS6RI4T",
+    "variationName": "Blue Sage",
+    "isActive": false,
+    "squareVersion": "1754863060728",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 0,
+    "currency": "USD",
+    "sku": "960525P",
+    "upc": "9781338776201",
+    "squareVariationId": "KC7IKV6MVALMJJFWKIXG44R6",
+    "squareItemId": "RFZEZDJMFBJXMFORK2I5D3SL",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1759338070978",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Zuresh Leave Me In Conditioner",
+    "description": "Hair & Skincare / Hair Products",
+    "price": 20.99,
+    "currency": "USD",
+    "sku": "210000008768",
+    "squareVariationId": "U3NSFAJAJM65OW6LH45BPZ7U",
+    "squareItemId": "IG7BACJL4TKUJXCUB3HDFHY7",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863018089",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 6,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Regular",
+    "price": 10,
+    "currency": "USD",
+    "sku": "8674177",
+    "squareVariationId": "SGO4H63XC3AGSTM45S2XLL33",
+    "squareItemId": "AGTWPSCJMONTYVZB4BPG6EN4",
+    "variationName": "Regular",
+    "isActive": false,
+    "squareVersion": "1754863299959",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -13,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Coco Mango & Eucalyptus",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 11.95,
+    "currency": "USD",
+    "sku": "210000010082",
+    "squareVariationId": "OB4B5R5DG3CYHD3D6WWCPWST",
+    "squareItemId": "LREE44OFTAAS3FLS2G22VBDR",
+    "variationName": "Coco Mango & Eucalyptus",
+    "isActive": false,
+    "squareVersion": "1754145121822",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 2,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1/4 oz",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000005432",
+    "squareVariationId": "MGCIWF57B5EGEN3OS3RA2EP4",
+    "squareItemId": "AQWIF2NAXQUDIFSUA3MYZFUB",
+    "variationName": "1/4 oz",
+    "isActive": false,
+    "squareVersion": "1754863026672",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -29,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "1/4 oz",
+    "description": "Incense & Oils",
+    "price": 5,
+    "currency": "USD",
+    "sku": "210000005754",
+    "squareVariationId": "L5MHMVAZYRKZFIW377I6PPAL",
+    "squareItemId": "3XEYY3CRRCKSBTBQ7USB2JLL",
+    "variationName": "1/4 oz",
+    "isActive": false,
+    "squareVersion": "1754863018089",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -10,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Tropical Naturals Dudu-osun",
+    "description": "Hair & Skincare / Soaps",
+    "price": 5,
+    "currency": "USD",
+    "sku": "9705125",
+    "upc": "6156000043708",
+    "squareVariationId": "MVQKM4WZF7YJWYQLNJEHLZJM",
+    "squareItemId": "KNRSUOBXZAV5A5KE25O7445S",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863048751",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -164,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Florida Water Soap",
+    "price": 5,
+    "currency": "USD",
+    "sku": "217723K",
+    "upc": "076690000378",
+    "squareVariationId": "EKBP7K3ZDTFRKUJXF5RS2LDR",
+    "squareItemId": "3X37JVRSS75R5SXPGLAZAMTC",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863075077",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 7,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Brass Cuff",
+    "price": 25,
+    "currency": "USD",
+    "sku": "774387J",
+    "squareVariationId": "3PGHYYZTSW7VCYMYRQSENPSS",
+    "squareItemId": "ADIB5K2FNDPVOZFW2FPIF3WN",
+    "variationName": "",
+    "isActive": false,
+    "squareVersion": "1754863094436",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -28,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Gucci Guilty",
+    "description": "Hair & Skincare / Shea Butter",
+    "price": 13.99,
+    "currency": "USD",
+    "sku": "210000006223",
+    "squareVariationId": "2FVFPWVAR2YQI35BTJDG6A2Z",
+    "squareItemId": "VEFSRWADFP75GT7QA5VFLULY",
+    "variationName": "Gucci Guilty",
+    "isActive": false,
+    "squareVersion": "1758071899152",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -64,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Summer",
+    "price": 18,
+    "currency": "USD",
+    "sku": "1984728",
+    "squareVariationId": "FKEULZBW2MEETN5KOAMSLPWG",
+    "squareItemId": "JOHAANV6MTJOV2Z7YRTKTCOK",
+    "variationName": "Summer",
+    "isActive": false,
+    "squareVersion": "1754863210516",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 1,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "2 oz",
+    "description": "Incense & Oils",
+    "price": 25,
+    "currency": "USD",
+    "sku": "210000005899",
+    "squareVariationId": "64AJATYSW3RJCC3URRJYD7LG",
+    "squareItemId": "7RM7VGKQ3MH2MX5LV736RXJF",
+    "variationName": "2 oz",
+    "isActive": false,
+    "squareVersion": "1754863021261",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": -6,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  },
+  {
+    "title": "Bladderwrack & Burdock",
+    "description": "St. Lucian Purple Seamoss, Almond Milk, Coconut Cream, and Spices",
+    "price": 10,
+    "currency": "USD",
+    "sku": "K580050",
+    "squareVariationId": "L4RJ2WQI7U4KC4EZ2QM56ADX",
+    "squareItemId": "EVR4XNBNHTPJYBYGFEKLTO4L",
+    "variationName": "Bladderwrack & Burdock",
+    "isActive": true,
+    "squareVersion": "1754863086611",
+    "lastSyncAt": "2025-10-08T22:39:00.171Z",
+    "inventory": {
+      "quantity": 60,
+      "state": "IN_STOCK",
+      "locationId": "LC2AKZX32H2ZA"
+    }
+  }
+]

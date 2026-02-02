@@ -1,0 +1,5 @@
+# Ignore CSV files (may contain sensitive data)
+*.csv
+
+# Allow README
+!README.md

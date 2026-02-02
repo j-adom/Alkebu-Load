@@ -1,0 +1,74 @@
+{
+  "name": "",
+  "version": "1.0.0",
+  "description": "Alkebu-Lan Images backend CMS",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev -p 3000",
+    "devsafe": "rm -rf .next && cross-env NODE_OPTIONS=--no-deprecation next dev -p 3000",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start -p 3000",
+    "test": "cross-env NODE_OPTIONS=--no-deprecation STRIPE_SECRET_KEY=sk_test_dummy node --test --import tsx --test-reporter tap \"./tests/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.952.0",
+    "@payloadcms/db-postgres": "^3.68.5",
+    "@payloadcms/db-sqlite": "^3.68.5",
+    "@payloadcms/email-nodemailer": "^3.68.5",
+    "@payloadcms/next": "^3.68.5",
+    "@payloadcms/payload-cloud": "^3.68.5",
+    "@payloadcms/plugin-seo": "^3.68.5",
+    "@payloadcms/richtext-lexical": "^3.68.5",
+    "@payloadcms/ui": "^3.68.5",
+    "@types/node-fetch": "^2.6.13",
+    "@types/nodemailer": "^7.0.4",
+    "axios": "^1.13.2",
+    "cheerio": "^1.1.2",
+    "cross-env": "^7.0.3",
+    "csv-parse": "^6.1.0",
+    "flexsearch": "^0.8.212",
+    "graphql": "^16.12.0",
+    "next": "15.3.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.10.1",
+    "papaparse": "^5.5.3",
+    "parse-full-name": "^1.2.6",
+    "payload": "^3.68.5",
+    "rate-limiter-flexible": "^7.4.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "sharp": "0.32.6",
+    "square": "^43.2.1",
+    "stripe": "^18.5.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@sanity/client": "^7.13.2",
+    "@sanity/image-url": "^1.2.0",
+    "@types/node": "^22.19.3",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.2",
+    "better-sqlite3": "^12.5.0",
+    "dotenv": "^17.2.3",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "15.3.0",
+    "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
+    "typescript": "5.7.3"
+  },
+  "engines": {
+    "node": "^18.20.2 || >=20.9.0",
+    "pnpm": "^9 || ^10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
+  }
+}

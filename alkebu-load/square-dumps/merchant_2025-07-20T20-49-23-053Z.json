@@ -1,0 +1,17 @@
+{
+  "response": {
+    "merchant": [
+      {
+        "id": "MLDJXBYZCPT4Y",
+        "businessName": "Alkebu-Lan Images",
+        "country": "US",
+        "languageCode": "en-US",
+        "currency": "USD",
+        "status": "ACTIVE",
+        "mainLocationId": "LC2AKZX32H2ZA",
+        "createdAt": "2022-04-16T15:34:35.746Z"
+      }
+    ]
+  },
+  "data": "[Circular Reference]"
+}

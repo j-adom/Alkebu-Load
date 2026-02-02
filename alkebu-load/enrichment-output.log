@@ -1,0 +1,32 @@
+[dotenv@17.2.3] injecting env (41) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+🚀 BATCH ENRICHMENT - Processing books in batches of 400
+
+[⣷] Pulling schema from database...
+[2K[1G[✓] Pulling schema from database...
+[?25l
+Is cloudflare_image_id column in media table created or renamed from another column?
+❯ + cloudflare_image_id                             create column
+  ~ sizes_thumbnail_url › cloudflare_image_id       rename column
+  ~ sizes_thumbnail_width › cloudflare_image_id     rename column
+  ~ sizes_thumbnail_height › cloudflare_image_id    rename column
+  ~ sizes_thumbnail_mime_type › cloudflare_image_id rename column
+  ~ sizes_thumbnail_filesize › cloudflare_image_id  rename column
+  ~ sizes_thumbnail_filename › cloudflare_image_id  rename column
+  ~ sizes_card_url › cloudflare_image_id            rename column
+  ~ sizes_card_width › cloudflare_image_id          rename column
+  ~ sizes_card_height › cloudflare_image_id         rename column
+  ~ sizes_card_mime_type › cloudflare_image_id      rename column
+  ~ sizes_card_filesize › cloudflare_image_id       rename column
+  ~ sizes_card_filename › cloudflare_image_id       rename column
+  ~ sizes_tablet_url › cloudflare_image_id          rename column
+  ~ sizes_tablet_width › cloudflare_image_id        rename column
+  ~ sizes_tablet_height › cloudflare_image_id       rename column
+  ~ sizes_tablet_mime_type › cloudflare_image_id    rename column
+  ~ sizes_tablet_filesize › cloudflare_image_id     rename column
+  ~ sizes_tablet_filename › cloudflare_image_id     rename column
+  ~ sizes_hero_url › cloudflare_image_id            rename column
+  ~ sizes_hero_width › cloudflare_image_id          rename column
+  ~ sizes_hero_height › cloudflare_image_id         rename column
+  ~ sizes_hero_mime_type › cloudflare_image_id      rename column
+  ~ sizes_hero_filesize › cloudflare_image_id       rename column
+  ~ sizes_hero_filename › cloudflare_image_id       rename column

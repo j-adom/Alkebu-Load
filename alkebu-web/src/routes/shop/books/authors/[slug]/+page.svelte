@@ -1,0 +1,46 @@
+<script lang="ts">
+  import Meta from '$lib/components/Meta.svelte';
+  import BookList from '$lib/components/Shop/Books/BookList.svelte';
+
+  let { data } = $props();
+
+  const author = data.author;
+  const books = data.books || [];
+  const pagination = data.pagination || { page: 1, totalPages: 1, totalDocs: books.length, limit: 24 };
+  const currentPage = pagination.page || 1;
+  const pageSize = pagination.limit || 24;
+  const totalDocs = pagination.totalDocs || books.length;
+  const sort = data.currentSort || 'newest';
+
+  const metadata = data.seo || {
+    title: `Books by ${author?.name || 'Author'}`,
+    description: `Explore titles by ${author?.name || 'this author'}.`,
+    url: `/shop/books/authors/${author?.slug || ''}`
+  };
+</script>
+
+<Meta {metadata} />
+
+<section class="page-header">
+  <div class="container">
+    <h2><small>Author:</small><br>{author?.name}</h2>
+    <ul class="thm-breadcrumb list-unstyled">
+      <li><a href="/shop/">Shop</a></li>
+      <li><a href="/shop/books/" class="shop_style">Books</a></li>
+      <li><span>Authors</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="product mx-auto">
+  <BookList
+    books={books}
+    categories={[]} 
+    totalDocs={totalDocs}
+    totalPages={pagination.totalPages || 1}
+    currentPage={currentPage}
+    pageSize={pageSize}
+    sort={sort}
+    currentCategory={''}
+  />
+</section>
