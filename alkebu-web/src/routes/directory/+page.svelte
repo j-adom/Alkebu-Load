@@ -98,7 +98,7 @@
           <label for="verified" class="text-sm text-gray-700">Verified only</label>
         </div>
         <div class="mt-2 md:mt-6">
-          <button type="submit" class="thm-btn w-full">Apply filters</button>
+          <button type="submit" class="btn-primary w-full">Apply filters</button>
         </div>
       </form>
     </div>

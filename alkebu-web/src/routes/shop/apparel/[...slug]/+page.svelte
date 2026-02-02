@@ -209,7 +209,7 @@
             productId={productId}
             productType="fashion-jewelry"
             customization={customization}
-            className="thm-btn text-center min-w-[200px]"
+            className="btn-primary text-center min-w-[200px]"
             disabled={!inStock}
             label={inStock ? 'Add to Cart' : 'Unavailable'}
           />

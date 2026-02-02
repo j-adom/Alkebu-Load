@@ -156,7 +156,7 @@
                     href={event.registrationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="thm-btn w-full text-center block"
+                    class="btn-primary w-full text-center block"
                   >
                     Register Now
                     <i class="far fa-external-link ml-2"></i>

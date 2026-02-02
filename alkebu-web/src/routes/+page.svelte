@@ -360,7 +360,7 @@
 					</div>
 				</div>
 				<div class="all_posts_btn">
-					<a href="news.html" class="thm-btn">View All Posts</a>
+					<a href="/blog" class="btn-outline">View All Posts</a>
 				</div>
 			</div>
 		</div>

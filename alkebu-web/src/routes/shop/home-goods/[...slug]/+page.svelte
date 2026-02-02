@@ -159,7 +159,7 @@
             productId={product.id}
             productType={productType}
             disabled={!inStock}
-            className="thm-btn w-full text-center text-lg py-4"
+            className="btn-primary w-full text-center text-lg py-4"
             label={inStock ? 'Add to Cart' : 'Out of Stock'}
           />
         </div>

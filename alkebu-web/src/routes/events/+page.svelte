@@ -74,7 +74,7 @@
           </select>
         </div>
         <div class="self-end">
-          <button type="submit" class="thm-btn">Apply filters</button>
+          <button type="submit" class="btn-primary btn-sm">Apply filters</button>
         </div>
       </form>
     </div>

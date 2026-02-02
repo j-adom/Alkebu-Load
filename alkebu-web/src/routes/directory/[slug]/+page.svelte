@@ -165,12 +165,12 @@
             </div>
 
             <div class="mt-6 text-center">
-              <button class="thm-btn">Load More Reviews</button>
+              <button class="btn-primary">Load More Reviews</button>
             </div>
           {:else}
             <div class="bg-gray-50 rounded-lg p-8 text-center">
               <p class="text-gray-600">No reviews yet. Be the first to review this business!</p>
-              <button class="thm-btn mt-4">Write a Review</button>
+              <button class="btn-primary mt-4">Write a Review</button>
             </div>
           {/if}
         </div>
@@ -304,7 +304,7 @@
 
           <!-- Action Buttons -->
           <div class="bg-thm-base rounded-lg p-6 space-y-3">
-            <a href="tel:{business.phone}" class="thm-btn w-full text-center block">
+            <a href="tel:{business.phone}" class="btn-primary w-full text-center block">
               <i class="far fa-phone mr-2"></i>
               Call Now
             </a>
