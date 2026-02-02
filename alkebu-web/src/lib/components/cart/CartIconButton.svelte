@@ -42,7 +42,7 @@
          transition-all duration-200 ease-smooth
          hover:bg-muted/80 active:scale-95
          {isAnimating ? 'animate-bounce-subtle' : ''}
-         {className}".trim()
+         {className}"
   aria-label="View cart ({itemCount} items)"
   onclick={openDrawer}
 >
