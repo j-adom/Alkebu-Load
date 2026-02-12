@@ -62,6 +62,14 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      views: {
+        'order-dashboard': {
+          Component: '/app/components/OrderDashboardView',
+          path: '/order-dashboard',
+        },
+      },
+    },
   },
   globals: [
     HomePage,
@@ -159,6 +167,14 @@ export default buildConfig({
           await cleanupAbandonedCarts(payload);
         },
         schedule: '0 */2 * * *', // Every 2 hours
+      },
+      {
+        slug: 'daily-order-digest',
+        handler: async ({ payload }) => {
+          const { generateDailyOrderDigest } = await import('./app/utils/orderDigest');
+          await generateDailyOrderDigest(payload);
+        },
+        schedule: '0 12 * * *', // 12:00 UTC = 7:00 AM CDT / 6:00 AM CST
       },
     ],
   },

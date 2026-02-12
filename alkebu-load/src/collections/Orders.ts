@@ -15,7 +15,7 @@ export const Orders: CollectionConfig = {
       return false;
     },
     create: () => true,
-    update: ({ req: { user } }) => user?.role === 'admin',
+    update: ({ req: { user } }) => user?.role === 'admin' || user?.role === 'staff',
     delete: ({ req: { user } }) => user?.role === 'admin',
   },
   fields: [

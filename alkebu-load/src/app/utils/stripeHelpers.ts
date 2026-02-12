@@ -1,6 +1,6 @@
 import type { Payload } from 'payload';
 import Stripe from 'stripe';
-import { sendOrderConfirmation, sendOrderStatusUpdate, type OrderConfirmationData } from './emailService';
+import { sendOrderConfirmation, sendOrderStatusUpdate, sendStaffOrderNotification, type OrderConfirmationData, type StaffNotificationData } from './emailService';
 import {
   calculateTax,
   calculateTaxFromSubtotal,
@@ -376,6 +376,34 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     } catch (emailError) {
       console.error('Error sending order confirmation email:', emailError);
       // Don't throw - order creation succeeded even if email failed
+    }
+
+    // Send staff notification email
+    try {
+      const staffData: StaffNotificationData = {
+        orderNumber: orderData.orderNumber,
+        orderId: String(order.id),
+        customerName: session.customer_details?.name || 'Guest',
+        customerEmail: orderData.guestEmail || session.customer_details?.email,
+        items: orderData.items.map((item: any) => ({
+          productTitle: item.productTitle,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        })),
+        subtotal: orderData.subtotalAmount || 0,
+        tax: orderData.taxAmount || 0,
+        shipping: orderData.shippingAmount || 0,
+        total: orderData.totalAmount || 0,
+        shippingAddress: orderData.shippingAddress,
+        source: 'website',
+        paymentMethod: session.payment_method_types?.[0] || 'card',
+      };
+
+      await sendStaffOrderNotification(staffData);
+    } catch (staffEmailError) {
+      console.error('Error sending staff order notification:', staffEmailError);
+      // Non-blocking - order creation succeeded
     }
   } catch (error) {
     console.error('Error handling checkout completion:', error);

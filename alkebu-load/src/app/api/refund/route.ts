@@ -8,9 +8,38 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 
 /**
+ * Authenticate request and return user with role check
+ */
+async function authenticateRequest(
+  request: NextRequest,
+  allowedRoles: string[]
+): Promise<{ user: any; payload: any } | NextResponse> {
+  const payload = await getPayload({ config });
+
+  const { user } = await payload.auth({ headers: request.headers });
+
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
+  if (!allowedRoles.includes((user as any).role)) {
+    return NextResponse.json(
+      { error: 'Insufficient permissions' },
+      { status: 403 }
+    );
+  }
+
+  return { user, payload };
+}
+
+/**
  * POST /api/refund
  *
  * Create a refund for an order. Supports full or partial refunds.
+ * Requires admin role.
  *
  * Request body:
  * - orderId: string (required) - The Payload order ID
@@ -24,7 +53,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
  */
 export async function POST(request: NextRequest) {
   try {
-    const payload = await getPayload({ config });
+    // Admin-only access for processing refunds
+    const authResult = await authenticateRequest(request, ['admin']);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user, payload } = authResult;
+
     const body = await request.json();
 
     const { orderId, amount, reason } = body;
@@ -104,6 +137,7 @@ export async function POST(request: NextRequest) {
           orderId: order.id,
           orderNumber: order.orderNumber,
           reason,
+          processedBy: user.id,
         },
       });
     } catch (stripeError: any) {
@@ -114,11 +148,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Record refund in order
+    // Record refund in order with processedBy
     const newRefund = {
       amount: refundAmount,
       reason,
       stripeRefundId: stripeRefund.id,
+      processedBy: user.id,
       processedAt: new Date().toISOString(),
     };
 
@@ -138,7 +173,7 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(
-      `Refund processed: ${stripeRefund.id} for order ${order.orderNumber}, amount: $${(refundAmount / 100).toFixed(2)}`
+      `Refund processed by ${user.email}: ${stripeRefund.id} for order ${order.orderNumber}, amount: $${(refundAmount / 100).toFixed(2)}`
     );
 
     return NextResponse.json({
@@ -162,10 +197,16 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/refund?orderId=...
  *
- * Get refund status for an order
+ * Get refund status for an order.
+ * Requires admin or staff role.
  */
 export async function GET(request: NextRequest) {
   try {
+    // Admin and staff can view refund status
+    const authResult = await authenticateRequest(request, ['admin', 'staff']);
+    if (authResult instanceof NextResponse) return authResult;
+    const { payload } = authResult;
+
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
 
@@ -175,8 +216,6 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const payload = await getPayload({ config });
 
     const order = await payload.findByID({
       collection: 'orders',
@@ -207,6 +246,7 @@ export async function GET(request: NextRequest) {
         amount: refund.amount,
         reason: refund.reason,
         stripeRefundId: refund.stripeRefundId,
+        processedBy: refund.processedBy,
         processedAt: refund.processedAt,
       })),
     });
