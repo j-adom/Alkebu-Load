@@ -179,19 +179,19 @@
 <style>
     
     .page-link {
-        color: var(--thm-primary)
+        color: hsl(var(--primary))
     }
     .disabled a, .page-link:hover{
-        background-color: var(--thm-primary);
-        color: var(--thm-base)
+        background-color: hsl(var(--primary));
+        color: hsl(var(--muted))
         
     }
     .dropdown{
         padding-top: 10px; 
         --indicatorTop: 2px;
         --clearSelectTop: 2px;
-        --borderFocusColor: var(--thm-primary);
-        --itemHoverBG: var(--thm-base)
+        --borderFocusColor: hsl(var(--primary));
+        --itemHoverBG: hsl(var(--muted))
     }
     
     

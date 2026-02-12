@@ -19,7 +19,7 @@
 <section class="page-header" style="background-image: url({product.images?.[0]?.url || '/assets/images/resources/page-header-bg.jpg'});">
   <div class="container">
     <h2>{product.title}</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/">Home</a></li>
       <li><a href="/shop">Shop</a></li>
       <li><a href="/shop/health-and-beauty">Health & Beauty</a></li>
@@ -70,12 +70,12 @@
       <div>
         <div class="mb-6">
           {#if product.brand}
-            <p class="text-sm text-thm-primary mb-2 uppercase tracking-wide font-semibold">
+            <p class="text-sm text-primary mb-2 uppercase tracking-wide font-semibold">
               {product.brand.name}
             </p>
           {/if}
 
-          <h1 class="text-3xl lg:text-4xl font-bold mb-4 text-thm-black">
+          <h1 class="text-3xl lg:text-4xl font-bold mb-4 text-foreground">
             {product.title}
           </h1>
 
@@ -85,7 +85,7 @@
 
           <!-- Price -->
           <div class="mb-6">
-            <p class="text-4xl font-bold text-thm-primary">{formatCurrency(price)}</p>
+            <p class="text-4xl font-bold text-primary">{formatCurrency(price)}</p>
             {#if product.pricing?.compareAtPrice && product.pricing.compareAtPrice > price}
               <p class="text-lg text-gray-500 line-through">
                 {formatCurrency(product.pricing.compareAtPrice)}
@@ -112,7 +112,7 @@
         <!-- Description -->
         {#if product.description}
           <div class="mb-8">
-            <h2 class="text-2xl font-bold mb-4 text-thm-black">About This Product</h2>
+            <h2 class="text-2xl font-bold mb-4 text-foreground">About This Product</h2>
             <div class="prose max-w-none">
               <p class="text-gray-700 leading-relaxed">{product.description}</p>
             </div>
@@ -121,7 +121,7 @@
 
         <!-- Product Details -->
         <div class="mb-8">
-          <h3 class="text-xl font-bold mb-4 text-thm-black">Product Details</h3>
+          <h3 class="text-xl font-bold mb-4 text-foreground">Product Details</h3>
           <dl class="space-y-2">
             {#if product.sku}
               <div class="flex justify-between py-2 border-b border-gray-200">
@@ -166,8 +166,8 @@
 
         <!-- Additional Info -->
         {#if product.howToUse}
-          <div class="bg-thm-base rounded-lg p-6 mb-6">
-            <h3 class="text-lg font-bold mb-3 text-thm-black">
+          <div class="bg-muted rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-bold mb-3 text-foreground">
               <i class="far fa-info-circle mr-2"></i>
               How to Use
             </h3>

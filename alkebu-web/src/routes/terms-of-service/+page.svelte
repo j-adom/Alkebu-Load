@@ -1,110 +1,288 @@
 <script>
   import { urlFor } from '$lib/payload';
   let { data } = $props();
-  const {settings} = data
-
+  const { settings } = data;
 </script>
 
 <svelte:head>
-	<title>Terms of Service | Alkebu-Lan Images</title>
+  <title>Terms of Service | Alkebu-Lan Images</title>
+  <meta name="description" content="Terms of service for Alkebu-Lan Images online store. Review the terms governing your use of our website and purchasing products from us." />
 </svelte:head>
 
-<style>
-    /* h1{
-        @apply text-xl font-extrabold
-    }
-    p{
-        @apply text-sm
-    } */
-</style>
-
 <section class="page-header" style="background-image: url({urlFor(settings.banner).width(1920).height(300).auto('format').url()});">
-    <div class="container">
-        <ul class="thm-breadcrumb list-unstyled">
-            <li><a href="/">Home</a></li>
-            <li>Terms of Service</li>
-        </ul>
-    </div>
+  <div class="container">
+    <h2>Terms of Service</h2>
+    <ul class="flex items-center gap-2 text-sm text-white/80">
+      <li><a href="/">Home</a></li>
+      <li><span>Terms of Service</span></li>
+    </ul>
+  </div>
 </section>
 
-<section class="mx-12">
-<div class="container ">
-<br>
-<h2 class="text-2xl font-bold mt-6 mb-4">OVERVIEW</h2>
-    <p>This website is operated by Alkebu-Lan Images. Throughout the site, the terms “we”, “us” and “our” refer to Alkebu-Lan Images. Alkebu-Lan Images offers this website, including all information, tools and services available from this site to you, the user, conditioned upon your acceptance of all terms, conditions, policies and notices stated here.</p>
-    <p>By visiting our site and/ or purchasing something from us, you engage in our “Service” and agree to be bound by the following terms and conditions (“Terms of Service”, “Terms”), including those additional terms and conditions and policies referenced herein and/or available by hyperlink. These Terms of Service apply to all users of the site, including without limitation users who are browsers, vendors, customers, merchants, and/ or contributors of content.</p>
-    <p>Please read these Terms of Service carefully before accessing or using our website. By accessing or using any part of the site, you agree to be bound by these Terms of Service. If you do not agree to all the terms and conditions of this agreement, then you may not access the website or use any services. If these Terms of Service are considered an offer, acceptance is expressly limited to these Terms of Service.</p>
-    <p>Any new features or tools which are added to the current store shall also be subject to the Terms of Service. You can review the most current version of the Terms of Service at any time on this page. We reserve the right to update, change or replace any part of these Terms of Service by posting updates and/or changes to our website. It is your responsibility to check this page periodically for changes. Your continued use of or access to the website following the posting of any changes constitutes acceptance of those changes.</p>
-    <p>Our store is hosted on Shopify Inc. They provide us with the online e-commerce platform that allows us to sell our products and services to you.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 1 - ONLINE STORE TERMS</h2>
-    <p>By agreeing to these Terms of Service, you represent that you are at least the age of majority in your state or province of residence, or that you are the age of majority in your state or province of residence and you have given us your consent to allow any of your minor dependents to use this site.</p>
-    <p>You may not use our products for any illegal or unauthorized purpose nor may you, in the use of the Service, violate any laws in your jurisdiction (including but not limited to copyright laws).</p>
-    <p>You must not transmit any worms or viruses or any code of a destructive nature.</p>
-    <p>A breach or violation of any of the Terms will result in an immediate termination of your Services.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 2 - GENERAL CONDITIONS</h2>
-    <p>We reserve the right to refuse service to anyone for any reason at any time.</p>
-    <p>You understand that your content (not including credit card information), may be transferred unencrypted and involve (a) transmissions over various networks; and (b) changes to conform and adapt to technical requirements of connecting networks or devices. Credit card information is always encrypted during transfer over networks.</p>
-    <p>You agree not to reproduce, duplicate, copy, sell, resell or exploit any portion of the Service, use of the Service, or access to the Service or any contact on the website through which the service is provided, without express written permission by us.</p>
-    <p>The headings used in this agreement are included for convenience only and will not limit or otherwise affect these Terms.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 3 - ACCURACY, COMPLETENESS AND TIMELINESS OF INFORMATION</h2>
-    <p>We are not responsible if information made available on this site is not accurate, complete or current. The material on this site is provided for general information only and should not be relied upon or used as the sole basis for making decisions without consulting primary, more accurate, more complete or more timely sources of information. Any reliance on the material on this site is at your own risk.</p>
-    <p>This site may contain certain historical information. Historical information, necessarily, is not current and is provided for your reference only. We reserve the right to modify the contents of this site at any time, but we have no obligation to update any information on our site. You agree that it is your responsibility to monitor changes to our site.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 4 - MODIFICATIONS TO THE SERVICE AND PRICES</h2>
-    <p>Prices for our products are subject to change without notice.</p>
-    <p>We reserve the right at any time to modify or discontinue the Service (or any part or content thereof) without notice at any time.</p>
-    <p>We shall not be liable to you or to any third-party for any modification, price change, suspension or discontinuance of the Service.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 5 - PRODUCTS OR SERVICES (if applicable)</h2>
-    <p>Certain products or services may be available exclusively online through the website. These products or services may have limited quantities and are subject to return or exchange only according to our Return Policy.</p>
-    <p>We have made every effort to display as accurately as possible the colors and images of our products that appear at the store. We cannot guarantee that your computer monitor's display of any color will be accurate.</p>
-    <p>We reserve the right, but are not obligated, to limit the sales of our products or Services to any person, geographic region or jurisdiction. We may exercise this right on a case-by-case basis. We reserve the right to limit the quantities of any products or services that we offer. All descriptions of products or product pricing are subject to change at anytime without notice, at the sole discretion of us. We reserve the right to discontinue any product at any time. Any offer for any product or service made on this site is void where prohibited.</p>
-    <p>We do not warrant that the quality of any products, services, information, or other material purchased or obtained by you will meet your expectations, or that any errors in the Service will be corrected.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 6 - ACCURACY OF BILLING AND ACCOUNT INFORMATION</h2>
-    <p>We reserve the right to refuse any order you place with us. We may, in our sole discretion, limit or cancel quantities purchased per person, per household or per order. These restrictions may include orders placed by or under the same customer account, the same credit card, and/or orders that use the same billing and/or shipping address. In the event that we make a change to or cancel an order, we may attempt to notify you by contacting the e-mail and/or billing address/phone number provided at the time the order was made. We reserve the right to limit or prohibit orders that, in our sole judgment, appear to be placed by dealers, resellers or distributors.</p>
-    <p>You agree to provide current, complete and accurate purchase and account information for all purchases made at our store. You agree to promptly update your account and other information, including your email address and credit card numbers and expiration dates, so that we can complete your transactions and contact you as needed.</p>
-    <p>For more detail, please review our Returns Policy.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 7 - OPTIONAL TOOLS</h2>
-    <p>We may provide you with access to third-party tools over which we neither monitor nor have any control nor input.</p>
-    <p>You acknowledge and agree that we provide access to such tools ”as is” and “as available” without any warranties, representations or conditions of any kind and without any endorsement. We shall have no liability whatsoever arising from or relating to your use of optional third-party tools.</p>
-    <p>Any use by you of optional tools offered through the site is entirely at your own risk and discretion and you should ensure that you are familiar with and approve of the terms on which tools are provided by the relevant third-party provider(s).</p>
-    <p>We may also, in the future, offer new services and/or features through the website (including, the release of new tools and resources). Such new features and/or services shall also be subject to these Terms of Service.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 8 - THIRD-PARTY LINKS</h2>
-    <p>Certain content, products and services available via our Service may include materials from third-parties.</p>
-    <p>Third-party links on this site may direct you to third-party websites that are not affiliated with us. We are not responsible for examining or evaluating the content or accuracy and we do not warrant and will not have any liability or responsibility for any third-party materials or websites, or for any other materials, products, or services of third-parties.</p>
-    <p>We are not liable for any harm or damages related to the purchase or use of goods, services, resources, content, or any other transactions made in connection with any third-party websites. Please review carefully the third-party's policies and practices and make sure you understand them before you engage in any transaction. Complaints, claims, concerns, or questions regarding third-party products should be directed to the third-party.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 9 - USER COMMENTS, FEEDBACK AND OTHER SUBMISSIONS</h2>
-    <p>If, at our request, you send certain specific submissions (for example contest entries) or without a request from us you send creative ideas, suggestions, proposals, plans, or other materials, whether online, by email, by postal mail, or otherwise (collectively, 'comments'), you agree that we may, at any time, without restriction, edit, copy, publish, distribute, translate and otherwise use in any medium any comments that you forward to us. We are and shall be under no obligation (1) to maintain any comments in confidence; (2) to pay compensation for any comments; or (3) to respond to any comments.</p>
-    <p>We may, but have no obligation to, monitor, edit or remove content that we determine in our sole discretion are unlawful, offensive, threatening, libelous, defamatory, pornographic, obscene or otherwise objectionable or violates any party’s intellectual property or these Terms of Service.</p>
-    <p>You agree that your comments will not violate any right of any third-party, including copyright, trademark, privacy, personality or other personal or proprietary right. You further agree that your comments will not contain libelous or otherwise unlawful, abusive or obscene material, or contain any computer virus or other malware that could in any way affect the operation of the Service or any related website. You may not use a false e-mail address, pretend to be someone other than yourself, or otherwise mislead us or third-parties as to the origin of any comments. You are solely responsible for any comments you make and their accuracy. We take no responsibility and assume no liability for any comments posted by you or any third-party.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 10 - PERSONAL INFORMATION</h2>
-    <p>Your submission of personal information through the store is governed by our Privacy Policy. To view our Privacy Policy.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 11 - ERRORS, INACCURACIES AND OMISSIONS</h2>
-    <p>Occasionally there may be information on our site or in the Service that contains typographical errors, inaccuracies or omissions that may relate to product descriptions, pricing, promotions, offers, product shipping charges, transit times and availability. We reserve the right to correct any errors, inaccuracies or omissions, and to change or update information or cancel orders if any information in the Service or on any related website is inaccurate at any time without prior notice (including after you have submitted your order).</p>
-    <p>We undertake no obligation to update, amend or clarify information in the Service or on any related website, including without limitation, pricing information, except as required by law. No specified update or refresh date applied in the Service or on any related website, should be taken to indicate that all information in the Service or on any related website has been modified or updated.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 12 - PROHIBITED USES</h2>
-    <p>In addition to other prohibitions as set forth in the Terms of Service, you are prohibited from using the site or its content: (a) for any unlawful purpose; (b) to solicit others to perform or participate in any unlawful acts; (c) to violate any international, federal, provincial or state regulations, rules, laws, or local ordinances; (d) to infringe upon or violate our intellectual property rights or the intellectual property rights of others; (e) to harass, abuse, insult, harm, defame, slander, disparage, intimidate, or discriminate based on gender, sexual orientation, religion, ethnicity, race, age, national origin, or disability; (f) to submit false or misleading information; (g) to upload or transmit viruses or any other type of malicious code that will or may be used in any way that will affect the functionality or operation of the Service or of any related website, other websites, or the Internet; (h) to collect or track the personal information of others; (i) to spam, phish, pharm, pretext, spider, crawl, or scrape; (j) for any obscene or immoral purpose; or (k) to interfere with or circumvent the security features of the Service or any related website, other websites, or the Internet. We reserve the right to terminate your use of the Service or any related website for violating any of the prohibited uses.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 13 - DISCLAIMER OF WARRANTIES; LIMITATION OF LIABILITY</h2>
-    <p>We do not guarantee, represent or warrant that your use of our service will be uninterrupted, timely, secure or error-free.</p>
-    <p>We do not warrant that the results that may be obtained from the use of the service will be accurate or reliable.</p>
-    <p>You agree that from time to time we may remove the service for indefinite periods of time or cancel the service at any time, without notice to you.</p>
-    <p>You expressly agree that your use of, or inability to use, the service is at your sole risk. The service and all products and services delivered to you through the service are (except as expressly stated by us) provided 'as is' and 'as available' for your use, without any representation, warranties or conditions of any kind, either express or implied, including all implied warranties or conditions of merchantability, merchantable quality, fitness for a particular purpose, durability, title, and non-infringement.</p>
-    <p>In no case shall Alkebu-Lan Images, our directors, officers, employees, affiliates, agents, contractors, interns, suppliers, service providers or licensors be liable for any injury, loss, claim, or any direct, indirect, incidental, punitive, special, or consequential damages of any kind, including, without limitation lost profits, lost revenue, lost savings, loss of data, replacement costs, or any similar damages, whether based in contract, tort (including negligence), strict liability or otherwise, arising from your use of any of the service or any products procured using the service, or for any other claim related in any way to your use of the service or any product, including, but not limited to, any errors or omissions in any content, or any loss or damage of any kind incurred as a result of the use of the service or any content (or product) posted, transmitted, or otherwise made available via the service, even if advised of their possibility. Because some states or jurisdictions do not allow the exclusion or the limitation of liability for consequential or incidental damages, in such states or jurisdictions, our liability shall be limited to the maximum extent permitted by law.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 14 - INDEMNIFICATION</h2>
-    <p>You agree to indemnify, defend and hold harmless Alkebu-Lan Images and our parent, subsidiaries, affiliates, partners, officers, directors, agents, contractors, licensors, service providers, subcontractors, suppliers, interns and employees, harmless from any claim or demand, including reasonable attorneys’ fees, made by any third-party due to or arising out of your breach of these Terms of Service or the documents they incorporate by reference, or your violation of any law or the rights of a third-party.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 15 - SEVERABILITY</h2>
-    <p>In the event that any provision of these Terms of Service is determined to be unlawful, void or unenforceable, such provision shall nonetheless be enforceable to the fullest extent permitted by applicable law, and the unenforceable portion shall be deemed to be severed from these Terms of Service, such determination shall not affect the validity and enforceability of any other remaining provisions.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 16 - TERMINATION</h2>
-    <p>The obligations and liabilities of the parties incurred prior to the termination date shall survive the termination of this agreement for all purposes.</p>
-    <p>These Terms of Service are effective unless and until terminated by either you or us. You may terminate these Terms of Service at any time by notifying us that you no longer wish to use our Services, or when you cease using our site.</p>
-    <p>If in our sole judgment you fail, or we suspect that you have failed, to comply with any term or provision of these Terms of Service, we also may terminate this agreement at any time without notice and you will remain liable for all amounts due up to and including the date of termination; and/or accordingly may deny you access to our Services (or any part thereof).</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 17 - ENTIRE AGREEMENT</h2>
-    <p>The failure of us to exercise or enforce any right or provision of these Terms of Service shall not constitute a waiver of such right or provision.</p>
-    <p>These Terms of Service and any policies or operating rules posted by us on this site or in respect to The Service constitutes the entire agreement and understanding between you and us and govern your use of the Service, superseding any prior or contemporaneous agreements, communications and proposals, whether oral or written, between you and us (including, but not limited to, any prior versions of the Terms of Service).</p>
-    <p>Any ambiguities in the interpretation of these Terms of Service shall not be construed against the drafting party.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 18 - GOVERNING LAW</h2>
-    <p>These Terms of Service and any separate agreements whereby we provide you Services shall be governed by and construed in accordance with the laws of Davidson County, Tennessee, USA.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 19 - CHANGES TO TERMS OF SERVICE</h2>
-    <p>You can review the most current version of the Terms of Service at any time at this page.</p>
-    <p>We reserve the right, at our sole discretion, to update, change or replace any part of these Terms of Service by posting updates and changes to our website. It is your responsibility to check our website periodically for changes. Your continued use of or access to our website or the Service following the posting of any changes to these Terms of Service constitutes acceptance of those changes.</p>
-    <br><h2 class="text-2xl font-bold mt-6 mb-4">SECTION 20 - CONTACT INFORMATION</h2>
-    <p>Questions about the Terms of Service should be sent to us at info@alkebulanimages.com.</p>
-</div><br></section>
+<section class="py-12 lg:py-16">
+  <div class="container mx-auto px-6 lg:px-12 max-w-4xl">
+    <p class="text-sm text-muted-foreground mb-8">Last updated: February 2026</p>
+
+    <div class="prose max-w-none space-y-10">
+
+      <!-- Overview -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">Overview</h2>
+        <p class="text-foreground/80 mb-3">
+          This website is operated by Alkebu-Lan Images, a Nashville-based independent bookstore and cultural retailer. Throughout these terms, "we," "us," and "our" refer to Alkebu-Lan Images. We offer this website, including all information, tools, and services available from this site, conditioned upon your acceptance of all terms, conditions, policies, and notices stated here.
+        </p>
+        <p class="text-foreground/80 mb-3">
+          By visiting our site and/or purchasing from us, you engage in our "Service" and agree to be bound by these Terms of Service ("Terms"), including our <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a> and <a href="/return-policy" class="text-primary hover:underline">Return & Refund Policy</a>.
+        </p>
+        <p class="text-foreground/80">
+          Please read these Terms carefully before using our website. If you do not agree to all the terms and conditions of this agreement, you may not access the website or use any services.
+        </p>
+      </div>
+
+      <!-- Section 1: Online Store Terms -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">1. Online Store Terms</h2>
+        <p class="text-foreground/80 mb-3">By agreeing to these Terms, you represent that:</p>
+        <ul class="list-disc list-inside space-y-2 text-foreground/80 pl-2">
+          <li>You are at least the age of majority in your state or province of residence, or you have authorized a minor dependent to use this site under your supervision</li>
+          <li>You will not use our products or services for any illegal or unauthorized purpose</li>
+          <li>You will not violate any laws in your jurisdiction, including copyright laws</li>
+          <li>You will not transmit any malicious code, viruses, or destructive content</li>
+        </ul>
+        <p class="text-foreground/80 mt-3">A breach of any of these Terms will result in immediate termination of your access to our Services.</p>
+      </div>
+
+      <!-- Section 2: General Conditions -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">2. General Conditions</h2>
+        <ul class="list-disc list-inside space-y-2 text-foreground/80 pl-2">
+          <li>We reserve the right to refuse service to anyone for any reason at any time</li>
+          <li>Your content (excluding payment information) may be transmitted unencrypted across networks and adapted to technical requirements. Payment card information is always encrypted during transfer</li>
+          <li>You agree not to reproduce, duplicate, copy, sell, resell, or exploit any portion of the Service without our express written permission</li>
+          <li>We may update, modify, or discontinue any aspect of the Service at any time without prior notice</li>
+        </ul>
+      </div>
+
+      <!-- Section 3: Products & Pricing -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">3. Products, Pricing & Availability</h2>
+        <p class="text-foreground/80 mb-3">
+          Certain products may be available exclusively through our website. These products may have limited quantities and are subject to return or exchange only according to our <a href="/return-policy" class="text-primary hover:underline">Return & Refund Policy</a>.
+        </p>
+        <ul class="list-disc list-inside space-y-2 text-foreground/80 pl-2">
+          <li>We make every effort to display product colors and images accurately, but cannot guarantee that your monitor's display will be accurate</li>
+          <li>Prices are subject to change without notice</li>
+          <li>We reserve the right to limit sales quantities to any person, household, or order</li>
+          <li>All product descriptions and pricing are subject to change at any time without notice</li>
+          <li>We reserve the right to discontinue any product at any time</li>
+          <li>We do not warrant that the quality of any product will meet your expectations or that any errors in the Service will be corrected</li>
+        </ul>
+      </div>
+
+      <!-- Section 4: Ordering & Billing -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">4. Orders & Billing Accuracy</h2>
+        <p class="text-foreground/80 mb-3">
+          We reserve the right to refuse or cancel any order at our sole discretion. We may limit or cancel quantities purchased per person, per household, or per order. If we cancel or modify an order, we will attempt to notify you using the contact information provided at the time of purchase.
+        </p>
+        <p class="text-foreground/80">
+          You agree to provide current, complete, and accurate purchase and account information for all orders. You agree to promptly update your account information, including email address and payment details, so that we can complete your transactions and contact you as needed.
+        </p>
+      </div>
+
+      <!-- Section 5: Communications Consent -->
+      <div class="bg-card rounded-xl p-6 lg:p-8 border-2 border-primary/20">
+        <h2 class="text-2xl font-bold text-foreground mb-4">5. Communications Consent</h2>
+        <p class="text-foreground/80 mb-4">
+          By placing an order or initiating contact with us, you consent to receiving the following types of communications:
+        </p>
+
+        <div class="space-y-4">
+          <div class="bg-muted rounded-lg p-4">
+            <h3 class="font-semibold text-foreground mb-2">Transactional Communications</h3>
+            <p class="text-sm text-foreground/80">
+              Order confirmations, shipping notifications, delivery updates, refund confirmations, and other messages directly related to your transactions. These are necessary to fulfill your orders and are not marketing messages.
+            </p>
+          </div>
+
+          <div class="bg-muted rounded-lg p-4">
+            <h3 class="font-semibold text-foreground mb-2">Customer Service Communications</h3>
+            <p class="text-sm text-foreground/80">
+              Responses to your inquiries via email, phone, or text message. When you call our store, we may respond via text message to answer your questions or provide requested information. See our <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a> for full details on text messaging.
+            </p>
+          </div>
+
+          <div class="bg-muted rounded-lg p-4">
+            <h3 class="font-semibold text-foreground mb-2">Marketing Communications (Opt-in Only)</h3>
+            <p class="text-sm text-foreground/80">
+              Promotional emails about new products, events, and store updates. You will only receive these if you have opted in, and you can unsubscribe at any time by clicking the unsubscribe link in any email or contacting us directly.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 6: Accuracy of Information -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">6. Accuracy of Information</h2>
+        <p class="text-foreground/80 mb-3">
+          We are not responsible if information made available on this site is not accurate, complete, or current. The material on this site is provided for general information only and should not be relied upon as the sole basis for making decisions.
+        </p>
+        <p class="text-foreground/80">
+          Occasionally there may be information on our site that contains typographical errors, inaccuracies, or omissions related to product descriptions, pricing, promotions, or availability. We reserve the right to correct errors, update information, or cancel orders if any information is inaccurate at any time without prior notice, including after you have submitted your order.
+        </p>
+      </div>
+
+      <!-- Section 7: Third-Party Links -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">7. Third-Party Links & Services</h2>
+        <p class="text-foreground/80 mb-3">
+          Our website may include links to third-party websites, tools, or services. We are not responsible for the content, accuracy, or practices of third-party sites and do not endorse them.
+        </p>
+        <p class="text-foreground/80">
+          We are not liable for any harm or damages related to the purchase or use of goods, services, or content from third-party websites. Please review third-party terms and policies before engaging in any transaction.
+        </p>
+      </div>
+
+      <!-- Section 8: User Comments & Submissions -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">8. User Comments & Submissions</h2>
+        <p class="text-foreground/80 mb-3">
+          If you submit comments, reviews, suggestions, or other materials to us (collectively, "comments"), you agree that we may use, edit, copy, publish, distribute, or translate them in any medium without restriction, compensation, or obligation of confidence.
+        </p>
+        <p class="text-foreground/80 mb-3">You agree that your comments will not:</p>
+        <ul class="list-disc list-inside space-y-1 text-foreground/80 pl-2">
+          <li>Violate any third-party rights, including copyright, trademark, or privacy rights</li>
+          <li>Contain unlawful, abusive, defamatory, obscene, or otherwise objectionable material</li>
+          <li>Contain malware, viruses, or any code that could affect the operation of the Service</li>
+          <li>Use a false email address, impersonate another person, or misrepresent the origin of any content</li>
+        </ul>
+        <p class="text-foreground/80 mt-3">
+          We may, but have no obligation to, monitor, edit, or remove content that we determine to be objectionable or in violation of these Terms.
+        </p>
+      </div>
+
+      <!-- Section 9: Personal Information -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">9. Personal Information</h2>
+        <p class="text-foreground/80">
+          Your submission of personal information through our website is governed by our <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>. This includes information about how we collect, use, and protect your data, as well as your right to request data access, correction, or deletion.
+        </p>
+      </div>
+
+      <!-- Section 10: Prohibited Uses -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">10. Prohibited Uses</h2>
+        <p class="text-foreground/80 mb-3">In addition to other prohibitions in these Terms, you are prohibited from using the site or its content:</p>
+        <div class="bg-muted rounded-lg p-5">
+          <ul class="list-disc list-inside space-y-2 text-sm text-foreground/80 pl-2">
+            <li>For any unlawful purpose or to solicit others to perform unlawful acts</li>
+            <li>To violate any international, federal, state, or local regulations, rules, or laws</li>
+            <li>To infringe upon our intellectual property rights or those of others</li>
+            <li>To harass, abuse, insult, defame, intimidate, or discriminate based on any protected characteristic</li>
+            <li>To submit false or misleading information</li>
+            <li>To upload or transmit viruses or malicious code</li>
+            <li>To collect or track the personal information of others without consent</li>
+            <li>To spam, phish, crawl, scrape, or engage in any automated data collection</li>
+            <li>To interfere with or circumvent the security features of the Service</li>
+          </ul>
+        </div>
+        <p class="text-foreground/80 mt-3">
+          We reserve the right to terminate your use of the Service for violating any of these prohibited uses.
+        </p>
+      </div>
+
+      <!-- Section 11: Disclaimer -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">11. Disclaimer of Warranties & Limitation of Liability</h2>
+        <p class="text-foreground/80 mb-3">
+          We do not guarantee, represent, or warrant that your use of our Service will be uninterrupted, timely, secure, or error-free. We do not warrant that the results obtained from use of the Service will be accurate or reliable.
+        </p>
+        <p class="text-foreground/80 mb-3">
+          The Service and all products delivered through the Service are provided "as is" and "as available" without any representations, warranties, or conditions of any kind, either express or implied, including implied warranties of merchantability, fitness for a particular purpose, durability, title, and non-infringement.
+        </p>
+        <p class="text-foreground/80">
+          In no case shall Alkebu-Lan Images, our directors, officers, employees, affiliates, agents, contractors, or service providers be liable for any injury, loss, claim, or any direct, indirect, incidental, punitive, special, or consequential damages of any kind arising from your use of the Service or any products purchased through the Service. In states or jurisdictions that do not allow the exclusion or limitation of liability for consequential or incidental damages, our liability shall be limited to the maximum extent permitted by law.
+        </p>
+      </div>
+
+      <!-- Section 12: Indemnification -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">12. Indemnification</h2>
+        <p class="text-foreground/80">
+          You agree to indemnify, defend, and hold harmless Alkebu-Lan Images and our officers, directors, agents, contractors, service providers, and employees from any claim or demand, including reasonable attorneys' fees, made by any third party due to or arising out of your breach of these Terms, your violation of any law, or your violation of the rights of a third party.
+        </p>
+      </div>
+
+      <!-- Section 13: Severability -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">13. Severability</h2>
+        <p class="text-foreground/80">
+          If any provision of these Terms is determined to be unlawful, void, or unenforceable, such provision shall be enforceable to the fullest extent permitted by applicable law, and the unenforceable portion shall be severed from these Terms without affecting the validity and enforceability of the remaining provisions.
+        </p>
+      </div>
+
+      <!-- Section 14: Termination -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">14. Termination</h2>
+        <p class="text-foreground/80 mb-3">
+          These Terms are effective until terminated by either you or us. You may terminate by ceasing to use our site and notifying us. We may terminate or suspend your access at any time, without notice, if you fail to comply with any provision of these Terms.
+        </p>
+        <p class="text-foreground/80">
+          Obligations and liabilities incurred prior to the termination date shall survive the termination of this agreement. You will remain liable for all amounts due up to and including the date of termination.
+        </p>
+      </div>
+
+      <!-- Section 15: Governing Law -->
+      <div class="bg-muted rounded-xl p-6">
+        <h2 class="text-2xl font-bold text-foreground mb-4">15. Governing Law</h2>
+        <p class="text-foreground/80">
+          These Terms of Service and any separate agreements whereby we provide you Services shall be governed by and construed in accordance with the laws of the <strong>State of Tennessee, USA</strong>, with venue in <strong>Davidson County, Tennessee</strong>.
+        </p>
+      </div>
+
+      <!-- Section 16: Entire Agreement -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">16. Entire Agreement</h2>
+        <p class="text-foreground/80 mb-3">
+          The failure of us to exercise or enforce any right or provision of these Terms shall not constitute a waiver of such right or provision.
+        </p>
+        <p class="text-foreground/80">
+          These Terms of Service and any policies or operating rules posted by us on this site constitute the entire agreement between you and us, superseding any prior agreements, communications, or proposals, whether oral or written. Any ambiguities in interpretation shall not be construed against the drafting party.
+        </p>
+      </div>
+
+      <!-- Section 17: Changes -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">17. Changes to Terms of Service</h2>
+        <p class="text-foreground/80">
+          You can review the most current version of these Terms at any time on this page. We reserve the right to update, change, or replace any part of these Terms by posting updates to our website. It is your responsibility to check this page periodically for changes. Your continued use of the website following the posting of any changes constitutes acceptance of those changes.
+        </p>
+      </div>
+
+      <!-- Contact -->
+      <div class="bg-card rounded-xl p-6 lg:p-8 border border-border">
+        <h2 class="text-2xl font-bold text-foreground mb-4">18. Contact Information</h2>
+        <p class="text-foreground/80 mb-4">Questions about these Terms of Service should be directed to:</p>
+        <div class="space-y-3 text-sm text-foreground/80">
+          <div class="flex items-center gap-3">
+            <i class="far fa-envelope text-primary text-lg"></i>
+            <a href="mailto:info@alkebulanimages.com" class="text-primary hover:underline">info@alkebulanimages.com</a>
+          </div>
+          <div class="flex items-center gap-3">
+            <i class="far fa-phone text-primary text-lg"></i>
+            <a href="tel:6153214111" class="text-primary hover:underline">(615) 321-4111</a>
+          </div>
+          <div class="flex items-start gap-3">
+            <i class="far fa-map-marker-alt text-primary text-lg mt-0.5"></i>
+            <address class="not-italic">
+              Alkebu-Lan Images<br>
+              2721 Jefferson St.<br>
+              Nashville, TN 37208, USA
+            </address>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

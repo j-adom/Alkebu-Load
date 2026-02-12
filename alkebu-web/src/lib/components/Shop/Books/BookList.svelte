@@ -273,7 +273,7 @@
     min-width: 40px;
     height: 40px;
     padding: 0 10px;
-    background-color: var(--thm-gray, #eceeef);
+    background-color: hsl(var(--muted));
     color: #9ca3a9;
     font-size: 16px;
     font-weight: 500;
@@ -283,12 +283,12 @@
   }
 
   .post-pagination a:hover {
-    background-color: var(--thm-primary, #5b8c51);
+    background-color: hsl(var(--primary));
     color: #fff;
   }
 
   .post-pagination a.active {
-    background-color: var(--thm-base, #eddd5e);
+    background-color: hsl(var(--secondary));
     color: #fff;
     cursor: default;
     pointer-events: none;

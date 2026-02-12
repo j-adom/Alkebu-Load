@@ -39,7 +39,7 @@
 <section class="page-header" style="background-image: url(/assets/images/resources/page-header-bg.jpg);">
   <div class="container">
     <h2>Events</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/">Home</a></li>
       <li><span>Events</span></li>
     </ul>
@@ -50,10 +50,10 @@
   <div class="container mx-auto px-6 lg:px-12">
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
       <div>
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-muted-foreground">
           {pagination.totalDocs || 0} {upcoming === false ? 'past' : 'upcoming'} event{(pagination.totalDocs || 0) === 1 ? '' : 's'}
         </p>
-        <h1 class="text-3xl font-bold text-thm-black">What&apos;s happening</h1>
+        <h1 class="text-3xl font-bold text-foreground">What&apos;s happening</h1>
       </div>
 
       <form method="GET" class="flex flex-wrap items-end gap-4">
@@ -81,8 +81,8 @@
 
     {#if events.length === 0}
       <div class="bg-gray-50 rounded-lg p-8 text-center">
-        <p class="text-gray-700">No events found.</p>
-        <p class="text-sm text-gray-500 mt-2">Check back soon for new happenings.</p>
+        <p class="text-muted-foreground">No events found.</p>
+        <p class="text-sm text-muted-foreground mt-2">Check back soon for new happenings.</p>
       </div>
     {:else}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -104,21 +104,21 @@
                   loading="lazy"
                 />
               {/if}
-              <div class="absolute top-3 left-3 bg-thm-primary text-white text-sm font-semibold px-3 py-1 rounded">
+              <div class="absolute top-3 left-3 bg-primary text-white text-sm font-semibold px-3 py-1 rounded">
                 {formatDateShort(event.startDate)}
               </div>
             </div>
             <div class="p-5 space-y-2">
-              <h3 class="text-lg font-bold text-thm-black group-hover:text-thm-primary transition-colors">
+              <h3 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                 {event.title}
               </h3>
               {#if event.type}
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-muted-foreground">
                   <i class="far fa-tag mr-2"></i>{event.type}
                 </p>
               {/if}
               {#if formatLocation(event)}
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-muted-foreground">
                   <i class="far fa-map-marker-alt mr-2"></i>{formatLocation(event)}
                 </p>
               {/if}
@@ -133,7 +133,7 @@
         {#if pagination.hasPrevPage}
           <a href={buildLink(pagination.page - 1)} class="px-4 py-2 border rounded hover:bg-gray-100">Previous</a>
         {/if}
-        <span class="px-4 py-2 bg-thm-base rounded font-semibold text-thm-black">
+        <span class="px-4 py-2 bg-muted rounded font-semibold text-foreground">
           Page {pagination.page} of {pagination.totalPages}
         </span>
         {#if pagination.hasNextPage}

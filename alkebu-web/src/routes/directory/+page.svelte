@@ -44,7 +44,7 @@
 <section class="page-header" style="background-image: url(/assets/images/resources/page-header-bg.jpg);">
   <div class="container">
     <h2>Local Business Directory</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/">Home</a></li>
       <li><span>Directory</span></li>
     </ul>
@@ -56,7 +56,7 @@
     <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-10">
       <div>
         <p class="text-sm text-gray-600">{pagination.totalDocs || 0} listings</p>
-        <h1 class="text-3xl font-bold text-thm-black">Support Local Businesses</h1>
+        <h1 class="text-3xl font-bold text-foreground">Support Local Businesses</h1>
       </div>
 
       <form method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -131,7 +131,7 @@
                 {/if}
               </div>
               <div class="flex-1">
-                <h3 class="text-lg font-bold text-thm-black group-hover:text-thm-primary transition-colors">
+                <h3 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                   {business.name}
                 </h3>
                 {#if business.category}
@@ -166,7 +166,7 @@
         {#if pagination.hasPrevPage}
           <a href={buildLink(pagination.page - 1)} class="px-4 py-2 border rounded hover:bg-gray-100">Previous</a>
         {/if}
-        <span class="px-4 py-2 bg-thm-base rounded font-semibold text-thm-black">
+        <span class="px-4 py-2 bg-muted rounded font-semibold text-foreground">
           Page {pagination.page} of {pagination.totalPages}
         </span>
         {#if pagination.hasNextPage}

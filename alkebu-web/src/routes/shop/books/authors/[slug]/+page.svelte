@@ -24,7 +24,7 @@
 <section class="page-header">
   <div class="container">
     <h2><small>Author:</small><br>{author?.name}</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/shop/">Shop</a></li>
       <li><a href="/shop/books/" class="shop_style">Books</a></li>
       <li><span>Authors</span></li>

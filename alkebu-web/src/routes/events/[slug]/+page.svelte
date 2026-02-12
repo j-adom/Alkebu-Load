@@ -27,7 +27,7 @@
 <section class="page-header" style="background-image: url({event.featuredImage?.url || '/assets/images/resources/page-header-bg.jpg'});">
   <div class="container">
     <h2>{event.title}</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/">Home</a></li>
       <li><a href="/events">Events</a></li>
       <li><span>{event.title}</span></li>
@@ -63,21 +63,21 @@
                 Past Event
               </span>
             {:else}
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-thm-primary text-white">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary text-white">
                 <i class="far fa-calendar-star mr-2"></i>
                 Upcoming
               </span>
             {/if}
 
             {#if event.type}
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-thm-base text-thm-black">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-muted text-foreground">
                 <i class="far fa-tag mr-2"></i>
                 {event.type}
               </span>
             {/if}
           </div>
 
-          <h1 class="text-3xl lg:text-4xl font-bold mb-4 text-thm-black">{event.title}</h1>
+          <h1 class="text-3xl lg:text-4xl font-bold mb-4 text-foreground">{event.title}</h1>
 
           {#if event.description}
             <div class="prose max-w-none mb-8">
@@ -101,14 +101,14 @@
 
           <!-- Event Details Card -->
           <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-xl font-bold mb-4 text-thm-black">Event Details</h3>
+            <h3 class="text-xl font-bold mb-4 text-foreground">Event Details</h3>
 
             <div class="space-y-4">
               <!-- Date & Time -->
               <div class="flex items-start">
-                <i class="far fa-calendar text-thm-primary text-xl mt-1 mr-3"></i>
+                <i class="far fa-calendar text-primary text-xl mt-1 mr-3"></i>
                 <div>
-                  <p class="font-semibold text-thm-black">Date</p>
+                  <p class="font-semibold text-foreground">Date</p>
                   <p class="text-gray-700">{dateDisplay}</p>
                   <p class="text-sm text-gray-600">{timeDisplay}</p>
                 </div>
@@ -117,9 +117,9 @@
               <!-- Location -->
               {#if event.location}
                 <div class="flex items-start">
-                  <i class="far fa-map-marker-alt text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-map-marker-alt text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Location</p>
+                    <p class="font-semibold text-foreground">Location</p>
                     <p class="text-gray-700">{event.location}</p>
                   </div>
                 </div>
@@ -128,9 +128,9 @@
               <!-- Venue -->
               {#if event.venue}
                 <div class="flex items-start">
-                  <i class="far fa-building text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-building text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Venue</p>
+                    <p class="font-semibold text-foreground">Venue</p>
                     <p class="text-gray-700">{event.venue.name}</p>
                   </div>
                 </div>
@@ -139,9 +139,9 @@
               <!-- Cost -->
               {#if event.cost !== undefined}
                 <div class="flex items-start">
-                  <i class="far fa-ticket text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-ticket text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Cost</p>
+                    <p class="font-semibold text-foreground">Cost</p>
                     <p class="text-gray-700">
                       {event.cost === 0 || event.cost === '0' ? 'Free' : `$${event.cost}`}
                     </p>
@@ -167,11 +167,11 @@
               <!-- Contact -->
               {#if event.contactEmail || event.contactPhone}
                 <div class="pt-4 border-t border-gray-200">
-                  <p class="font-semibold text-thm-black mb-2">Contact</p>
+                  <p class="font-semibold text-foreground mb-2">Contact</p>
                   {#if event.contactEmail}
                     <p class="text-sm text-gray-700">
                       <i class="far fa-envelope mr-2"></i>
-                      <a href="mailto:{event.contactEmail}" class="hover:text-thm-primary">
+                      <a href="mailto:{event.contactEmail}" class="hover:text-primary">
                         {event.contactEmail}
                       </a>
                     </p>
@@ -179,7 +179,7 @@
                   {#if event.contactPhone}
                     <p class="text-sm text-gray-700">
                       <i class="far fa-phone mr-2"></i>
-                      <a href="tel:{event.contactPhone}" class="hover:text-thm-primary">
+                      <a href="tel:{event.contactPhone}" class="hover:text-primary">
                         {event.contactPhone}
                       </a>
                     </p>
@@ -190,14 +190,14 @@
           </div>
 
           <!-- Share Card -->
-          <div class="bg-thm-base rounded-lg p-6">
-            <h3 class="text-lg font-bold mb-3 text-thm-black">Share Event</h3>
+          <div class="bg-muted rounded-lg p-6">
+            <h3 class="text-lg font-bold mb-3 text-foreground">Share Event</h3>
             <div class="flex gap-3">
               <a
                 href="https://www.facebook.com/sharer/sharer.php?u={encodeURIComponent(seo.canonical)}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex-1 bg-white hover:bg-thm-primary hover:text-white transition-colors rounded p-2 text-center"
+                class="flex-1 bg-white hover:bg-primary hover:text-white transition-colors rounded p-2 text-center"
                 aria-label="Share on Facebook"
               >
                 <i class="fab fa-facebook-f"></i>
@@ -206,14 +206,14 @@
                 href="https://twitter.com/intent/tweet?url={encodeURIComponent(seo.canonical)}&text={encodeURIComponent(event.title)}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="flex-1 bg-white hover:bg-thm-primary hover:text-white transition-colors rounded p-2 text-center"
+                class="flex-1 bg-white hover:bg-primary hover:text-white transition-colors rounded p-2 text-center"
                 aria-label="Share on Twitter"
               >
                 <i class="fab fa-twitter"></i>
               </a>
               <a
                 href="mailto:?subject={encodeURIComponent(event.title)}&body={encodeURIComponent(seo.canonical)}"
-                class="flex-1 bg-white hover:bg-thm-primary hover:text-white transition-colors rounded p-2 text-center"
+                class="flex-1 bg-white hover:bg-primary hover:text-white transition-colors rounded p-2 text-center"
                 aria-label="Share via Email"
               >
                 <i class="far fa-envelope"></i>
@@ -249,11 +249,11 @@
                 </div>
               {/if}
               <div class="p-4">
-                <p class="text-sm text-thm-primary mb-2">
+                <p class="text-sm text-primary mb-2">
                   <i class="far fa-calendar mr-1"></i>
                   {formatDate(relatedEvent.startDate)}
                 </p>
-                <h4 class="font-bold text-lg mb-2 text-thm-black group-hover:text-thm-primary transition-colors">
+                <h4 class="font-bold text-lg mb-2 text-foreground group-hover:text-primary transition-colors">
                   {relatedEvent.title}
                 </h4>
                 {#if relatedEvent.description}

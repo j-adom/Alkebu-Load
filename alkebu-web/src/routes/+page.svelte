@@ -1,230 +1,375 @@
 <script>
-	import {fly, fade} from 'svelte/transition'
-	import { page } from '$app/stores';
+	import { fly, fade } from "svelte/transition";
+	import { page } from "$app/stores";
 
-	import { urlFor } from '$lib/payload';
+	import { urlFor } from "$lib/payload";
+	import {
+		ArrowRight,
+		BookOpen,
+		Shirt,
+		Sparkles,
+		Home as HomeIcon,
+	} from "lucide-svelte";
 
-	// import BookCarousel from '$lib/components/Shop/Books/BookCarousel.svelte'
-	import BookCover from '$lib/components/Shop/Books/BookCover.svelte'
-	import AddToCartButton from '$lib/components/cart/AddToCartButton.svelte';
-	import { formatCurrency } from '$lib/utils/currency';
+	import BookCover from "$lib/components/Shop/Books/BookCover.svelte";
+	import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
+	import { formatCurrency } from "$lib/utils/currency";
 
-	import Meta from '$lib/components/Meta.svelte'
+	import Meta from "$lib/components/Meta.svelte";
 
 	let { data } = $props();
-	const {banner, section2, section3, section4, featured, newBooks} = data;
-	 
+	const { banner, section2, section3, section4, featured, newBooks } = data;
+
 	const metadata = {
 		title: `Alkebu-Lan Images, Nashville's only Black-owned bookstore`,
 		description: `Alkebu-Lan Images is a Black-Owned bookstore that has been Nashville's center for promoting positivity in Black culture and empowering diverse Black lifestyles since 1986`,
-		image: '/assets/images/resources/logo.png',
-		imageAlt: 'Alkebu-Lan Images Logo',
-		url: '/'
-	}
+		image: "/assets/images/resources/logo.png",
+		imageAlt: "Alkebu-Lan Images Logo",
+		url: "/",
+	};
+
+	const categoryIcons = [BookOpen, Shirt, Sparkles, HomeIcon];
+
+	// Shop categories data
+	const shopCategories = [
+		{
+			title: "Books",
+			desc: "Our extensive range of books on Black topics by Black authors.",
+			href: "/shop/books",
+			imageIndex: 0,
+		},
+		{
+			title: "Apparel",
+			desc: "Clothing and Accessories for the Black esthetic",
+			href: "/shop/apparel",
+			imageIndex: 1,
+		},
+		{
+			title: "Health & Beauty",
+			desc: "All-natural products for your skin, hair, and health",
+			href: "/shop/health-and-beauty",
+			imageIndex: 2,
+		},
+		{
+			title: "Art & Imports",
+			desc: "Decorate your home with unique African imports and prints",
+			href: "/shop/home-goods",
+			imageIndex: 3,
+		},
+	];
+
+	// Business services data
+	const businessServices = section4?.images
+		? [
+				{
+					title: "Wholesale",
+					subtitle: "solutions",
+					image: section4.images[0],
+					desc: "Partner with us for bulk orders and wholesale pricing for retailers and distributors.",
+				},
+				{
+					title: "Institutional",
+					subtitle: "Contracts",
+					image: section4.images[1],
+					desc: "Libraries, schools, and organizations can benefit from our institutional partnerships.",
+				},
+				{
+					title: "Non-profit",
+					subtitle: "projects",
+					image: section4.images[2],
+					desc: "We support community initiatives and non-profit organizations with special programs.",
+				},
+			]
+		: [];
 </script>
-
-<style>
-
-</style>
 
 <Meta {metadata} />
 
 <!-- Banner Section -->
 <section class="banner-section banner-one">
-
 	<div class="banner-carousel">
 		<!-- Slide Item -->
 		<div class="slide-item">
-			<div class="image-layer" style="background-image: url({urlFor(banner.bannerImages[0]).width(1920).height(780).auto('format').url()});"></div>
+			<div
+				class="image-layer"
+				style="background-image: url({urlFor(banner.bannerImages[0])
+					.width(1920)
+					.height(780)
+					.auto('format')
+					.url()});"
+			></div>
 			<div class="container mx-auto">
 				<div class="content-box">
 					<div class="content">
 						<div class="inner">
-							<div class="sub-title" in:fly="{{y:200, delay: 1500, duration: 1500}}" >Elevating Black Lifestyles</div>
-							<h1 in:fly="{{y:200, delay: 1000, duration: 1500}}">Welcome to<br> Alkebu-Lan Images</h1>
+							<div
+								class="sub-title"
+								in:fly={{ y: 200, delay: 1500, duration: 1500 }}
+							>
+								Elevating Black Lifestyles
+							</div>
+							<h1
+								in:fly={{ y: 200, delay: 1000, duration: 1500 }}
+							>
+								Welcome to<br /> Alkebu-Lan Images
+							</h1>
 							<div class="link-box">
-								<a href="/shop" class="btn-primary btn-lg" in:fly="{{y:200, delay: 2000, duration: 1500}}">Shop Now</a>
+								<a
+									href="/shop"
+									class="btn-primary btn-lg"
+									in:fly={{
+										y: 200,
+										delay: 2000,
+										duration: 1500,
+									}}>Shop Now</a
+								>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-
 	</div>
 </section>
 <!--End Banner Section -->
 
-<section class="about_one">
-	<div class="container mx-auto">
-		<div class="grid grid-cols-1 md:grid-cols-12">
-			<div class="md:col-span-6 w-100 px-4 md:pb-20 md:mb-20">
-				<div class="about1_img ">
-					<div class="about1_shape_1 box-border"></div>
-					<img class="object-fit align-middle box-border border-none " loading="lazy" src="{urlFor(section2.images[0]).width(450).height(573).auto('format').url()}" alt={section2.images[0].alt}>
-					<div class="about1_icon-box">
-						<div class="circle">
-							<span class="icon-focus"></span>
+<!-- About Section -->
+<section class="section bg-background">
+	<div class="container mx-auto px-4">
+		<div
+			class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center"
+		>
+			<!-- Image Grid -->
+			<div class="relative">
+				<div class="grid grid-cols-12 gap-4">
+					<div class="col-span-8">
+						<img
+							class="w-full h-auto rounded-2xl shadow-medium"
+							loading="lazy"
+							src={urlFor(section2.images[0])
+								.width(500)
+								.height(600)
+								.auto("format")
+								.url()}
+							alt={section2.images[0].alt}
+						/>
+					</div>
+					<div class="col-span-4 flex items-end">
+						<div
+							class="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center shadow-glow"
+						>
+							<span
+								class="text-3xl text-primary-foreground font-bold"
+								>35+</span
+							>
 						</div>
 					</div>
-					<div class="about_img_2 ">
-						<img class="overflow-hidden" loading="lazy" src="{urlFor(section2.images[1]).width(370).height(276).auto('format').url()}" alt={section2.images[1].alt}>
-					</div>
+				</div>
+				<div class="absolute -bottom-8 right-8 w-2/3">
+					<img
+						class="w-full h-auto rounded-2xl shadow-strong border-4 border-background"
+						loading="lazy"
+						src={urlFor(section2.images[1])
+							.width(400)
+							.height(300)
+							.auto("format")
+							.url()}
+						alt={section2.images[1].alt}
+					/>
 				</div>
 			</div>
-			<div class="md:col-span-6">
-				<div class="block-title text-left">
-					<p>About Alkebu-lan</p>
-					<h3>We curate the whole black experience: mind, body, and soul</h3>
-					<div class="leaf">
-						<img loading="lazy" src="/assets/images/resources/leaf.png" alt="">
+
+			<!-- Content -->
+			<div class="lg:pl-8">
+				<p
+					class="text-primary font-semibold uppercase tracking-wide mb-2"
+				>
+					About Alkebu-lan
+				</p>
+				<h2
+					class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6"
+				>
+					We curate the whole Black experience: mind, body, and soul
+				</h2>
+				<div class="w-20 h-1 bg-primary mb-8"></div>
+
+				<p class="text-lg text-muted-foreground mb-8">
+					Over the last 35 years, Alkebu-Lan Images has created a
+					shopping experience found in few places around the world.
+					Our goal is to bring all the accoutrements of the Black
+					esthetic under one roof to promote positive Black lifestyles
+					for our customers.
+				</p>
+
+				<!-- Feature Icons -->
+				<div class="grid grid-cols-2 gap-6 mb-8">
+					<div class="flex items-center gap-4">
+						<div
+							class="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"
+						>
+							<img
+								loading="lazy"
+								class="w-10 h-10"
+								src="/assets/images/alkebulan/sankofa.svg"
+								alt="SANKOFA"
+							/>
+						</div>
+						<p class="font-medium text-sm">
+							Connecting our present to our past
+						</p>
+					</div>
+					<div class="flex items-center gap-4">
+						<div
+							class="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"
+						>
+							<img
+								loading="lazy"
+								class="w-10 h-10"
+								src="/assets/images/alkebulan/crocs.svg"
+								alt="FUNTUNFUNEFU-DENKYEMFUNEFU"
+							/>
+						</div>
+						<p class="font-medium text-sm">
+							Strength and unity through knowledge
+						</p>
 					</div>
 				</div>
-				<div class="about_content">
-					<div class="text">
-						<p>Over the last 35 years, Alkebu-Lan Images has created a shopping experience
-						found in few places around the world. Our goal is to bring all the accoutrements
-						of the Black esthetic under one roof to promote positive Black lifestyles for our
-						customers.
-						 </p>
-					</div>
-					<div class="about1_icon_wrap">
-						<div class="about1_icon_single">
-							<div class="about1_icon">
-								<img loading="lazy" style="width:60px; height:60px" src="/assets/images/alkebulan/sankofa.svg" alt="SANKOFA">
-							</div>
-							<p>Connecting our present to our past</p>
-						</div>
-						<div class="about1_icon_single">
-							<div class="about1_icon">
-								<img loading="lazy" style="width:60px; height:60px" src="/assets/images/alkebulan/crocs.svg" alt="FUNTUNFUNEFU-DENKYEMFUNEFU">
-							</div>
-							<p>Strength and unity through knowledge</p>
-						</div>
-					</div>
-					<div class="bottom_text">
-						<p>As mainstream retailers provide less and less service to customers while at the 
-						same time making it more and more difficult to find quality products, Alkebu-Lan Images 
-						strives to empower our customers in their search for products that amplify diverse, 
-						Afrocentric lifestyles.</p>
-					</div>
-					<div class="about1__button-block">
-						<a href="/about" class="btn-outline">Learn More</a>
-					</div>
-				</div>
+
+				<p class="text-muted-foreground mb-8">
+					As mainstream retailers provide less and less service to
+					customers while at the same time making it more and more
+					difficult to find quality products, Alkebu-Lan Images
+					strives to empower our customers in their search for
+					products that amplify diverse, Afrocentric lifestyles.
+				</p>
+
+				<a
+					href="/about"
+					class="btn-outline inline-flex items-center gap-2"
+				>
+					Learn More
+					<ArrowRight class="w-4 h-4" />
+				</a>
 			</div>
 		</div>
 	</div>
 </section>
 
 <!-- Shop Categories -->
-<section class="service_one">
-	<div class="container mx-auto">
-		<div class="block-title flex flex-col gap-5 text-center justify-center">
-			<p>Shop our store online</p>
-			<h3>Products We Offer</h3>
-			<img class="w-max pt-2 mx-auto" loading="lazy" src="/assets/images/resources/leaf.png" alt="">
+<section class="py-20 bg-muted/30">
+	<div class="container mx-auto px-4">
+		<div class="text-center mb-12">
+			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+				Shop Our Store Online
+			</p>
+			<h2
+				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
+			>
+				Products We Offer
+			</h2>
+			<div class="w-20 h-1 bg-primary mx-auto"></div>
 		</div>
-		<div class="flex flex-col lg:flex-row flex-wrap">
-			<div class="basis-1/2 md:basis-1/4 px-4 py-2">
-				<div class="service_1_single wow fadeInUp">
-					<div class="content">
-						<h3>Shop<br>books</h3>
-						<p>Our extensive range of books on Black topics by Black authors.</p>
-					</div>
-					<div class="service_1_img">
-						{#if section3.images?.[0]}
-							<img loading="lazy" src="{urlFor(section3.images[0]).width(270).height(175).auto('format').url()}" alt={section3.images[0]?.alt || 'Books'}>
-						{:else}
-							<img loading="lazy" src="/assets/images/resources/placeholder.jpg" alt="Books">
-						{/if}
-						<div class="hover_box">
-							<a href="/shop/books" aria-label="Browse books category"><span class="icon-left-arrow" aria-hidden="true"></span></a>
+
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+			{#each shopCategories as cat, i}
+				<a href={cat.href} class="group">
+					<div class="card-modern overflow-hidden h-full">
+						<div class="relative aspect-[4/3] overflow-hidden">
+							{#if section3.images?.[cat.imageIndex]}
+								<img
+									loading="lazy"
+									src={urlFor(section3.images[cat.imageIndex])
+										.width(400)
+										.height(300)
+										.auto("format")
+										.url()}
+									alt={section3.images[cat.imageIndex]?.alt ||
+										cat.title}
+									class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+								/>
+							{:else}
+								<img
+									loading="lazy"
+									src="/assets/images/resources/placeholder.jpg"
+									alt={cat.title}
+									class="w-full h-full object-cover"
+								/>
+							{/if}
+							<div
+								class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+							></div>
+							<div
+								class="absolute bottom-4 left-4 right-4 text-white"
+							>
+								<h3 class="text-xl font-bold mb-1">
+									Shop {cat.title}
+								</h3>
+							</div>
+						</div>
+						<div class="p-5">
+							<p class="text-muted-foreground text-sm mb-4">
+								{cat.desc}
+							</p>
+							<span
+								class="inline-flex items-center gap-2 text-primary font-semibold text-sm group-hover:gap-3 transition-all"
+							>
+								Browse {cat.title}
+								<ArrowRight class="w-4 h-4" />
+							</span>
 						</div>
 					</div>
-				</div>
-			</div>
-			<div class="basis-1/2 lg:basis-1/4 px-4 py-2">
-				<div class="service_1_single wow fadeInUp" data-wow-delay="300ms">
-					<div class="content">
-						<h3>Shop<br>apparel</h3>
-						<p>Clothing and Accessories for the Black esthetic</p>
-					</div>
-					<div class="service_1_img">
-						{#if section3.images?.[1]}
-							<img loading="lazy" src="{urlFor(section3.images[1]).width(270).height(175).auto('format').url()}" alt={section3.images[1]?.alt || 'Apparel'}>
-						{:else}
-							<img loading="lazy" src="/assets/images/resources/placeholder.jpg" alt="Apparel">
-						{/if}
-						<div class="hover_box">
-							<a href="/shop/apparel" aria-label="Browse apparel category"><span class="icon-left-arrow" aria-hidden="true"></span></a>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="basis-1/2 lg:basis-1/4 px-4 py-2">
-				<div class="service_1_single wow fadeInUp" data-wow-delay="600ms">
-					<div class="content">
-						<h3>Shop<br>health & beauty</h3>
-						<p>All-natural products for your skin, hair, and health</p>
-					</div>
-					<div class="service_1_img">
-						{#if section3.images?.[2]}
-							<img loading="lazy" src="{urlFor(section3.images[2]).width(270).height(175).auto('format').url()}" alt={section3.images[2]?.alt || 'Health & Beauty'}>
-						{:else}
-							<img loading="lazy" src="/assets/images/resources/placeholder.jpg" alt="Health & Beauty">
-						{/if}
-						<div class="hover_box">
-							<a href="/shop/health-and-beauty" aria-label="Browse health and beauty category"><span class="icon-left-arrow" aria-hidden="true"></span></a>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="basis-1/2 lg:basis-1/4 px-4 py-2">
-				<div class="service_1_single wow fadeInUp" data-wow-delay="900ms">
-					<div class="content">
-						<h3>Shop<br>art and imports</h3>
-						<p>Decorate your home with unique African imports and prints</p>
-					</div>
-					<div class="service_1_img">
-						{#if section3.images?.[3]}
-							<img loading="lazy" src="{urlFor(section3.images[3]).width(270).height(175).auto('format').url()}" alt={section3.images[3]?.alt || 'Art & Imports'}>
-						{:else}
-							<img loading="lazy" src="/assets/images/resources/placeholder.jpg" alt="Art & Imports">
-						{/if}
-						<div class="hover_box">
-							<a href="/shop/home-goods" aria-label="Browse art and imports category"><span class="icon-left-arrow" aria-hidden="true"></span></a>
-						</div>
-					</div>
-				</div>
-			</div>
+				</a>
+			{/each}
 		</div>
 	</div>
 </section>
 
 <!-- Featured products -->
-<section class="all_products_two">
-	<div class="container mx-auto">
-		<div class="block-title flex flex-col gap-5 text-center justify-center">
-			<!-- <p>Keep shopping</p> -->
-			<h3>Our Featured Titles</h3>
-			<div class="leaf">
-				<img class="!inline" loading="lazy" src="/assets/images/resources/leaf.png" alt="">
-			</div>
+<section class="section bg-background">
+	<div class="container mx-auto px-4">
+		<div class="text-center mb-12">
+			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+				Keep Shopping
+			</p>
+			<h2
+				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
+			>
+				Our Featured Titles
+			</h2>
+			<div class="w-20 h-1 bg-primary mx-auto"></div>
 		</div>
-		<div class="all_products">
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-				{#each featured as book, index}
-					{#if index < 8}
-						<div class="col-xl-3 col-lg-3 col-md-6">
-							<div class="all_products_single text-center">
-								<div class="all_product_item_image">
-									{#if book.images} <img loading="lazy" src="{urlFor(book.images).fit('fill').auto('format').url()}" alt={book.title}>
-									{:else} <BookCover title={book.title} subtitle={book.sibtitle} />
-									{/if}
-									<div class="all_product_hover">
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+			{#each featured as book, index}
+				{#if index < 8}
+					<a href="/shop/books/{book.slug}/{book.id}/" class="group">
+						<div class="card-modern overflow-hidden h-full">
+							<div
+								class="relative aspect-[3/4] overflow-hidden bg-muted"
+							>
+								{#if book.images}
+									<img
+										loading="lazy"
+										src={urlFor(book.images)
+											.fit("fill")
+											.auto("format")
+											.url()}
+										alt={book.title}
+										class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+									/>
+								{:else}
+									<BookCover
+										title={book.title}
+										subtitle={book.sibtitle}
+									/>
+								{/if}
+								<div
+									class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+								>
+									<div
+										class="absolute bottom-4 left-0 right-0 flex justify-center"
+									>
 										<AddToCartButton
-											className="all_product_icon"
+											className="btn-primary btn-sm"
 											productId={book.id || book._id}
 											productType="books"
 											iconOnly={true}
@@ -232,44 +377,75 @@
 										/>
 									</div>
 								</div>
-								<h4><a rel=prefetch href="/shop/books/{book.slug}/{book.id}/">{book.title} ({book.binding})</a></h4>
-								<!-- <StarRating 
-									rating={book.gRating}
-									{styleSmall}>
-								</StarRating> -->
-								<p>{formatCurrency(book.price || book.pricing?.retailPrice || 0)}</p>
+							</div>
+							<div class="p-4 text-center">
+								<h4
+									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
+								>
+									{book.title} ({book.binding})
+								</h4>
+								<p class="text-lg font-bold text-primary">
+									{formatCurrency(
+										book.price ||
+											book.pricing?.retailPrice ||
+											0,
+									)}
+								</p>
 							</div>
 						</div>
-					{/if}
-				{/each}
-			</div>
+					</a>
+				{/if}
+			{/each}
 		</div>
 	</div>
 </section>
 
 <!-- Recent products -->
-<section class="all_products_two">
-	<div class="container mx-auto">
-		<div class="block-title flex flex-col gap-5 text-center justify-center">
-			<!-- <p>Keep shopping</p> -->
-			<h3>Newly Added Books</h3>
-			<div class="leaf">
-				<img class="w-max pt-2 mx-auto" loading="lazy" src="/assets/images/resources/leaf.png" alt="">
-			</div>
+<section class="section bg-muted/30">
+	<div class="container mx-auto px-4">
+		<div class="text-center mb-12">
+			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+				Fresh Arrivals
+			</p>
+			<h2
+				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
+			>
+				Newly Added Books
+			</h2>
+			<div class="w-20 h-1 bg-primary mx-auto"></div>
 		</div>
-		<div class="all_products">
-			<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-				{#each newBooks as book, index}
-					{#if index < 8}
-						<div class="col-xl-3 col-lg-3 col-md-6">
-							<div class="all_products_single text-center">
-								<div class="all_product_item_image">
-									{#if book.images} <img loading="lazy" src="{urlFor(book.images).fit('fill').auto('format').url()}" alt={book.title}>
-									{:else} <BookCover title={book.title} subtitle={book.sibtitle} />
-									{/if}
-									<div class="all_product_hover">
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+			{#each newBooks as book, index}
+				{#if index < 8}
+					<a href="/shop/books/{book.slug}/{book.id}/" class="group">
+						<div class="card-modern overflow-hidden h-full">
+							<div
+								class="relative aspect-[3/4] overflow-hidden bg-muted"
+							>
+								{#if book.images}
+									<img
+										loading="lazy"
+										src={urlFor(book.images)
+											.fit("fill")
+											.auto("format")
+											.url()}
+										alt={book.title}
+										class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+									/>
+								{:else}
+									<BookCover
+										title={book.title}
+										subtitle={book.sibtitle}
+									/>
+								{/if}
+								<div
+									class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+								>
+									<div
+										class="absolute bottom-4 left-0 right-0 flex justify-center"
+									>
 										<AddToCartButton
-											className="all_product_icon"
+											className="btn-primary btn-sm"
 											productId={book.id || book._id}
 											productType="books"
 											iconOnly={true}
@@ -277,75 +453,89 @@
 										/>
 									</div>
 								</div>
-								<h4><a rel=prefetch href="/shop/books/{book.slug}/{book.id}/">{book.title} ({book.binding})</a></h4>
-								<!-- <StarRating 
-									rating={book.gRating}
-									{styleSmall}>
-								</StarRating> -->
-								<p>{formatCurrency(book.price || book.pricing?.retailPrice || 0)}</p>
+							</div>
+							<div class="p-4 text-center">
+								<h4
+									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
+								>
+									{book.title} ({book.binding})
+								</h4>
+								<p class="text-lg font-bold text-primary">
+									{formatCurrency(
+										book.price ||
+											book.pricing?.retailPrice ||
+											0,
+									)}
+								</p>
 							</div>
 						</div>
-					{/if}
-				{/each}
-			</div>
+					</a>
+				{/if}
+			{/each}
 		</div>
 	</div>
 </section>
 
 <!-- Business Lines -->
-<section class="recent-project">
-	<div class="container mx-auto">
-		<div class="block-title text-center">
-			<p>let's work together</p>
-			<h3>More than just Retail</h3>
-			<div class="leaf">
-				<img class="w-max pt-2 mx-auto" loading="lazy" src="/assets/images/resources/leaf.png" alt="">
-			</div>
+<section class="section bg-background">
+	<div class="container mx-auto px-4">
+		<div class="text-center mb-12">
+			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+				Let's Work Together
+			</p>
+			<h2
+				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
+			>
+				More than just Retail
+			</h2>
+			<div class="w-20 h-1 bg-primary mx-auto"></div>
 		</div>
-		<div class="flex flex-col lg:flex-row">
-			<div class="xl:basis-1/3 px-4 py-2">
-				<div class="recent_project_single wow fadeInUp" data-wow-delay="300ms">
-					<div class="project_img_box">
-						<img loading="lazy" src="{urlFor(section4.images[0]).width(370).height(484).auto('format').url()}" alt={section4.images[0].alt}>
-						<div class="project_content">
-							<h3>Wholesale<br>solutions</h3>
-						</div>
-						<div class="hover_box">
-							<a href="/contact" aria-label="Contact us about wholesale solutions"><span class="icon-left-arrow" aria-hidden="true"></span></a>
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+			{#each businessServices as service, i}
+				<a href="/contact" class="group">
+					<div class="card-modern overflow-hidden h-full">
+						<div class="relative aspect-[3/4] overflow-hidden">
+							<img
+								loading="lazy"
+								src={urlFor(service.image)
+									.width(370)
+									.height(484)
+									.auto("format")
+									.url()}
+								alt={service.image?.alt ||
+									`${service.title} ${service.subtitle}`}
+								class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+							/>
+							<div
+								class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+							></div>
+							<div
+								class="absolute bottom-0 left-0 right-0 p-6 text-white"
+							>
+								<h3
+									class="text-2xl font-bold font-display mb-2"
+								>
+									{service.title}<br />{service.subtitle}
+								</h3>
+								<p
+									class="text-white/80 text-sm mb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+								>
+									{service.desc}
+								</p>
+								<span
+									class="inline-flex items-center gap-2 text-primary font-semibold text-sm group-hover:gap-3 transition-all"
+								>
+									Contact Us
+									<ArrowRight class="w-4 h-4" />
+								</span>
+							</div>
 						</div>
 					</div>
-				</div>
-			</div>
-			<div class="xl:basis-1/3 px-4 py-2">
-				<div class="recent_project_single wow fadeInUp" data-wow-delay="600ms">
-					<div class="project_img_box">
-						<img loading="lazy" src="{urlFor(section4.images[1]).width(370).height(484).auto('format').url()}" alt={section4.images[1].alt}>
-						<div class="project_content">
-							<h3>Institutional<br>Contracts</h3>
-						</div>
-						<div class="hover_box">
-							<a href="/contact" aria-label="Contact us about institutional contracts"><span class="icon-left-arrow" aria-hidden="true"></span></a>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="xl:basis-1/3 px-4 py-2" >
-				<div class="recent_project_single wow fadeInUp" data-wow-delay="900ms">
-					<div class="project_img_box">
-						<img loading="lazy" src="{urlFor(section4.images[2]).width(370).height(484).auto('format').url()}" alt={section4.images[2].alt}>
-						<div class="project_content">
-							<h3>Non-profit<br>projects</h3>
-						</div>
-						<div class="hover_box">
-							<a href="/contact" aria-label="Contact us about non-profit projects"><span class="icon-left-arrow" aria-hidden="true"></span></a>
-						</div>
-					</div>
-				</div>
-			</div>
+				</a>
+			{/each}
 		</div>
 	</div>
 </section>
-<br>
 
 <!-- Blog component -->
 <!-- <div class="blog_two">

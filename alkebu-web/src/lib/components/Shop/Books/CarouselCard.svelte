@@ -36,7 +36,7 @@
     }
     .single h4 {
     font-size: 30px;
-    color: var(--thm-black);
+    color: hsl(var(--foreground));
     font-weight: 700;
     margin: 0;
     text-transform: uppercase;
@@ -46,10 +46,10 @@
     transition: all 500ms ease;
     }
     .single:hover h4 {
-        color: var(--thm-primary);
+        color: hsl(var(--primary));
     }
     .single h4 a:hover {
-        color: var(--thm-primary);
+        color: hsl(var(--primary));
     }
     .single p {
         font-size: 20px;

@@ -108,7 +108,7 @@
 >
   <div class="container">
     <h2>{productName}</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/">Home</a></li>
       <li><a href="/shop" class="shop_style">Shop</a></li>
       <li><a href="/shop/apparel">Apparel</a></li>
@@ -145,17 +145,17 @@
       <!-- Details -->
       <div class="space-y-5">
         {#if product?.brand}
-          <p class="text-sm uppercase tracking-wide text-thm-primary font-semibold">
+          <p class="text-sm uppercase tracking-wide text-primary font-semibold">
             {product.brand}
           </p>
         {/if}
-        <h1 class="text-3xl lg:text-4xl font-bold text-thm-black leading-tight">{productName}</h1>
+        <h1 class="text-3xl lg:text-4xl font-bold text-foreground leading-tight">{productName}</h1>
         {#if product?.shortDescription}
           <p class="text-lg text-gray-700">{product.shortDescription}</p>
         {/if}
 
         <div class="flex items-center gap-4">
-          <p class="text-4xl font-semibold text-thm-primary">{formatCurrency(displayPrice)}</p>
+          <p class="text-4xl font-semibold text-primary">{formatCurrency(displayPrice)}</p>
           {#if !inStock}
             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-red-50 text-red-700">
               <i class="fas fa-times-circle mr-2"></i> Out of Stock
@@ -226,8 +226,8 @@
           </div>
         </div>
 
-        <div class="bg-thm-base rounded-lg p-6 space-y-4">
-          <h3 class="text-xl font-semibold text-thm-black">Product Details</h3>
+        <div class="bg-muted rounded-lg p-6 space-y-4">
+          <h3 class="text-xl font-semibold text-foreground">Product Details</h3>
           <p class="text-gray-700 leading-relaxed whitespace-pre-line">{description}</p>
 
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
@@ -293,14 +293,14 @@
 </section>
 
 {#if relatedProducts.length}
-  <section class="py-12 bg-thm-base">
+  <section class="py-12 bg-muted">
     <div class="container mx-auto px-6 lg:px-12">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <p class="text-thm-primary font-semibold uppercase text-xs">You may also like</p>
-          <h2 class="text-2xl font-bold text-thm-black">Related Apparel</h2>
+          <p class="text-primary font-semibold uppercase text-xs">You may also like</p>
+          <h2 class="text-2xl font-bold text-foreground">Related Apparel</h2>
         </div>
-        <a href="/shop/apparel" class="text-thm-primary text-sm font-semibold">Browse all</a>
+        <a href="/shop/apparel" class="text-primary text-sm font-semibold">Browse all</a>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {#each relatedProducts as product}
@@ -331,8 +331,8 @@
 
   .form-select:focus {
     outline: none;
-    border-color: var(--thm-primary, #d71f26);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--thm-primary, #d71f26) 30%, transparent);
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px color-mix(in srgb, hsl(var(--primary)) 30%, transparent);
   }
 
   .badge {

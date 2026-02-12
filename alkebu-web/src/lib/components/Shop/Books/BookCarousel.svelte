@@ -32,9 +32,9 @@
         /* .control :global(svg) {
 		width: 100%;
 		height: 100%;
-		color: var(--thm-primary);
-        border: 2px solid var(--thm-primary);
-        background-color: var(--thm-base);
+		color: hsl(var(--primary));
+        border: 2px solid hsl(var(--primary));
+        background-color: hsl(var(--muted));
 		border-radius: 32px;
     } */
 

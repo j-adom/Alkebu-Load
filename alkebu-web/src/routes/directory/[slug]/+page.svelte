@@ -25,7 +25,7 @@
 <section class="page-header" style="background-image: url({business.photos?.[0]?.url || '/assets/images/resources/page-header-bg.jpg'});">
   <div class="container">
     <h2>{business.name}</h2>
-    <ul class="thm-breadcrumb list-unstyled">
+    <ul class="flex items-center gap-2 text-sm text-white/80">
       <li><a href="/">Home</a></li>
       <li><a href="/directory">Directory</a></li>
       <li><span>{business.name}</span></li>
@@ -56,7 +56,7 @@
 
           <div class="flex-1">
             <div class="flex items-center gap-3 mb-2">
-              <h1 class="text-3xl lg:text-4xl font-bold text-thm-black">{business.name}</h1>
+              <h1 class="text-3xl lg:text-4xl font-bold text-foreground">{business.name}</h1>
               {#if business.verified}
                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                   <i class="fas fa-check-circle mr-1"></i>
@@ -108,7 +108,7 @@
         <!-- Description -->
         {#if business.description}
           <div class="mb-8">
-            <h2 class="text-2xl font-bold mb-4 text-thm-black">About</h2>
+            <h2 class="text-2xl font-bold mb-4 text-foreground">About</h2>
             <div class="prose max-w-none">
               <p class="text-gray-700 leading-relaxed">{business.description}</p>
             </div>
@@ -118,10 +118,10 @@
         <!-- Specialties -->
         {#if business.specialties && business.specialties.length > 0}
           <div class="mb-8">
-            <h2 class="text-2xl font-bold mb-4 text-thm-black">Specialties</h2>
+            <h2 class="text-2xl font-bold mb-4 text-foreground">Specialties</h2>
             <div class="flex flex-wrap gap-2">
               {#each business.specialties as specialty}
-                <span class="inline-block px-3 py-1 bg-thm-base text-thm-black rounded-full text-sm">
+                <span class="inline-block px-3 py-1 bg-muted text-foreground rounded-full text-sm">
                   {specialty}
                 </span>
               {/each}
@@ -131,7 +131,7 @@
 
         <!-- Reviews Section -->
         <div class="mb-8">
-          <h2 class="text-2xl font-bold mb-6 text-thm-black">Reviews</h2>
+          <h2 class="text-2xl font-bold mb-6 text-foreground">Reviews</h2>
 
           {#if reviews && reviews.length > 0}
             <div class="space-y-6">
@@ -139,7 +139,7 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                   <div class="flex items-start justify-between mb-3">
                     <div>
-                      <p class="font-semibold text-thm-black">{review.author?.name || 'Anonymous'}</p>
+                      <p class="font-semibold text-foreground">{review.author?.name || 'Anonymous'}</p>
                       <div class="flex items-center gap-2 mt-1">
                         <div class="flex">
                           {#each Array(5) as _, i}
@@ -154,7 +154,7 @@
                   </div>
 
                   {#if review.title}
-                    <h3 class="font-semibold mb-2 text-thm-black">{review.title}</h3>
+                    <h3 class="font-semibold mb-2 text-foreground">{review.title}</h3>
                   {/if}
 
                   {#if review.comment}
@@ -182,15 +182,15 @@
 
           <!-- Contact Card -->
           <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-xl font-bold mb-4 text-thm-black">Contact Information</h3>
+            <h3 class="text-xl font-bold mb-4 text-foreground">Contact Information</h3>
 
             <div class="space-y-4">
               <!-- Address -->
               {#if business.address}
                 <div class="flex items-start">
-                  <i class="far fa-map-marker-alt text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-map-marker-alt text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Address</p>
+                    <p class="font-semibold text-foreground">Address</p>
                     <p class="text-gray-700 text-sm">{business.address}</p>
                   </div>
                 </div>
@@ -199,10 +199,10 @@
               <!-- Phone -->
               {#if business.phone}
                 <div class="flex items-start">
-                  <i class="far fa-phone text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-phone text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Phone</p>
-                    <a href="tel:{business.phone}" class="text-gray-700 hover:text-thm-primary text-sm">
+                    <p class="font-semibold text-foreground">Phone</p>
+                    <a href="tel:{business.phone}" class="text-gray-700 hover:text-primary text-sm">
                       {business.phone}
                     </a>
                   </div>
@@ -212,10 +212,10 @@
               <!-- Email -->
               {#if business.email}
                 <div class="flex items-start">
-                  <i class="far fa-envelope text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-envelope text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Email</p>
-                    <a href="mailto:{business.email}" class="text-gray-700 hover:text-thm-primary text-sm break-all">
+                    <p class="font-semibold text-foreground">Email</p>
+                    <a href="mailto:{business.email}" class="text-gray-700 hover:text-primary text-sm break-all">
                       {business.email}
                     </a>
                   </div>
@@ -225,14 +225,14 @@
               <!-- Website -->
               {#if business.website}
                 <div class="flex items-start">
-                  <i class="far fa-globe text-thm-primary text-xl mt-1 mr-3"></i>
+                  <i class="far fa-globe text-primary text-xl mt-1 mr-3"></i>
                   <div>
-                    <p class="font-semibold text-thm-black">Website</p>
+                    <p class="font-semibold text-foreground">Website</p>
                     <a
                       href={business.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="text-gray-700 hover:text-thm-primary text-sm break-all"
+                      class="text-gray-700 hover:text-primary text-sm break-all"
                     >
                       Visit Website
                       <i class="far fa-external-link ml-1 text-xs"></i>
@@ -244,14 +244,14 @@
               <!-- Social Media -->
               {#if business.socialMedia}
                 <div class="pt-4 border-t border-gray-200">
-                  <p class="font-semibold text-thm-black mb-3">Social Media</p>
+                  <p class="font-semibold text-foreground mb-3">Social Media</p>
                   <div class="flex gap-3">
                     {#if business.socialMedia.facebook}
                       <a
                         href={business.socialMedia.facebook}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-xl text-gray-600 hover:text-thm-primary"
+                        class="text-xl text-gray-600 hover:text-primary"
                         aria-label="Facebook"
                       >
                         <i class="fab fa-facebook"></i>
@@ -262,7 +262,7 @@
                         href={business.socialMedia.instagram}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-xl text-gray-600 hover:text-thm-primary"
+                        class="text-xl text-gray-600 hover:text-primary"
                         aria-label="Instagram"
                       >
                         <i class="fab fa-instagram"></i>
@@ -273,7 +273,7 @@
                         href={business.socialMedia.twitter}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-xl text-gray-600 hover:text-thm-primary"
+                        class="text-xl text-gray-600 hover:text-primary"
                         aria-label="Twitter"
                       >
                         <i class="fab fa-twitter"></i>
@@ -288,11 +288,11 @@
           <!-- Business Hours Card -->
           {#if formattedHours}
             <div class="bg-white rounded-lg shadow-lg p-6">
-              <h3 class="text-xl font-bold mb-4 text-thm-black">Business Hours</h3>
+              <h3 class="text-xl font-bold mb-4 text-foreground">Business Hours</h3>
               <div class="space-y-2">
                 {#each formattedHours as { day, open, close, closed }}
                   <div class="flex justify-between text-sm">
-                    <span class="font-medium text-thm-black">{day}</span>
+                    <span class="font-medium text-foreground">{day}</span>
                     <span class="text-gray-700">
                       {closed ? 'Closed' : `${open} - ${close}`}
                     </span>
@@ -303,7 +303,7 @@
           {/if}
 
           <!-- Action Buttons -->
-          <div class="bg-thm-base rounded-lg p-6 space-y-3">
+          <div class="bg-muted rounded-lg p-6 space-y-3">
             <a href="tel:{business.phone}" class="btn-primary w-full text-center block">
               <i class="far fa-phone mr-2"></i>
               Call Now
@@ -313,7 +313,7 @@
                 href={business.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="bg-white text-thm-black hover:bg-thm-primary hover:text-white transition-colors rounded px-6 py-3 font-semibold w-full text-center block"
+                class="bg-white text-foreground hover:bg-primary hover:text-white transition-colors rounded px-6 py-3 font-semibold w-full text-center block"
               >
                 <i class="far fa-external-link mr-2"></i>
                 Visit Website
@@ -349,7 +349,7 @@
                 </div>
               {/if}
               <div class="p-4">
-                <h4 class="font-bold text-lg mb-1 text-thm-black group-hover:text-thm-primary transition-colors">
+                <h4 class="font-bold text-lg mb-1 text-foreground group-hover:text-primary transition-colors">
                   {relatedBusiness.name}
                 </h4>
                 {#if relatedBusiness.category}

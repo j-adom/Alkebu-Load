@@ -49,10 +49,10 @@
 
             <!-- Navigation arrows -->
             <Carousel.Previous
-              class="absolute -left-4 sm:-left-12 top-1/2 -translate-y-1/2 h-10 w-10 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-thm-primary shadow-lg"
+              class="absolute -left-4 sm:-left-12 top-1/2 -translate-y-1/2 h-10 w-10 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-primary shadow-lg"
             />
             <Carousel.Next
-              class="absolute -right-4 sm:-right-12 top-1/2 -translate-y-1/2 h-10 w-10 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-thm-primary shadow-lg"
+              class="absolute -right-4 sm:-right-12 top-1/2 -translate-y-1/2 h-10 w-10 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-primary shadow-lg"
             />
           </Carousel.Root>
         </div>

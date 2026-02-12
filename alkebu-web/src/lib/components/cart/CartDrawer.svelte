@@ -152,9 +152,9 @@
   <div class="cart-drawer__body">
     {#if isCartEmpty}
       <div class="cart-drawer__empty">
-        <p class="text-lg font-semibold text-thm-black">Your cart is empty</p>
-        <p class="mt-2 text-gray-600">Browse the shop to discover books and gifts.</p>
-        <a href="/shop" class="mt-6 inline-flex items-center justify-center rounded-full bg-thm-primary px-5 py-2 font-semibold text-white hover:bg-thm-black" onclick={closeDrawer}>
+        <p class="text-lg font-semibold text-foreground">Your cart is empty</p>
+        <p class="mt-2 text-muted-foreground">Browse the shop to discover books and gifts.</p>
+        <a href="/shop" class="btn-primary mt-6" onclick={closeDrawer}>
           Continue shopping
         </a>
       </div>
@@ -166,13 +166,13 @@
       </div>
 
       <div class="cart-drawer__footer">
-        <div class="flex items-center justify-between text-sm text-gray-500">
+        <div class="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             {cartState.itemCount} {cartState.itemCount === 1 ? 'item' : 'items'}
           </span>
           <button
             type="button"
-            class="font-semibold text-red-600 hover:text-red-500"
+            class="font-semibold text-destructive hover:text-destructive/80"
             onclick={handleClearCart}
             disabled={isClearing}
           >
@@ -183,47 +183,47 @@
         <CartTotals cart={cartState}>
           <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); handleCheckout(); }}>
             <div>
-              <label for="drawer-checkout-email" class="text-sm font-medium text-gray-700">Email address</label>
+              <label for="drawer-checkout-email" class="text-sm font-medium text-muted-foreground">Email address</label>
               <input
                 id="drawer-checkout-email"
                 type="email"
                 placeholder="you@example.com"
                 bind:value={checkoutEmail}
-                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-thm-primary focus:outline-none focus:ring-2 focus:ring-thm-primary/20"
+                class="input-modern mt-1"
                 required
               />
-              <p class="mt-1 text-xs text-gray-500">Receipts and updates are sent here.</p>
+              <p class="mt-1 text-xs text-muted-foreground">Receipts and updates are sent here.</p>
             </div>
 
             <div class="grid grid-cols-1 gap-3">
               <div>
-                <label class="text-sm font-medium text-gray-700">Street address</label>
+                <label class="text-sm font-medium text-muted-foreground">Street address</label>
                 <input
                   type="text"
                   placeholder="123 Jefferson St"
                   bind:value={shippingAddress.street}
-                  class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-thm-primary focus:outline-none focus:ring-2 focus:ring-thm-primary/20"
+                  class="input-modern mt-1"
                   required
                 />
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="text-sm font-medium text-gray-700">City</label>
+                  <label class="text-sm font-medium text-muted-foreground">City</label>
                   <input
                     type="text"
                     placeholder="Nashville"
                     bind:value={shippingAddress.city}
-                    class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-thm-primary focus:outline-none focus:ring-2 focus:ring-thm-primary/20"
+                    class="input-modern mt-1"
                     required
                   />
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700">State</label>
+                  <label class="text-sm font-medium text-muted-foreground">State</label>
                   <input
                     type="text"
                     placeholder="TN"
                     bind:value={shippingAddress.state}
-                    class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base uppercase focus:border-thm-primary focus:outline-none focus:ring-2 focus:ring-thm-primary/20"
+                    class="input-modern mt-1 uppercase"
                     maxlength="2"
                     required
                   />
@@ -231,41 +231,41 @@
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="text-sm font-medium text-gray-700">ZIP code</label>
+                  <label class="text-sm font-medium text-muted-foreground">ZIP code</label>
                   <input
                     type="text"
                     placeholder="37208"
                     bind:value={shippingAddress.zip}
-                    class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-thm-primary focus:outline-none focus:ring-2 focus:ring-thm-primary/20"
+                    class="input-modern mt-1"
                     required
                   />
                 </div>
                 <div>
-                  <label class="text-sm font-medium text-gray-700">Country</label>
+                  <label class="text-sm font-medium text-muted-foreground">Country</label>
                   <input
                     type="text"
                     bind:value={shippingAddress.country}
-                    class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base uppercase focus:border-thm-primary focus:outline-none focus:ring-2 focus:ring-thm-primary/20"
+                    class="input-modern mt-1 uppercase"
                     readonly
                   />
+                </div>
               </div>
-              </div>
-              <p class="text-xs text-gray-500">
+              <p class="text-xs text-muted-foreground">
                 Tennessee addresses are charged 9.75% sales tax. Other US addresses are not taxed. We ship to US addresses only.
               </p>
             </div>
 
-            <label class="flex items-center gap-2 text-sm text-gray-700">
+            <label class="flex items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 bind:checked={taxExempt}
-                class="rounded border-gray-300 text-thm-primary focus:ring-thm-primary/50"
+                class="rounded border-input text-primary focus:ring-primary/50"
               />
               Tax exempt order (institutional or wholesale)
             </label>
 
             {#if checkoutError}
-              <p class="text-sm text-red-600">{checkoutError}</p>
+              <p class="text-sm text-destructive">{checkoutError}</p>
             {/if}
 
             <div class="flex flex-col gap-2">
@@ -276,7 +276,7 @@
               >
                 {isCheckingOut ? `Redirecting to ${paymentProvider.name}…` : `Checkout with ${paymentProvider.name}`}
               </button>
-              <p class="text-xs text-gray-500 text-center">
+              <p class="text-xs text-muted-foreground text-center">
                 Payments are processed by {paymentProvider.name}.
                 {#if paymentProvider.note}{paymentProvider.note}{/if}
               </p>
@@ -293,6 +293,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
@@ -310,7 +311,7 @@
     right: 0;
     width: min(420px, 100%);
     height: 100%;
-    background: #fff;
+    background: hsl(var(--background));
     box-shadow: -12px 0 24px rgba(0, 0, 0, 0.15);
     transform: translateX(100%);
     transition: transform 0.3s ease;
@@ -328,28 +329,34 @@
     align-items: center;
     justify-content: space-between;
     padding: 1.5rem;
-    border-bottom: 1px solid #f2f2f2;
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .cart-drawer__title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--thm-black, #111);
+    color: hsl(var(--foreground));
   }
 
   .cart-drawer__count {
     font-size: 0.9rem;
-    color: #6b7280;
+    color: hsl(var(--muted-foreground));
   }
 
   .cart-drawer__close {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 9999px;
-    border: 1px solid #e5e7eb;
-    background: white;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
     font-size: 1.5rem;
     line-height: 1;
+    color: hsl(var(--foreground));
+    transition: background 0.2s ease;
+  }
+
+  .cart-drawer__close:hover {
+    background: hsl(var(--muted));
   }
 
   .cart-drawer__body {
@@ -370,7 +377,7 @@
 
   .cart-drawer__footer {
     padding: 1.5rem;
-    border-top: 1px solid #f2f2f2;
+    border-top: 1px solid hsl(var(--border));
     display: flex;
     flex-direction: column;
     gap: 1rem;

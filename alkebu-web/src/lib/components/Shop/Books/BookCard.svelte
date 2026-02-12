@@ -52,7 +52,7 @@
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    background: linear-gradient(135deg, var(--thm-primary, #5b8c51) 0%, var(--thm-black, #404a3d) 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--foreground)) 100%);
     border-radius: 0.25rem;
     position: relative;
     overflow: hidden;

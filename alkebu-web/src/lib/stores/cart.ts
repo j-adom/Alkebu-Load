@@ -66,13 +66,13 @@ function createCartStore() {
     subscribe,
     set,
     update,
-    
+
     // Initialize cart from API
     async initialize(userId?: string) {
       try {
         const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
         const params = new URLSearchParams();
-        
+
         if (userId) {
           params.append('userId', userId);
         } else if (guestCartId) {
@@ -80,12 +80,12 @@ function createCartStore() {
         }
 
         const response = await fetch(`/api/cart/summary?${params.toString()}`);
-        
+
         if (response.ok) {
           const result = await response.json();
           const cartData = result?.cart ?? result;
           set(cartData);
-          
+
           // Store cart ID for guest users
           if (!userId && browser) {
             persistCart(cartData);
@@ -105,7 +105,7 @@ function createCartStore() {
     ) {
       try {
         const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
-        
+
         const currentCart = get(store);
 
         const response = await fetch('/api/cart/add', {
@@ -221,7 +221,7 @@ function createCartStore() {
     async clear() {
       try {
         const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
-        
+
         const currentCart = get(store);
 
         const response = await fetch('/api/cart/clear', {
@@ -263,16 +263,16 @@ function createCartStore() {
     }) {
       try {
         const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
-        
+
         const response = await fetch('/api/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-      body: JSON.stringify({
+          body: JSON.stringify({
             cartId: guestCartId || get(store).id,
             successUrl: `${PUBLIC_SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancelUrl: `${PUBLIC_SITE_URL}/shop`,
+            cancelUrl: `${PUBLIC_SITE_URL}/checkout/cancel`,
             shippingAddress: options?.shippingAddress,
             customerEmail: options?.customerEmail,
             taxExempt: options?.taxExempt,
@@ -282,12 +282,12 @@ function createCartStore() {
 
         if (response.ok) {
           const result = await response.json();
-          
+
           // Redirect to Stripe checkout
           if (result.checkoutUrl) {
             window.location.href = result.checkoutUrl;
           }
-          
+
           return { success: true, checkoutUrl: result.checkoutUrl };
         } else {
           const error = await response.json();

@@ -5,7 +5,7 @@
 <style>
   .book-cover{
       -webkit-tap-highlight-color: rgba(0,0,0,0);
-      color: var(--thm-base);
+      color: hsl(var(--muted));
       font-weight: 300;
       letter-spacing: 1px;
       font-size: 14px;
@@ -13,7 +13,7 @@
       box-sizing: border-box;
       width: 90%;
       height: 300px;
-      background-color: var(--thm-primary);
+      background-color: hsl(var(--primary));
       background-repeat: repeat;
       margin: 20px auto;
       border: 1px solid #2b1550;
@@ -25,7 +25,7 @@
     }
   .fade {
       -webkit-tap-highlight-color: rgba(0,0,0,0);
-      color: var(--thm-secondary);
+      color: hsl(var(--secondary));
       font-weight: 300;
       letter-spacing: 1px;
       line-height: 1.35em;
@@ -52,7 +52,7 @@
     font-family: "Lato", Helvetica Neue;
     box-sizing: border-box;
     margin: 0 0 10px;
-    color: var(--thm-base);
+    color: hsl(var(--muted));
     text-shadow: 1px 1px 1px rgba(43,21,80,0.6),0 -1px 0 rgba(43,21,80,0.6);
     font-size: 24px;
     line-height: 1.25em;
@@ -68,7 +68,7 @@
     box-sizing: border-box;
     margin: 0 0 10px;
     text-shadow: 1px 1px 1px rgba(43,21,80,0.6),0 -1px 0 rgba(43,21,80,0.6);
-    color: var(--thm-base);
+    color: hsl(var(--muted));
     font-size: 18px;
   }
 </style>
