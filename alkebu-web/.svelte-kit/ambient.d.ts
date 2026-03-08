@@ -45,7 +45,6 @@ declare module '$env/static/private' {
 	export const VSCODE_IPC_HOOK_CLI: string;
 	export const npm_package_json: string;
 	export const NVM_INC: string;
-	export const PAGER: string;
 	export const VSCODE_GIT_ASKPASS_MAIN: string;
 	export const VSCODE_GIT_ASKPASS_NODE: string;
 	export const npm_config_userconfig: string;
@@ -55,7 +54,6 @@ declare module '$env/static/private' {
 	export const npm_config_engine_strict: string;
 	export const COLORTERM: string;
 	export const WSL_DISTRO_NAME: string;
-	export const ANTIGRAVITY_AGENT: string;
 	export const COLOR: string;
 	export const NVM_DIR: string;
 	export const WAYLAND_DISPLAY: string;
@@ -149,7 +147,6 @@ declare module '$env/dynamic/private' {
 		VSCODE_IPC_HOOK_CLI: string;
 		npm_package_json: string;
 		NVM_INC: string;
-		PAGER: string;
 		VSCODE_GIT_ASKPASS_MAIN: string;
 		VSCODE_GIT_ASKPASS_NODE: string;
 		npm_config_userconfig: string;
@@ -159,7 +156,6 @@ declare module '$env/dynamic/private' {
 		npm_config_engine_strict: string;
 		COLORTERM: string;
 		WSL_DISTRO_NAME: string;
-		ANTIGRAVITY_AGENT: string;
 		COLOR: string;
 		NVM_DIR: string;
 		WAYLAND_DISPLAY: string;

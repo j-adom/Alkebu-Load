@@ -4,75 +4,42 @@ import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 
-type SearchType = 'books' | 'apparel' | 'health' | 'home' | 'blog' | 'directory' | 'events';
+type DisplayType = 'books' | 'apparel' | 'health' | 'home' | 'blog' | 'directory' | 'events';
 
-const COLLECTIONS: Array<{
-  type: SearchType;
-  path: string;
-  titleField?: string;
-  descriptionField?: string;
-  imageField?: string;
-  url: (item: any) => string;
-}> = [
-  {
-    type: 'books',
-    path: '/api/books',
-    titleField: 'title',
-    descriptionField: 'description',
-    imageField: 'images',
-    url: (item) => `/shop/books/${item.slug}`,
-  },
-  {
-    type: 'apparel',
-    path: '/api/fashion-jewelry',
-    titleField: 'name',
-    descriptionField: 'description',
-    imageField: 'images',
-    url: (item) => `/shop/apparel/${item.slug}`,
-  },
-  {
-    type: 'health',
-    path: '/api/wellness-lifestyle',
-    titleField: 'title',
-    descriptionField: 'description',
-    imageField: 'images',
-    url: (item) => `/shop/health-and-beauty/${item.slug}`,
-  },
-  {
-    type: 'home',
-    path: '/api/oils-incense',
-    titleField: 'title',
-    descriptionField: 'description',
-    imageField: 'images',
-    url: (item) => `/shop/home-goods/${item.slug}`,
-  },
-  {
-    type: 'blog',
-    path: '/api/blogPosts',
-    titleField: 'title',
-    descriptionField: 'excerpt',
-    imageField: 'featuredImage',
-    url: (item) => `/blog/${item.slug}`,
-  },
-  {
-    type: 'directory',
-    path: '/api/businesses',
-    titleField: 'name',
-    descriptionField: 'description',
-    imageField: 'logo',
-    url: (item) => `/directory/${item.slug}`,
-  },
-  {
-    type: 'events',
-    path: '/api/events',
-    titleField: 'title',
-    descriptionField: 'description',
-    imageField: 'featuredImage',
-    url: (item) => `/events/${item.slug}`,
-  },
-];
+// Map frontend filter types to FlexSearch internal type names
+const DISPLAY_TO_FLEXSEARCH: Record<DisplayType, string> = {
+  books: 'books',
+  apparel: 'fashionJewelry',
+  health: 'wellnessLifestyle',
+  home: 'oilsIncense',
+  blog: 'blogPosts',
+  directory: 'businesses',
+  events: 'events',
+};
 
-const AVAILABLE_TYPES: Array<{ label: string; value: SearchType | 'all' }> = [
+// Map FlexSearch types back to display types
+const FLEXSEARCH_TO_DISPLAY: Record<string, DisplayType> = {
+  books: 'books',
+  fashionJewelry: 'apparel',
+  wellnessLifestyle: 'health',
+  oilsIncense: 'home',
+  blogPosts: 'blog',
+  businesses: 'directory',
+  events: 'events',
+};
+
+// Map types to URL patterns
+const TYPE_URL_PREFIX: Record<string, (slug: string) => string> = {
+  books: (slug) => `/shop/books/${slug}`,
+  fashionJewelry: (slug) => `/shop/apparel/${slug}`,
+  wellnessLifestyle: (slug) => `/shop/health-and-beauty/${slug}`,
+  oilsIncense: (slug) => `/shop/home-goods/${slug}`,
+  blogPosts: (slug) => `/blog/${slug}`,
+  businesses: (slug) => `/directory/${slug}`,
+  events: (slug) => `/events/${slug}`,
+};
+
+const AVAILABLE_TYPES: Array<{ label: string; value: DisplayType | 'all' }> = [
   { label: 'All', value: 'all' },
   { label: 'Books', value: 'books' },
   { label: 'Apparel', value: 'apparel' },
@@ -83,69 +50,92 @@ const AVAILABLE_TYPES: Array<{ label: string; value: SearchType | 'all' }> = [
   { label: 'Events', value: 'events' },
 ];
 
+interface FlexSearchResult {
+  id: string;
+  title: string;
+  type: string;
+  excerpt?: string;
+  author?: string;
+  imageUrl?: string;
+  price?: number;
+  slug?: string;
+  score: number;
+  metadata?: Record<string, any>;
+}
+
+interface FlexSearchResponse {
+  internal: FlexSearchResult[];
+  external: any[];
+  totalResults: number;
+  searchTime: number;
+  suggestions?: string[];
+  facets?: Record<string, Array<{ value: string; count: number }>>;
+}
+
 export const load = async ({ url, setHeaders }: Parameters<PageServerLoad>[0]) => {
   const searchQuery = (url.searchParams.get('q') || '').trim();
-  const typeFilter = (url.searchParams.get('type') as SearchType) || 'all';
-  const limitPerType = 6;
+  const typeFilter = (url.searchParams.get('type') as DisplayType) || 'all';
 
   try {
     let combinedResults: any[] = [];
+    let searchTime = 0;
 
     if (searchQuery) {
-      const collectionsToSearch = COLLECTIONS.filter(
-        (c) => typeFilter === 'all' || c.type === typeFilter
-      );
-
-      const paramsBase = (searchFields: string[]) => {
-        const params = new URLSearchParams({
-          page: '1',
-          limit: limitPerType.toString(),
-          depth: '2',
-        });
-        searchFields.forEach((field, idx) => {
-          params.append(`where[or][${idx}][${field}][contains]`, searchQuery);
-        });
-        return params.toString();
-      };
-
-      const queries = collectionsToSearch.map(async (collection) => {
-        const searchFields = [collection.titleField || 'title', collection.descriptionField || 'description'];
-        const query = paramsBase(searchFields);
-        try {
-          const resp = await payloadGet<any>(`${collection.path}?${query}`);
-          const docs = resp.docs || [];
-          return docs.map((item: any) => ({
-            type: collection.type,
-            title: item[collection.titleField || 'title'],
-            description: item[collection.descriptionField || 'description'],
-            image: item[collection.imageField || 'image'] || item.images,
-            url: collection.url(item),
-            raw: item,
-          }));
-        } catch (err) {
-          console.error(`Search failed for ${collection.type}:`, err);
-          return [];
-        }
+      // Build FlexSearch API query
+      const params = new URLSearchParams({
+        q: searchQuery,
+        limit: '30',
       });
 
-      const resultsByCollection = await Promise.all(queries);
-      combinedResults = resultsByCollection.flat();
+      // Map frontend type filter to FlexSearch types
+      if (typeFilter !== 'all') {
+        const flexType = DISPLAY_TO_FLEXSEARCH[typeFilter];
+        if (flexType) {
+          params.set('types', flexType);
+        }
+      }
+
+      try {
+        const searchResponse = await payloadGet<FlexSearchResponse>(`/api/search?${params}`);
+
+        searchTime = searchResponse.searchTime || 0;
+
+        // Transform FlexSearch results to frontend format
+        combinedResults = searchResponse.internal.map((result) => {
+          const displayType = FLEXSEARCH_TO_DISPLAY[result.type] || result.type;
+          const urlBuilder = TYPE_URL_PREFIX[result.type];
+          const resultUrl = urlBuilder && result.slug ? urlBuilder(result.slug) : '#';
+
+          return {
+            type: displayType,
+            title: result.title,
+            description: result.excerpt,
+            image: result.imageUrl,
+            url: resultUrl,
+            author: result.author,
+            price: result.price,
+            score: result.score,
+          };
+        });
+      } catch (searchErr) {
+        // Fallback: query Payload REST API directly if FlexSearch is unavailable
+        console.warn('FlexSearch API unavailable, falling back to Payload REST:', searchErr);
+        combinedResults = await fallbackSearch(searchQuery, typeFilter);
+      }
     }
 
-    // Set moderate caching for search results (10 minutes)
     setHeaders({
       'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600',
       'Vary': 'Accept-Encoding',
-      'x-key': `search:${encodeURIComponent(searchQuery)}:${typeFilter}`
     });
 
     const seoData = buildSEOData({
       title: searchQuery ? `Search results for "${searchQuery}"` : 'Search - Alkebulan Images',
-      description: searchQuery 
+      description: searchQuery
         ? `Find books, products, and content related to "${searchQuery}" at Alkebulan Images.`
         : 'Search our collection of literature, wellness products, cultural items, events, and businesses.',
       canonical: `${PUBLIC_SITE_URL}/search${searchQuery ? `?q=${encodeURIComponent(searchQuery)}${typeFilter !== 'all' ? `&type=${typeFilter}` : ''}` : ''}`,
-      noIndex: !!searchQuery
+      noIndex: !!searchQuery,
     });
 
     return {
@@ -153,18 +143,19 @@ export const load = async ({ url, setHeaders }: Parameters<PageServerLoad>[0]) =
       typeFilter,
       availableTypes: AVAILABLE_TYPES,
       results: combinedResults,
+      searchTime,
       pagination: {
         page: 1,
         totalPages: 1,
-        totalDocs: combinedResults.length
+        totalDocs: combinedResults.length,
       },
-      seo: seoData
+      seo: seoData,
     };
   } catch (error) {
     console.error('Error performing search:', error);
-    
+
     setHeaders({
-      'Cache-Control': 'public, s-maxage=300'
+      'Cache-Control': 'public, s-maxage=300',
     });
 
     return {
@@ -172,12 +163,46 @@ export const load = async ({ url, setHeaders }: Parameters<PageServerLoad>[0]) =
       typeFilter,
       availableTypes: AVAILABLE_TYPES,
       results: [],
+      searchTime: 0,
       pagination: { page: 1, totalPages: 1, totalDocs: 0 },
       seo: buildSEOData({
         title: 'Search - Alkebulan Images',
         description: 'Search our collection of books and cultural items.',
-        canonical: `${PUBLIC_SITE_URL}/search`
-      })
+        canonical: `${PUBLIC_SITE_URL}/search`,
+      }),
     };
   }
 };
+
+// Fallback: direct Payload REST queries when FlexSearch isn't available
+async function fallbackSearch(query: string, typeFilter: DisplayType | 'all') {
+  const collections = [
+    { type: 'books' as DisplayType, path: '/api/books', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/books/${i.slug}` },
+    { type: 'apparel' as DisplayType, path: '/api/fashion-jewelry', titleField: 'name', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/apparel/${i.slug}` },
+    { type: 'health' as DisplayType, path: '/api/wellness-lifestyle', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/health-and-beauty/${i.slug}` },
+    { type: 'home' as DisplayType, path: '/api/oils-incense', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/home-goods/${i.slug}` },
+    { type: 'blog' as DisplayType, path: '/api/blogPosts', titleField: 'title', descField: 'excerpt', imgField: 'featuredImage', urlFn: (i: any) => `/blog/${i.slug}` },
+    { type: 'directory' as DisplayType, path: '/api/businesses', titleField: 'name', descField: 'description', imgField: 'logo', urlFn: (i: any) => `/directory/${i.slug}` },
+    { type: 'events' as DisplayType, path: '/api/events', titleField: 'title', descField: 'description', imgField: 'featuredImage', urlFn: (i: any) => `/events/${i.slug}` },
+  ].filter((c) => typeFilter === 'all' || c.type === typeFilter);
+
+  const queries = collections.map(async (col) => {
+    const params = new URLSearchParams({ page: '1', limit: '6', depth: '2' });
+    params.append(`where[or][0][${col.titleField}][contains]`, query);
+    params.append(`where[or][1][${col.descField}][contains]`, query);
+    try {
+      const resp = await payloadGet<any>(`${col.path}?${params}`);
+      return (resp.docs || []).map((item: any) => ({
+        type: col.type,
+        title: item[col.titleField],
+        description: item[col.descField],
+        image: item[col.imgField] || item.images,
+        url: col.urlFn(item),
+      }));
+    } catch {
+      return [];
+    }
+  });
+
+  return (await Promise.all(queries)).flat();
+}

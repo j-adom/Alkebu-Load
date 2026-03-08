@@ -26,6 +26,9 @@
 	"/api/checkout": [
 		"src/routes/api/checkout/+server.ts"
 	],
+	"/api/checkout/preview": [
+		"src/routes/api/checkout/preview/+server.ts"
+	],
 	"/api/media/file/[...path]": [
 		"src/routes/api/media/file/[...path]/+server.ts"
 	],
@@ -41,6 +44,9 @@
 	],
 	"/checkout": [
 		"src/routes/checkout/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/checkout/cancel": [
 		"src/routes/+layout.server.ts"
 	],
 	"/checkout/success": [
