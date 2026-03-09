@@ -1,4 +1,4 @@
-import { PAYLOAD_API_URL } from '$env/static/private';
+import { getPayloadApiUrl } from '$lib/server/payloadEnv';
 import type { RequestHandler } from './$types';
 
 /**
@@ -9,7 +9,8 @@ export const GET: RequestHandler = async ({ params, fetch }) => {
   const path = params.path;
   
   try {
-    const response = await fetch(`${PAYLOAD_API_URL}/api/media/file/${path}`);
+    const payloadApiUrl = getPayloadApiUrl();
+    const response = await fetch(`${payloadApiUrl}/api/media/file/${path}`);
     
     if (!response.ok) {
       return new Response('Media not found', { status: 404 });

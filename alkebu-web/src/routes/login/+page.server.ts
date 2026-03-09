@@ -1,14 +1,15 @@
 // src/routes/login/+page.server.ts
-import { PAYLOAD_API_URL } from '$env/static/private';
+import { getPayloadApiUrl } from '$lib/server/payloadEnv';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
   default: async ({ request, cookies, fetch }) => {
+    const payloadApiUrl = getPayloadApiUrl();
     const data = await request.formData();
     const email = data.get('email');
     const password = data.get('password');
     
-    const response = await fetch(`${PAYLOAD_API_URL}/api/users/login`, {
+    const response = await fetch(`${payloadApiUrl}/api/users/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
