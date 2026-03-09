@@ -1,7 +1,7 @@
 # To use this Dockerfile, you have to set `output: 'standalone'` in your next.config.mjs file.
 # From https://github.com/vercel/next.js/blob/canary/examples/with-docker/Dockerfile
 
-FROM node:22.12.0-alpine AS base
+FROM node:22-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -9,9 +9,8 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-# Enable corepack for pnpm support
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm via npm (avoids corepack signature verification issues)
+RUN npm install -g pnpm
 
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm i --frozen-lockfile
@@ -28,8 +27,8 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
-# Enable corepack for pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm for build stage
+RUN npm install -g pnpm
 RUN pnpm run build
 
 # Production image, copy all the files and run next
@@ -65,3 +64,4 @@ ENV HOSTNAME="0.0.0.0"
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]
+
