@@ -16,7 +16,7 @@ const nextConfig = {
   },
 
   // Exclude packages that break webpack bundling
-  serverExternalPackages: ['rate-limiter-flexible'],
+  serverExternalPackages: ['rate-limiter-flexible', 'square'],
 
   // Image optimization
   images: {
