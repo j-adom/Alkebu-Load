@@ -5,6 +5,9 @@ const nextConfig = {
   // Required for Docker deployment
   output: 'standalone',
 
+  // Exclude packages that break webpack bundling
+  serverExternalPackages: ['rate-limiter-flexible'],
+
   // Image optimization
   images: {
     domains: ['localhost'],
