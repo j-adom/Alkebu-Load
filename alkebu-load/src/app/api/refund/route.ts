@@ -3,9 +3,15 @@ import { getPayload } from 'payload';
 import config from '@payload-config';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-08-27.basil',
-});
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-08-27.basil',
+    });
+  }
+  return _stripe;
+}
 
 /**
  * Authenticate request and return user with role check
@@ -129,7 +135,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe refund
     let stripeRefund: Stripe.Refund;
     try {
-      stripeRefund = await stripe.refunds.create({
+      stripeRefund = await getStripe().refunds.create({
         payment_intent: paymentIntentId,
         amount: refundAmount,
         reason: 'requested_by_customer',
