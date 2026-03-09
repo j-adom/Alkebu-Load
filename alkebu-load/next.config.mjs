@@ -16,7 +16,7 @@ const nextConfig = {
   },
 
   // Exclude packages that break webpack bundling
-  serverExternalPackages: ['rate-limiter-flexible', 'square'],
+  serverExternalPackages: ['rate-limiter-flexible', 'square', 'libsql', '@payloadcms/db-sqlite'],
 
   // Image optimization
   images: {
