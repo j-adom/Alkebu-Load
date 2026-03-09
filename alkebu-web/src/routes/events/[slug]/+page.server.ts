@@ -57,11 +57,13 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       cacheControl = 'public, s-maxage=21600, stale-while-revalidate=86400, stale-if-error=21600';
     }
 
+    const venueId = typeof event.venue === 'string' ? event.venue : event.venue?.id;
+
     setHeaders({
       'Cache-Control': cacheControl,
       'Vary': 'Accept-Encoding',
       // Surrogate keys for targeted purge
-      'x-key': `event:${event.id}${event.type ? `,event-type:${event.type}` : ''}${event.venue ? `,venue:${event.venue.id}` : ''}`
+      'x-key': `event:${event.id}${event.type ? `,event-type:${event.type}` : ''}${venueId ? `,venue:${venueId}` : ''}`
     });
 
     // Build structured data
@@ -75,9 +77,14 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       day: 'numeric'
     });
 
+    const eventLocation =
+      typeof event.location === 'string'
+        ? event.location
+        : event.location?.name || event.location?.city;
+
     const seoData = buildSEOData({
       title: event.title,
-      description: event.seoDescription || event.description || `Join us for ${event.title} on ${eventDateStr}. ${event.location || 'Location TBA'}.`,
+      description: event.seoDescription || event.description || `Join us for ${event.title} on ${eventDateStr}. ${eventLocation || 'Location TBA'}.`,
       canonical: `${PUBLIC_SITE_URL}/events/${slug}`,
       image: event.featuredImage?.url,
       imageAlt: event.featuredImage?.alt || `Featured image for ${event.title}`,

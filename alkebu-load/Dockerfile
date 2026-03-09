@@ -12,7 +12,7 @@ WORKDIR /app
 # Install pnpm via npm (avoids corepack signature verification issues)
 RUN npm install -g pnpm
 
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* .npmrc* ./
 RUN pnpm i --frozen-lockfile
 
 

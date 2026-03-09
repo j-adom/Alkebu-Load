@@ -4,6 +4,17 @@ import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 
 type DisplayType = 'books' | 'apparel' | 'health' | 'home' | 'blog' | 'directory' | 'events';
+type SearchType = DisplayType | 'all';
+
+function isDisplayType(value: string | null): value is DisplayType {
+  return value === 'books'
+    || value === 'apparel'
+    || value === 'health'
+    || value === 'home'
+    || value === 'blog'
+    || value === 'directory'
+    || value === 'events';
+}
 
 // Map frontend filter types to FlexSearch internal type names
 const DISPLAY_TO_FLEXSEARCH: Record<DisplayType, string> = {
@@ -28,7 +39,7 @@ const FLEXSEARCH_TO_DISPLAY: Record<string, DisplayType> = {
 };
 
 // Map types to URL patterns
-const TYPE_URL_PREFIX: Record<string, (slug: string) => string> = {
+const TYPE_URL_PREFIX: Partial<Record<string, (slug: string) => string>> = {
   books: (slug) => `/shop/books/${slug}`,
   fashionJewelry: (slug) => `/shop/apparel/${slug}`,
   wellnessLifestyle: (slug) => `/shop/health-and-beauty/${slug}`,
@@ -38,7 +49,7 @@ const TYPE_URL_PREFIX: Record<string, (slug: string) => string> = {
   events: (slug) => `/events/${slug}`,
 };
 
-const AVAILABLE_TYPES: Array<{ label: string; value: DisplayType | 'all' }> = [
+const AVAILABLE_TYPES: Array<{ label: string; value: SearchType }> = [
   { label: 'All', value: 'all' },
   { label: 'Books', value: 'books' },
   { label: 'Apparel', value: 'apparel' },
@@ -73,7 +84,8 @@ interface FlexSearchResponse {
 
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
   const searchQuery = (url.searchParams.get('q') || '').trim();
-  const typeFilter = (url.searchParams.get('type') as DisplayType) || 'all';
+  const rawTypeFilter = url.searchParams.get('type');
+  const typeFilter: SearchType = isDisplayType(rawTypeFilter) ? rawTypeFilter : 'all';
 
   try {
     let combinedResults: any[] = [];
@@ -174,7 +186,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 };
 
 // Fallback: direct Payload REST queries when FlexSearch isn't available
-async function fallbackSearch(query: string, typeFilter: DisplayType | 'all') {
+async function fallbackSearch(query: string, typeFilter: SearchType) {
   const collections = [
     { type: 'books' as DisplayType, path: '/api/books', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/books/${i.slug}` },
     { type: 'apparel' as DisplayType, path: '/api/fashion-jewelry', titleField: 'name', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/apparel/${i.slug}` },

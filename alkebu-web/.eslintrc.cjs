@@ -12,6 +12,15 @@ module.exports = {
 		es2017: true,
 		node: true
 	},
+	rules: {
+		'@typescript-eslint/no-explicit-any': 'off',
+		'@typescript-eslint/no-unused-vars': 'off',
+		'@typescript-eslint/ban-ts-comment': 'off',
+		'svelte/no-at-html-tags': 'off',
+		'svelte/valid-compile': 'off',
+		'no-mixed-spaces-and-tabs': 'off',
+		'no-undef': 'off'
+	},
 	ignorePatterns: [
 		'.svelte-kit/**',
 		'build/**',

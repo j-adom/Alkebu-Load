@@ -1,5 +1,6 @@
 // src/hooks.server.ts
 import type { Handle } from '@sveltejs/kit';
+import { PAYLOAD_API_URL } from '$env/static/private';
 
 export const handle: Handle = async ({ event, resolve }) => {
   // Get Payload JWT from cookie
@@ -7,7 +8,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   
   if (token) {
     try {
-      const response = await fetch(`${process.env.PAYLOAD_API_URL}/api/users/me`, {
+      const response = await fetch(`${PAYLOAD_API_URL}/api/users/me`, {
         headers: { 
           'Authorization': `JWT ${token}` 
         }

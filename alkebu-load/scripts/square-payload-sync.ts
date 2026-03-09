@@ -49,6 +49,8 @@ const isCatalogItemObject = (object: CatalogObject): object is CatalogItemObject
 const isCatalogItemVariationObject = (object: CatalogObject): object is CatalogItemVariationObject =>
   object.type === 'ITEM_VARIATION' && !!object.itemVariationData
 
+const optionalString = (value: string | null | undefined): string | undefined => value ?? undefined
+
 const syncSquareToPayload = async () => {
   console.log('🔄 Starting Square → Payload CMS Sync...\n')
   
@@ -105,9 +107,11 @@ const syncSquareToPayload = async () => {
       }
     })
 
-    const inventoryMap = new Map<string | undefined, InventoryCount>()
+    const inventoryMap = new Map<string, InventoryCount>()
     for (const inv of inventoryCounts) {
-      inventoryMap.set(inv.catalogObjectId, inv)
+      if (inv.catalogObjectId) {
+        inventoryMap.set(inv.catalogObjectId, inv)
+      }
     }
 
     // Step 5: Create Payload CMS products
@@ -135,15 +139,15 @@ const syncSquareToPayload = async () => {
 
       const product: PayloadProduct = {
         title: variationData.name || parentItem?.itemData?.name || 'Unnamed Product',
-        description: parentItem?.itemData?.descriptionPlaintext ?? parentItem?.itemData?.description,
+        description: optionalString(parentItem?.itemData?.descriptionPlaintext ?? parentItem?.itemData?.description),
         price,
         currency: variationData.priceMoney?.currency ?? 'USD',
-        sku: variationData.sku,
-        upc: variationData.upc,
+        sku: optionalString(variationData.sku),
+        upc: optionalString(variationData.upc),
         squareVariationId: variation.id,
         squareItemId,
-        variationName: variationData.name,
-        categoryId: parentItem?.itemData?.categoryId,
+        variationName: optionalString(variationData.name),
+        categoryId: optionalString(parentItem?.itemData?.categoryId),
         isActive: parentItem?.itemData?.isArchived !== true && variation.presentAtAllLocations !== false,
         squareVersion: variation.version != null ? variation.version.toString() : '0',
         lastSyncAt: new Date().toISOString()

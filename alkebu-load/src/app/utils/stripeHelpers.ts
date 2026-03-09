@@ -48,10 +48,16 @@ export function calculateShipping(
   return calcShipping(totalWeight, method, state);
 }
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-08-27.basil',
-});
+// Lazy-initialize Stripe (avoid crash during Next.js build when env vars are absent)
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-08-27.basil',
+    });
+  }
+  return _stripe;
+}
 
 /**
  * Create Stripe checkout session from Payload cart
@@ -140,7 +146,7 @@ export async function createCheckoutSession(
     }
 
     // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
@@ -202,7 +208,7 @@ export function verifyStripeWebhook(
   signature: string,
   secret: string
 ): Stripe.Event {
-  return stripe.webhooks.constructEvent(body, signature, secret);
+  return getStripe().webhooks.constructEvent(body, signature, secret);
 }
 
 /**

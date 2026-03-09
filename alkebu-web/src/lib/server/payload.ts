@@ -164,6 +164,7 @@ export interface Event extends PayloadDoc {
   title: string;
   slug: string;
   description?: string;
+  seoDescription?: string;
   content?: any; // Lexical rich text
   startDate: string;
   endDate?: string;
@@ -173,7 +174,10 @@ export interface Event extends PayloadDoc {
     city?: string;
     state?: string;
     zip?: string;
-  };
+  } | string;
+  type?: string;
+  venue?: { id: string } | string;
+  featuredImage?: Media;
   capacity?: number;
   registrationRequired?: boolean;
   price?: number;
@@ -189,7 +193,13 @@ export interface Business extends PayloadDoc {
   name: string;
   slug: string;
   description?: string;
+  seoDescription?: string;
   category: string;
+  location?: string;
+  verified?: boolean;
+  specialties?: string[];
+  logo?: Media;
+  photos?: Media[];
   contact?: {
     email?: string;
     phone?: string;

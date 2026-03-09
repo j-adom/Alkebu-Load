@@ -1,5 +1,4 @@
 import { s3Storage } from '@payloadcms/storage-s3'
-import { postgresAdapter } from '@payloadcms/db-postgres'
 import { payloadCloudPlugin } from '@payloadcms/payload-cloud'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
@@ -9,8 +8,6 @@ import sharp from 'sharp'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 import type { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
-
-import { sqliteAdapter } from '@payloadcms/db-sqlite'
 
 import { HomePage } from './globals/HomePage'
 import { AboutPage } from './globals/AboutPage'
@@ -46,6 +43,29 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 const publicSiteURL = process.env.PAYLOAD_PUBLIC_SITE_URL || 'https://alkebulanimages.com'
+const databaseURI = process.env.DATABASE_URI
+
+const resolveDatabaseAdapter = async () => {
+  if (databaseURI?.startsWith('postgres')) {
+    const { postgresAdapter } = await import('@payloadcms/db-postgres')
+
+    return postgresAdapter({
+      pool: {
+        connectionString: databaseURI,
+      },
+    })
+  }
+
+  const { sqliteAdapter } = await import('@payloadcms/db-sqlite')
+
+  return sqliteAdapter({
+    client: {
+      url: databaseURI || 'file:./alkebulanimages.db',
+    },
+  })
+}
+
+const db = await resolveDatabaseAdapter()
 
 const generateTitle: GenerateTitle<any> = ({ doc }) => {
   if (doc?.title) return `${doc.title} | Alkebu-Lan Images`
@@ -119,17 +139,7 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   // Use PostgreSQL in production, SQLite for local development
-  db: process.env.DATABASE_URI?.startsWith('postgres')
-    ? postgresAdapter({
-      pool: {
-        connectionString: process.env.DATABASE_URI,
-      },
-    })
-    : sqliteAdapter({
-      client: {
-        url: process.env.DATABASE_URI || 'file:./alkebulanimages.db',
-      },
-    }),
+  db,
   sharp,
   plugins: [
     // payloadCloudPlugin(), // Disabled - causes Cache-Control header conflicts in local dev

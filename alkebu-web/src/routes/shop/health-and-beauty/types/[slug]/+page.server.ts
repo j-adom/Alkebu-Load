@@ -1,6 +1,7 @@
 import { payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
+import { is404Error } from '$lib/utils/errors';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 
@@ -92,8 +93,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       currentSort: sort,
       seo: seoData
     };
-  } catch (err) {
-    if (err?.status === 404) {
+  } catch (err: unknown) {
+    if (is404Error(err)) {
       throw err;
     }
     

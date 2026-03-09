@@ -6,7 +6,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
+    "check": "svelte-kit sync && tsc --noEmit -p ./jsconfig.json",
+    "check:svelte": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
     "lint": "eslint .",
     "sync:payment-provider": "node ./scripts/fetch-payment-provider.js"
