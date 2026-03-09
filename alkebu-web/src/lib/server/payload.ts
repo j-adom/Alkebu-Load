@@ -276,7 +276,7 @@ export async function getBooksByAuthor(
     const authorsQuery = authorIds.map(id => `where[authors][in]=${encodeURIComponent(id)}`).join('&');
 
     const response = await payloadGet<PayloadCollectionResponse<Book>>(
-      `/api/books?${authorsQuery}&where[isActive][equals]=true&limit=${limit + 1}&depth=1&sort=-createdAt`
+      `/api/books?${authorsQuery}&limit=${limit + 1}&depth=1&sort=-createdAt`
     );
 
     // Filter out the current book
@@ -302,61 +302,56 @@ export async function getRelatedBooks(
   const seenIds = new Set<string>([currentBookId, ...excludeBookIds]);
 
   try {
-    // Strategy 1: Same collection (most specific)
-    if (collections && collections.length > 0 && relatedBooks.length < limit) {
-      const collectionsQuery = collections.map(c => `where[collections][in]=${encodeURIComponent(c)}`).join('&');
+    const addUnique = (docs: Book[]) => {
+      for (const book of docs) {
+        if (!seenIds.has(book.id) && relatedBooks.length < limit) {
+          relatedBooks.push(book);
+          seenIds.add(book.id);
+        }
+      }
+    };
 
-      try {
-        const response = await payloadGet<PayloadCollectionResponse<Book>>(
-          `/api/books?${collectionsQuery}&where[isActive][equals]=true&limit=${limit * 2}&depth=1`
-        );
-
-        response.docs.forEach(book => {
-          if (!seenIds.has(book.id) && relatedBooks.length < limit) {
-            relatedBooks.push(book);
-            seenIds.add(book.id);
-          }
-        });
-      } catch (error) {
-        console.error('Error fetching books by collection:', error);
+    // Strategy 1: Same curated collection (most specific)
+    // collections from Payload is array of objects: [{ collectionName: 'civil-rights-movement' }]
+    if (collections.length > 0 && relatedBooks.length < limit) {
+      const collectionValues = collections
+        .map((c: any) => (typeof c === 'string' ? c : c.collectionName))
+        .filter(Boolean);
+      if (collectionValues.length > 0) {
+        const q = collectionValues.map((c: string) => `where[collections.collectionName][in]=${encodeURIComponent(c)}`).join('&');
+        try {
+          const res = await payloadGet<PayloadCollectionResponse<Book>>(
+            `/api/books?${q}&limit=${limit * 2}&depth=1`
+          );
+          addUnique(res.docs);
+        } catch (e) {
+          console.error('Error fetching books by collection:', e);
+        }
       }
     }
 
     // Strategy 2: Same category (broader)
-    if (categories && categories.length > 0 && relatedBooks.length < limit) {
-      const categoriesQuery = categories.map(c => `where[categories][in]=${encodeURIComponent(c)}`).join('&');
-
+    if (categories.length > 0 && relatedBooks.length < limit) {
+      const q = categories.map(c => `where[categories][in]=${encodeURIComponent(c)}`).join('&');
       try {
-        const response = await payloadGet<PayloadCollectionResponse<Book>>(
-          `/api/books?${categoriesQuery}&where[isActive][equals]=true&limit=${limit * 2}&depth=1`
+        const res = await payloadGet<PayloadCollectionResponse<Book>>(
+          `/api/books?${q}&limit=${limit * 2}&depth=1`
         );
-
-        response.docs.forEach(book => {
-          if (!seenIds.has(book.id) && relatedBooks.length < limit) {
-            relatedBooks.push(book);
-            seenIds.add(book.id);
-          }
-        });
-      } catch (error) {
-        console.error('Error fetching books by category:', error);
+        addUnique(res.docs);
+      } catch (e) {
+        console.error('Error fetching books by category:', e);
       }
     }
 
-    // Strategy 3: Recent books if we still need more
+    // Strategy 3: Recent books as fallback
     if (relatedBooks.length < limit) {
       try {
-        const response = await payloadGet<PayloadCollectionResponse<Book>>(
-          `/api/books?where[isActive][equals]=true&limit=${limit * 2}&depth=1&sort=-createdAt`
+        const res = await payloadGet<PayloadCollectionResponse<Book>>(
+          `/api/books?limit=${limit * 2}&depth=1&sort=-createdAt`
         );
-
-        response.docs.forEach(book => {
-          if (!seenIds.has(book.id) && relatedBooks.length < limit) {
-            relatedBooks.push(book);
-            seenIds.add(book.id);
-          }
-        });
-      } catch (error) {
-        console.error('Error fetching recent books:', error);
+        addUnique(res.docs);
+      } catch (e) {
+        console.error('Error fetching recent books:', e);
       }
     }
 

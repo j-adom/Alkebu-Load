@@ -39,7 +39,18 @@
   );
   const binding = $derived((primaryEdition?.binding || "Book").toString());
   const isbn = $derived(primaryEdition?.isbn || primaryEdition?.isbn10 || "");
-  const published = $derived(primaryEdition?.datePublished || "");
+  const published = $derived(() => {
+    const raw = primaryEdition?.datePublished;
+    if (!raw) return "";
+    const date = new Date(raw);
+    if (isNaN(date.getTime())) return raw;
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    if (date >= twoYearsAgo) {
+      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+    return date.getFullYear().toString();
+  })();
   const pages = $derived(primaryEdition?.pages);
   const language = $derived(primaryEdition?.language);
   const priceCents = $derived(book?.pricing?.retailPrice ?? 0);
@@ -99,13 +110,13 @@
       <div class="lg:sticky lg:top-24 lg:self-start">
         <div class="relative group">
           <div
-            class="aspect-[3/4] rounded-2xl overflow-hidden bg-muted shadow-strong"
+            class="rounded-2xl overflow-hidden bg-muted shadow-strong flex items-center justify-center min-h-[300px]"
           >
             <img
               loading="lazy"
               src={coverUrl}
               alt={book?.title}
-              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              class="w-full h-auto max-h-[520px] object-contain transition-transform duration-500 group-hover:scale-105"
             />
           </div>
           <!-- Format Badge -->

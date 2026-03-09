@@ -42,6 +42,24 @@ function extractImage(source: any): PayloadImage | null {
 }
 
 /**
+ * Rewrite an absolute Payload media URL to go through the SvelteKit proxy.
+ * e.g. https://payload.alkebulanimages.com/api/media/file/foo.jpg → /api/media/file/foo.jpg
+ */
+function toProxyUrl(url: string): string {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    // Only rewrite if it looks like a Payload media URL
+    if (parsed.pathname.startsWith('/api/media/file/')) {
+      return parsed.pathname;
+    }
+  } catch {
+    // Not an absolute URL — already relative, return as-is
+  }
+  return url;
+}
+
+/**
  * Sanity-like builder that uses Payload's pre-generated sizes
  */
 export class PayloadImageUrlBuilder {
@@ -83,7 +101,7 @@ export class PayloadImageUrlBuilder {
   saturation(amount: number): this { return this; }
 
   /**
-   * Get the optimized image URL
+   * Get the optimized image URL, rewritten to go through the SvelteKit media proxy
    */
   url(): string {
     if (!this.image) return '';
@@ -91,7 +109,7 @@ export class PayloadImageUrlBuilder {
     // Try to use selected pre-generated size
     const selectedSizeData = this.image.sizes?.[this.selectedSize];
     if (selectedSizeData?.url) {
-      return selectedSizeData.url;
+      return toProxyUrl(selectedSizeData.url);
     }
 
     // Fallback: Try other sizes in order of preference
@@ -99,13 +117,13 @@ export class PayloadImageUrlBuilder {
       const fallbackOrder: ImageSize[] = ['card', 'thumbnail', 'tablet', 'hero'];
       for (const size of fallbackOrder) {
         if (this.image.sizes[size]?.url) {
-          return this.image.sizes[size].url;
+          return toProxyUrl(this.image.sizes[size].url);
         }
       }
     }
 
     // Final fallback to original URL
-    return this.image.url || '';
+    return toProxyUrl(this.image.url || '');
   }
 }
 
@@ -130,7 +148,7 @@ export function getImageUrl(
 
   // Try requested size
   if (image.sizes?.[size]?.url) {
-    return image.sizes[size].url;
+    return toProxyUrl(image.sizes[size].url);
   }
 
   // Fallback to other sizes
@@ -138,13 +156,13 @@ export function getImageUrl(
     const fallbackOrder: ImageSize[] = ['card', 'thumbnail', 'tablet', 'hero'];
     for (const sizeKey of fallbackOrder) {
       if (image.sizes[sizeKey]?.url) {
-        return image.sizes[sizeKey].url;
+        return toProxyUrl(image.sizes[sizeKey].url);
       }
     }
   }
 
   // Final fallback to original or placeholder
-  return image.url || fallback;
+  return toProxyUrl(image.url) || fallback;
 }
 
 /**
@@ -156,6 +174,6 @@ export function getImageSrcset(source: any): string {
 
   return Object.values(image.sizes)
     .filter(size => size?.url && size?.width)
-    .map(size => `${size.url} ${size.width}w`)
+    .map(size => `${toProxyUrl(size.url!)} ${size.width}w`)
     .join(', ');
 }
