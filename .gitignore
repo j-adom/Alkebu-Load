@@ -1,1 +1,6 @@
 alkebu-web/.env.local
+alkebu-web/.svelte-kit/
+alkebu-load/.env
+alkebu-load/.next/
+node_modules/
+.DS_Store

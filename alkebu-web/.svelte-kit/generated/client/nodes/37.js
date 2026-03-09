@@ -1,1 +1,0 @@
-export { default as component } from "../../../../src/routes/shop/health-and-beauty/[...slug]/+page.svelte";

@@ -310,7 +310,8 @@ const syncSquareToPayload = async () => {
 }
 
 // Export for use in other scripts
-export { syncSquareToPayload, PayloadProduct }
+export { syncSquareToPayload }
+export type { PayloadProduct }
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {

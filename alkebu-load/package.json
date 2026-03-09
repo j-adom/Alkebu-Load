@@ -10,6 +10,7 @@
     "devsafe": "rm -rf .next && cross-env NODE_OPTIONS=--no-deprecation next dev -p 3000",
     "generate:importmap": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" payload generate:importmap",
     "generate:types": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" payload generate:types",
+    "check:scripts": "tsc --project tsconfig.scripts.json --pretty false",
     "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start -p 3000",
