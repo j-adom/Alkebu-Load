@@ -46,6 +46,12 @@ tests/
 **/*.test.*
 **/*.spec.*
 
+# Stale lock files (pnpm project)
+package-lock.json
+
+# Scripts (not needed in production image)
+scripts/
+
 # Media (don't include in image, use volume)
 media/*
 !media/.gitkeep
