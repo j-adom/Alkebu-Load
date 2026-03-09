@@ -1,9 +1,10 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { PAYLOAD_API_URL, PAYLOAD_API_KEY } from '$env/static/private'
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
 
 const CART_SESSION_COOKIE = 'cart_session'
 
 export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
+  const payloadApiUrl = getPayloadApiUrl()
   const payload = await request.json()
 
   // Basic guard: only US addresses are allowed
@@ -18,11 +19,11 @@ export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
     }
   }
 
-  const response = await fetch(`${PAYLOAD_API_URL}/api/checkout`, {
+  const response = await fetch(`${payloadApiUrl}/api/checkout`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(PAYLOAD_API_KEY ? { Authorization: `Bearer ${PAYLOAD_API_KEY}` } : {}),
+      ...getPayloadAuthHeader(),
     },
     body: JSON.stringify(payload),
   })
@@ -33,12 +34,13 @@ export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
 }
 
 export const GET: RequestHandler = async ({ url, fetch }) => {
+  const payloadApiUrl = getPayloadApiUrl()
   const response = await fetch(
-    `${PAYLOAD_API_URL}/api/checkout?${url.searchParams.toString()}`,
+    `${payloadApiUrl}/api/checkout?${url.searchParams.toString()}`,
     {
       method: 'GET',
       headers: {
-        ...(PAYLOAD_API_KEY ? { Authorization: `Bearer ${PAYLOAD_API_KEY}` } : {}),
+        ...getPayloadAuthHeader(),
       },
     },
   )

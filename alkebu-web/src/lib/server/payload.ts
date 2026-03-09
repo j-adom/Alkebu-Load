@@ -1,17 +1,14 @@
-import { PAYLOAD_API_URL, PAYLOAD_API_KEY } from '$env/static/private';
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv';
 
 export async function payloadGet<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const url = `${PAYLOAD_API_URL}${path}`;
+  const url = `${getPayloadApiUrl()}${path}`;
 
   // Only include Authorization header if API key is provided
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(init.headers as Record<string, string> || {})
+    ...(init.headers as Record<string, string> || {}),
+    ...getPayloadAuthHeader(),
   };
-
-  if (PAYLOAD_API_KEY && PAYLOAD_API_KEY.trim()) {
-    headers['Authorization'] = `Bearer ${PAYLOAD_API_KEY}`;
-  }
 
   const res = await fetch(url, {
     ...init,

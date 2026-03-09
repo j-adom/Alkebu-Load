@@ -1,14 +1,15 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { PAYLOAD_API_URL, PAYLOAD_API_KEY } from '$env/static/private'
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
+  const payloadApiUrl = getPayloadApiUrl()
   const payload = await request.json()
 
-  const response = await fetch(`${PAYLOAD_API_URL}/api/cart/clear`, {
+  const response = await fetch(`${payloadApiUrl}/api/cart/clear`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(PAYLOAD_API_KEY ? { Authorization: `Bearer ${PAYLOAD_API_KEY}` } : {}),
+      ...getPayloadAuthHeader(),
     },
     body: JSON.stringify(payload),
   })

@@ -1,5 +1,5 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { PAYLOAD_API_URL, PAYLOAD_API_KEY } from '$env/static/private'
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
 
 const CART_SESSION_COOKIE = 'cart_session'
 
@@ -10,6 +10,7 @@ const CART_SESSION_COOKIE = 'cart_session'
  * Returns tax, shipping, and total estimates for a given cart + address.
  */
 export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
+    const payloadApiUrl = getPayloadApiUrl()
     const payload = await request.json()
 
     // Inject cart ID from cookie if not provided
@@ -20,11 +21,11 @@ export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
         }
     }
 
-    const response = await fetch(`${PAYLOAD_API_URL}/api/checkout/preview`, {
+    const response = await fetch(`${payloadApiUrl}/api/checkout/preview`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(PAYLOAD_API_KEY ? { Authorization: `Bearer ${PAYLOAD_API_KEY}` } : {}),
+            ...getPayloadAuthHeader(),
         },
         body: JSON.stringify(payload),
     })

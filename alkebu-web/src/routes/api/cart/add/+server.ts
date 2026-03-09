@@ -1,10 +1,11 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { PAYLOAD_API_URL, PAYLOAD_API_KEY } from '$env/static/private'
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
 
 const CART_SESSION_COOKIE = 'cart_session'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 
 export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
+  const payloadApiUrl = getPayloadApiUrl()
   const payload = await request.json()
 
   const existingSession = cookies.get(CART_SESSION_COOKIE)
@@ -12,11 +13,11 @@ export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
     payload.sessionId = existingSession
   }
 
-  const response = await fetch(`${PAYLOAD_API_URL}/api/cart/add`, {
+  const response = await fetch(`${payloadApiUrl}/api/cart/add`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(PAYLOAD_API_KEY ? { Authorization: `Bearer ${PAYLOAD_API_KEY}` } : {}),
+      ...getPayloadAuthHeader(),
     },
     body: JSON.stringify(payload),
   })
