@@ -12,12 +12,12 @@
 
   const product = $derived(item?.product || null);
   const title = $derived(item?.productTitle || product?.title || 'Product');
-  const slug = $derived(() => {
+  const slug = $derived.by(() => {
     const value = product?.slug;
     if (!value) return null;
     return typeof value === 'string' ? value : value?.slug || value?.current || null;
   });
-  const productPath = $derived(() => {
+  const productPath = $derived.by(() => {
     if (!slug) return null;
     switch (item?.productType) {
       case 'apparel':
@@ -73,7 +73,7 @@
     }
   }
 
-  const customizationEntries = $derived(() => {
+  const customizationEntries = $derived.by(() => {
     if (!item?.customization || typeof item.customization !== 'object') return [];
     return Object.entries(item.customization).filter(
       ([, value]) => value !== null && value !== undefined && value !== '',

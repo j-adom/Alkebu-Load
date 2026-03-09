@@ -13,7 +13,7 @@
     book?.binding || book?.defaultBookVariant?.binding || book?.editions?.[0]?.binding || 'paperback',
   );
   const weight = $derived(book?.weight || (binding?.toLowerCase() === 'hardcover' ? 2 : 1));
-  const customization = $derived(() => (binding ? { binding } : undefined));
+  const customization = $derived.by(() => (binding ? { binding } : undefined));
 </script>
 
 <AddToCartButton

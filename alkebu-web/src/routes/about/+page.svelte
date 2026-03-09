@@ -119,7 +119,7 @@
         <div class="group p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:-translate-y-1">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-xl bg-kente-gold/20 flex items-center justify-center group-hover:bg-kente-gold/30 transition-colors">
-              <svelte:component this={principle.icon} class="w-7 h-7 text-kente-gold" />
+              <principle.icon class="w-7 h-7 text-kente-gold" />
             </div>
             <h3 class="font-semibold text-lg">{principle.title}</h3>
           </div>

@@ -74,7 +74,7 @@
   const tags = $derived(book?.tags || []);
   const categories = $derived(book?.categories || []);
 
-  const metadata = $derived(() => ({
+  const metadata = $derived.by(() => ({
     title: seo?.title || `${book?.title} | Alkebu-Lan Images`,
     description: seo?.description || description,
     image: seo?.image || coverUrl,

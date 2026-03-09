@@ -36,7 +36,7 @@
     'Celebrate culture and style with this Alkebu-Lan Images piece.'
   );
 
-  const gallery = $derived(() => {
+  const gallery = $derived.by(() => {
     const uploads = Array.isArray(product?.images)
       ? product.images.map((img: any) => img?.image || img).filter(Boolean)
       : [];
@@ -70,7 +70,7 @@
   let selectedSize = $state(variations.find((v: any) => v.isAvailable)?.size || availableSizes[0]);
   let selectedColor = $state(variations.find((v: any) => v.isAvailable)?.color || availableColors[0]);
 
-  const selectedVariation = $derived(() =>
+  const selectedVariation = $derived.by(() =>
     variations.find((variation: any) =>
       (!selectedType || variation.productType === selectedType) &&
       (!selectedSize || variation.size === selectedSize) &&
@@ -81,7 +81,7 @@
   const displayPrice = $derived(normalizePrice(selectedVariation?.price) ?? basePrice);
   const inStock = $derived(selectedVariation?.isAvailable !== false);
 
-  const customization = $derived(() => ({
+  const customization = $derived.by(() => ({
     productType: selectedType,
     size: selectedSize,
     color: selectedColor,
@@ -91,7 +91,7 @@
   const tags = $derived(product?.tags?.map((tag: any) => tag.tag).filter(Boolean) || []);
   const collections = $derived(product?.collections?.map((c: any) => c.collectionName).filter(Boolean) || []);
 
-  const metadata = $derived(() => seo ?? {
+  const metadata = $derived.by(() => seo ?? {
     title: `${productName} | Alkebu-Lan Images`,
     description,
     image: heroImage ? getImageUrl(heroImage, { size: 'card' }) : undefined,

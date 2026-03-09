@@ -163,7 +163,7 @@
         <a href="/shop" class="btn-primary">Continue Shopping</a>
       </div>
     {:else}
-      <form on:submit={handleSubmit} class="space-y-8">
+      <form onsubmit={handleSubmit} class="space-y-8">
         <!-- Contact Information -->
         <section class="rounded-2xl border border-border bg-card p-6 shadow-soft">
           <h2 class="text-lg font-semibold text-foreground mb-4">

@@ -26,7 +26,7 @@
   let colorOptions = colors.length > 1 ? colors.join('|') : colors[0];
   let weight = product.weight ? product.weight : '2';
   const productId = $derived(product?.id || product?._id);
-  const customization = $derived(() => ({
+  const customization = $derived.by(() => ({
     size,
     color,
   }));

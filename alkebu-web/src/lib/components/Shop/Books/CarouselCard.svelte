@@ -14,12 +14,12 @@
   let price = $derived(book.pricing?.retailPrice || book.editions?.[0]?.price || 0);
   let images = $derived(book.images?.[0] || book.editions?.[0]?.images?.[0]);
   const productId = $derived(book.id || book._id);
-  const slug = $derived(() => {
+  const slug = $derived.by(() => {
     if (!book?.slug) return '';
     if (typeof book.slug === 'string') return book.slug;
     return book.slug?.current || '';
   });
-  const productPath = $derived(() => (slug ? `/shop/books/${slug}` : '/shop/books'));
+  const productPath = $derived.by(() => (slug ? `/shop/books/${slug}` : '/shop/books'));
 </script>
 
 <style>

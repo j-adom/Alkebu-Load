@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { run } from 'svelte/legacy';
   import { onMount } from 'svelte';
 
   import Nav from "$lib/components/Nav.svelte";
@@ -16,9 +15,8 @@
   let { settings, children, user } = $props();
   const settings$ = writable(settings);
 
-  // this updates the store's value when `settings` changes
-  // syntactic sugar for: settings$.set(settings)
-  run(() => {
+  // Keep the writable store in sync with the settings prop
+  $effect(() => {
     $settings$ = settings;
   });
 
