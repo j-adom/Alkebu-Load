@@ -21,6 +21,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p public
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
@@ -34,6 +35,7 @@ RUN pnpm run build
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
+RUN apk add --no-cache curl
 
 ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
@@ -64,4 +66,3 @@ ENV HOSTNAME="0.0.0.0"
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]
-
