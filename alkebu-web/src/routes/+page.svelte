@@ -139,42 +139,52 @@
 		<div
 			class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center"
 		>
-			<!-- Image Grid -->
-			<div class="relative">
-				<div class="grid grid-cols-12 gap-4">
-					<div class="col-span-8">
-						<img
-							class="w-full h-auto rounded-2xl shadow-medium"
-							loading="lazy"
-							src={urlFor(section2.images[0])
-								.width(500)
-								.height(600)
-								.auto("format")
-								.url()}
-							alt={section2.images[0].alt}
-						/>
-					</div>
-					<div class="col-span-4 flex items-end">
-						<div
-							class="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center shadow-glow"
-						>
-							<span
-								class="text-3xl text-primary-foreground font-bold"
-								>35+</span
-							>
-						</div>
-					</div>
-				</div>
-				<div class="absolute -bottom-8 right-8 w-2/3">
+			<!-- Image Composition -->
+			<div class="relative pb-16">
+				<!-- Decorative background circle -->
+				<div
+					class="absolute -bottom-4 -left-8 w-72 h-72 rounded-full bg-muted/60 -z-10"
+				></div>
+
+				<!-- Tall main image (mask) -->
+				<div class="relative w-[65%]">
 					<img
-						class="w-full h-auto rounded-2xl shadow-strong border-4 border-background"
+						class="w-full rounded-2xl shadow-medium object-cover"
+						style="height: 520px;"
 						loading="lazy"
-						src={urlFor(section2.images[1])
-							.width(400)
-							.height(300)
+						src={urlFor(section2.images[0])
+							.width(480)
+							.height(640)
 							.auto("format")
 							.url()}
-						alt={section2.images[1].alt}
+						alt={section2.images[0]?.alt || "Alkebu-Lan Images"}
+					/>
+				</div>
+
+				<!-- Smaller overlapping mudcloth image -->
+				<div class="absolute bottom-0 right-0 w-[52%]">
+					<img
+						class="w-full rounded-2xl shadow-strong border-4 border-background object-cover"
+						style="height: 220px;"
+						loading="lazy"
+						src={urlFor(section2.images[1])
+							.width(380)
+							.height(260)
+							.auto("format")
+							.url()}
+						alt={section2.images[1]?.alt || "Mudcloth pattern"}
+					/>
+				</div>
+
+				<!-- Yellow circle with Sankofa icon at image junction -->
+				<div
+					class="absolute bottom-[175px] left-[52%] -translate-x-1/2 w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-glow border-4 border-background z-10"
+				>
+					<img
+						loading="lazy"
+						class="w-9 h-9"
+						src="/assets/images/alkebulan/sankofa.svg"
+						alt="Sankofa"
 					/>
 				</div>
 			</div>
@@ -341,11 +351,21 @@
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
 			{#each featured as book, index}
 				{#if index < 8}
-					{@const primaryEdition = book.editions?.find((e) => e.isPrimary) || book.editions?.[0] || {}}
-					{@const bookBinding = primaryEdition?.binding || ''}
-					{@const bookPriceCents = primaryEdition?.pricing?.retailPrice ?? book.pricing?.retailPrice ?? 0}
-					{@const bookImage = book.images?.[0]?.image || book.images?.[0] || null}
-					{@const bookIsbn = primaryEdition?.isbn || primaryEdition?.isbn13 || book.id}
+					{@const primaryEdition =
+						book.editions?.find((e) => e.isPrimary) ||
+						book.editions?.[0] ||
+						{}}
+					{@const bookBinding = primaryEdition?.binding || ""}
+					{@const bookPriceCents =
+						primaryEdition?.pricing?.retailPrice ??
+						book.pricing?.retailPrice ??
+						0}
+					{@const bookImage =
+						book.images?.[0]?.image || book.images?.[0] || null}
+					{@const bookIsbn =
+						primaryEdition?.isbn ||
+						primaryEdition?.isbn13 ||
+						book.id}
 					<a href="/shop/books/{book.slug}/{bookIsbn}/" class="group">
 						<div class="card-modern overflow-hidden h-full">
 							<div
@@ -387,7 +407,9 @@
 								<h4
 									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
 								>
-									{book.title}{bookBinding ? ` (${bookBinding})` : ''}
+									{book.title}{bookBinding
+										? ` (${bookBinding})`
+										: ""}
 								</h4>
 								<p class="text-lg font-bold text-primary">
 									{formatCurrency(bookPriceCents / 100)}
@@ -418,11 +440,21 @@
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
 			{#each newBooks as book, index}
 				{#if index < 8}
-					{@const primaryEdition = book.editions?.find((e) => e.isPrimary) || book.editions?.[0] || {}}
-					{@const bookBinding = primaryEdition?.binding || ''}
-					{@const bookPriceCents = primaryEdition?.pricing?.retailPrice ?? book.pricing?.retailPrice ?? 0}
-					{@const bookImage = book.images?.[0]?.image || book.images?.[0] || null}
-					{@const bookIsbn = primaryEdition?.isbn || primaryEdition?.isbn13 || book.id}
+					{@const primaryEdition =
+						book.editions?.find((e) => e.isPrimary) ||
+						book.editions?.[0] ||
+						{}}
+					{@const bookBinding = primaryEdition?.binding || ""}
+					{@const bookPriceCents =
+						primaryEdition?.pricing?.retailPrice ??
+						book.pricing?.retailPrice ??
+						0}
+					{@const bookImage =
+						book.images?.[0]?.image || book.images?.[0] || null}
+					{@const bookIsbn =
+						primaryEdition?.isbn ||
+						primaryEdition?.isbn13 ||
+						book.id}
 					<a href="/shop/books/{book.slug}/{bookIsbn}/" class="group">
 						<div class="card-modern overflow-hidden h-full">
 							<div
@@ -464,7 +496,9 @@
 								<h4
 									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
 								>
-									{book.title}{bookBinding ? ` (${bookBinding})` : ''}
+									{book.title}{bookBinding
+										? ` (${bookBinding})`
+										: ""}
 								</h4>
 								<p class="text-lg font-bold text-primary">
 									{formatCurrency(bookPriceCents / 100)}
