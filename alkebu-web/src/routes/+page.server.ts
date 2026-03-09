@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 
     // Set strong caching for homepage (2 hours)
     setHeaders({
-      'Cache-Control': 'public, s-maxage=7200, stale-while-revalidate=21600, stale-if-error=7200',
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600, stale-if-error=300',
       'Vary': 'Accept-Encoding',
       'x-key': 'homepage'
     });
