@@ -45,13 +45,16 @@ async function downloadAndUploadImages(urls: string[], payload: any) {
   return await downloadAndUploadImagesUtil(payload, req, imageSources, 'Product')
 }
 
-// Initialize Square client
-const squareClient = new SquareClient({
-  token: process.env.SQUARE_ACCESS_TOKEN!
-})
-
-// Test client initialization
-console.log('🔧 Square client initialized:', !!squareClient.catalog)
+// Lazy-initialize Square client (avoid crash during Next.js build)
+let _squareClient: SquareClient | null = null
+function getSquareClient(): SquareClient {
+  if (!_squareClient) {
+    _squareClient = new SquareClient({
+      token: process.env.SQUARE_ACCESS_TOKEN!,
+    })
+  }
+  return _squareClient
+}
 
 interface SquareWebhookEvent {
   type: string
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Fetching catalog items with pagination...')
 
       // Use pagination to get all items and related objects (including images)
-      const catalogResponse = await squareClient.catalog.list({
+      const catalogResponse = await getSquareClient().catalog.list({
         types: 'ITEM,IMAGE',
       })
 
@@ -144,7 +147,7 @@ export async function POST(request: NextRequest) {
       // If still no items, try fetching all catalog types
       if (allItems.length === 0) {
         console.log('🔍 No ITEM types found, trying all catalog types...')
-        const allTypesPager = await squareClient.catalog.list()
+        const allTypesPager = await getSquareClient().catalog.list()
 
         const allObjects: any[] = []
         for await (const obj of allTypesPager) {
