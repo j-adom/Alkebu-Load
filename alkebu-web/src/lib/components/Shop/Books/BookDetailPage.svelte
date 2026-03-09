@@ -39,7 +39,7 @@
   );
   const binding = $derived((primaryEdition?.binding || "Book").toString());
   const isbn = $derived(primaryEdition?.isbn || primaryEdition?.isbn10 || "");
-  const published = $derived(() => {
+  const published = $derived.by(() => {
     const raw = primaryEdition?.datePublished;
     if (!raw) return "";
     const date = new Date(raw);
@@ -50,7 +50,7 @@
       return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
     }
     return date.getFullYear().toString();
-  })();
+  });
   const pages = $derived(primaryEdition?.pages);
   const language = $derived(primaryEdition?.language);
   const priceCents = $derived(book?.pricing?.retailPrice ?? 0);
