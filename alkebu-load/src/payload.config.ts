@@ -1,4 +1,4 @@
-// storage-adapter-import-placeholder
+import { s3Storage } from '@payloadcms/storage-s3'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { payloadCloudPlugin } from '@payloadcms/payload-cloud'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
@@ -57,6 +57,10 @@ const generateURL: GenerateURL<any> = ({ doc }) => {
 }
 
 export default buildConfig({
+  cors: [
+    'https://alkebulanimages.com',
+    'http://localhost:5173',
+  ],
   admin: {
     user: Users.slug,
     importMap: {
@@ -79,7 +83,7 @@ export default buildConfig({
     SiteSettings,
   ],
   collections: [
-    Users, 
+    Users,
     Media,
     // E-Commerce Collections
     Carts,
@@ -114,19 +118,31 @@ export default buildConfig({
   // Use PostgreSQL in production, SQLite for local development
   db: process.env.DATABASE_URI?.startsWith('postgres')
     ? postgresAdapter({
-        pool: {
-          connectionString: process.env.DATABASE_URI,
-        },
-      })
+      pool: {
+        connectionString: process.env.DATABASE_URI,
+      },
+    })
     : sqliteAdapter({
-        client: {
-          url: process.env.DATABASE_URI || 'file:./alkebulanimages.db',
-        },
-      }),
+      client: {
+        url: process.env.DATABASE_URI || 'file:./alkebulanimages.db',
+      },
+    }),
   sharp,
   plugins: [
     // payloadCloudPlugin(), // Disabled - causes Cache-Control header conflicts in local dev
-    // storage-adapter-placeholder
+    // Cloudflare R2 storage (S3-compatible)
+    ...(process.env.R2_ACCESS_KEY_ID ? [s3Storage({
+      collections: { media: true },
+      bucket: process.env.R2_BUCKET || 'alkebulan-online',
+      config: {
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+        },
+        region: 'auto',
+        endpoint: process.env.R2_ENDPOINT || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      },
+    })] : []),
     seoPlugin({
       collections: [
         'books',
@@ -147,12 +163,12 @@ export default buildConfig({
     defaultFromAddress: process.env.SMTP_FROM || 'noreply@alkebulanimages.com',
     defaultFromName: 'Alkebu-Lan Images',
     transportOptions: {
-      host: 'smtp.resend.com',
+      host: 'email-smtp.us-east-2.amazonaws.com',
       port: 587,
       secure: false,
       auth: {
-        user: 'resend',
-        pass: process.env.RESEND_API_KEY,
+        user: process.env.SES_SMTP_USER,
+        pass: process.env.SES_SMTP_PASSWORD,
       },
     },
     fromName: process.env.FROM_NAME || 'Alkebu-Lan Images',
