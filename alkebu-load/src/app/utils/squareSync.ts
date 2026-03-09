@@ -1,13 +1,13 @@
-import { SquareClient } from 'square'
 import type { PayloadRequest } from 'payload'
 import { createReadStream } from 'fs'
 import { writeFile, unlink } from 'fs/promises'
 import path from 'path'
 import os from 'os'
 
-let _squareClient: SquareClient | null = null
-function getSquareClient(): SquareClient {
+let _squareClient: any = null
+async function getSquareClient() {
   if (!_squareClient) {
+    const { SquareClient } = await import('square')
     _squareClient = new SquareClient({
       token: process.env.SQUARE_ACCESS_TOKEN!,
       environment: process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox'
@@ -96,7 +96,7 @@ async function createSquareItem(product: PayloadProduct): Promise<boolean> {
       }
     }
 
-    const response = await (getSquareClient().catalog as any).upsertObject({
+    const response = await ((await getSquareClient()).catalog as any).upsertObject({
       idempotencyKey: `create_${product.id}_${Date.now()}`,
       object: catalogObject
     })
@@ -123,7 +123,7 @@ async function updateSquareItem(product: PayloadProduct): Promise<boolean> {
     console.log(`📝 Updating Square item: ${product.squareItemId}`)
 
     // First, get the current Square item to preserve data we don't manage
-    const currentItemResponse = await (getSquareClient().catalog as any).retrieveObject(
+    const currentItemResponse = await ((await getSquareClient()).catalog as any).retrieveObject(
       product.squareItemId!,
       true // Include related objects
     )
@@ -158,7 +158,7 @@ async function updateSquareItem(product: PayloadProduct): Promise<boolean> {
     // Prepare batch upsert for item + variations
     const objects = [updatedItem, ...updatedVariations]
 
-    const response = await (getSquareClient().catalog as any).batchUpsertObjects({
+    const response = await ((await getSquareClient()).catalog as any).batchUpsertObjects({
       idempotencyKey: `update_${product.id}_${Date.now()}`,
       batches: [{
         objects
@@ -235,7 +235,7 @@ export async function deleteProductFromSquare(squareItemId: string): Promise<boo
   try {
     console.log(`🗑️  Deleting Square item: ${squareItemId}`)
 
-    const response = await (getSquareClient().catalog as any).deleteObject(squareItemId)
+    const response = await ((await getSquareClient()).catalog as any).deleteObject(squareItemId)
 
     if (response) {
       console.log(`✅ Deleted Square item: ${squareItemId}`)
@@ -295,7 +295,7 @@ export async function syncInventoryToSquare(
   try {
     console.log(`📦 Syncing inventory: ${squareVariationId} = ${quantity}`)
 
-    const response = await (getSquareClient().inventory as any).batchChangeInventory({
+    const response = await ((await getSquareClient()).inventory as any).batchChangeInventory({
       idempotencyKey: `inventory_${squareVariationId}_${Date.now()}`,
       changes: [{
         type: 'PHYSICAL_COUNT',
@@ -324,7 +324,7 @@ export async function syncInventoryToSquare(
 // Get Square locations for inventory sync
 export async function getSquareLocations(): Promise<Array<{ id: string, name: string }>> {
   try {
-    const response = await (getSquareClient().locations as any).list()
+    const response = await ((await getSquareClient()).locations as any).list()
 
     if (response.locations) {
       return response.locations.map((location: any) => ({
@@ -384,7 +384,7 @@ async function uploadImagesToSquare(product: PayloadProduct): Promise<string[]> 
 
       try {
         // Upload to Square Catalog Images
-        const uploadResponse = await (getSquareClient().catalog as any).createImage({
+        const uploadResponse = await ((await getSquareClient()).catalog as any).createImage({
           idempotencyKey: `image_${product.id}_${i}_${Date.now()}`,
           image: {
             type: 'IMAGE',

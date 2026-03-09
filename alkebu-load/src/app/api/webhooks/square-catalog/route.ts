@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
-import { SquareClient } from 'square'
 import { enrichProductFromIdentifiers } from '../../../utils/productEnrichment'
 import { downloadAndUploadImages as downloadAndUploadImagesUtil } from '../../../utils/imageManager'
 import { createOrFindAuthors, updateAuthorMetadata, extractAuthorNames } from '../../../utils/authorManager'
@@ -46,9 +45,10 @@ async function downloadAndUploadImages(urls: string[], payload: any) {
 }
 
 // Lazy-initialize Square client (avoid crash during Next.js build)
-let _squareClient: SquareClient | null = null
-function getSquareClient(): SquareClient {
+let _squareClient: any = null
+async function getSquareClient() {
   if (!_squareClient) {
+    const { SquareClient } = await import('square')
     _squareClient = new SquareClient({
       token: process.env.SQUARE_ACCESS_TOKEN!,
     })
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Fetching catalog items with pagination...')
 
       // Use pagination to get all items and related objects (including images)
-      const catalogResponse = await getSquareClient().catalog.list({
+      const catalogResponse = await (await getSquareClient()).catalog.list({
         types: 'ITEM,IMAGE',
       })
 
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       // If still no items, try fetching all catalog types
       if (allItems.length === 0) {
         console.log('🔍 No ITEM types found, trying all catalog types...')
-        const allTypesPager = await getSquareClient().catalog.list()
+        const allTypesPager = await (await getSquareClient()).catalog.list()
 
         const allObjects: any[] = []
         for await (const obj of allTypesPager) {
