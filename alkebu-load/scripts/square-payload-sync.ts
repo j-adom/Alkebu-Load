@@ -94,20 +94,25 @@ const syncSquareToPayload = async () => {
     })
     
     const inventoryCounts: InventoryCount[] = inventoryResponse.data || []
-    
+
     console.log(`✅ Retrieved inventory for ${inventoryCounts.length} items`)
-    
-    // Step 4: Create mapping between variations and parent items
+
+    // Step 4: Create mappings for O(1) lookups
     const itemsMap = new Map<string, CatalogItemObject>()
     catalogResponse.relatedObjects?.forEach(item => {
       if (item.id && isCatalogItemObject(item)) {
         itemsMap.set(item.id, item)
       }
     })
-    
+
+    const inventoryMap = new Map<string | undefined, InventoryCount>()
+    for (const inv of inventoryCounts) {
+      inventoryMap.set(inv.catalogObjectId, inv)
+    }
+
     // Step 5: Create Payload CMS products
     const payloadProducts: PayloadProduct[] = []
-    
+
     for (const variation of catalogResponse.objects || []) {
       if (!variation.id || !isCatalogItemVariationObject(variation)) {
         continue
@@ -124,29 +129,26 @@ const syncSquareToPayload = async () => {
       }
 
       const parentItem = itemsMap.get(squareItemId)
-      const inventory = inventoryCounts.find(inv => inv.catalogObjectId === variation.id)
-        
-        // Calculate price in dollars
-        const priceAmount = variationData.priceMoney?.amount
-        const price = priceAmount ? Number(priceAmount) / 100 : 0
-        
+      const inventory = inventoryMap.get(variation.id)
+      const priceAmount = variationData.priceMoney?.amount
+      const price = priceAmount ? Number(priceAmount) / 100 : 0
+
       const product: PayloadProduct = {
         title: variationData.name || parentItem?.itemData?.name || 'Unnamed Product',
-        description: parentItem?.itemData?.descriptionPlaintext ?? parentItem?.itemData?.description ?? undefined,
-        price: price,
-        currency: variationData.priceMoney?.currency || 'USD',
-        sku: variationData.sku ?? undefined,
-        upc: variationData.upc ?? undefined,
+        description: parentItem?.itemData?.descriptionPlaintext ?? parentItem?.itemData?.description,
+        price,
+        currency: variationData.priceMoney?.currency ?? 'USD',
+        sku: variationData.sku,
+        upc: variationData.upc,
         squareVariationId: variation.id,
         squareItemId,
-        variationName: variationData.name ?? undefined,
-        categoryId: parentItem?.itemData?.categoryId ?? undefined,
+        variationName: variationData.name,
+        categoryId: parentItem?.itemData?.categoryId,
         isActive: parentItem?.itemData?.isArchived !== true && variation.presentAtAllLocations !== false,
         squareVersion: variation.version != null ? variation.version.toString() : '0',
         lastSyncAt: new Date().toISOString()
       }
-        
-        // Add inventory if available
+
       if (inventory) {
         product.inventory = {
           quantity: Number.parseInt(inventory.quantity || '0', 10),
@@ -154,13 +156,12 @@ const syncSquareToPayload = async () => {
           locationId: inventory.locationId || 'LC2AKZX32H2ZA'
         }
       }
-        
-        // Add images if available
+
       const imageIds = parentItem?.itemData?.imageIds?.filter((id): id is string => Boolean(id))
       if (imageIds && imageIds.length > 0) {
         product.images = imageIds
       }
-        
+
       payloadProducts.push(product)
     }
     

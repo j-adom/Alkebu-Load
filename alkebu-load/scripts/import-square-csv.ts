@@ -113,44 +113,28 @@ function groupByItem(rows: SquareCSVRow[]): Map<string, ProductGroup> {
 }
 
 /**
- * Check if product is a book based on category or GTIN
+ * Try to enrich a book from external APIs using its GTIN.
+ * All items reaching this point already have a valid ISBN-13 (filtered in groupByItem).
  */
-async function checkIfBook(group: ProductGroup): Promise<{
-  isBook: boolean
-  enrichedData?: any
-  gtin?: string
-}> {
-  // Check category first
-  if (group.category?.toLowerCase().includes('book')) {
-    console.log(`  ✓ Categorized as Book (Square category: "${group.category}")`)
-    return { isBook: true }
-  }
-
-  // Check GTIN in any variation
+async function tryEnrich(group: ProductGroup): Promise<{ enrichedData?: any; gtin?: string }> {
   for (const variation of group.variations) {
     const gtin = variation.GTIN || variation.SKU
-    if (gtin && isBookGTIN(gtin)) {
-      console.log(`  ✓ Found book GTIN: ${gtin}`)
+    if (!gtin) continue
+    const cleanGtin = gtin.replace(/[-\s]/g, '')
 
-      // Try to enrich from book APIs
-      try {
-        const identifier = { type: 'isbn13' as const, value: gtin.replace(/[-\s]/g, '') }
-        const enrichedData = await enrichProductFromIdentifiers(identifier)
-
-        if (enrichedData && enrichedData.title) {
-          console.log(`  ✓ Confirmed as book: "${enrichedData.title}"`)
-          return { isBook: true, enrichedData, gtin }
-        }
-      } catch (error) {
-        console.log('  → Book verification skipped:', error instanceof Error ? error.message : 'Unknown error')
+    try {
+      const enrichedData = await enrichProductFromIdentifiers({ type: 'isbn13' as const, value: cleanGtin })
+      if (enrichedData?.title) {
+        console.log(`  ✓ Enriched: "${enrichedData.title}"`)
+        return { enrichedData, gtin: cleanGtin }
       }
-
-      // Even if enrichment fails, GTIN suggests it's a book
-      return { isBook: true, gtin }
+    } catch (error) {
+      console.log('  → Enrichment skipped:', error instanceof Error ? error.message : 'Unknown error')
     }
-  }
 
-  return { isBook: false }
+    return { gtin: cleanGtin }
+  }
+  return {}
 }
 
 /**
@@ -266,24 +250,14 @@ async function importFromCSV(csvPath: string, skipExisting: boolean) {
 
   let created = 0
   let updated = 0
-  let skippedNotBooks = 0
   let skippedExisting = 0
   let skippedErrors = 0
 
   for (const [itemId, group] of groups) {
     console.log(`\n🔍 Processing: ${group.itemName}`)
 
-    // Check if this is a book
-    const bookCheck = await checkIfBook(group)
-
-    if (!bookCheck.isBook) {
-      console.log(`  ⏭️  Skipping - not a book`)
-      skippedNotBooks++
-      continue
-    }
-
     try {
-      // Check if already exists
+      // Check if already exists before doing enrichment work
       const existing = await payload.find({
         collection: 'books',
         where: { squareItemId: { equals: itemId } },
@@ -296,7 +270,8 @@ async function importFromCSV(csvPath: string, skipExisting: boolean) {
           skippedExisting++
           continue
         }
-        const bookData = buildBookData(group, bookCheck.enrichedData)
+        const { enrichedData } = await tryEnrich(group)
+        const bookData = buildBookData(group, enrichedData)
         await payload.update({
           collection: 'books',
           id: existing.docs[0].id,
@@ -305,7 +280,8 @@ async function importFromCSV(csvPath: string, skipExisting: boolean) {
         console.log(`  ✅ Updated in Payload`)
         updated++
       } else {
-        const bookData = buildBookData(group, bookCheck.enrichedData)
+        const { enrichedData } = await tryEnrich(group)
+        const bookData = buildBookData(group, enrichedData)
         await payload.create({
           collection: 'books',
           data: bookData,
@@ -325,7 +301,6 @@ async function importFromCSV(csvPath: string, skipExisting: boolean) {
   console.log(`📊 Results:`)
   console.log(`├── Created:              ${created}`)
   console.log(`├── Updated:              ${updated}`)
-  console.log(`├── Skipped (not books):  ${skippedNotBooks}`)
   console.log(`├── Skipped (existing):   ${skippedExisting}`)
   console.log(`└── Skipped (errors):     ${skippedErrors}`)
   console.log(`\n📝 Total items:           ${groups.size}`)
