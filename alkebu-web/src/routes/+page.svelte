@@ -341,15 +341,20 @@
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
 			{#each featured as book, index}
 				{#if index < 8}
-					<a href="/shop/books/{book.slug}/{book.id}/" class="group">
+					{@const primaryEdition = book.editions?.find((e) => e.isPrimary) || book.editions?.[0] || {}}
+					{@const bookBinding = primaryEdition?.binding || ''}
+					{@const bookPriceCents = primaryEdition?.pricing?.retailPrice ?? book.pricing?.retailPrice ?? 0}
+					{@const bookImage = book.images?.[0]?.image || book.images?.[0] || null}
+					{@const bookIsbn = primaryEdition?.isbn || primaryEdition?.isbn13 || book.id}
+					<a href="/shop/books/{book.slug}/{bookIsbn}/" class="group">
 						<div class="card-modern overflow-hidden h-full">
 							<div
 								class="relative aspect-[3/4] overflow-hidden bg-muted"
 							>
-								{#if book.images}
+								{#if bookImage}
 									<img
 										loading="lazy"
-										src={urlFor(book.images)
+										src={urlFor(bookImage)
 											.fit("fill")
 											.auto("format")
 											.url()}
@@ -359,7 +364,7 @@
 								{:else}
 									<BookCover
 										title={book.title}
-										subtitle={book.sibtitle}
+										subtitle={book.subtitle}
 									/>
 								{/if}
 								<div
@@ -382,14 +387,10 @@
 								<h4
 									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
 								>
-									{book.title} ({book.binding})
+									{book.title}{bookBinding ? ` (${bookBinding})` : ''}
 								</h4>
 								<p class="text-lg font-bold text-primary">
-									{formatCurrency(
-										book.price ||
-											book.pricing?.retailPrice ||
-											0,
-									)}
+									{formatCurrency(bookPriceCents / 100)}
 								</p>
 							</div>
 						</div>
@@ -417,15 +418,20 @@
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
 			{#each newBooks as book, index}
 				{#if index < 8}
-					<a href="/shop/books/{book.slug}/{book.id}/" class="group">
+					{@const primaryEdition = book.editions?.find((e) => e.isPrimary) || book.editions?.[0] || {}}
+					{@const bookBinding = primaryEdition?.binding || ''}
+					{@const bookPriceCents = primaryEdition?.pricing?.retailPrice ?? book.pricing?.retailPrice ?? 0}
+					{@const bookImage = book.images?.[0]?.image || book.images?.[0] || null}
+					{@const bookIsbn = primaryEdition?.isbn || primaryEdition?.isbn13 || book.id}
+					<a href="/shop/books/{book.slug}/{bookIsbn}/" class="group">
 						<div class="card-modern overflow-hidden h-full">
 							<div
 								class="relative aspect-[3/4] overflow-hidden bg-muted"
 							>
-								{#if book.images}
+								{#if bookImage}
 									<img
 										loading="lazy"
-										src={urlFor(book.images)
+										src={urlFor(bookImage)
 											.fit("fill")
 											.auto("format")
 											.url()}
@@ -435,7 +441,7 @@
 								{:else}
 									<BookCover
 										title={book.title}
-										subtitle={book.sibtitle}
+										subtitle={book.subtitle}
 									/>
 								{/if}
 								<div
@@ -458,14 +464,10 @@
 								<h4
 									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
 								>
-									{book.title} ({book.binding})
+									{book.title}{bookBinding ? ` (${bookBinding})` : ''}
 								</h4>
 								<p class="text-lg font-bold text-primary">
-									{formatCurrency(
-										book.price ||
-											book.pricing?.retailPrice ||
-											0,
-									)}
+									{formatCurrency(bookPriceCents / 100)}
 								</p>
 							</div>
 						</div>

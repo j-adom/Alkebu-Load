@@ -89,11 +89,12 @@ export async function addToCart(
     }
 
     // Check inventory if tracking is enabled
-    if (product.inventory?.trackQuantity && product.inventory.stockLevel < item.quantity) {
+    const stockLevel = product.inventory?.stockLevel
+    if (product.inventory?.trackQuantity && typeof stockLevel === 'number' && stockLevel < item.quantity) {
       if (!product.inventory.allowBackorders) {
         return {
           success: false,
-          error: `Only ${product.inventory.stockLevel} items available in stock`
+          error: `Only ${stockLevel} items available in stock`
         };
       }
     }

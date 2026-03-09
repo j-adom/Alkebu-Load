@@ -47,13 +47,18 @@
     const twoYearsAgo = new Date();
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
     if (date >= twoYearsAgo) {
-      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      });
     }
     return date.getFullYear().toString();
   });
   const pages = $derived(primaryEdition?.pages);
   const language = $derived(primaryEdition?.language);
-  const priceCents = $derived(book?.pricing?.retailPrice ?? 0);
+  const priceCents = $derived(
+    primaryEdition?.pricing?.retailPrice ?? book?.pricing?.retailPrice ?? 0,
+  );
   const price = $derived((priceCents || 0) / 100);
   const coverUrl = $derived(
     getImageUrl(
@@ -71,7 +76,9 @@
   const subjects = $derived(
     book?.subjects?.map((s: any) => s.subject).filter(Boolean) || [],
   );
-  const tags = $derived(book?.tags || []);
+  const tags = $derived(
+    book?.tags?.map((t: any) => t.tag).filter(Boolean) || [],
+  );
   const categories = $derived(book?.categories || []);
 
   const metadata = $derived.by(() => ({
