@@ -92,7 +92,7 @@
 		<div class="slide-item">
 			<div
 				class="image-layer"
-				style="background-image: url({urlFor(banner.bannerImages[0])
+				style="background-image: url({urlFor(banner?.bannerImages?.[0])
 					.width(1920)
 					.height(780)
 					.auto('format')
@@ -152,12 +152,12 @@
 						class="w-full rounded-2xl shadow-medium object-cover"
 						style="height: 520px;"
 						loading="lazy"
-						src={urlFor(section2.images[0])
+						src={urlFor(section2?.images?.[0])
 							.width(480)
 							.height(640)
 							.auto("format")
 							.url()}
-						alt={section2.images[0]?.alt || "Alkebu-Lan Images"}
+						alt={section2?.images?.[0]?.alt || "Alkebu-Lan Images"}
 					/>
 				</div>
 
@@ -167,12 +167,12 @@
 						class="w-full rounded-2xl shadow-strong border-4 border-background object-cover"
 						style="height: 220px;"
 						loading="lazy"
-						src={urlFor(section2.images[1])
+						src={urlFor(section2?.images?.[1])
 							.width(380)
 							.height(260)
 							.auto("format")
 							.url()}
-						alt={section2.images[1]?.alt || "Mudcloth pattern"}
+						alt={section2?.images?.[1]?.alt || "Mudcloth pattern"}
 					/>
 				</div>
 
