@@ -2033,13 +2033,14 @@ h6 {
     position: relative;
     display: block;
     margin: 19px 0 43px;
-    font-size: 150px;
-    line-height: 149px;
+    font-size: 72px;
+    line-height: 1.1;
     color: #ffffff;
     font-weight: 700;
+    font-family: "Outfit", sans-serif;
     /* opacity: 0; */
     text-transform: uppercase;
-    letter-spacing: 0;
+    letter-spacing: -0.01em;
     /* -webkit-transform: translateY(80px);
     -moz-transform: translateY(80px);
     -ms-transform: translateY(80px);
