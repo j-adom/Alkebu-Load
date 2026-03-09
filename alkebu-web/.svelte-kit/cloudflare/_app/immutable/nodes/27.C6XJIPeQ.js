@@ -1,0 +1,1 @@
+import"../chunks/CWj6FrbW.js";import{p as r,c as g}from"../chunks/Bmew28_A.js";import{B as i}from"../chunks/DN_eASeg.js";function u(o,t){r(t,!0);const e=t.data.book,a=t.data.seo,s=t.data.settings,n=t.data.relatedBooks;i(o,{get book(){return e},get seo(){return a},get settings(){return s},get relatedBooks(){return n}}),g()}export{u as component};

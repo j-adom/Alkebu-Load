@@ -27,7 +27,7 @@ function parseAndFormatAuthorName(authorName: string): {
 } {
   // Parse the full name using parse-full-name
   const parsed = parseFullName(authorName, 'all', 1) as ParsedName
-  
+
   // Create formatted name similar to your previous code
   const formattedName = [
     parsed.title,
@@ -39,7 +39,7 @@ function parseAndFormatAuthorName(authorName: string): {
     .filter(Boolean)
     .join(' ')
     .trim()
-  
+
   // Create slug (similar to your previous slugify approach)
   const slug = formattedName
     .toLowerCase()
@@ -47,7 +47,7 @@ function parseAndFormatAuthorName(authorName: string): {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .trim()
-  
+
   return {
     formattedName,
     parsedName: parsed,
@@ -58,17 +58,17 @@ function parseAndFormatAuthorName(authorName: string): {
 // Find potential author matches based on parsed name components
 function findAuthorMatches(targetParsed: ParsedName, candidates: AuthorCandidate[]): AuthorCandidate[] {
   const matches: Array<{ candidate: AuthorCandidate, score: number }> = []
-  
+
   for (const candidate of candidates) {
     const score = calculateNameMatchScore(targetParsed, candidate.parsedName)
     if (score > 0.7) { // 70% match threshold
       matches.push({ candidate, score })
     }
   }
-  
+
   // Sort by score (highest first)
   matches.sort((a, b) => b.score - a.score)
-  
+
   return matches.map(m => m.candidate)
 }
 
@@ -76,24 +76,24 @@ function findAuthorMatches(targetParsed: ParsedName, candidates: AuthorCandidate
 function calculateNameMatchScore(name1: ParsedName, name2: ParsedName): number {
   let score = 0
   let maxScore = 0
-  
+
   // Last name is most important (weight: 0.5)
   if (name1.last && name2.last) {
     maxScore += 0.5
     if (name1.last.toLowerCase() === name2.last.toLowerCase()) {
       score += 0.5
-    } else if (name1.last.toLowerCase().includes(name2.last.toLowerCase()) || 
-               name2.last.toLowerCase().includes(name1.last.toLowerCase())) {
+    } else if (name1.last.toLowerCase().includes(name2.last.toLowerCase()) ||
+      name2.last.toLowerCase().includes(name1.last.toLowerCase())) {
       score += 0.3
     }
   }
-  
+
   // First name is second most important (weight: 0.3)
   if (name1.first && name2.first) {
     maxScore += 0.3
     const first1 = name1.first.toLowerCase()
     const first2 = name2.first.toLowerCase()
-    
+
     if (first1 === first2) {
       score += 0.3
     } else if (first1[0] === first2[0]) { // Same initial
@@ -102,20 +102,20 @@ function calculateNameMatchScore(name1: ParsedName, name2: ParsedName): number {
       score += 0.2
     }
   }
-  
+
   // Middle name/initial (weight: 0.1)
   if (name1.middle && name2.middle) {
     maxScore += 0.1
     const middle1 = name1.middle.toLowerCase()
     const middle2 = name2.middle.toLowerCase()
-    
+
     if (middle1 === middle2) {
       score += 0.1
     } else if (middle1[0] === middle2[0]) { // Same initial
       score += 0.05
     }
   }
-  
+
   // Suffix (weight: 0.1)
   if (name1.suffix && name2.suffix) {
     maxScore += 0.1
@@ -123,7 +123,7 @@ function calculateNameMatchScore(name1: ParsedName, name2: ParsedName): number {
       score += 0.1
     }
   }
-  
+
   // Title (weight: 0.05)
   if (name1.title && name2.title) {
     maxScore += 0.05
@@ -131,7 +131,7 @@ function calculateNameMatchScore(name1: ParsedName, name2: ParsedName): number {
       score += 0.05
     }
   }
-  
+
   // Normalize score by maximum possible score
   return maxScore > 0 ? score / maxScore : 0
 }
@@ -156,7 +156,7 @@ export async function createOrFindAuthors(
   })
 
   // Parse existing authors for matching
-  const authorCandidates: AuthorCandidate[] = allAuthors.docs.map(author => ({
+  const authorCandidates: AuthorCandidate[] = allAuthors.docs.map((author: any) => ({
     id: author.id,
     name: author.name,
     parsedName: parseFullName(author.name, 'all', 1) as ParsedName,
@@ -169,13 +169,13 @@ export async function createOrFindAuthors(
 
     try {
       console.log(`👤 Processing author: "${trimmedName}"`)
-      
+
       // Parse the incoming author name
       const { formattedName, parsedName, slug } = parseAndFormatAuthorName(trimmedName)
       console.log(`   Formatted as: "${formattedName}"`)
-      
+
       // First, try exact match on formatted name
-      const exactMatch = authorCandidates.find(candidate => 
+      const exactMatch = authorCandidates.find(candidate =>
         candidate.name.toLowerCase() === formattedName.toLowerCase()
       )
 
@@ -187,14 +187,14 @@ export async function createOrFindAuthors(
       } else {
         // Try intelligent name matching
         const matches = findAuthorMatches(parsedName, authorCandidates)
-        
+
         if (matches.length > 0) {
           authorId = matches[0].id
           console.log(`🎯 Smart match found: "${trimmedName}" → "${matches[0].name}" (${matches.length} candidates)`)
         } else {
           // Create new author with properly formatted name
           console.log(`➕ Creating new author: "${formattedName}"`)
-          
+
           const newAuthor = await payload.create({
             collection: 'authors',
             data: {
@@ -204,10 +204,10 @@ export async function createOrFindAuthors(
             },
             req
           })
-          
+
           authorId = newAuthor.id
           console.log(`✅ Created author: ${formattedName} (ID: ${authorId})`)
-          
+
           // Add to candidates for subsequent matches in this batch
           authorCandidates.push({
             id: authorId,

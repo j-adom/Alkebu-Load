@@ -324,7 +324,10 @@ const buildVariationIndex = async (
   const includeSku = match === 'auto' || match === 'sku' || match === 'isbn'
   const includeUpc = match === 'auto' || match === 'upc' || match === 'isbn'
 
-  const addIdentifier = (identifier: string | undefined, variationId: string) => {
+  const addIdentifier = (
+    identifier: string | null | undefined,
+    variationId: string,
+  ) => {
     if (!identifier) return
     const key = normalizeIdentifier(String(identifier))
     if (!key) return

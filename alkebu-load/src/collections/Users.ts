@@ -34,7 +34,7 @@ const Users: CollectionConfig = {
         description: 'Primary phone number (synced from Square if available)',
       },
     },
-    
+
     // === ROLES & PERMISSIONS ===
     {
       name: 'role',
@@ -48,7 +48,7 @@ const Users: CollectionConfig = {
       defaultValue: 'customer',
       required: true,
     },
-    
+
     // === AUTHENTICATION ===
     {
       name: 'emailVerified',
@@ -92,7 +92,7 @@ const Users: CollectionConfig = {
         },
       ],
     },
-    
+
     // === SQUARE POS INTEGRATION ===
     {
       name: 'square',
@@ -128,7 +128,7 @@ const Users: CollectionConfig = {
         },
       ],
     },
-    
+
     // === LOYALTY & STATS ===
     {
       name: 'loyaltyPoints',
@@ -183,7 +183,7 @@ const Users: CollectionConfig = {
         },
       ],
     },
-    
+
     // === PURCHASE & ENGAGEMENT HISTORY ===
     {
       name: 'orders',
@@ -226,7 +226,7 @@ const Users: CollectionConfig = {
         condition: (data) => data.role === 'customer',
       },
     },
-    
+
     // === ADDRESSES ===
     {
       name: 'shippingAddresses',
@@ -296,7 +296,7 @@ const Users: CollectionConfig = {
         },
       ],
     },
-    
+
     // === TAX & INSTITUTIONAL ===
     {
       name: 'taxExempt',
@@ -316,7 +316,7 @@ const Users: CollectionConfig = {
         description: 'Associated institutional account',
       },
     },
-    
+
     // === PREFERENCES & SETTINGS ===
     {
       name: 'preferences',
@@ -359,7 +359,7 @@ const Users: CollectionConfig = {
         },
       ],
     },
-    
+
     // === METADATA ===
     {
       name: 'source',
@@ -380,11 +380,11 @@ const Users: CollectionConfig = {
       type: 'textarea',
       admin: {
         description: 'Internal staff notes about this customer',
-        condition: (data, siblingData, { user }) => user?.role === 'admin' || user?.role === 'staff',
+        condition: (data, siblingData, { user }) => (user as any)?.role === 'admin' || (user as any)?.role === 'staff',
       },
     },
   ],
-  
+
   // === HOOKS ===
   hooks: {
     afterChange: [
@@ -394,13 +394,13 @@ const Users: CollectionConfig = {
         if (doc.role !== 'customer' || !doc.orders || doc.orders.length === 0) {
           return doc;
         }
-        
+
         // Skip if orders haven't changed
-        if (operation === 'update' && 
-            JSON.stringify(previousDoc?.orders) === JSON.stringify(doc.orders)) {
+        if (operation === 'update' &&
+          JSON.stringify(previousDoc?.orders) === JSON.stringify(doc.orders)) {
           return doc;
         }
-        
+
         try {
           // Fetch full order details
           const orders = await req.payload.find({
@@ -413,16 +413,16 @@ const Users: CollectionConfig = {
             limit: 1000, // Adjust based on expected max orders per customer
             sort: '-createdAt',
           });
-          
+
           // Calculate stats
           const totalSpent = orders.docs.reduce((sum, order) => {
-            return sum + (order.total || 0);
+            return sum + ((order as any).totalAmount || 0);
           }, 0);
-          
+
           const orderCount = orders.docs.length;
           const lastOrderDate = orders.docs[0]?.createdAt || null;
           const averageOrderValue = orderCount > 0 ? totalSpent / orderCount : 0;
-          
+
           // Update user stats
           await req.payload.update({
             collection: 'users',
@@ -436,23 +436,23 @@ const Users: CollectionConfig = {
               },
             },
           });
-          
+
           console.log(`Updated stats for user ${doc.email}: ${orderCount} orders, $${totalSpent.toFixed(2)} total`);
         } catch (error) {
           console.error(`Error calculating stats for user ${doc.id}:`, error);
         }
-        
+
         return doc;
       },
-      
+
       // Update source field based on Square and online activity
       async ({ doc, req, operation }) => {
         if (operation === 'update') {
           let newSource = doc.source;
-          
+
           const hasSquareId = !!doc.square?.customerId;
           const hasOnlineOrders = doc.orders?.length > 0;
-          
+
           if (hasSquareId && hasOnlineOrders) {
             newSource = 'both';
           } else if (hasSquareId) {
@@ -460,7 +460,7 @@ const Users: CollectionConfig = {
           } else if (hasOnlineOrders) {
             newSource = 'online';
           }
-          
+
           if (newSource !== doc.source) {
             await req.payload.update({
               collection: 'users',
@@ -469,20 +469,20 @@ const Users: CollectionConfig = {
             });
           }
         }
-        
+
         return doc;
       },
     ],
   },
-  
+
   // === ACCESS CONTROL ===
   access: {
     // Customers can read their own data, admins can read all
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin' || user?.role === 'staff') {
+      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') {
         return true;
       }
-      
+
       if (user) {
         return {
           id: {
@@ -490,16 +490,16 @@ const Users: CollectionConfig = {
           },
         };
       }
-      
+
       return false;
     },
-    
+
     // Customers can update their own data (except computed fields)
     update: ({ req: { user } }) => {
-      if (user?.role === 'admin') {
+      if ((user as any)?.role === 'admin') {
         return true;
       }
-      
+
       if (user) {
         return {
           id: {
@@ -507,13 +507,13 @@ const Users: CollectionConfig = {
           },
         };
       }
-      
+
       return false;
     },
-    
+
     // Only admins can delete users
     delete: ({ req: { user } }) => {
-      return user?.role === 'admin';
+      return (user as any)?.role === 'admin';
     },
   },
 };

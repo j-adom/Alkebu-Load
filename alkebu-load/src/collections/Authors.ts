@@ -41,7 +41,7 @@ const Authors: CollectionConfig = {
         ]
       }
     },
-    
+
     // Author Details
     {
       name: 'biography',
@@ -71,7 +71,7 @@ const Authors: CollectionConfig = {
         description: 'Author nationality or origin'
       }
     },
-    
+
     // Author Image
     {
       name: 'image',
@@ -81,7 +81,7 @@ const Authors: CollectionConfig = {
         description: 'Author portrait or photo'
       }
     },
-    
+
     // Categorization
     {
       name: 'genres',
@@ -106,7 +106,7 @@ const Authors: CollectionConfig = {
         description: 'Primary genres this author writes in'
       }
     },
-    
+
     // Notable Works & Achievements
     {
       name: 'notableWorks',
@@ -130,7 +130,7 @@ const Authors: CollectionConfig = {
         description: 'Notable works by this author (beyond books in our inventory)'
       }
     },
-    
+
     // Awards & Recognition
     {
       name: 'awards',
@@ -157,7 +157,7 @@ const Authors: CollectionConfig = {
         description: 'Awards and recognition received'
       }
     },
-    
+
     // External Links
     {
       name: 'website',
@@ -191,7 +191,7 @@ const Authors: CollectionConfig = {
         description: 'Social media profiles'
       }
     },
-    
+
     // Management Fields
     {
       name: 'isActive',
@@ -209,7 +209,7 @@ const Authors: CollectionConfig = {
         description: 'Feature this author prominently'
       }
     },
-    
+
     // SEO
     {
       name: 'seo',
@@ -231,7 +231,7 @@ const Authors: CollectionConfig = {
         }
       ]
     },
-    
+
     // Virtual field to show author's books (read-only)
     {
       name: 'books',
@@ -244,17 +244,21 @@ const Authors: CollectionConfig = {
       }
     }
   ],
-  
+
   // Endpoints for custom functionality
   endpoints: [
     {
       path: '/:id/books',
       method: 'get',
-      handler: async (req, res, next) => {
+      handler: async (req) => {
         try {
-          const { id } = req.params
+          const { id } = req.routeParams || {}
           const { payload } = req
-          
+
+          if (!id) {
+            return Response.json({ error: 'Author ID is required' }, { status: 400 })
+          }
+
           // Find all books by this author
           const books = await payload.find({
             collection: 'books',
@@ -266,19 +270,20 @@ const Authors: CollectionConfig = {
             limit: 100,
             sort: 'title'
           })
-          
-          res.json({
+
+          return Response.json({
             author: id,
             totalBooks: books.totalDocs,
             books: books.docs
           })
         } catch (error) {
-          next(error)
+          console.error('Error in author books endpoint:', error)
+          return Response.json({ error: 'Internal server error' }, { status: 500 })
         }
       }
     }
   ],
-  
+
   // Virtual fields and hooks
   // Public read access
   access: {
@@ -291,19 +296,19 @@ const Authors: CollectionConfig = {
         if (!data || (operation !== 'create' && operation !== 'update')) {
           return
         }
-        
+
         // Auto-generate SEO fields
         if (!data.seo?.title && data.name) {
           data.seo = { ...data.seo, title: `${data.name} - Books & Biography` }
         }
-        
+
         if (!data.seo?.description && data.name) {
-          const bio = data.biography ? 
-            (typeof data.biography === 'string' ? data.biography : 'Author biography available') : 
+          const bio = data.biography ?
+            (typeof data.biography === 'string' ? data.biography : 'Author biography available') :
             'Discover books and works'
-          data.seo = { 
-            ...data.seo, 
-            description: `Explore books by ${data.name}. ${bio}`.substring(0, 160) 
+          data.seo = {
+            ...data.seo,
+            description: `Explore books by ${data.name}. ${bio}`.substring(0, 160)
           }
         }
       }

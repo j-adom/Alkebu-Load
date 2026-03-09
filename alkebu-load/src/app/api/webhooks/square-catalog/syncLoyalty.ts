@@ -19,7 +19,7 @@ export async function syncSquareLoyalty(
   webhookData: SquareLoyaltyWebhook
 ) {
   const { data } = webhookData;
-  
+
   try {
     // Find user by Square customer ID
     const users = await payload.find({
@@ -31,14 +31,14 @@ export async function syncSquareLoyalty(
       },
       limit: 1,
     });
-    
+
     if (users.docs.length === 0) {
       console.log(`No user found for Square customer ${data.customer_id}`);
       return;
     }
-    
+
     const user = users.docs[0];
-    
+
     // Update loyalty points
     await payload.update({
       collection: 'users',
@@ -48,11 +48,11 @@ export async function syncSquareLoyalty(
         square: {
           ...user.square,
           loyaltyId: data.id,
-          lastSync: new Date(),
+          lastSync: new Date().toISOString(),
         },
       },
     });
-    
+
     console.log(`Updated loyalty points for ${user.email}: ${data.balance} points`);
   } catch (error) {
     console.error(`Error syncing loyalty for customer ${data.customer_id}:`, error);

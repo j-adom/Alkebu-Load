@@ -41,7 +41,7 @@ const Vendors: CollectionConfig = {
         ]
       }
     },
-    
+
     // Vendor Type
     {
       name: 'type',
@@ -58,7 +58,7 @@ const Vendors: CollectionConfig = {
         description: 'Type of vendor relationship'
       }
     },
-    
+
     // Contact Information
     {
       name: 'contact',
@@ -94,7 +94,7 @@ const Vendors: CollectionConfig = {
         }
       ]
     },
-    
+
     // Address Information
     {
       name: 'address',
@@ -123,7 +123,7 @@ const Vendors: CollectionConfig = {
         }
       ]
     },
-    
+
     // Business Terms
     {
       name: 'terms',
@@ -170,7 +170,7 @@ const Vendors: CollectionConfig = {
         }
       ]
     },
-    
+
     // Performance Metrics
     {
       name: 'metrics',
@@ -205,7 +205,7 @@ const Vendors: CollectionConfig = {
         }
       ]
     },
-    
+
     // Categories
     {
       name: 'categories',
@@ -225,7 +225,7 @@ const Vendors: CollectionConfig = {
         description: 'Product categories this vendor supplies'
       }
     },
-    
+
     // Notes and Documentation
     {
       name: 'notes',
@@ -234,7 +234,7 @@ const Vendors: CollectionConfig = {
         description: 'Internal notes about this vendor'
       }
     },
-    
+
     // Status
     {
       name: 'isActive',
@@ -252,7 +252,7 @@ const Vendors: CollectionConfig = {
         description: 'Is this a primary/preferred vendor?'
       }
     },
-    
+
     // Virtual field for product count
     {
       name: 'productCount',
@@ -263,17 +263,21 @@ const Vendors: CollectionConfig = {
       }
     }
   ],
-  
+
   // Endpoints for custom functionality
   endpoints: [
     {
       path: '/:id/products',
       method: 'get',
-      handler: async (req, res, next) => {
+      handler: async (req) => {
         try {
-          const { id } = req.params
+          const { id } = req.routeParams || {}
           const { payload } = req
-          
+
+          if (!id) {
+            return Response.json({ error: 'Vendor ID is required' }, { status: 400 })
+          }
+
           // Find all products from this vendor across different collections
           const [books, wellness, fashion] = await Promise.all([
             payload.find({
@@ -292,37 +296,38 @@ const Vendors: CollectionConfig = {
               limit: 100
             })
           ])
-          
+
           const allProducts = [
             ...books.docs.map(p => ({ ...p, collection: 'books' })),
             ...wellness.docs.map(p => ({ ...p, collection: 'wellness-lifestyle' })),
             ...fashion.docs.map(p => ({ ...p, collection: 'fashion-jewelry' }))
           ]
-          
-          res.json({
+
+          return Response.json({
             vendor: id,
             totalProducts: allProducts.length,
             products: allProducts
           })
         } catch (error) {
-          next(error)
+          console.error('Error in vendor products endpoint:', error)
+          return Response.json({ error: 'Internal server error' }, { status: 500 })
         }
       }
     }
   ],
-  
+
   hooks: {
     beforeValidate: [
       async ({ data, operation }) => {
         if (!data || (operation !== 'create' && operation !== 'update')) {
           return
         }
-        
+
         // Auto-generate contact person from name if not provided
         if (!data.contact?.contactPerson && data.name) {
-          data.contact = { 
-            ...data.contact, 
-            contactPerson: `${data.name} Representative` 
+          data.contact = {
+            ...data.contact,
+            contactPerson: `${data.name} Representative`
           }
         }
       }

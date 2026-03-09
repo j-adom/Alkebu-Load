@@ -91,9 +91,9 @@ export async function addToCart(
     // Check inventory if tracking is enabled
     if (product.inventory?.trackQuantity && product.inventory.stockLevel < item.quantity) {
       if (!product.inventory.allowBackorders) {
-        return { 
-          success: false, 
-          error: `Only ${product.inventory.stockLevel} items available in stock` 
+        return {
+          success: false,
+          error: `Only ${product.inventory.stockLevel} items available in stock`
         };
       }
     }
@@ -149,27 +149,30 @@ export async function addToCart(
       });
     } else {
       // Create new cart item
-      cartItem = await payload.create({
+      cartItem = await (payload as any).create({
         collection: 'cart-items',
         data: {
           cart: cart.id,
-          product: item.productId,
-          productType: item.productType,
-          productTitle: product.title,
-          quantity: item.quantity,
-          unitPrice: product.pricing?.retailPrice || 0,
-          stripePriceId: product.stripePriceId,
+          product: {
+            relationTo: (item as any).productType as any,
+            value: (item as any).productId,
+          },
+          productType: (item as any).productType,
+          productTitle: (product as any).title,
+          quantity: (item as any).quantity,
+          unitPrice: (product as any).pricing?.retailPrice || 0,
+          stripePriceId: (product as any).stripePriceId,
           customization: item.customization,
           availability: {
-            inStock: product.inventory?.stockLevel >= item.quantity,
-            stockLevel: product.inventory?.stockLevel || 0,
+            inStock: (product as any).inventory?.stockLevel >= (item as any).quantity,
+            stockLevel: (product as any).inventory?.stockLevel || 0,
           },
         },
       });
     }
 
     // Update cart totals
-    await updateCartTotals(payload, cart.id);
+    await updateCartTotals(payload, String(cart.id));
 
     return { success: true, cartItem };
 
@@ -194,7 +197,7 @@ export async function removeFromCart(
       id: cartItemId,
     });
 
-    if (!cartItem || cartItem.cart !== cartId) {
+    if (!cartItem || (String(typeof cartItem.cart === 'object' ? cartItem.cart.id : cartItem.cart)) !== String(cartId)) {
       return { success: false, error: 'Cart item not found or unauthorized' };
     }
 
@@ -236,30 +239,30 @@ export async function updateCartItemQuantity(
       depth: 2,
     });
 
-    if (!cartItem || cartItem.cart !== cartId) {
+    if (!cartItem || (String(typeof cartItem.cart === 'object' ? cartItem.cart.id : cartItem.cart)) !== String(cartId)) {
       return { success: false, error: 'Cart item not found or unauthorized' };
     }
 
     // Check inventory
-    const product = cartItem.product;
-    if (product.inventory?.trackQuantity && product.inventory.stockLevel < quantity) {
-      if (!product.inventory.allowBackorders) {
-        return { 
-          success: false, 
-          error: `Only ${product.inventory.stockLevel} items available in stock` 
+    const product = cartItem.product as any;
+    if (product?.inventory?.trackQuantity && product?.inventory?.stockLevel < quantity) {
+      if (!product?.inventory?.allowBackorders) {
+        return {
+          success: false,
+          error: `Only ${product?.inventory?.stockLevel} items available in stock`
         };
       }
     }
 
     // Update quantity
-    await payload.update({
+    await (payload as any).update({
       collection: 'cart-items',
       id: cartItemId,
       data: {
         quantity,
         availability: {
-          inStock: product.inventory?.stockLevel >= quantity,
-          stockLevel: product.inventory?.stockLevel || 0,
+          inStock: (product?.inventory?.stockLevel || 0) >= quantity,
+          stockLevel: product?.inventory?.stockLevel || 0,
         },
       },
     });
@@ -305,19 +308,19 @@ export async function getCartSummary(
     const taxItems = mapCartItemsForTax(items.docs);
 
     // Calculate totals using unified calculation (respects book tax exemption)
-    const totals = calculateOrderTotals(taxItems, normalizeShippingAddress(cart.shippingAddress), {
-      taxExempt: cart.taxExempt,
+    const totals = (calculateOrderTotals as any)(taxItems, normalizeShippingAddress((cart as any).shippingAddress), {
+      taxExempt: (cart as any).taxExempt || false,
       shippingMethod: 'standard',
     });
 
     return {
-      id: cart.id,
-      itemCount: items.docs.reduce((count, item) => count + item.quantity, 0),
+      id: String(cart.id),
+      itemCount: items.docs.reduce((count, item) => count + (item.quantity || 0), 0),
       subtotal: totals.subtotal,
       tax: totals.tax.amount,
       shipping: totals.shipping.cost,
       total: totals.total,
-      items: items.docs,
+      items: items.docs as any,
     };
 
   } catch (error) {
@@ -443,21 +446,21 @@ async function updateCartTotals(payload: Payload, cartId: string): Promise<void>
     const taxItems = mapCartItemsForTax(items.docs);
 
     // Calculate totals using unified calculation (respects book tax exemption)
-    const totals = calculateOrderTotals(taxItems, normalizeShippingAddress(cart.shippingAddress), {
-      taxExempt: cart.taxExempt,
+    const totals = (calculateOrderTotals as any)(taxItems, normalizeShippingAddress((cart as any).shippingAddress), {
+      taxExempt: (cart as any).taxExempt || false,
       shippingMethod: 'standard',
     });
 
     // Update cart with new totals
-    await payload.update({
+    await (payload as any).update({
       collection: 'carts',
-      id: cartId,
+      id: String(cartId),
       data: {
         totalAmount: totals.total,
         totalTax: totals.tax.amount,
         shippingAmount: totals.shipping.cost,
         lastActivity: new Date().toISOString(),
-      },
+      } as any,
     });
 
   } catch (error) {
@@ -475,7 +478,7 @@ export async function findOrCreateCart(
   sessionId?: string
 ): Promise<any> {
   try {
-    let whereClause: any = {
+    const whereClause: any = {
       status: { equals: 'active' },
     };
 
@@ -529,7 +532,7 @@ export async function findOrCreateCart(
 export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
   try {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    
+
     // Find active carts older than 1 hour that haven't had abandoned email sent
     const abandonedCarts = await payload.find({
       collection: 'carts',
@@ -568,10 +571,10 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
       // Determine customer email
       let customerEmail = '';
       let customerName = '';
-      
-      if (cart.user) {
-        customerEmail = cart.user.email;
-        customerName = cart.user.name || '';
+
+      if (cart.user && typeof cart.user === 'object') {
+        customerEmail = (cart.user as any).email;
+        customerName = (cart.user as any).name || '';
       } else if (cart.guestEmail) {
         customerEmail = cart.guestEmail;
       }
@@ -593,7 +596,7 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
       const emailData: AbandonedCartData = {
         customerName,
         customerEmail,
-        cartId: cart.id,
+        cartId: String(cart.id),
         items: items.docs.map(item => ({
           productTitle: item.productTitle,
           quantity: item.quantity,
@@ -607,7 +610,7 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
       // Send abandoned cart email
       try {
         const emailSent = await sendAbandonedCartEmail(emailData);
-        
+
         // Update cart status and mark email as sent
         await payload.update({
           collection: 'carts',
@@ -624,7 +627,7 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
         }
       } catch (emailError) {
         console.error(`Failed to send abandoned cart email for cart ${cart.id}:`, emailError);
-        
+
         // Still mark as abandoned even if email failed
         await payload.update({
           collection: 'carts',
@@ -638,7 +641,7 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
 
     // Delete very old abandoned carts (30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    
+
     const oldCarts = await payload.find({
       collection: 'carts',
       where: {
@@ -721,7 +724,7 @@ export async function transferGuestCartToUser(
     if (userCarts.docs.length > 0) {
       // Merge guest cart into existing user cart
       const userCart = userCarts.docs[0];
-      
+
       // Transfer items
       const guestItems = await payload.find({
         collection: 'cart-items',
@@ -731,12 +734,12 @@ export async function transferGuestCartToUser(
       });
 
       for (const item of guestItems.docs) {
-        await payload.update({
+        await (payload as any).update({
           collection: 'cart-items',
           id: item.id,
           data: {
             cart: userCart.id,
-          },
+          } as any,
         });
       }
 
@@ -747,20 +750,20 @@ export async function transferGuestCartToUser(
       });
 
       // Update user cart totals
-      await updateCartTotals(payload, userCart.id);
+      await updateCartTotals(payload, String(userCart.id));
 
-      return { success: true, cartId: userCart.id };
+      return { success: true, cartId: String(userCart.id) };
     } else {
       // Transfer guest cart to user
-      await payload.update({
+      await (payload as any).update({
         collection: 'carts',
         id: guestCart.id,
         data: {
           user: userId,
-        },
+        } as any,
       });
 
-      return { success: true, cartId: guestCart.id };
+      return { success: true, cartId: String(guestCart.id) };
     }
 
   } catch (error) {

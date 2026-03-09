@@ -41,7 +41,7 @@ const Publishers: CollectionConfig = {
         ]
       }
     },
-    
+
     // Publisher Type and Details
     {
       name: 'type',
@@ -59,7 +59,7 @@ const Publishers: CollectionConfig = {
         description: 'Type of publishing house'
       }
     },
-    
+
     {
       name: 'foundedYear',
       type: 'number',
@@ -67,7 +67,7 @@ const Publishers: CollectionConfig = {
         description: 'Year the publisher was founded'
       }
     },
-    
+
     // Location
     {
       name: 'location',
@@ -88,7 +88,7 @@ const Publishers: CollectionConfig = {
         }
       ]
     },
-    
+
     // Contact Information
     {
       name: 'contact',
@@ -114,7 +114,7 @@ const Publishers: CollectionConfig = {
         }
       ]
     },
-    
+
     // Publishing Focus
     {
       name: 'specialties',
@@ -141,7 +141,7 @@ const Publishers: CollectionConfig = {
         description: 'Publishing specialties and focus areas'
       }
     },
-    
+
     // Publisher Description
     {
       name: 'description',
@@ -150,7 +150,7 @@ const Publishers: CollectionConfig = {
         description: 'Publisher description and background'
       }
     },
-    
+
     // Notable Information
     {
       name: 'notableAuthors',
@@ -173,7 +173,7 @@ const Publishers: CollectionConfig = {
         description: 'Notable authors published by this house'
       }
     },
-    
+
     // Awards and Recognition
     {
       name: 'awards',
@@ -197,7 +197,7 @@ const Publishers: CollectionConfig = {
         description: 'Awards and recognition received'
       }
     },
-    
+
     // Logo/Image
     {
       name: 'logo',
@@ -207,7 +207,7 @@ const Publishers: CollectionConfig = {
         description: 'Publisher logo or brand image'
       }
     },
-    
+
     // Social Media
     {
       name: 'socialMedia',
@@ -234,7 +234,7 @@ const Publishers: CollectionConfig = {
         description: 'Social media profiles'
       }
     },
-    
+
     // Status
     {
       name: 'isActive',
@@ -244,7 +244,7 @@ const Publishers: CollectionConfig = {
         description: 'Is this publisher currently active?'
       }
     },
-    
+
     // Virtual field for book count
     {
       name: 'bookCount',
@@ -254,7 +254,7 @@ const Publishers: CollectionConfig = {
         description: 'Number of books from this publisher (automatically calculated)'
       }
     },
-    
+
     // SEO
     {
       name: 'seo',
@@ -277,17 +277,21 @@ const Publishers: CollectionConfig = {
       ]
     }
   ],
-  
+
   // Endpoints for custom functionality
   endpoints: [
     {
       path: '/:id/books',
       method: 'get',
-      handler: async (req, res, next) => {
+      handler: async (req) => {
         try {
-          const { id } = req.params
+          const { id } = req.routeParams || {}
           const { payload } = req
-          
+
+          if (!id) {
+            return Response.json({ error: 'Publisher ID is required' }, { status: 400 })
+          }
+
           // Find all books from this publisher
           const books = await payload.find({
             collection: 'books',
@@ -299,19 +303,20 @@ const Publishers: CollectionConfig = {
             limit: 100,
             sort: 'title'
           })
-          
-          res.json({
+
+          return Response.json({
             publisher: id,
             totalBooks: books.totalDocs,
             books: books.docs
           })
         } catch (error) {
-          next(error)
+          console.error('Error in publisher books endpoint:', error)
+          return Response.json({ error: 'Internal server error' }, { status: 500 })
         }
       }
     }
   ],
-  
+
   // Public read access
   access: {
     read: () => true,
@@ -323,19 +328,19 @@ const Publishers: CollectionConfig = {
         if (!data || (operation !== 'create' && operation !== 'update')) {
           return
         }
-        
+
         // Auto-generate SEO fields
         if (!data.seo?.title && data.name) {
           data.seo = { ...data.seo, title: `${data.name} - Publisher` }
         }
-        
+
         if (!data.seo?.description && data.name) {
-          const desc = data.description ? 
-            (typeof data.description === 'string' ? data.description : 'Publisher information available') : 
+          const desc = data.description ?
+            (typeof data.description === 'string' ? data.description : 'Publisher information available') :
             'Discover books and publications'
-          data.seo = { 
-            ...data.seo, 
-            description: `Books by ${data.name}. ${desc}`.substring(0, 160) 
+          data.seo = {
+            ...data.seo,
+            description: `Books by ${data.name}. ${desc}`.substring(0, 160)
           }
         }
       }

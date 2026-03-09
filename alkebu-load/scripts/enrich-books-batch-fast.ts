@@ -72,7 +72,7 @@ async function fetchFromISBNdb(isbn: string): Promise<ISBNdbResponse | null> {
       'Authorization': ISBNDB_API_KEY,
       'Content-Type': 'application/json',
     },
-    timeout: 5000, // 5 second timeout
+    signal: AbortSignal.timeout(5000), // 5 second timeout
   })
 
   if (!response.ok) {
@@ -210,7 +210,7 @@ async function processBooksChunk(books: any[], stats: FastStats): Promise<Enrich
 
       stats.apiCalls++
       const isbndbData = await fetchFromISBNdb(isbn)
-      
+
       if (!isbndbData || !isbndbData.book) {
         return {
           bookId: book.id,
@@ -257,7 +257,7 @@ async function processBooksChunk(books: any[], stats: FastStats): Promise<Enrich
 
 async function updateBooksInDatabase(payload: any, results: EnrichmentResult[], stats: FastStats): Promise<void> {
   const successfulResults = results.filter(r => r.success && r.fieldsUpdated > 0)
-  
+
   if (successfulResults.length === 0) return
 
   // Update books in parallel (but limit concurrency to avoid overwhelming DB)
@@ -282,7 +282,7 @@ function printProgress(stats: FastStats, currentBatch: number, totalBatches: num
   const elapsed = (Date.now() - stats.startTime) / 1000
   const rate = stats.processed / elapsed
   const eta = totalBatches > currentBatch ? ((totalBatches - currentBatch) * CONCURRENT_API_CALLS) / rate : 0
-  
+
   console.log(`\n📊 Batch ${currentBatch}/${totalBatches} Complete:`)
   console.log(`   ⚡ Processed: ${stats.processed}/${stats.totalBooks} books`)
   console.log(`   ✨ Enriched: ${stats.enriched} books`)
@@ -366,15 +366,15 @@ async function main() {
 
   for (const [chunkIndex, chunk] of chunks.entries()) {
     const batchNum = chunkIndex + 1
-    
+
     console.log(`[Batch ${batchNum}/${chunks.length}] Processing ${chunk.length} books...`)
 
     // Process API calls concurrently
     const results = await processBooksChunk(chunk, stats)
-    
+
     // Update database with successful results
     await updateBooksInDatabase(payload, results, stats)
-    
+
     // Update stats
     stats.processed += chunk.length
     stats.enriched += results.filter(r => r.success).length

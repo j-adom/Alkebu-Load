@@ -1,0 +1,1 @@
+function r(t,n){const e=typeof t=="string"?new Date(t):t,o={weekday:"long",year:"numeric",month:"long",day:"numeric",...n};return e.toLocaleDateString("en-US",o)}function a(t){return r(t,{year:"numeric",month:"short",day:"numeric"})}export{r as a,a as f};

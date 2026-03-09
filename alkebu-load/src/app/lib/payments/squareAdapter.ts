@@ -25,12 +25,9 @@ export const squareAdapter = (): PaymentAdapter => {
   }
 
   const initPayment = async (payload: any, params: InitPaymentParams) => {
-    const squareModule = await import('square');
-    const Client = squareModule.Client;
-    const Environment = squareModule.Environment;
-    const client = new Client({
-      accessToken,
-      environment: isProduction ? Environment.Production : Environment.Sandbox,
+    const { SquareClient } = await import('square');
+    const client = new SquareClient({
+      token: accessToken,
     });
 
     // Load cart and build line items
@@ -92,32 +89,32 @@ export const squareAdapter = (): PaymentAdapter => {
         lineItems,
         taxes: taxCalc.amount > 0
           ? [
-              {
-                uid: 'sales-tax',
-                name: 'Sales Tax',
-                type: 'ADDITIVE' as const,
-                percentage: String((taxCalc.rate * 100).toFixed(2)),
-              },
-            ]
+            {
+              uid: 'sales-tax',
+              name: 'Sales Tax',
+              type: 'ADDITIVE' as const,
+              percentage: String((taxCalc.rate * 100).toFixed(2)),
+            },
+          ]
           : undefined,
         serviceCharges: shipping.cost > 0
           ? [
-              {
-                uid: 'shipping',
-                name: `Shipping (${shipping.method})`,
-                calculationPhase: 'SUBTOTAL_PHASE' as const,
-                amountMoney: {
-                  amount: BigInt(shipping.cost),
-                  currency: 'USD',
-                },
-                taxable: false,
+            {
+              uid: 'shipping',
+              name: `Shipping (${shipping.method})`,
+              calculationPhase: 'SUBTOTAL_PHASE' as const,
+              amountMoney: {
+                amount: BigInt(shipping.cost),
+                currency: 'USD',
               },
-            ]
+              taxable: false,
+            },
+          ]
           : undefined,
       },
     };
 
-    const { result } = await client.checkoutApi.createPaymentLink(requestBody);
+    const result = await (client.checkout as any).createPaymentLink(requestBody);
     const checkoutUrl = result.paymentLink?.url;
     const providerPaymentId = result.paymentLink?.id;
 
@@ -306,9 +303,9 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
       const product = typeof item.product === 'object'
         ? item.product
         : await payload.findByID({
-            collection: item.productType,
-            id: productId,
-          });
+          collection: item.productType,
+          id: productId,
+        });
 
       if (product?.inventory?.trackQuantity) {
         const newStockLevel = Math.max(0, (product.inventory.stockLevel || 0) - item.quantity);

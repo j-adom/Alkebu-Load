@@ -1,4 +1,4 @@
-import { SquareClient } from 'square'
+import { SquareClient, type CatalogObject } from 'square'
 import { config as dotenvConfig } from 'dotenv'
 
 dotenvConfig()
@@ -6,6 +6,15 @@ dotenvConfig()
 const squareClient = new SquareClient({
   token: process.env.SQUARE_ACCESS_TOKEN!
 })
+
+type CatalogItemObject = Extract<CatalogObject, { type: 'ITEM' }>
+type CatalogItemVariationObject = Extract<CatalogObject, { type: 'ITEM_VARIATION' }>
+
+const isCatalogItemObject = (object: CatalogObject): object is CatalogItemObject =>
+  object.type === 'ITEM' && !!object.itemData
+
+const isCatalogItemVariationObject = (object: CatalogObject): object is CatalogItemVariationObject =>
+  object.type === 'ITEM_VARIATION' && !!object.itemVariationData
 
 const debugSquareAccess = async () => {
   console.log('🔍 Debug: Testing Square API access...')
@@ -24,9 +33,10 @@ const debugSquareAccess = async () => {
   // Test 2: Merchant info  
   try {
     const merchant = await squareClient.merchants.list()
+    const merchants = merchant.data
     console.log('\n✅ Merchant API works:')
-    console.log(`  Merchant ID: ${merchant.merchant?.[0]?.id}`)
-    console.log(`  Business Name: ${merchant.merchant?.[0]?.businessName}`)
+    console.log(`  Merchant ID: ${merchants[0]?.id}`)
+    console.log(`  Business Name: ${merchants[0]?.businessName}`)
   } catch (error) {
     console.error('❌ Merchant API failed:', error)
   }
@@ -39,38 +49,41 @@ const debugSquareAccess = async () => {
   try {
     console.log('\n🔍 Trying inventory API...')
     if (squareClient.inventory) {
-      const inventory = await squareClient.inventory.batchRetrieveCounts({
+      const inventory = await squareClient.inventory.batchGetCounts({
         locationIds: ['LC2AKZX32H2ZA']
       })
-      console.log(`✅ Inventory works - Found ${inventory.counts?.length || 0} counts`)
+      console.log(`✅ Inventory works - Found ${inventory.data.length} counts`)
     } else {
       console.log('❌ No inventory API available')
     }
-  } catch (error: any) {
-    console.error('❌ Inventory failed:', error.message)
+  } catch (error) {
+    console.error('❌ Inventory failed:', error instanceof Error ? error.message : error)
   }
   
   // Test 5: Try catalog with correct structure (fix the response handling)
   try {
     console.log('\n🔍 Trying catalog API with better debugging...')
     const catalog = await squareClient.catalog.list({
-      types: ['ITEM'],
-      includeRelatedObjects: true
+      types: 'ITEM'
     })
+    const catalogItems = catalog.data
+      .filter(isCatalogItemObject)
     
     console.log('Full response structure:', Object.keys(catalog))
-    console.log(`Catalog response: ${catalog.objects?.length || 0} objects`)
-    console.log('Cursor:', catalog.cursor)
+    console.log(`Catalog response: ${catalogItems.length} items`)
+    console.log('Cursor:', catalog.response.cursor)
     
-    if (catalog.objects && catalog.objects.length > 0) {
+    if (catalogItems.length > 0) {
       console.log('\n✅ Found products! First few items:')
-      catalog.objects.slice(0, 3).forEach((obj, index) => {
+      catalogItems.slice(0, 3).forEach((obj, index) => {
         console.log(`\n${index + 1}. ${obj.type}: ${obj.itemData?.name || 'Unnamed'}`)
         console.log(`   ID: ${obj.id}`)
         console.log(`   Description: ${obj.itemData?.descriptionPlaintext || 'No description'}`)
         
         if (obj.itemData?.variations) {
-          obj.itemData.variations.forEach((variation, vIndex) => {
+          obj.itemData.variations
+            .filter(isCatalogItemVariationObject)
+            .forEach((variation, vIndex) => {
             console.log(`   Variation ${vIndex + 1}:`)
             console.log(`     SKU: ${variation.itemVariationData?.sku || 'No SKU'}`)
             console.log(`     Price: ${(Number(variation.itemVariationData?.priceMoney?.amount) / 100) || 0}`)
@@ -81,9 +94,11 @@ const debugSquareAccess = async () => {
       
       // Count items with GTINs/UPCs
       let itemsWithGTIN = 0
-      catalog.objects.forEach(obj => {
+      catalogItems.forEach(obj => {
         if (obj.itemData?.variations) {
-          obj.itemData.variations.forEach(variation => {
+          obj.itemData.variations
+            .filter(isCatalogItemVariationObject)
+            .forEach(variation => {
             if (variation.itemVariationData?.upc) {
               itemsWithGTIN++
             }
@@ -92,16 +107,16 @@ const debugSquareAccess = async () => {
       })
       
       console.log(`\n📊 Summary from this batch:`)
-      console.log(`   Total items: ${catalog.objects.length}`)
+      console.log(`   Total items: ${catalogItems.length}`)
       console.log(`   Items with UPC/GTIN: ${itemsWithGTIN}`)
-      console.log(`   Has more pages: ${!!catalog.cursor}`)
+      console.log(`   Has more pages: ${catalog.hasNextPage()}`)
       
     } else {
       console.log('❌ No objects found in catalog response')
-      console.log('Response details:', JSON.stringify(catalog, null, 2))
+      console.log('Response details:', JSON.stringify(catalog.response, null, 2))
     }
-  } catch (error: any) {
-    console.error('❌ Catalog failed:', error.message)
+  } catch (error) {
+    console.error('❌ Catalog failed:', error instanceof Error ? error.message : error)
     console.error('Full error:', error)
   }
   

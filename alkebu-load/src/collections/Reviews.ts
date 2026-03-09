@@ -200,7 +200,7 @@ const Reviews: CollectionConfig = {
       admin: {
         description: 'Internal notes from moderators',
         condition: (data, siblingData, { user }) =>
-          user?.role === 'admin' || user?.role === 'staff',
+          (user as any)?.role === 'admin' || (user as any)?.role === 'staff',
       },
     },
     {
@@ -242,8 +242,8 @@ const Reviews: CollectionConfig = {
       // Auto-verify if user has purchased this product
       async ({ data, req, operation }) => {
         if (operation === 'create' &&
-            data.reviewableType !== 'businesses' &&
-            data.author) {
+          data.reviewableType !== 'businesses' &&
+          data.author) {
 
           // Check if user has ordered this product
           const orders = await req.payload.find({
@@ -286,19 +286,19 @@ const Reviews: CollectionConfig = {
           });
 
           data.authorName = user.name ||
-                           `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
-                           'Anonymous';
+            `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+            'Anonymous';
         }
 
         return data;
       },
 
       // Track edits
-      async ({ data, operation, previousDoc }) => {
-        if (operation === 'update' && previousDoc) {
-          if (previousDoc.body !== data.body ||
-              previousDoc.title !== data.title ||
-              previousDoc.rating !== data.rating) {
+      async ({ data, operation, originalDoc }) => {
+        if (operation === 'update' && originalDoc) {
+          if (originalDoc.body !== data.body ||
+            originalDoc.title !== data.title ||
+            originalDoc.rating !== data.rating) {
             data.isEdited = true;
             data.editedAt = new Date();
           }
@@ -359,7 +359,7 @@ const Reviews: CollectionConfig = {
   access: {
     // Anyone can read approved reviews
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin' || user?.role === 'staff') {
+      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') {
         return true; // Admins see all
       }
 
@@ -375,7 +375,7 @@ const Reviews: CollectionConfig = {
 
     // Users can edit their own reviews (before approval)
     update: ({ req: { user } }) => {
-      if (user?.role === 'admin' || user?.role === 'staff') {
+      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') {
         return true;
       }
 
@@ -394,7 +394,7 @@ const Reviews: CollectionConfig = {
     },
 
     // Only admins can delete
-    delete: ({ req: { user } }) => user?.role === 'admin',
+    delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },
 
   timestamps: true,

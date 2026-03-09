@@ -39,11 +39,11 @@ export interface SearchResponse {
 
 // FlexSearch indices for different content types
 class SearchEngine {
-  private bookIndex: Document<any>;
-  private blogIndex: Document<any>;
-  private eventIndex: Document<any>;
-  private businessIndex: Document<any>;
-  private productIndex: Document<any>;
+  private bookIndex!: Document<any>;
+  private blogIndex!: Document<any>;
+  private eventIndex!: Document<any>;
+  private businessIndex!: Document<any>;
+  private productIndex!: Document<any>;
   private isInitialized = false;
   private rateLimiter: RateLimiterMemory;
 
@@ -69,7 +69,7 @@ class SearchEngine {
       minlength: 2,
       optimize: true,
       fastupdate: false
-    });
+    } as any);
 
     // Blog posts index
     this.blogIndex = new Document({
@@ -82,7 +82,7 @@ class SearchEngine {
       minlength: 2,
       optimize: true,
       fastupdate: false
-    });
+    } as any);
 
     // Events index
     this.eventIndex = new Document({
@@ -95,7 +95,7 @@ class SearchEngine {
       minlength: 2,
       optimize: true,
       fastupdate: false
-    });
+    } as any);
 
     // Business directory index
     this.businessIndex = new Document({
@@ -108,7 +108,7 @@ class SearchEngine {
       minlength: 2,
       optimize: true,
       fastupdate: false
-    });
+    } as any);
 
     // Products index (wellness, fashion, oils)
     this.productIndex = new Document({
@@ -121,7 +121,7 @@ class SearchEngine {
       minlength: 2,
       optimize: true,
       fastupdate: false
-    });
+    } as any);
 
     this.isInitialized = true;
   }
@@ -229,7 +229,7 @@ class SearchEngine {
         for (const result of bookResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await this.bookIndex.store[id as any];
+              const doc = await (this.bookIndex as any).store[id as any];
               if (doc) {
                 results.push({
                   id: id as string,
@@ -255,7 +255,7 @@ class SearchEngine {
         for (const result of blogResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await this.blogIndex.store[id as any];
+              const doc = await (this.blogIndex as any).store[id as any];
               if (doc) {
                 results.push({
                   id: id as string,
@@ -280,7 +280,7 @@ class SearchEngine {
         for (const result of eventResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await this.eventIndex.store[id as any];
+              const doc = await (this.eventIndex as any).store[id as any];
               if (doc) {
                 results.push({
                   id: id as string,
@@ -304,7 +304,7 @@ class SearchEngine {
         for (const result of businessResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await this.businessIndex.store[id as any];
+              const doc = await (this.businessIndex as any).store[id as any];
               if (doc) {
                 results.push({
                   id: id as string,
@@ -328,7 +328,7 @@ class SearchEngine {
         for (const result of productResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await this.productIndex.store[id as any];
+              const doc = await (this.productIndex as any).store[id as any];
               if (doc) {
                 results.push({
                   id: id as string,
@@ -427,7 +427,7 @@ class SearchEngine {
   // Search ISBNdb API
   private async searchISBNdb(query: string): Promise<ExternalBookResult[]> {
     const results: ExternalBookResult[] = [];
-    
+
     if (!process.env.ISBNDB_API_KEY) {
       return results;
     }
@@ -468,7 +468,7 @@ class SearchEngine {
   // Search Google Books API
   private async searchGoogleBooks(query: string): Promise<ExternalBookResult[]> {
     const results: ExternalBookResult[] = [];
-    
+
     if (!process.env.GOOGLE_BOOKS_API_KEY) {
       return results;
     }
@@ -484,7 +484,7 @@ class SearchEngine {
           for (const item of data.items) {
             const volumeInfo = item.volumeInfo;
             const isbn = volumeInfo.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier ||
-                        volumeInfo.industryIdentifiers?.[0]?.identifier;
+              volumeInfo.industryIdentifiers?.[0]?.identifier;
 
             if (isbn) {
               results.push({

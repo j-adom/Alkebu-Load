@@ -1,0 +1,1 @@
+export { default as component } from "../../../../src/routes/shop/books/genres/[slug]/+page.svelte";

@@ -58,11 +58,11 @@ export async function GET(request: NextRequest) {
           deviceType: request.headers.get('user-agent')?.includes('Mobile') ? 'mobile' : 'desktop',
           ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
           userAgent: request.headers.get('user-agent') || 'unknown'
-        }
+        } as any
       });
 
       // Include search analytics ID in response for potential quote requests
-      searchResults.searchAnalyticsId = searchAnalytics.id;
+      (searchResults as any).searchAnalyticsId = searchAnalytics.id;
     } catch (analyticsError) {
       console.error('Error logging search analytics:', analyticsError);
     }
@@ -81,11 +81,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      query, 
-      types, 
-      limit = 20, 
-      filters = {}, 
+    const {
+      query,
+      types,
+      limit = 20,
+      filters = {},
       includeExternal = false,
       sessionId,
       userId,
@@ -148,10 +148,10 @@ export async function POST(request: NextRequest) {
             bookshopChecked: searchResults.external.some(book => book.source === 'bookshop'),
             quoteRequested: false
           } : undefined
-        }
+        } as any
       });
 
-      searchResults.searchAnalyticsId = searchAnalytics.id;
+      (searchResults as any).searchAnalyticsId = searchAnalytics.id;
     } catch (analyticsError) {
       console.error('Error logging search analytics:', analyticsError);
     }

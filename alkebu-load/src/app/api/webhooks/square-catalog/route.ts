@@ -11,17 +11,17 @@ import { extractAndCreateVendor } from '../../../utils/squareVendorExtractor'
 
 // Wrapper function to match expected interface
 async function enrichProduct(isbn: string) {
-  const identifier = { 
-    type: isbn.length === 13 ? 'isbn13' : 'isbn10' as 'isbn13' | 'isbn10', 
-    value: isbn 
+  const identifier = {
+    type: isbn.length === 13 ? 'isbn13' : 'isbn10' as 'isbn13' | 'isbn10',
+    value: isbn
   }
-  
+
   const enrichedData = await enrichProductFromIdentifiers(identifier)
-  
+
   if (!enrichedData) {
     return null
   }
-  
+
   // Transform to match expected format
   return {
     title: enrichedData.title,
@@ -123,8 +123,7 @@ export async function POST(request: NextRequest) {
 
       // Use pagination to get all items and related objects (including images)
       const catalogResponse = await squareClient.catalog.list({
-        types: ['ITEM', 'IMAGE'],
-        includeRelatedObjects: true
+        types: 'ITEM,IMAGE',
       })
 
       console.log('✅ Square API call successful')
@@ -139,25 +138,25 @@ export async function POST(request: NextRequest) {
           imageObjectsMap.set(obj.id, obj)
         }
       }
-      
+
       console.log(`📦 Total items collected across all pages: ${allItems.length}`)
-      
+
       // If still no items, try fetching all catalog types
       if (allItems.length === 0) {
         console.log('🔍 No ITEM types found, trying all catalog types...')
         const allTypesPager = await squareClient.catalog.list()
-        
+
         const allObjects: any[] = []
         for await (const obj of allTypesPager) {
           allObjects.push(obj)
         }
-        
+
         console.log('📦 All catalog objects found:', allObjects.length)
         if (allObjects.length > 0) {
-          console.log('📋 Found catalog objects of types:', 
+          console.log('📋 Found catalog objects of types:',
             [...new Set(allObjects.map(obj => obj.type))]
           )
-          
+
           // Show first few objects for debugging
           allObjects.slice(0, 3).forEach((obj, index) => {
             console.log(`${index + 1}. Type: ${obj.type}, ID: ${obj.id}`)
@@ -167,7 +166,7 @@ export async function POST(request: NextRequest) {
           })
         }
       }
-      
+
     } catch (squareError) {
       console.error('❌ Square API call failed:', squareError)
       console.error('❌ Error details:', {
@@ -192,12 +191,12 @@ export async function POST(request: NextRequest) {
     for (const item of allItems) {
       try {
         console.log(`\n🔄 Processing item: ${item.itemData?.name || 'Unknown'}`)
-        
+
         // Check if item was recently updated
         if (item.updatedAt) {
           const itemUpdatedAt = new Date(item.updatedAt)
           const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000)
-          
+
           if (itemUpdatedAt < fiveMinutesAgo) {
             console.log('⏭️ Skipping - not recently updated')
             continue
@@ -206,10 +205,10 @@ export async function POST(request: NextRequest) {
 
         // Determine which collection to use - default to books for now
         const collection = determineCollection(item)
-        
+
         // Find existing product by Square ID
         const existingProduct = await payload.find({
-          collection,
+          collection: collection as any,
           where: {
             squareItemId: {
               equals: item.id
@@ -229,7 +228,7 @@ export async function POST(request: NextRequest) {
         // Set name/title based on collection
         if (collection === 'books') {
           productData.title = item.itemData?.name || 'Unknown Product'
-          
+
           // Create editions from variations for books
           if (item.itemData?.variations) {
             productData.editions = item.itemData.variations.map((variation: any) => ({
@@ -238,23 +237,23 @@ export async function POST(request: NextRequest) {
               publisher: productData.publisher || 'Unknown Publisher', // Required field
               binding: 'paperback', // Default
               isAvailable: true,
-              price: variation.itemVariationData?.priceMoney?.amount 
-                ? Number(variation.itemVariationData.priceMoney.amount) / 100 
+              price: variation.itemVariationData?.priceMoney?.amount
+                ? Number(variation.itemVariationData.priceMoney.amount) / 100
                 : undefined
             }))
           }
         } else {
           // For other collections (wellness-lifestyle, fashion-jewelry)
           productData.name = item.itemData?.name || 'Unknown Product'
-          
+
           // Create variations from variations for other collections
           if (item.itemData?.variations) {
             productData.variations = item.itemData.variations.map((variation: any) => ({
               squareVariationId: variation.id,
               sku: variation.itemVariationData?.sku || variation.itemVariationData?.upc || '',
               isAvailable: true,
-              price: variation.itemVariationData?.priceMoney?.amount 
-                ? Number(variation.itemVariationData.priceMoney.amount) / 100 
+              price: variation.itemVariationData?.priceMoney?.amount
+                ? Number(variation.itemVariationData.priceMoney.amount) / 100
                 : undefined
             }))
           }
@@ -275,35 +274,35 @@ export async function POST(request: NextRequest) {
           console.log(`📖 Found ISBN/UPC: ${isbn}`)
           try {
             const enrichedData = await enrichProduct(isbn)
-            
+
             if (enrichedData) {
               productData = { ...productData, ...enrichedData }
               console.log('✅ Product enriched successfully')
-              
+
               // Store raw author names for reference
               if (enrichedData.authors) {
                 productData.authorsText = enrichedData.authors
               }
-              
+
               // Create or find authors and get their IDs
               const authorNames = extractAuthorNames(enrichedData)
               if (authorNames.length > 0) {
                 console.log(`👥 Processing ${authorNames.length} authors:`, authorNames)
                 const req = { user: null } as any // Create minimal req object
                 const authorIds = await createOrFindAuthors(payload, req, authorNames)
-                
+
                 if (authorIds.length > 0) {
                   productData.authors = authorIds
                   console.log(`✅ Linked ${authorIds.length} authors to book`)
                 }
               }
-              
+
               // Create or find publisher and get ID
               if (enrichedData.publisher) {
                 console.log(`📚 Processing publisher: "${enrichedData.publisher}"`)
                 const req = { user: null } as any
                 const publisherId = await createOrFindPublisher(payload, req, enrichedData.publisher)
-                
+
                 if (publisherId) {
                   productData.publisher = publisherId
                   productData.publisherText = enrichedData.publisher // Keep text for reference
@@ -312,7 +311,7 @@ export async function POST(request: NextRequest) {
                   productData.publisherText = enrichedData.publisher // Store as text if relationship creation fails
                 }
               }
-              
+
               // Update editions with enriched publisher info
               if (productData.editions && productData.publisher) {
                 productData.editions = productData.editions.map((edition: any) => ({
@@ -321,7 +320,7 @@ export async function POST(request: NextRequest) {
                   publisherText: enrichedData.publisher
                 }))
               }
-              
+
               // Store image URLs for manual processing later
               if (enrichedData.coverUrls && enrichedData.coverUrls.length > 0) {
                 console.log(`📷 Found ${enrichedData.coverUrls.length} cover URLs:`, enrichedData.coverUrls)
@@ -385,7 +384,7 @@ export async function POST(request: NextRequest) {
         console.log('🏪 Extracting vendor information from Square data...')
         const req = { user: null } as any
         const vendorId = await extractAndCreateVendor(payload, req, item)
-        
+
         if (vendorId) {
           productData.vendor = vendorId
           console.log('✅ Vendor assigned to product')
@@ -397,14 +396,14 @@ export async function POST(request: NextRequest) {
         let savedProduct
         if (existingProduct.docs.length > 0) {
           savedProduct = await payload.update({
-            collection,
+            collection: collection as any,
             id: existingProduct.docs[0].id,
             data: productData
           })
           console.log('✅ Product updated in Payload')
         } else {
           savedProduct = await payload.create({
-            collection,
+            collection: collection as any,
             data: productData
           })
           console.log('✅ Product created in Payload')
@@ -414,11 +413,11 @@ export async function POST(request: NextRequest) {
         if (collection === 'books' && productData.authors && productData.authors.length > 0) {
           console.log('📊 Updating author metadata...')
           const req = { user: null } as any
-          
+
           for (const authorId of productData.authors) {
             await updateAuthorMetadata(payload, req, authorId)
           }
-          
+
           console.log('✅ Author metadata updated')
         }
 
@@ -446,10 +445,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`\n✅ Webhook processing complete. Processed ${processed} items.`)
 
-    return NextResponse.json({ 
-      received: true, 
+    return NextResponse.json({
+      received: true,
       processed,
-      total: allItems.length 
+      total: allItems.length
     })
 
   } catch (error) {
@@ -578,7 +577,7 @@ function sanitizeFilename(filename: string): string {
 function determineCollection(item: any): string {
   // Match the actual collection slugs from your collections
   const itemName = item.itemData?.name?.toLowerCase() || ''
-  
+
   if (itemName.includes('oil') || itemName.includes('incense')) {
     return 'oils-incense'
   }
@@ -588,26 +587,26 @@ function determineCollection(item: any): string {
   if (itemName.includes('wellness') || itemName.includes('lifestyle')) {
     return 'wellness-lifestyle'
   }
-  
+
   return 'books' // Default
 }
 
 // Validate if a string is a valid ISBN
 function isValidIsbn(isbn: string): boolean {
   const cleanIsbn = isbn.replace(/[-\s]/g, '')
-  
+
   // ISBN-13 (13 digits)
   if (/^\d{13}$/.test(cleanIsbn)) return true
-  
+
   // ISBN-10 (9 digits + check digit which can be X)
   if (/^\d{9}[\dX]$/i.test(cleanIsbn)) return true
-  
+
   return false
 }
 
 // Health check endpoint
 export async function GET() {
-  return NextResponse.json({ 
+  return NextResponse.json({
     status: 'healthy',
     endpoint: 'square-catalog-webhook',
     timestamp: new Date().toISOString()

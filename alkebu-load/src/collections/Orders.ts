@@ -10,13 +10,13 @@ export const Orders: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true;
+      if ((user as any)?.role === 'admin') return true;
       if (user) return { customer: { equals: user.id } };
       return false;
     },
     create: () => true,
-    update: ({ req: { user } }) => user?.role === 'admin' || user?.role === 'staff',
-    delete: ({ req: { user } }) => user?.role === 'admin',
+    update: ({ req: { user } }) => (user as any)?.role === 'admin' || (user as any)?.role === 'staff',
+    delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },
   fields: [
     {
@@ -422,11 +422,11 @@ export const Orders: CollectionConfig = {
         // Handle order status changes
         if (operation === 'update' && doc.status !== previousDoc?.status) {
           console.log(`Order ${doc.orderNumber} status changed: ${previousDoc?.status} → ${doc.status}`);
-          
+
           // Restore stock on cancellation/return
-          if ((doc.status === 'cancelled' || doc.status === 'returned') && 
-              previousDoc?.status !== 'cancelled' && previousDoc?.status !== 'returned') {
-            
+          if ((doc.status === 'cancelled' || doc.status === 'returned') &&
+            previousDoc?.status !== 'cancelled' && previousDoc?.status !== 'returned') {
+
             for (const item of doc.items) {
               try {
                 // Find product and restore stock
@@ -434,7 +434,7 @@ export const Orders: CollectionConfig = {
                   collection: item.productType as any,
                   id: item.product,
                 });
-                
+
                 if (product?.inventory?.trackQuantity) {
                   await payload.update({
                     collection: item.productType as any,
@@ -450,18 +450,18 @@ export const Orders: CollectionConfig = {
               }
             }
           }
-          
+
           // Update fulfillment dates based on status
           const updateData: any = {};
-          
+
           if (doc.status === 'shipped' && !doc.fulfillment?.shippedAt) {
             updateData['fulfillment.shippedAt'] = new Date().toISOString();
           }
-          
+
           if (doc.status === 'delivered' && !doc.fulfillment?.deliveredAt) {
             updateData['fulfillment.deliveredAt'] = new Date().toISOString();
           }
-          
+
           if (Object.keys(updateData).length > 0) {
             await payload.update({
               collection: 'orders',
@@ -469,7 +469,7 @@ export const Orders: CollectionConfig = {
               data: updateData,
             });
           }
-          
+
           // Send status update emails to customers
           try {
             const customerEmail = doc.guestEmail || doc.customer?.email;

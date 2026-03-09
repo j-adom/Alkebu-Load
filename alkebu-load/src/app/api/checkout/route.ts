@@ -47,9 +47,9 @@ async function validateTaxExemptStatus(
     const institution = typeof customer.accountStatus.institution === 'object'
       ? customer.accountStatus.institution
       : await payload.findByID({
-          collection: 'institutional-accounts',
-          id: customer.accountStatus.institution,
-        });
+        collection: 'institutional-accounts',
+        id: customer.accountStatus.institution,
+      });
 
     if (!institution) {
       return { valid: false, reason: 'Linked institutional account not found' };
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     // Validate tax-exempt status against customer/institutional accounts
     const taxExemptValidation = await validateTaxExemptStatus(
       payload,
-      cart.user,
+      typeof cart.user === 'object' && cart.user !== null ? cart.user.id : cart.user,
       !!taxExempt
     );
 
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('session_id');
-    
+
     if (!sessionId) {
       return NextResponse.json(
         { error: 'Session ID required' },

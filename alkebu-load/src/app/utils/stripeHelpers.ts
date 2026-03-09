@@ -76,7 +76,7 @@ export async function createCheckoutSession(
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const taxItems: CartItemForTax[] = [];
 
-    for (const item of cart.items) {
+    for (const item of (cart.items as any[])) {
       lineItems.push({
         price_data: {
           currency: 'usd',
@@ -101,9 +101,9 @@ export async function createCheckoutSession(
     }
 
     // Calculate totals using unified calculation (with book tax exemption)
-    const shippingAddress = cart.shippingAddress;
-    const totals = calculateOrderTotals(taxItems, shippingAddress, {
-      taxExempt: cart.taxExempt,
+    const shippingAddress = (cart as any).shippingAddress;
+    const totals = calculateOrderTotals(taxItems, shippingAddress as any, {
+      taxExempt: (cart as any).taxExempt || false,
       shippingMethod: 'standard',
     });
 
@@ -217,15 +217,15 @@ export async function processStripeWebhook(
       case 'checkout.session.completed':
         await handleCheckoutCompleted(payload, event.data.object);
         break;
-      
+
       case 'payment_intent.succeeded':
         await handlePaymentSucceeded(payload, event.data.object);
         break;
-      
+
       case 'payment_intent.payment_failed':
         await handlePaymentFailed(payload, event.data.object);
         break;
-      
+
       default:
         console.log(`Unhandled Stripe event: ${event.type}`);
     }
@@ -273,8 +273,8 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     }
 
     // Calculate shipping amount from cart (or recalculate)
-    const shippingAmount = cart.shippingAmount || 0;
-    const subtotalAmount = cart.totalAmount - cart.totalTax - shippingAmount;
+    const shippingAmount = (cart as any).shippingAmount || 0;
+    const subtotalAmount = ((cart as any).totalAmount || 0) - ((cart as any).totalTax || 0) - shippingAmount;
 
     // Create order from cart
     const orderData = {
@@ -282,7 +282,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
       customer: cart.user,
       guestEmail: cart.user ? undefined : session.customer_details?.email,
       status: 'paid',
-      items: cart.items.map((item: any) => ({
+      items: (cart.items || []).map((item: any) => ({
         product: typeof item.product === 'object' ? item.product.id : item.product,
         productType: item.productType,
         productTitle: item.productTitle,
@@ -309,32 +309,32 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
       source: 'website',
     };
 
-    const order = await payload.create({
+    const order = await (payload as any).create({
       collection: 'orders',
-      data: orderData,
+      data: orderData as any,
     });
 
     console.log('Order created successfully:', orderData.orderNumber);
 
     // Decrement inventory for each item
-    for (const item of cart.items) {
+    for (const item of (cart.items || []) as any[]) {
       try {
         const productId = typeof item.product === 'object' ? item.product.id : item.product;
         const product = typeof item.product === 'object'
           ? item.product
           : await payload.findByID({
-              collection: item.productType as any,
-              id: productId,
-            });
+            collection: item.productType as any,
+            id: productId,
+          });
 
         if (product?.inventory?.trackQuantity) {
           const newStockLevel = Math.max(0, (product.inventory.stockLevel || 0) - item.quantity);
-          await payload.update({
+          await (payload as any).update({
             collection: item.productType as any,
             id: productId,
             data: {
               'inventory.stockLevel': newStockLevel,
-            },
+            } as any,
           });
           console.log(`Decremented ${item.quantity} units of "${item.productTitle}" (new stock: ${newStockLevel})`);
         }
@@ -368,7 +368,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         subtotal: orderData.subtotalAmount,
         tax: orderData.taxAmount,
         shipping: orderData.shippingAmount,
-        total: orderData.totalAmount,
+        total: orderData.totalAmount || 0,
         shippingAddress: orderData.shippingAddress,
       };
 
@@ -427,7 +427,7 @@ async function handlePaymentSucceeded(payload: Payload, paymentIntent: any): Pro
     });
 
     if (orders.docs.length) {
-      await payload.update({
+      await (payload as any).update({
         collection: 'orders',
         id: orders.docs[0].id,
         data: {
@@ -435,7 +435,7 @@ async function handlePaymentSucceeded(payload: Payload, paymentIntent: any): Pro
           'payment.providerPaymentId': paymentIntent.id,
           'payment.paymentStatus': 'succeeded',
           status: 'processing',
-        },
+        } as any,
       });
     }
   } catch (error) {
@@ -460,13 +460,13 @@ async function handlePaymentFailed(payload: Payload, paymentIntent: any): Promis
     });
 
     if (orders.docs.length) {
-      await payload.update({
+      await (payload as any).update({
         collection: 'orders',
         id: orders.docs[0].id,
         data: {
           'payment.paymentStatus': 'failed',
           status: 'cancelled',
-        },
+        } as any,
       });
     }
   } catch (error) {

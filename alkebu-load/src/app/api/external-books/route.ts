@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
       // Search external sources by ISBN
       const book = await externalBookAPI.getBookByISBN(isbn, sources);
-      
+
       if (book) {
         // Cache the result
         if (cache) {
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     if (action === 'import' && bookId) {
       // Import external book to internal catalog
       const payload = await getPayload({ config });
-      
+
       const externalBook = await payload.findByID({
         collection: 'externalBooks',
         id: bookId
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
         data: {
           title: externalBook.title,
           titleLong: externalBook.titleLong,
-          authorsText: externalBook.authors?.map((author: string) => ({ name: author })) || [],
+          authorsText: externalBook.authors || [],
           publisherText: externalBook.publisher,
           description: externalBook.description,
           synopsis: externalBook.synopsis,
@@ -189,13 +189,13 @@ export async function POST(request: NextRequest) {
             dimensions: externalBook.dimensions,
             isAvailable: externalBook.available
           }],
-          rawCategories: externalBook.categories?.map((cat: string) => ({ category: cat })) || [],
-          subjects: externalBook.subjects?.map((subj: string) => ({ subject: subj })) || [],
-          scrapedImageUrls: externalBook.imageUrls?.map((url: string) => ({ url })) || [],
-          importSource: 'external-api',
+          rawCategories: externalBook.categories || [],
+          subjects: externalBook.subjects || [],
+          scrapedImageUrls: externalBook.imageUrls || [],
+          importSource: 'manual',
           importDate: new Date().toISOString(),
           isActive: false // Require manual activation
-        }
+        } as any
       });
 
       // Mark external book as imported
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
         data: {
           imported: true,
           importedBookId: newBook.id,
-          importReason: 'api-import'
+          importReason: 'other'
         }
       });
 
@@ -219,10 +219,10 @@ export async function POST(request: NextRequest) {
     if (action === 'refresh' && isbn) {
       // Refresh cached external book data
       const payload = await getPayload({ config });
-      
+
       // Get fresh data from external sources
       const freshBook = await externalBookAPI.getBookByISBN(isbn);
-      
+
       if (freshBook) {
         // Update cached data
         const existingCache = await payload.find({
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
               ...freshBook,
               lastUpdated: new Date().toISOString(),
               isStale: false
-            }
+            } as any
           });
         } else {
           await externalBookAPI.cacheBookData(payload, freshBook, freshBook.sourceData?.source || 'unknown');

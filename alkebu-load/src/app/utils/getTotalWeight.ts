@@ -74,9 +74,9 @@ export function calculateShippingByWeight(
     },
   };
 
-  const rates = shippingRates[method] || shippingRates.standard;
+  const rates = shippingRates[method as keyof typeof shippingRates] || shippingRates.standard;
   const zone = isLocal ? rates.local : rates.national;
-  
+
   // Pickup only available locally
   if (method === 'pickup' && !isLocal) {
     method = 'standard';

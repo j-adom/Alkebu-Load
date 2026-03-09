@@ -147,16 +147,14 @@ export interface Config {
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
-  user:
-    | (User & {
-        collection: 'users';
-      })
-    | (Customer & {
-        collection: 'customers';
-      });
+  widgets: {
+    collections: CollectionsWidget;
+  };
+  user: User | Customer;
   jobs: {
     tasks: {
       'cleanup-abandoned-carts': TaskCleanupAbandonedCarts;
+      'daily-order-digest': TaskDailyOrderDigest;
       inline: {
         input: unknown;
         output: unknown;
@@ -405,6 +403,7 @@ export interface User {
       }[]
     | null;
   password?: string | null;
+  collection: 'users';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -750,6 +749,7 @@ export interface Customer {
       }[]
     | null;
   password?: string | null;
+  collection: 'customers';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1025,6 +1025,18 @@ export interface Book {
    * Last time book data was updated
    */
   lastUpdated?: string | null;
+  /**
+   * Has this book been enriched from ISBNdb/Google Books?
+   */
+  isbndbChecked?: boolean | null;
+  /**
+   * Last time book data was enriched from external sources
+   */
+  lastEnrichedAt?: string | null;
+  /**
+   * Any errors encountered during enrichment (for debugging)
+   */
+  enrichmentErrors?: string | null;
   /**
    * Is this book active in the store?
    */
@@ -4030,7 +4042,7 @@ export interface Cart {
    * Session identifier for guest carts
    */
   sessionId: string;
-  status: 'active' | 'abandoned' | 'converted' | 'expired';
+  status: 'active' | 'checkout' | 'abandoned' | 'converted' | 'expired';
   /**
    * Items in this cart
    */
@@ -4043,6 +4055,10 @@ export interface Cart {
    * Total tax amount in cents
    */
   totalTax?: number | null;
+  /**
+   * Shipping cost in cents
+   */
+  shippingAmount?: number | null;
   shippingAddress?: {
     street?: string | null;
     city?: string | null;
@@ -4929,7 +4945,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'cleanup-abandoned-carts';
+        taskSlug: 'inline' | 'cleanup-abandoned-carts' | 'daily-order-digest';
         taskID: string;
         input?:
           | {
@@ -4962,7 +4978,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'cleanup-abandoned-carts') | null;
+  taskSlug?: ('inline' | 'cleanup-abandoned-carts' | 'daily-order-digest') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -5246,6 +5262,7 @@ export interface CartsSelect<T extends boolean = true> {
   items?: T;
   totalAmount?: T;
   totalTax?: T;
+  shippingAmount?: T;
   shippingAddress?:
     | T
     | {
@@ -5860,6 +5877,9 @@ export interface BooksSelect<T extends boolean = true> {
   importSource?: T;
   importDate?: T;
   lastUpdated?: T;
+  isbndbChecked?: T;
+  lastEnrichedAt?: T;
+  enrichmentErrors?: T;
   isActive?: T;
   isFeatured?: T;
   pricing?:
@@ -7285,9 +7305,27 @@ export interface PayloadJobsStatsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "collections_widget".
+ */
+export interface CollectionsWidget {
+  data?: {
+    [k: string]: unknown;
+  };
+  width: 'full';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskCleanup-abandoned-carts".
  */
 export interface TaskCleanupAbandonedCarts {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskDaily-order-digest".
+ */
+export interface TaskDailyOrderDigest {
   input?: unknown;
   output?: unknown;
 }

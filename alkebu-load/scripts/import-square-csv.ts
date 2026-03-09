@@ -12,19 +12,17 @@ dotenv.config({ path: './.env' })
 
 interface SquareCSVRow {
   'Token': string
-  'Category': string
+  'Categories': string
   'Item Name': string
   'Description': string
   'SKU': string
   'Variation Name': string
   'Price': string
-  'Current Quantity Main Store': string
-  'Enabled': string
-  'Tax - Sales Tax': string
+  'Current Quantity Alkebu-Lan Images': string
+  'Archived': string
   'GTIN': string
   'Item Type': string
-  'Item ID': string
-  'Variation ID': string
+  'Sellable': string
 }
 
 const toLexical = (text?: string) => {
@@ -90,8 +88,12 @@ function groupByItem(rows: SquareCSVRow[]): Map<string, ProductGroup> {
   const groups = new Map<string, ProductGroup>()
 
   for (const row of rows) {
-    const itemId = row['Item ID']
+    const itemId = row['Token']
     if (!itemId) continue
+
+    // Only include items that have a valid ISBN-13 in GTIN or SKU
+    const gtin = row['GTIN'] || row['SKU']
+    if (!isBookGTIN(gtin)) continue
 
     const existing = groups.get(itemId)
     if (existing) {
@@ -101,7 +103,7 @@ function groupByItem(rows: SquareCSVRow[]): Map<string, ProductGroup> {
         itemId,
         itemName: row['Item Name'],
         description: row['Description'],
-        category: row['Category'],
+        category: row['Categories'],
         variations: [row],
       })
     }
@@ -158,13 +160,19 @@ function buildBookData(group: ProductGroup, enrichedData?: any) {
   const now = new Date().toISOString()
 
   const editions = group.variations.map((variation) => {
-    const stockLevel = Math.max(0, parseInt(variation['Current Quantity Main Store']) || 0)
+    const stockLevel = Math.max(0, parseInt(variation['Current Quantity Alkebu-Lan Images']) || 0)
     const gtin = variation.GTIN || variation.SKU
+    const variationName = (variation['Variation Name'] || '').toLowerCase()
+    let binding: 'hardcover' | 'paperback' | 'mass-market' | 'ebook' | 'audiobook' = 'paperback'
+    if (variationName.includes('hard')) binding = 'hardcover'
+    else if (variationName.includes('mass')) binding = 'mass-market'
+    else if (variationName.includes('ebook') || variationName.includes('digital')) binding = 'ebook'
+    else if (variationName.includes('audio')) binding = 'audiobook'
 
     return {
-      binding: variation['Variation Name'] || 'Standard Edition',
-      isbn13: gtin && isBookGTIN(gtin) ? gtin.replace(/[-\s]/g, '') : undefined,
-      squareVariationId: variation['Variation ID'],
+      binding,
+      isbn: gtin && isBookGTIN(gtin) ? gtin.replace(/[-\s]/g, '') : undefined,
+      squareVariationId: variation['Token'],
       pricing: {
         retailPrice: toCents(variation.Price),
       },
@@ -172,7 +180,7 @@ function buildBookData(group: ProductGroup, enrichedData?: any) {
         stockLevel,
         allowBackorders: false,
       },
-      isAvailable: stockLevel > 0 && variation.Enabled?.toLowerCase() === 'y',
+      isAvailable: stockLevel > 0 && variation.Archived?.toLowerCase() !== 'y' && variation.Sellable?.toLowerCase() === 'y',
     }
   })
 
@@ -192,10 +200,10 @@ function buildBookData(group: ProductGroup, enrichedData?: any) {
     title,
     description: toLexical(description),
     squareItemId: group.itemId,
-    importSource: 'square-csv',
+    importSource: 'csv-import',
     importDate: now,
     lastUpdated: now,
-    isActive: group.variations.some(v => v.Enabled?.toLowerCase() === 'y'),
+    isActive: group.variations.some(v => v.Archived?.toLowerCase() !== 'y' && v.Sellable?.toLowerCase() === 'y'),
     pricing: {
       retailPrice: primaryPrice,
       requiresShipping: true,
@@ -235,8 +243,9 @@ function buildBookData(group: ProductGroup, enrichedData?: any) {
   return bookData
 }
 
-async function importFromCSV(csvPath: string) {
+async function importFromCSV(csvPath: string, skipExisting: boolean) {
   console.log('📚 Starting Square CSV → Payload import (Books only)\n')
+  if (skipExisting) console.log('⚡ Mode: skip-existing (only creating new books)\n')
   console.log(`📂 Reading CSV file: ${csvPath}\n`)
 
   // Read and parse CSV
@@ -251,13 +260,14 @@ async function importFromCSV(csvPath: string) {
 
   // Group by Item ID
   const groups = groupByItem(records)
-  console.log(`📦 Found ${groups.size} unique items\n`)
+  console.log(`📦 Found ${groups.size} unique items with valid ISBN-13\n`)
 
   const payload = await getPayload({ config })
 
   let created = 0
   let updated = 0
   let skippedNotBooks = 0
+  let skippedExisting = 0
   let skippedErrors = 0
 
   for (const [itemId, group] of groups) {
@@ -273,20 +283,20 @@ async function importFromCSV(csvPath: string) {
     }
 
     try {
-      const bookData = buildBookData(group, bookCheck.enrichedData)
-
       // Check if already exists
       const existing = await payload.find({
         collection: 'books',
-        where: {
-          squareItemId: {
-            equals: itemId,
-          },
-        },
+        where: { squareItemId: { equals: itemId } },
         limit: 1,
       })
 
       if (existing.docs.length > 0) {
+        if (skipExisting) {
+          console.log(`  ⏭️  Already imported, skipping`)
+          skippedExisting++
+          continue
+        }
+        const bookData = buildBookData(group, bookCheck.enrichedData)
         await payload.update({
           collection: 'books',
           id: existing.docs[0].id,
@@ -295,6 +305,7 @@ async function importFromCSV(csvPath: string) {
         console.log(`  ✅ Updated in Payload`)
         updated++
       } else {
+        const bookData = buildBookData(group, bookCheck.enrichedData)
         await payload.create({
           collection: 'books',
           data: bookData,
@@ -315,6 +326,7 @@ async function importFromCSV(csvPath: string) {
   console.log(`├── Created:              ${created}`)
   console.log(`├── Updated:              ${updated}`)
   console.log(`├── Skipped (not books):  ${skippedNotBooks}`)
+  console.log(`├── Skipped (existing):   ${skippedExisting}`)
   console.log(`└── Skipped (errors):     ${skippedErrors}`)
   console.log(`\n📝 Total items:           ${groups.size}`)
   console.log(`📚 Books imported:        ${created + updated}`)
@@ -322,8 +334,9 @@ async function importFromCSV(csvPath: string) {
 
 // Get CSV path from command line or use default
 const csvPath = process.argv[2] || path.join(__dirname, '../data/square-catalog.csv')
+const skipExisting = process.argv.includes('--skip-existing')
 
-importFromCSV(csvPath).catch((error) => {
+importFromCSV(csvPath, skipExisting).catch((error) => {
   console.error('❌ Import failed:', error)
   process.exit(1)
 })

@@ -17,13 +17,13 @@ export async function syncSquareCustomer(
   webhookData: SquareCustomerWebhook
 ) {
   const { type, data } = webhookData;
-  
+
   // Skip if no email (can't create Payload user without email)
   if (!data.email_address) {
     console.log(`Skipping Square customer ${data.id} - no email address`);
     return;
   }
-  
+
   try {
     // Check if user already exists (by email OR Square ID)
     const existingUsers = await payload.find({
@@ -36,11 +36,11 @@ export async function syncSquareCustomer(
       },
       limit: 1,
     });
-    
+
     if (existingUsers.docs.length > 0) {
       // UPDATE existing user
       const user = existingUsers.docs[0];
-      
+
       await payload.update({
         collection: 'users',
         id: user.id,
@@ -50,13 +50,13 @@ export async function syncSquareCustomer(
           phone: data.phone_number || user.phone,
           square: {
             customerId: data.id,
-            lastSync: new Date(),
+            lastSync: new Date().toISOString(),
           },
           // Update source if needed
           source: user.source === 'online' ? 'both' : 'in-store',
         },
       });
-      
+
       console.log(`Updated user ${user.email} from Square webhook`);
     } else {
       // CREATE new user
@@ -69,14 +69,14 @@ export async function syncSquareCustomer(
           phone: data.phone_number,
           square: {
             customerId: data.id,
-            lastSync: new Date(),
+            lastSync: new Date().toISOString(),
           },
           source: 'in-store',
           role: 'customer',
           emailVerified: false, // They'll need to verify when they log in online
         },
       });
-      
+
       console.log(`Created new user ${newUser.email} from Square webhook`);
     }
   } catch (error) {

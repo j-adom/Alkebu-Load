@@ -7,7 +7,8 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
-import { seoPlugin, type GenerateTitle, type GenerateURL } from '@payloadcms/plugin-seo'
+import { seoPlugin } from '@payloadcms/plugin-seo'
+import type { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
 
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
 
@@ -59,7 +60,9 @@ const generateURL: GenerateURL<any> = ({ doc }) => {
 export default buildConfig({
   cors: [
     'https://alkebulanimages.com',
-    'http://localhost:5173',
+    'https://www.alkebulanimages.com',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:5173'] : []),
   ],
   admin: {
     user: Users.slug,
@@ -171,26 +174,26 @@ export default buildConfig({
         pass: process.env.SES_SMTP_PASSWORD,
       },
     },
-    fromName: process.env.FROM_NAME || 'Alkebu-Lan Images',
-    fromAddress: process.env.FROM_EMAIL || 'orders@alkebulanimages.com',
   }),
   jobs: {
     tasks: [
       {
         slug: 'cleanup-abandoned-carts',
-        handler: async ({ payload }) => {
+        handler: async ({ req }) => {
           const { cleanupAbandonedCarts } = await import('./app/utils/cartOperations');
-          await cleanupAbandonedCarts(payload);
+          await cleanupAbandonedCarts(req.payload);
+          return { output: {} };
         },
-        schedule: '0 */2 * * *', // Every 2 hours
+        schedule: [{ cron: '0 */2 * * *', queue: 'default' }], // Every 2 hours
       },
       {
         slug: 'daily-order-digest',
-        handler: async ({ payload }) => {
+        handler: async ({ req }) => {
           const { generateDailyOrderDigest } = await import('./app/utils/orderDigest');
-          await generateDailyOrderDigest(payload);
+          await generateDailyOrderDigest(req.payload);
+          return { output: {} };
         },
-        schedule: '0 12 * * *', // 12:00 UTC = 7:00 AM CDT / 6:00 AM CST
+        schedule: [{ cron: '0 12 * * *', queue: 'default' }], // 12:00 UTC = 7:00 AM CDT / 6:00 AM CST
       },
     ],
   },

@@ -90,18 +90,18 @@ async function createSquareItem(product: PayloadProduct): Promise<boolean> {
       }
     }
 
-    const response = await squareClient.catalog.upsertCatalogObject({
+    const response = await (squareClient.catalog as any).upsertObject({
       idempotencyKey: `create_${product.id}_${Date.now()}`,
       object: catalogObject
     })
 
-    if (response.result?.catalogObject) {
-      const squareItemId = response.result.catalogObject.id
+    if (response.catalogObject) {
+      const squareItemId = response.catalogObject.id
       console.log(`✅ Created Square item: ${squareItemId}`)
-      
+
       // You would typically update the Payload product with the new Square ID here
       // This would require passing the payload instance and req object
-      
+
       return true
     }
 
@@ -117,19 +117,19 @@ async function updateSquareItem(product: PayloadProduct): Promise<boolean> {
     console.log(`📝 Updating Square item: ${product.squareItemId}`)
 
     // First, get the current Square item to preserve data we don't manage
-    const currentItemResponse = await squareClient.catalog.retrieveCatalogObject(
+    const currentItemResponse = await (squareClient.catalog as any).retrieveObject(
       product.squareItemId!,
       true // Include related objects
     )
 
-    if (!currentItemResponse.result?.object) {
+    if (!currentItemResponse.object) {
       console.error('❌ Square item not found, cannot update')
       return false
     }
 
-    const currentItem = currentItemResponse.result.object
-    const currentVariations = currentItemResponse.result.relatedObjects?.filter(
-      obj => obj.type === 'ITEM_VARIATION'
+    const currentItem = currentItemResponse.object
+    const currentVariations = currentItemResponse.relatedObjects?.filter(
+      (obj: any) => obj.type === 'ITEM_VARIATION'
     ) || []
 
     // Update basic item information
@@ -152,15 +152,15 @@ async function updateSquareItem(product: PayloadProduct): Promise<boolean> {
     // Prepare batch upsert for item + variations
     const objects = [updatedItem, ...updatedVariations]
 
-    const response = await squareClient.catalog.batchUpsertCatalogObjects({
+    const response = await (squareClient.catalog as any).batchUpsertObjects({
       idempotencyKey: `update_${product.id}_${Date.now()}`,
       batches: [{
         objects
       }]
     })
 
-    if (response.result?.objects) {
-      console.log(`✅ Updated Square item with ${response.result.objects.length} objects`)
+    if (response.objects) {
+      console.log(`✅ Updated Square item with ${response.objects.length} objects`)
       return true
     }
 
@@ -180,7 +180,7 @@ async function updateSquareVariations(
 
   for (const edition of payloadEditions) {
     // Try to find matching existing variation by SKU/UPC or variation ID
-    let existingVariation = currentVariations.find(v => 
+    const existingVariation = currentVariations.find(v =>
       (edition.squareVariationId && v.id === edition.squareVariationId) ||
       (edition.isbn && (v.itemVariationData?.sku === edition.isbn || v.itemVariationData?.upc === edition.isbn))
     )
@@ -229,9 +229,9 @@ export async function deleteProductFromSquare(squareItemId: string): Promise<boo
   try {
     console.log(`🗑️  Deleting Square item: ${squareItemId}`)
 
-    const response = await squareClient.catalog.deleteCatalogObject(squareItemId)
+    const response = await (squareClient.catalog as any).deleteObject(squareItemId)
 
-    if (response.result) {
+    if (response) {
       console.log(`✅ Deleted Square item: ${squareItemId}`)
       return true
     }
@@ -289,7 +289,7 @@ export async function syncInventoryToSquare(
   try {
     console.log(`📦 Syncing inventory: ${squareVariationId} = ${quantity}`)
 
-    const response = await squareClient.inventory.batchChangeInventory({
+    const response = await (squareClient.inventory as any).batchChangeInventory({
       idempotencyKey: `inventory_${squareVariationId}_${Date.now()}`,
       changes: [{
         type: 'PHYSICAL_COUNT',
@@ -303,7 +303,7 @@ export async function syncInventoryToSquare(
       }]
     })
 
-    if (response.result?.changes) {
+    if (response.changes) {
       console.log(`✅ Inventory synced for ${squareVariationId}`)
       return true
     }
@@ -318,10 +318,10 @@ export async function syncInventoryToSquare(
 // Get Square locations for inventory sync
 export async function getSquareLocations(): Promise<Array<{ id: string, name: string }>> {
   try {
-    const response = await squareClient.locations.listLocations()
-    
-    if (response.result?.locations) {
-      return response.result.locations.map(location => ({
+    const response = await (squareClient.locations as any).list()
+
+    if (response.locations) {
+      return response.locations.map((location: any) => ({
         id: location.id!,
         name: location.name || 'Unknown Location'
       }))
@@ -378,7 +378,7 @@ async function uploadImagesToSquare(product: PayloadProduct): Promise<string[]> 
 
       try {
         // Upload to Square Catalog Images
-        const uploadResponse = await squareClient.catalog.createCatalogImage({
+        const uploadResponse = await (squareClient.catalog as any).createImage({
           idempotencyKey: `image_${product.id}_${i}_${Date.now()}`,
           image: {
             type: 'IMAGE',
@@ -391,9 +391,9 @@ async function uploadImagesToSquare(product: PayloadProduct): Promise<string[]> 
           imageFile: createReadStream(tempFilePath)
         })
 
-        if (uploadResponse.result?.image?.id) {
-          uploadedImageIds.push(uploadResponse.result.image.id)
-          console.log(`✅ Uploaded image to Square: ${uploadResponse.result.image.id}`)
+        if (uploadResponse.image?.id) {
+          uploadedImageIds.push(uploadResponse.image.id)
+          console.log(`✅ Uploaded image to Square: ${uploadResponse.image.id}`)
         }
 
       } finally {

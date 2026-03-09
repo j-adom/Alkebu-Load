@@ -6,57 +6,57 @@ import { EnrichBookButton } from '@/app/components/EnrichBookButton';
 const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: string[]): string[] => {
   const categories = [];
   const combined = [...scrapedCategories, ...scrapedSubjects].map(c => c.toLowerCase());
-  
+
   // History
   if (combined.some(c => c.includes('history') || c.includes('historical'))) {
     categories.push('history');
   }
-  
+
   // Biography
   if (combined.some(c => c.includes('biography') || c.includes('biographies') || c.includes('memoir'))) {
     categories.push('biography-autobiography');
   }
-  
+
   // Literature & Fiction
   if (combined.some(c => c.includes('fiction') || c.includes('literature') || c.includes('novel'))) {
     categories.push('literature-fiction');
   }
-  
+
   // Religion & Spirituality
   if (combined.some(c => c.includes('religion') || c.includes('spiritual') || c.includes('theology'))) {
     categories.push('religion-spirituality');
   }
-  
+
   // Politics & Social Science
   if (combined.some(c => c.includes('politics') || c.includes('social') || c.includes('civil rights'))) {
     categories.push('politics-social-science');
   }
-  
+
   // Children & Young Adult
   if (combined.some(c => c.includes('children') || c.includes('young adult') || c.includes('juvenile'))) {
     categories.push('children-young-adult');
   }
-  
+
   // Arts & Culture
   if (combined.some(c => c.includes('art') || c.includes('culture') || c.includes('music'))) {
     categories.push('arts-culture');
   }
-  
+
   // Education & Academia
   if (combined.some(c => c.includes('education') || c.includes('academic') || c.includes('reference'))) {
     categories.push('education-academia');
   }
-  
+
   // Business & Economics
   if (combined.some(c => c.includes('business') || c.includes('economic') || c.includes('entrepreneur'))) {
     categories.push('business-economics');
   }
-  
+
   // Health & Wellness
   if (combined.some(c => c.includes('health') || c.includes('wellness') || c.includes('medical'))) {
     categories.push('health-wellness');
   }
-  
+
   return categories;
 };
 
@@ -68,15 +68,15 @@ const Books: CollectionConfig = {
     group: 'Inventory',
     components: {
       views: {
-        Edit: {
-          Component: ({ children }) => (
+        edit: {
+          Component: (({ children }: any) => (
             <>
               <div style={{ paddingBottom: '24px' }}>
                 <EnrichBookButton />
               </div>
               {children}
             </>
-          )
+          )) as any
         }
       }
     }
@@ -189,7 +189,7 @@ const Books: CollectionConfig = {
         description: 'Book excerpt (maps to isbndb.excerpt)'
       }
     },
-    
+
     // Edition Management
     {
       name: 'editions',
@@ -349,7 +349,7 @@ const Books: CollectionConfig = {
         description: 'Different editions/printings of this book'
       }
     },
-    
+
     // Categorization (Your Custom Categories)
     {
       name: 'categories',
@@ -371,7 +371,7 @@ const Books: CollectionConfig = {
         description: 'Your custom categories (auto-mapped from scraped data)'
       }
     },
-    
+
     // Raw Scraped Categories (for reference/debugging)
     {
       name: 'rawCategories',
@@ -386,7 +386,7 @@ const Books: CollectionConfig = {
         description: 'Original categories from isbndb/CSV (for reference)'
       }
     },
-    
+
     // Subjects/Topics (from scraped data)
     {
       name: 'subjects',
@@ -401,7 +401,7 @@ const Books: CollectionConfig = {
         description: 'Subject tags from scraped data (maps to isbndb.subjects or CSV.Subjects)'
       }
     },
-    
+
     // Dewey Decimal Classification
     {
       name: 'deweyDecimal',
@@ -416,7 +416,7 @@ const Books: CollectionConfig = {
         description: 'Dewey Decimal codes (maps to isbndb.dewey_decimal)'
       }
     },
-    
+
     // Your Custom Tags
     {
       name: 'tags',
@@ -434,7 +434,7 @@ const Books: CollectionConfig = {
         description: 'Your custom tags for specific topics/themes'
       }
     },
-    
+
     // Curated Collections
     {
       name: 'collections',
@@ -463,7 +463,7 @@ const Books: CollectionConfig = {
         description: 'Add this book to curated collections'
       }
     },
-    
+
     // Images
     {
       name: 'images',
@@ -491,7 +491,7 @@ const Books: CollectionConfig = {
         description: 'Book cover images (max 3)'
       }
     },
-    
+
     // Scraped Image URLs (for initial import)
     {
       name: 'scrapedImageUrls',
@@ -506,7 +506,7 @@ const Books: CollectionConfig = {
         description: 'Image URLs from scraped data (maps to isbndb.image, isbndb.image_original)'
       }
     },
-    
+
     // Reviews (from scraped data)
     {
       name: 'reviews',
@@ -521,7 +521,7 @@ const Books: CollectionConfig = {
         description: 'Reviews from scraped data (maps to isbndb.reviews)'
       }
     },
-    
+
     // Related Books
     {
       name: 'relatedBooks',
@@ -532,7 +532,7 @@ const Books: CollectionConfig = {
         description: 'Related books (can be auto-populated from scraped data)'
       }
     },
-    
+
     // Import/Management Fields
     {
       name: 'squareItemId',
@@ -609,7 +609,7 @@ const Books: CollectionConfig = {
         description: 'Featured book for homepage/promotions'
       }
     },
-    
+
     // Pricing & E-Commerce
     {
       name: 'pricing',
@@ -667,7 +667,7 @@ const Books: CollectionConfig = {
         },
       ],
     },
-    
+
     // Inventory Management
     {
       name: 'inventory',
@@ -733,7 +733,7 @@ const Books: CollectionConfig = {
         },
       ],
     },
-    
+
     // SEO Fields
     {
       name: 'seo',
@@ -763,7 +763,7 @@ const Books: CollectionConfig = {
       ]
     }
   ],
-  
+
   // Hooks for auto-processing scraped data
   access: {
     read: () => true,

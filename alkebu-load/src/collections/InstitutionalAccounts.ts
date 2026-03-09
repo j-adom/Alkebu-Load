@@ -9,10 +9,10 @@ export const InstitutionalAccounts: CollectionConfig = {
     description: 'Phase 2: Institutional accounts for schools, nonprofits, churches',
   },
   access: {
-    read: ({ req: { user } }) => user?.role === 'admin',
-    create: ({ req: { user } }) => user?.role === 'admin',
-    update: ({ req: { user } }) => user?.role === 'admin',
-    delete: ({ req: { user } }) => user?.role === 'admin',
+    read: ({ req: { user } }) => (user as any)?.role === 'admin',
+    create: ({ req: { user } }) => (user as any)?.role === 'admin',
+    update: ({ req: { user } }) => (user as any)?.role === 'admin',
+    delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },
   fields: [
     {

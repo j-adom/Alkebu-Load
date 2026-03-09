@@ -1,8 +1,8 @@
 # Phase 1 Launch - Next Steps Summary
 
-**Date:** February 1, 2026
-**Timeline:** 2-3 weeks to MVP
-**Status:** 🔄 E-Commerce Backend Complete, Frontend Integration In Progress
+**Date:** February 11, 2026
+**Timeline:** Final stretch to launch
+**Status:** 🔄 Backend Complete, Checkout Integration Complete, Data Import & Testing Remaining
 
 ---
 
@@ -12,10 +12,38 @@
 - **Unified Tax/Shipping Calculations** - Single source of truth in `taxShippingCalculations.ts`
 - **Payment Adapter Pattern** - Pluggable support for Stripe and Square
 - **Square Webhooks** - Full implementation with signature verification
-- **Refund API** - Full and partial refunds via `/api/refund`
+- **Refund API** - Full/partial refunds via `/api/refund` (admin-only with JWT auth)
 - **Tax-Exempt Validation** - Verified against institutional accounts
 - **Inventory Management** - Auto-decrement on order confirmation
 - **Tennessee Tax Rules** - 7% state + 2-2.75% local, books are tax-exempt
+
+### ✅ Order Management System (Feb 11)
+- **Staff Order Dashboard** - Tablet-optimized admin view at `/admin/order-dashboard`
+  - Tabs: "Needs Attention", "Shipped", "All Orders"
+  - Touch-friendly: Start Processing, Add Tracking & Ship, Mark Delivered
+  - Carrier dropdown includes "USPS (Pirate Ship)", UPS, FedEx, Local Delivery
+  - Auto-refresh every 60 seconds, internal notes per order
+- **Staff Notification Emails** - Instant email to `info@alkebulanimages.com` on new orders
+- **Daily Outstanding Orders Digest** - 7 AM CT email with order aging warnings
+- **Afrocentric Email Templates** - Branded with Kente Gold, Forest Green, Terracotta
+- **Customer Notifications** - Order confirmation + shipping status update emails
+
+### ✅ Checkout Flow Complete (Feb 11)
+- **Checkout Page** - Shipping address form with live tax/shipping preview
+- **Checkout Preview API** - Debounced real-time cost calculation as customer types
+- **Stripe Redirect** - Seamless handoff to Stripe Embedded Checkout
+- **Success Page** - Order confirmation with order number, cart auto-cleared
+- **Cancel Page** - Friendly cancellation message, cart preserved
+
+### ✅ UI/UX Modernization Complete (Feb 2-6)
+- **ProductCard Hover Effects** - Modern floating "Add to Cart" + "View" buttons with smooth animations
+- **Form Input Styling** - Updated contact and checkout forms with modern input styles
+- **Page Header & Section Layouts** - Enhanced visual consistency across pages
+- **Cloudflare Deployment** - Using `adapter-cloudflare` with prerender for static pages
+
+### ✅ Events System Active
+- **Events Collection** - Full backend with registration, categories, recurring events
+- **Events Frontend** - Listing page with filtering by type and timing (upcoming/past)
 
 ---
 
@@ -91,9 +119,21 @@ pnpm tsx scripts/import-apparel.ts
 - [ ] Confirmation email sent
 
 ### Refund Testing
-- [ ] Full refund via `/api/refund`
+- [ ] Full refund via `/api/refund` (admin Bearer token required)
 - [ ] Partial refund via `/api/refund`
 - [ ] Refund history recorded on order
+- [ ] Unauthenticated requests return 401
+- [ ] Staff role requests return 403
+
+### Order Management Testing
+- [ ] New order triggers staff notification email to info@alkebulanimages.com
+- [ ] Order Dashboard shows new order in "Needs Attention" tab
+- [ ] Start Processing → status changes to processing
+- [ ] Add tracking number + carrier → Mark Shipped works
+- [ ] Customer receives shipping status email with tracking
+- [ ] Mark Delivered works
+- [ ] Internal notes save correctly
+- [ ] Daily digest runs at 7 AM CT (or trigger manually via `tsx -e "..."`)
 
 ### Mobile Testing
 - [ ] All pages responsive
@@ -327,17 +367,27 @@ Once Phase 1 complete & tested:
 - Phase 3: Full product catalog
 - Phase 3: Business directory
 
+### Planned Features (Discussed, Not Yet Implemented)
+- **Ad Campaign System** - AdCampaigns collection for website/newsletter placements
+- **Cloudflare Turnstile** - Spam protection for newsletter and catering forms
+- **GoogleMap Component** - Embedded maps for event locations
+- **PastEvents Component** - Archive display for completed events
+- **Discourse Comments** - Community discussion integration
+
 ---
 
 ## Ready? Let's Go! 🚀
 
 Current focus:
 1. ~~E-commerce backend~~ ✅ Complete
-2. **Frontend integration** ← We are here
-3. Data import & testing
-4. Production deploy
+2. ~~UI/UX Modernization~~ ✅ Complete
+3. ~~Frontend-Backend Integration~~ ✅ Complete
+4. ~~Order Management~~ ✅ Complete
+5. **Data import & end-to-end testing** ← We are here
+6. Production deploy
+7. Staff training
 
-Next step: Connect SvelteKit frontend to checkout API
+Next step: Import product data from Square, run end-to-end test with Stripe test cards.
 
 See `docs/PHASE1-SETUP.md` for detailed instructions on each step.
 
@@ -345,4 +395,4 @@ Questions? Check CLAUDE.md for AI assistant context or relevant docs.
 
 ---
 
-*Last updated: February 1, 2026*
+*Last updated: February 11, 2026*

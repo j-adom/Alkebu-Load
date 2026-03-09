@@ -9,17 +9,21 @@ export const Carts: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true;
-      if (user) return { user: { equals: user.id } };
+      if ((user as any)?.role === 'admin') return true;
+      if (user) return { user: { equals: user.id } }; // Only owner can read their cart
       return false;
     },
     create: () => true,
-    update: ({ req: { user }, data }) => {
-      if (user?.role === 'admin') return true;
-      if (user && data?.user === user.id) return true;
+    update: ({ req: { user } }) => {
+      if ((user as any)?.role === 'admin') return true;
+      if (user) return { user: { equals: user.id } };
       return false;
     },
-    delete: ({ req: { user } }) => user?.role === 'admin',
+    delete: ({ req: { user } }) => {
+      if ((user as any)?.role === 'admin') return true;
+      if (user) return { user: { equals: user.id } };
+      return false;
+    },
   },
   fields: [
     {

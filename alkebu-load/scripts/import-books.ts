@@ -13,18 +13,18 @@ console.log('First 10 chars:', process.env.PAYLOAD_SECRET?.substring(0, 10))
 // Helper function to convert HTML to Lexical format
 const htmlToLexical = (htmlString: string) => {
   if (!htmlString) return undefined;
-  
+
   // Simple conversion - replace <br/> with line breaks and wrap in paragraphs
   const cleanText = htmlString
     .replace(/<br\s*\/?>/gi, '\n')  // Replace <br> with newlines
     .replace(/<[^>]*>/g, '')        // Strip other HTML tags
     .trim();
-  
+
   if (!cleanText) return undefined;
-  
+
   // Split by double newlines to create paragraphs
   const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
-  
+
   return {
     root: {
       children: paragraphs.map(paragraph => ({
@@ -56,42 +56,42 @@ const htmlToLexical = (htmlString: string) => {
 const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: string[]): string[] => {
   const categories = [];
   const combined = [...scrapedCategories, ...scrapedSubjects].map(c => c.toLowerCase());
-  
+
   // History
-  if (combined.some(c => 
-    c.includes('history') || 
-    c.includes('historical') || 
+  if (combined.some(c =>
+    c.includes('history') ||
+    c.includes('historical') ||
     c.includes('civil rights') ||
     c.includes('race relations')
   )) {
     categories.push('history');
   }
-  
+
   // Biography & Autobiography
-  if (combined.some(c => 
-    c.includes('biography') || 
-    c.includes('biographies') || 
+  if (combined.some(c =>
+    c.includes('biography') ||
+    c.includes('biographies') ||
     c.includes('memoir') ||
     c.includes('autobiography')
   )) {
     categories.push('biography-autobiography');
   }
-  
+
   // Literature & Fiction
-  if (combined.some(c => 
-    c.includes('fiction') || 
-    c.includes('literature') || 
+  if (combined.some(c =>
+    c.includes('fiction') ||
+    c.includes('literature') ||
     c.includes('novel') ||
     c.includes('poetry') ||
     c.includes('drama')
   )) {
     categories.push('literature-fiction');
   }
-  
+
   // Religion & Spirituality
-  if (combined.some(c => 
-    c.includes('religion') || 
-    c.includes('spiritual') || 
+  if (combined.some(c =>
+    c.includes('religion') ||
+    c.includes('spiritual') ||
     c.includes('theology') ||
     c.includes('faith') ||
     c.includes('christianity') ||
@@ -100,34 +100,34 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
   )) {
     categories.push('religion-spirituality');
   }
-  
+
   // Politics & Social Science
-  if (combined.some(c => 
-    c.includes('politics') || 
+  if (combined.some(c =>
+    c.includes('politics') ||
     c.includes('political') ||
-    c.includes('social') || 
+    c.includes('social') ||
     c.includes('sociology') ||
     c.includes('activism') ||
     c.includes('government')
   )) {
     categories.push('politics-social-science');
   }
-  
+
   // Children & Young Adult
-  if (combined.some(c => 
-    c.includes('children') || 
-    c.includes('young adult') || 
+  if (combined.some(c =>
+    c.includes('children') ||
+    c.includes('young adult') ||
     c.includes('juvenile') ||
     c.includes('kids') ||
     c.includes('teen')
   )) {
     categories.push('children-young-adult');
   }
-  
+
   // Arts & Culture
-  if (combined.some(c => 
-    c.includes('art') || 
-    c.includes('culture') || 
+  if (combined.some(c =>
+    c.includes('art') ||
+    c.includes('culture') ||
     c.includes('music') ||
     c.includes('photography') ||
     c.includes('film') ||
@@ -135,11 +135,11 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
   )) {
     categories.push('arts-culture');
   }
-  
+
   // Education & Academia
-  if (combined.some(c => 
-    c.includes('education') || 
-    c.includes('academic') || 
+  if (combined.some(c =>
+    c.includes('education') ||
+    c.includes('academic') ||
     c.includes('reference') ||
     c.includes('textbook') ||
     c.includes('study') ||
@@ -147,11 +147,11 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
   )) {
     categories.push('education-academia');
   }
-  
+
   // Business & Economics
-  if (combined.some(c => 
-    c.includes('business') || 
-    c.includes('economic') || 
+  if (combined.some(c =>
+    c.includes('business') ||
+    c.includes('economic') ||
     c.includes('entrepreneur') ||
     c.includes('leadership') ||
     c.includes('management') ||
@@ -160,11 +160,11 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
   )) {
     categories.push('business-economics');
   }
-  
+
   // Health & Wellness
-  if (combined.some(c => 
-    c.includes('health') || 
-    c.includes('wellness') || 
+  if (combined.some(c =>
+    c.includes('health') ||
+    c.includes('wellness') ||
     c.includes('medical') ||
     c.includes('fitness') ||
     c.includes('nutrition') ||
@@ -173,7 +173,7 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
   )) {
     categories.push('health-wellness');
   }
-  
+
   return [...new Set(categories)]; // Remove duplicates
 };
 
@@ -181,70 +181,70 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
 const mapToCollections = (title: string, authors: string[], subjects: string[], description?: string): string[] => {
   const collections = [];
   const content = [title, ...authors, ...subjects, description || ''].join(' ').toLowerCase();
-  
+
   // Civil Rights Movement
-  if (content.includes('civil rights') || 
-      content.includes('race relations') || 
-      content.includes('reparations') ||
-      content.includes('barack obama') ||
-      content.includes('discrimination')) {
+  if (content.includes('civil rights') ||
+    content.includes('race relations') ||
+    content.includes('reparations') ||
+    content.includes('barack obama') ||
+    content.includes('discrimination')) {
     collections.push('civil-rights-movement');
   }
-  
+
   // African Diaspora
-  if (content.includes('diaspora') || 
-      content.includes('caribbean') ||
-      content.includes('haiti') ||
-      content.includes('jamaica') ||
-      content.includes('migration')) {
+  if (content.includes('diaspora') ||
+    content.includes('caribbean') ||
+    content.includes('haiti') ||
+    content.includes('jamaica') ||
+    content.includes('migration')) {
     collections.push('african-diaspora');
   }
-  
+
   // Pan-Africanism
-  if (content.includes('pan-african') || 
-      content.includes('marcus garvey') ||
-      content.includes('kwame nkrumah') ||
-      content.includes('unity') && content.includes('africa')) {
+  if (content.includes('pan-african') ||
+    content.includes('marcus garvey') ||
+    content.includes('kwame nkrumah') ||
+    content.includes('unity') && content.includes('africa')) {
     collections.push('pan-africanism');
   }
-  
+
   // Black Business Leaders
-  if (content.includes('business') && 
-      (content.includes('entrepreneur') || 
-       content.includes('ceo') ||
-       content.includes('leadership') ||
-       content.includes('founder'))) {
+  if (content.includes('business') &&
+    (content.includes('entrepreneur') ||
+      content.includes('ceo') ||
+      content.includes('leadership') ||
+      content.includes('founder'))) {
     collections.push('black-business-leaders');
   }
-  
+
   // Essential Black History
-  if (content.includes('slavery') || 
-      content.includes('emancipation') ||
-      content.includes('reconstruction') ||
-      content.includes('jim crow') ||
-      content.includes('harlem renaissance') ||
-      content.includes('black history')) {
+  if (content.includes('slavery') ||
+    content.includes('emancipation') ||
+    content.includes('reconstruction') ||
+    content.includes('jim crow') ||
+    content.includes('harlem renaissance') ||
+    content.includes('black history')) {
     collections.push('essential-black-history');
   }
-  
+
   // Contemporary Black Voices
   if (content.includes('contemporary') ||
-      content.includes('modern') ||
-      content.includes('current') ||
-      content.includes('obama') ||
-      content.includes('present day')) {
+    content.includes('modern') ||
+    content.includes('current') ||
+    content.includes('obama') ||
+    content.includes('present day')) {
     collections.push('contemporary-black-voices');
   }
-  
+
   // Spirituality & Consciousness
-  if (content.includes('spiritual') || 
-      content.includes('consciousness') ||
-      content.includes('meditation') ||
-      content.includes('awakening') ||
-      content.includes('wisdom')) {
+  if (content.includes('spiritual') ||
+    content.includes('consciousness') ||
+    content.includes('meditation') ||
+    content.includes('awakening') ||
+    content.includes('wisdom')) {
     collections.push('spirituality-consciousness');
   }
-  
+
   return collections;
 };
 
@@ -266,16 +266,16 @@ interface CsvBookRow {
 const transformCsvToPayload = (csvRow: CsvBookRow) => {
   // Parse authors (single author in your CSV)
   const authors = csvRow.Authors ? [{ name: csvRow.Authors.trim() }] : [];
-  
+
   // Parse categories and subjects
   const rawCategories = (csvRow.Categories || '').split(',').map(cat => ({ category: cat.trim() })).filter(c => c.category);
   const subjects = (csvRow.Subjects || '').split(',').map(subj => ({ subject: subj.trim() })).filter(s => s.subject);
-  
+
   // Auto-categorize
   const categoryStrings = rawCategories.map(rc => rc.category);
   const subjectStrings = subjects.map(s => s.subject);
   const categories = mapCategoriesToPayload(categoryStrings, subjectStrings);
-  
+
   // Auto-assign to collections
   const collections = mapToCollections(
     csvRow.Title || '',
@@ -283,7 +283,7 @@ const transformCsvToPayload = (csvRow: CsvBookRow) => {
     subjectStrings,
     csvRow.Description
   ).map(collectionName => ({ collectionName: collectionName as any })); // Type assertion for collection names
-  
+
   // Create edition with better binding validation
   let binding = 'paperback'; // default
   if (csvRow.Binding) {
@@ -301,7 +301,7 @@ const transformCsvToPayload = (csvRow: CsvBookRow) => {
       binding = 'paperback'; // Default fallback
     }
   }
-  
+
   const edition = {
     isbn: csvRow.ISBN?.toString() || '',
     isbn10: csvRow.ISBN?.toString() || '',
@@ -309,12 +309,12 @@ const transformCsvToPayload = (csvRow: CsvBookRow) => {
     publisher: csvRow.Publisher || '',
     isAvailable: true
   };
-  
+
   return {
     title: csvRow.Title || '',
     authors,
     // Convert HTML description to Lexical format
-    description: htmlToLexical(csvRow.Description),
+    description: htmlToLexical(csvRow.Description || ''),
     editions: [edition],
     categories,
     rawCategories,
@@ -334,25 +334,14 @@ const transformCsvToPayload = (csvRow: CsvBookRow) => {
 const importBooks = async () => {
   try {
     console.log('🚀 Starting book import...');
-    
+
     // Import config dynamically and await it properly
     const { default: config } = await import('../src/payload.config');
-    
-    // Await the config if it's a promise
-    let resolvedConfig = config;
-    if (config && typeof config.then === 'function') {
-      resolvedConfig = await config;
-    }
-    
-    // Debug: Check config structure
-    console.log('Config type:', typeof resolvedConfig);
-    console.log('Has collections:', !!resolvedConfig?.collections);
-    console.log('Collections length:', resolvedConfig?.collections?.length);
-    
-    const payload = await getPayload({ 
-      config: resolvedConfig
+
+    const payload = await getPayload({
+      config
     });
-    
+
     console.log('✅ PayloadCMS initialized');
 
     // Read your CSV
@@ -371,19 +360,19 @@ const importBooks = async () => {
 
     // Import all books (or set a higher limit)
     const booksToImport = Math.min(50, parsed.data.length); // Import 50 for now
-    
+
     for (let i = 0; i < booksToImport; i++) {
       const csvBook = parsed.data[i] as CsvBookRow;
-      
+
       try {
         const bookData = transformCsvToPayload(csvBook);
-        
+
         // Debug: Log the first book data structure
         if (i === 0) {
           console.log('📝 Sample book data structure:');
           console.log(JSON.stringify(bookData, null, 2));
         }
-        
+
         // Check for existing book by ISBN
         const existingBooks = await payload.find({
           collection: 'books',
@@ -393,45 +382,45 @@ const importBooks = async () => {
             }
           }
         });
-        
+
         if (existingBooks.docs.length > 0) {
           console.log(`⚠️  Duplicate found for ISBN: ${bookData.editions[0].isbn} - ${bookData.title}`);
           continue;
         }
-        
+
         const book = await payload.create({
           collection: 'books',
           data: bookData as any // Type assertion to bypass strict payload types
         });
-        
+
         successful++;
         console.log(`✅ Imported: ${book.title}`);
         console.log(`   📖 Categories: ${bookData.categories.join(', ')}`);
         console.log(`   🏷️  Collections: ${bookData.collections.map(c => c.collectionName).join(', ')}`);
         console.log('');
-        
+
       } catch (error: any) {
         errors++;
         const errorMsg = `Error importing "${csvBook.Title}": ${error.message}`;
         errorDetails.push(errorMsg);
         console.error(`❌ ${errorMsg}`);
-        
+
         // Debug: Log binding value if it's a binding error
         if (error.message.includes('Binding')) {
           console.error(`   📖 Original binding: "${csvBook.Binding}"`);
         }
       }
     }
-    
+
     console.log('\n📊 Import Summary:');
     console.log(`✅ Successful: ${successful}`);
     console.log(`❌ Errors: ${errors}`);
-    
+
     if (errorDetails.length > 0) {
       console.log('\n🔍 Error Details:');
       errorDetails.forEach(error => console.log(`  - ${error}`));
     }
-    
+
   } catch (error: any) {
     console.error('💥 Fatal error:', error);
   } finally {

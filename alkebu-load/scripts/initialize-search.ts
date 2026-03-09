@@ -68,7 +68,10 @@ async function getCollectionStats(payload: any): Promise<Record<string, number>>
       });
       stats[collection] = result.totalDocs;
     } catch (error) {
-      console.warn(`⚠️  Could not get stats for ${collection}:`, error.message);
+      console.warn(
+        `⚠️  Could not get stats for ${collection}:`,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
       stats[collection] = 0;
     }
   }
@@ -93,7 +96,10 @@ async function testSearchFunctionality() {
         console.log(`     Sample: "${results.internal[0].title}" (${results.internal[0].type})`);
       }
     } catch (error) {
-      console.warn(`   ⚠️  Test search failed for "${query}":`, error.message);
+      console.warn(
+        `   ⚠️  Test search failed for "${query}":`,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
     }
   }
 }
@@ -255,7 +261,10 @@ async function createSampleData(payload: any) {
     console.log('✅ Sample data created successfully');
 
   } catch (error) {
-    console.warn('⚠️  Error creating sample data:', error.message);
+    console.warn(
+      '⚠️  Error creating sample data:',
+      error instanceof Error ? error.message : 'Unknown error',
+    );
   }
 }
 

@@ -10,7 +10,7 @@ const nextConfig = {
 
   // Image optimization
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'media.alkebulanimages.com'],
     formats: ['image/avif', 'image/webp'],
   },
 

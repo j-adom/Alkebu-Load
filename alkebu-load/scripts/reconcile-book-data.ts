@@ -401,7 +401,8 @@ class BookReconciler {
       const pageCount = data.editions?.[0]?.pages
       const publishedDate = data.editions?.[0]?.datePublished
       // Fix: ISBNdb returns scrapedImageUrls, not images
-      const imageUrl = data.scrapedImageUrls?.[0]?.url || data.images?.[0]?.url
+      const scrapedImages = (data as { scrapedImageUrls?: Array<{ url?: string }> }).scrapedImageUrls
+      const imageUrl = scrapedImages?.[0]?.url || data.images?.[0]?.url
       const description = data.description || data.synopsis || data.excerpt
 
       return {

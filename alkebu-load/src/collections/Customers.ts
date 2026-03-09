@@ -15,16 +15,16 @@ export const Customers: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true;
+      if ((user as any)?.role === 'admin') return true;
       if (user) return { id: { equals: user.id } };
       return false;
     },
     create: () => true,
     update: ({ req: { user }, id }) => {
-      if (user?.role === 'admin') return true;
+      if ((user as any)?.role === 'admin') return true;
       return user?.id === id;
     },
-    delete: ({ req: { user } }) => user?.role === 'admin',
+    delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },
   fields: [
     {

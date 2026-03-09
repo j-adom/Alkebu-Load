@@ -1,4 +1,4 @@
-import { SquareClient } from 'square'
+import { SquareClient, type CatalogObject, type InventoryCount } from 'square'
 import { config as dotenvConfig } from 'dotenv'
 import fs from 'fs'
 
@@ -39,6 +39,15 @@ interface PayloadProduct {
   squareVersion: string
   lastSyncAt: string
 }
+
+type CatalogItemObject = Extract<CatalogObject, { type: 'ITEM' }>
+type CatalogItemVariationObject = Extract<CatalogObject, { type: 'ITEM_VARIATION' }>
+
+const isCatalogItemObject = (object: CatalogObject): object is CatalogItemObject =>
+  object.type === 'ITEM' && !!object.itemData
+
+const isCatalogItemVariationObject = (object: CatalogObject): object is CatalogItemVariationObject =>
+  object.type === 'ITEM_VARIATION' && !!object.itemVariationData
 
 const syncSquareToPayload = async () => {
   console.log('🔄 Starting Square → Payload CMS Sync...\n')
@@ -84,20 +93,14 @@ const syncSquareToPayload = async () => {
       locationIds: ['LC2AKZX32H2ZA']
     })
     
-    // Parse inventory data properly
-    let inventoryCounts: any[] = []
-    if (inventoryResponse.data && Array.isArray(inventoryResponse.data)) {
-      inventoryCounts = inventoryResponse.data
-    } else if (inventoryResponse.counts) {
-      inventoryCounts = inventoryResponse.counts
-    }
+    const inventoryCounts: InventoryCount[] = inventoryResponse.data || []
     
     console.log(`✅ Retrieved inventory for ${inventoryCounts.length} items`)
     
     // Step 4: Create mapping between variations and parent items
-    const itemsMap = new Map()
+    const itemsMap = new Map<string, CatalogItemObject>()
     catalogResponse.relatedObjects?.forEach(item => {
-      if (item.itemData) {
+      if (item.id && isCatalogItemObject(item)) {
         itemsMap.set(item.id, item)
       }
     })
@@ -105,50 +108,61 @@ const syncSquareToPayload = async () => {
     // Step 5: Create Payload CMS products
     const payloadProducts: PayloadProduct[] = []
     
-    catalogResponse.objects?.forEach(variation => {
-      if (variation.type === 'ITEM_VARIATION' && variation.itemVariationData) {
-        const parentItem = itemsMap.get(variation.itemVariationData.itemId)
-        const inventory = inventoryCounts.find(inv => 
-          inv.catalogObjectId === variation.id || inv.catalog_object_id === variation.id
-        )
+    for (const variation of catalogResponse.objects || []) {
+      if (!variation.id || !isCatalogItemVariationObject(variation)) {
+        continue
+      }
+
+      const variationData = variation.itemVariationData
+      if (!variationData) {
+        continue
+      }
+
+      const squareItemId = variationData.itemId
+      if (!squareItemId) {
+        continue
+      }
+
+      const parentItem = itemsMap.get(squareItemId)
+      const inventory = inventoryCounts.find(inv => inv.catalogObjectId === variation.id)
         
         // Calculate price in dollars
-        const priceAmount = variation.itemVariationData.priceMoney?.amount
+        const priceAmount = variationData.priceMoney?.amount
         const price = priceAmount ? Number(priceAmount) / 100 : 0
         
-        const product: PayloadProduct = {
-          title: variation.itemVariationData.name || parentItem?.itemData?.name || 'Unnamed Product',
-          description: parentItem?.itemData?.descriptionPlaintext || parentItem?.itemData?.description,
-          price: price,
-          currency: variation.itemVariationData.priceMoney?.currency || 'USD',
-          sku: variation.itemVariationData.sku,
-          upc: variation.itemVariationData.upc,
-          squareVariationId: variation.id,
-          squareItemId: variation.itemVariationData.itemId,
-          variationName: variation.itemVariationData.name,
-          categoryId: parentItem?.itemData?.categoryId,
-          isActive: !parentItem?.itemData?.isDeleted && variation.presentAtAllLocations !== false,
-          squareVersion: variation.version?.toString(),
-          lastSyncAt: new Date().toISOString()
-        }
+      const product: PayloadProduct = {
+        title: variationData.name || parentItem?.itemData?.name || 'Unnamed Product',
+        description: parentItem?.itemData?.descriptionPlaintext ?? parentItem?.itemData?.description ?? undefined,
+        price: price,
+        currency: variationData.priceMoney?.currency || 'USD',
+        sku: variationData.sku ?? undefined,
+        upc: variationData.upc ?? undefined,
+        squareVariationId: variation.id,
+        squareItemId,
+        variationName: variationData.name ?? undefined,
+        categoryId: parentItem?.itemData?.categoryId ?? undefined,
+        isActive: parentItem?.itemData?.isArchived !== true && variation.presentAtAllLocations !== false,
+        squareVersion: variation.version != null ? variation.version.toString() : '0',
+        lastSyncAt: new Date().toISOString()
+      }
         
         // Add inventory if available
-        if (inventory) {
-          product.inventory = {
-            quantity: parseInt(inventory.quantity || inventory.count || '0'),
-            state: inventory.state || 'UNKNOWN',
-            locationId: inventory.locationId || inventory.location_id || 'LC2AKZX32H2ZA'
-          }
+      if (inventory) {
+        product.inventory = {
+          quantity: Number.parseInt(inventory.quantity || '0', 10),
+          state: inventory.state || 'UNKNOWN',
+          locationId: inventory.locationId || 'LC2AKZX32H2ZA'
         }
+      }
         
         // Add images if available
-        if (parentItem?.itemData?.imageIds && parentItem.itemData.imageIds.length > 0) {
-          product.images = parentItem.itemData.imageIds
-        }
-        
-        payloadProducts.push(product)
+      const imageIds = parentItem?.itemData?.imageIds?.filter((id): id is string => Boolean(id))
+      if (imageIds && imageIds.length > 0) {
+        product.images = imageIds
       }
-    })
+        
+      payloadProducts.push(product)
+    }
     
     console.log(`\n✅ Created ${payloadProducts.length} Payload CMS products`)
     

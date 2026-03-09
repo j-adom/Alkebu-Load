@@ -46,7 +46,7 @@ const SearchAnalytics: CollectionConfig = {
         description: 'Type of search performed'
       }
     },
-    
+
     // Search Context
     {
       name: 'searchSource',
@@ -85,7 +85,7 @@ const SearchAnalytics: CollectionConfig = {
         description: 'User who performed the search (if logged in)'
       }
     },
-    
+
     // Search Results
     {
       name: 'resultCount',
@@ -119,7 +119,7 @@ const SearchAnalytics: CollectionConfig = {
         description: 'Search execution time in milliseconds'
       }
     },
-    
+
     // Search Success Metrics
     {
       name: 'clickthrough',
@@ -197,7 +197,7 @@ const SearchAnalytics: CollectionConfig = {
         { label: 'Account Creation', value: 'account-creation' }
       ]
     },
-    
+
     // External Book Search Specific
     {
       name: 'externalBookSearch',
@@ -248,7 +248,7 @@ const SearchAnalytics: CollectionConfig = {
         }
       ]
     },
-    
+
     // Search Refinement
     {
       name: 'refinedSearch',
@@ -292,7 +292,7 @@ const SearchAnalytics: CollectionConfig = {
         description: 'Filters applied to search results'
       }
     },
-    
+
     // Technical Information
     {
       name: 'searchDate',
@@ -339,7 +339,7 @@ const SearchAnalytics: CollectionConfig = {
         description: 'Device type used for search'
       }
     },
-    
+
     // Performance Metrics
     {
       name: 'searchEngine',
@@ -362,7 +362,7 @@ const SearchAnalytics: CollectionConfig = {
         description: 'Was result served from cache?'
       }
     },
-    
+
     // Business Intelligence
     {
       name: 'popularQuery',
@@ -392,14 +392,14 @@ const SearchAnalytics: CollectionConfig = {
       }
     }
   ],
-  
+
   hooks: {
     beforeValidate: [
       async ({ data, operation }) => {
         if (!data || operation !== 'create') {
           return;
         }
-        
+
         // Normalize query for analysis
         if (data.query) {
           data.normalizedQuery = data.query
@@ -407,27 +407,29 @@ const SearchAnalytics: CollectionConfig = {
             .trim()
             .replace(/\s+/g, ' ');
         }
-        
+
         // Set search date
         if (!data.searchDate) {
           data.searchDate = new Date().toISOString();
         }
-        
+
         // Mark as zero results query
         if (data.resultCount === 0) {
           data.zeroResultsQuery = true;
         }
       }
     ],
-    
-    afterCreate: [
-      async ({ doc }) => {
+
+    afterChange: [
+      async ({ doc, operation }) => {
+        if (operation !== 'create') return;
+
         // This could trigger analytics updates, like:
         // - Updating query frequency counters
         // - Identifying trending searches
         // - Flagging potential inventory gaps
         // - Updating search suggestions
-        
+
         // For now, we'll just log it
         console.log(`Search logged: "${doc.query}" - ${doc.resultCount} results`);
       }

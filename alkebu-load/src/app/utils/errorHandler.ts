@@ -34,33 +34,33 @@ export async function withRetry<T>(
   for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
     try {
       console.log(`🔄 Attempting ${operationName} (attempt ${attempt}/${config.maxAttempts})`)
-      
+
       const result = await operation()
-      
+
       if (attempt > 1) {
         console.log(`✅ ${operationName} succeeded after ${attempt} attempts`)
       }
-      
+
       return result
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      
+
       console.log(`❌ ${operationName} failed (attempt ${attempt}/${config.maxAttempts}):`, lastError.message)
-      
+
       if (attempt === config.maxAttempts) {
         break
       }
-      
+
       // Calculate delay with exponential backoff
       const delay = Math.min(
         config.baseDelay * Math.pow(config.backoffMultiplier, attempt - 1),
         config.maxDelay
       )
-      
+
       // Add jitter to prevent thundering herd
       const jitter = Math.random() * 0.1 * delay
       const totalDelay = delay + jitter
-      
+
       console.log(`⏱️  Retrying ${operationName} in ${Math.round(totalDelay)}ms...`)
       await new Promise(resolve => setTimeout(resolve, totalDelay))
     }
@@ -79,7 +79,7 @@ class CircuitBreaker {
   constructor(
     private failureThreshold: number = 5,
     private resetTimeout: number = 60000 // 1 minute
-  ) {}
+  ) { }
 
   async execute<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
     if (this.state === 'OPEN') {
@@ -93,22 +93,22 @@ class CircuitBreaker {
 
     try {
       const result = await operation()
-      
+
       if (this.state === 'HALF_OPEN') {
         this.reset()
         console.log(`✅ Circuit breaker reset to CLOSED for ${operationName}`)
       }
-      
+
       return result
     } catch (error) {
       this.recordFailure()
-      
+
       if (this.failures >= this.failureThreshold) {
         this.state = 'OPEN'
         this.lastFailureTime = Date.now()
         console.log(`🚨 Circuit breaker OPENED for ${operationName} after ${this.failures} failures`)
       }
-      
+
       throw error
     }
   }
@@ -153,7 +153,7 @@ class RetryQueue {
   add(operation: FailedOperation) {
     console.log(`📝 Adding failed operation to retry queue: ${operation.operation}`)
     this.queue.push(operation)
-    
+
     if (!this.processing) {
       this.processQueue()
     }
@@ -161,19 +161,19 @@ class RetryQueue {
 
   private async processQueue() {
     this.processing = true
-    
+
     while (this.queue.length > 0) {
       const now = new Date().toISOString()
-      
+
       // Find operations ready for retry
       const readyOperations = this.queue.filter(op => op.nextRetry <= now)
-      
+
       if (readyOperations.length === 0) {
         // Wait for next operation to be ready
-        const nextOperation = this.queue.reduce((earliest, current) => 
+        const nextOperation = this.queue.reduce((earliest, current) =>
           current.nextRetry < earliest.nextRetry ? current : earliest
         )
-        
+
         const waitTime = new Date(nextOperation.nextRetry).getTime() - Date.now()
         if (waitTime > 0) {
           console.log(`⏱️  Waiting ${Math.round(waitTime / 1000)}s for next retry operation`)
@@ -187,38 +187,38 @@ class RetryQueue {
         await this.processOperation(operation)
       }
     }
-    
+
     this.processing = false
   }
 
   private async processOperation(operation: FailedOperation) {
     try {
       console.log(`🔄 Retrying failed operation: ${operation.operation} (attempt ${operation.attempts + 1})`)
-      
+
       // This would need to be implemented based on operation type
       await this.executeOperation(operation)
-      
+
       // Remove from queue on success
       this.removeFromQueue(operation.id)
       console.log(`✅ Retry successful for: ${operation.operation}`)
-      
+
     } catch (error) {
       operation.attempts++
       operation.lastAttempt = new Date().toISOString()
       operation.error = error instanceof Error ? error.message : String(error)
-      
+
       if (operation.attempts >= 5) {
         // Max retries reached, remove from queue
         console.log(`❌ Max retries reached for: ${operation.operation}`)
         this.removeFromQueue(operation.id)
-        
+
         // You could send this to a dead letter queue or alert system
         await this.handleFailedOperation(operation)
       } else {
         // Schedule next retry with exponential backoff
         const delay = Math.min(1000 * Math.pow(2, operation.attempts), 300000) // Max 5 minutes
         operation.nextRetry = new Date(Date.now() + delay).toISOString()
-        
+
         console.log(`⏱️  Scheduling retry #${operation.attempts + 1} for: ${operation.operation}`)
       }
     }
@@ -253,7 +253,7 @@ class RetryQueue {
       lastError: operation.error,
       data: operation.data
     })
-    
+
     // You could implement:
     // - Send to external monitoring (DataDog, Sentry, etc.)
     // - Store in database for manual review
@@ -284,7 +284,7 @@ export function addToRetryQueue(operation: Omit<FailedOperation, 'attempts' | 'l
     lastAttempt: new Date().toISOString(),
     nextRetry: new Date(Date.now() + 5000).toISOString() // Retry in 5 seconds
   }
-  
+
   retryQueue.add(failedOperation)
 }
 
@@ -304,34 +304,34 @@ export enum ErrorCategory {
 
 export function categorizeError(error: Error): ErrorCategory {
   const message = error.message.toLowerCase()
-  
+
   if (message.includes('network') || message.includes('timeout') || message.includes('enotfound')) {
     return ErrorCategory.NETWORK
   }
-  
+
   if (message.includes('rate limit') || message.includes('too many requests') || message.includes('quota')) {
     return ErrorCategory.RATE_LIMIT
   }
-  
+
   if (message.includes('unauthorized') || message.includes('authentication') || message.includes('api key')) {
     return ErrorCategory.AUTHENTICATION
   }
-  
+
   if (message.includes('not found') || message.includes('404')) {
     return ErrorCategory.NOT_FOUND
   }
-  
+
   if (message.includes('validation') || message.includes('invalid') || message.includes('bad request')) {
     return ErrorCategory.VALIDATION
   }
-  
+
   return ErrorCategory.UNKNOWN
 }
 
 // Enhanced error logging with context
 export function logError(error: Error, context: Record<string, any>) {
   const category = categorizeError(error)
-  
+
   console.error('❌ Enhanced Error Log:', {
     message: error.message,
     category,
@@ -339,7 +339,7 @@ export function logError(error: Error, context: Record<string, any>) {
     context,
     timestamp: new Date().toISOString()
   })
-  
+
   // You could enhance this to send to external logging services
   // like DataDog, LogRocket, Sentry, etc.
 }
@@ -350,11 +350,11 @@ export function createHealthChecks() {
     async checkIsbndbHealth(): Promise<boolean> {
       try {
         if (!process.env.ISBNDB_API_KEY) return false
-        
+
         const response = await fetch('https://api2.isbndb.com/book/9781400244102', {
           headers: { 'Authorization': process.env.ISBNDB_API_KEY }
         })
-        
+
         return response.ok
       } catch {
         return false
@@ -364,15 +364,15 @@ export function createHealthChecks() {
     async checkSquareHealth(): Promise<boolean> {
       try {
         if (!process.env.SQUARE_ACCESS_TOKEN) return false
-        
+
         const { SquareClient } = await import('square')
         const client = new SquareClient({
           token: process.env.SQUARE_ACCESS_TOKEN,
           environment: process.env.SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox'
         })
-        
-        const response = await client.locations.listLocations()
-        return !!response.result?.locations
+
+        const response = await client.locations.list()
+        return !!response.locations
       } catch {
         return false
       }
@@ -387,7 +387,7 @@ export function createHealthChecks() {
         isbndb: await this.checkIsbndbHealth(),
         square: await this.checkSquareHealth()
       }
-      
+
       const circuitBreakerStates = Object.entries(circuitBreakers).reduce(
         (acc, [name, breaker]) => ({
           ...acc,
@@ -395,10 +395,10 @@ export function createHealthChecks() {
         }),
         {}
       )
-      
+
       const healthyServices = Object.values(services).filter(Boolean).length
       const totalServices = Object.keys(services).length
-      
+
       let status: 'healthy' | 'degraded' | 'unhealthy'
       if (healthyServices === totalServices) {
         status = 'healthy'
@@ -407,7 +407,7 @@ export function createHealthChecks() {
       } else {
         status = 'unhealthy'
       }
-      
+
       return {
         status,
         services,

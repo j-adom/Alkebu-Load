@@ -9,7 +9,7 @@ export const CartItems: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if (user?.role === 'admin') return true;
+      if ((user as any)?.role === 'admin') return true;
       return false; // Cart items are accessed through cart operations
     },
     create: () => true,
@@ -95,22 +95,22 @@ export const CartItems: CollectionConfig = {
       name: 'customization',
       type: 'group',
       fields: [
-        { 
-          name: 'giftWrap', 
+        {
+          name: 'giftWrap',
           type: 'checkbox',
           admin: {
             description: 'Gift wrapping requested',
           },
         },
-        { 
-          name: 'giftMessage', 
+        {
+          name: 'giftMessage',
           type: 'textarea',
           admin: {
             description: 'Gift message if applicable',
           },
         },
-        { 
-          name: 'personalNote', 
+        {
+          name: 'personalNote',
           type: 'textarea',
           admin: {
             description: 'Special instructions or personalization',

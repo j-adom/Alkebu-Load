@@ -1,27 +1,37 @@
-# Alkebulanimages 2.0 - Digital Platform
+# Alkebulanimages 2.0
 
-A comprehensive multi-repository platform for bookstore e-commerce, content management, and community engagement.
+A digital platform for a Nashville-based Black-owned bookstore combining e-commerce, content management, community directory, and events.
 
 ## Architecture
 
-- **alkebu-load/** - Payload CMS backend (inventory, content, relationships)
-- **alkebu-commerce/** - MedusaJS e-commerce engine
-- **alkebu-web/** - SvelteKit frontend application
-- **alkebu-shared/** - Shared types and utilities
+- **alkebu-load/** - Payload CMS 3.68.5 backend with integrated e-commerce, Square POS sync, Stripe payments, order management
+- **alkebu-web/** - SvelteKit 2.8 frontend with Svelte 5, TailwindCSS, Cloudflare Pages deployment
+- **alkebu-shared/** - Shared TypeScript types and utilities (planned)
 
 ## Quick Start
 
-See [Development Guide](docs/development-guide.md) for detailed setup instructions.
+```bash
+# Backend
+cd alkebu-load && pnpm install && pnpm dev    # localhost:3000
+
+# Frontend
+cd alkebu-web && npm install && npm run dev    # localhost:5173
+```
+
+See [PHASE1-QUICKSTART.md](PHASE1-QUICKSTART.md) for detailed setup and testing checklist.
 
 ## Documentation
 
-- [Product Requirements Document](docs/PRD.md)
-- [Technical Architecture](docs/architecture.md)
-- [Development Guide](docs/development-guide.md)
+- [Product Requirements](docs/PRD.md) - Features, architecture, current status
+- [Architecture Overview](docs/architecture.md) - System design and data flow
+- [Development Guide](docs/development-guide.md) - Local setup and commands
+- [Deployment Guide](docs/Deployment-Guide.md) - Production deployment
+- [Phase 1 Setup](docs/PHASE1-SETUP.md) - Step-by-step implementation guide
+- [Book Enrichment](docs/BOOK-ENRICHMENT-WORKFLOW.md) - ISBN enrichment system
+- [Cart UX](docs/CART-UX.md) - Shopping cart architecture
 
 ## Current Status
 
-- ✅ **alkebu-load**: Advanced - Payload CMS with Square integration
-- 🔨 **alkebu-commerce**: In Development
-- 🔨 **alkebu-web**: In Development  
-- 🔨 **alkebu-shared**: In Development
+- **alkebu-load**: Production-ready backend with e-commerce, order management, email notifications
+- **alkebu-web**: Frontend integration in progress (checkout flow)
+- **Phase 1**: ~85% complete - see [PRD.md](docs/PRD.md#phase-1-mvp--launch-current) for checklist

@@ -52,7 +52,7 @@ async function testCheckoutFlow() {
     // Step 4: Add item to cart
     console.log('🛒 Adding item to cart...');
     const cartResult = await addToCart(payload, cart.id, {
-      productId: testBook.id,
+      productId: String(testBook.id),
       productType: 'books',
       quantity: 1,
     }, testSessionId);
@@ -102,7 +102,11 @@ async function testCheckoutFlow() {
         console.log('⚠️ Skipping Stripe test - no valid API keys configured\n');
       }
     } catch (stripeError) {
-      console.log(`⚠️ Stripe test failed (expected without valid keys): ${stripeError.message}\n`);
+      console.log(
+        `⚠️ Stripe test failed (expected without valid keys): ${
+          stripeError instanceof Error ? stripeError.message : 'Unknown error'
+        }\n`,
+      );
     }
     
     // Step 7: Test order creation (simulate successful payment)

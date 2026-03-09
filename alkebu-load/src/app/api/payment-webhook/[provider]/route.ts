@@ -5,9 +5,9 @@ import { getAdapter } from '@/app/lib/payments/adapters';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { provider: string } },
+  { params }: { params: Promise<{ provider: string }> },
 ) {
-  const provider = params.provider;
+  const { provider } = await params;
 
   try {
     const adapter = getAdapter(provider);

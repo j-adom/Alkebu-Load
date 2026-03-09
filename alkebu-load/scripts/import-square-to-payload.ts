@@ -184,7 +184,7 @@ function buildBookData(group: SquareProductGroup) {
   const editions = variations.map((variation) => {
     const stockLevel = Math.max(
       0,
-      Number(variation.inventory?.quantity ?? variation.inventory?.count ?? 0),
+      Number(variation.inventory?.quantity ?? 0),
     )
 
     return {
@@ -256,13 +256,15 @@ async function importSquareProducts() {
   const categoriesMap = new Map<string, any>()
 
   try {
-    const catalogResponse = await squareClient.catalog.list({
-      types: ['CATEGORY']
+    const catalogPage = await squareClient.catalog.list({
+      types: 'CATEGORY'
     })
 
-    if (catalogResponse.objects) {
-      for (const category of catalogResponse.objects) {
-        categoriesMap.set(category.id, category)
+    if (catalogPage.data.length) {
+      for (const category of catalogPage.data) {
+        if (category.id) {
+          categoriesMap.set(category.id, category)
+        }
       }
       console.log(`✅ Found ${categoriesMap.size} Square categories\n`)
     }
