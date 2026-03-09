@@ -42,6 +42,7 @@ import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+const serverURL = process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000'
 const publicSiteURL = process.env.PAYLOAD_PUBLIC_SITE_URL || 'https://alkebulanimages.com'
 const databaseURI = process.env.DATABASE_URI
 
@@ -78,6 +79,7 @@ const generateURL: GenerateURL<any> = ({ doc }) => {
 }
 
 export default buildConfig({
+  serverURL,
   cors: [
     'https://alkebulanimages.com',
     'https://www.alkebulanimages.com',

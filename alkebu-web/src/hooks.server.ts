@@ -3,12 +3,12 @@ import type { Handle } from '@sveltejs/kit';
 import { getPayloadApiUrl } from '$lib/server/payloadEnv';
 
 export const handle: Handle = async ({ event, resolve }) => {
-  const payloadApiUrl = getPayloadApiUrl();
   // Get Payload JWT from cookie
   const token = event.cookies.get('payload-token');
   
   if (token) {
     try {
+      const payloadApiUrl = getPayloadApiUrl();
       const response = await fetch(`${payloadApiUrl}/api/users/me`, {
         headers: { 
           'Authorization': `JWT ${token}` 
