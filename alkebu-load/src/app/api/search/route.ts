@@ -30,7 +30,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           collection: 'books',
           limit: perType,
           depth: 1,
-          where: { or: [{ title: { contains: query } }, { description: { contains: query } }, { 'editions.isbn': { contains: query } }, { 'editions.isbn10': { contains: query } }] },
+          where: /^[\d\-X]{9,13}$/.test(query.replace(/\s/g, '')) ? { or: [{ 'editions.isbn': { equals: query } }, { 'editions.isbn10': { equals: query } }] } : { or: [{ title: { contains: query } }, { description: { contains: query } }] },
         });
         return res.docs.map((doc: any) => {
           const { slug, price } = bestEditionSlug(doc);
