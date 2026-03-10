@@ -46,11 +46,13 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     // Build description with fallback
     const authorNames = product.authors?.map((a: any) => a.name).join(', ') || 'Various Authors';
     const descriptionFallback = `${product.title} by ${authorNames}`;
+    const rawDesc = product.seoDescription || product.synopsis || product.description || descriptionFallback;
+    const description = typeof rawDesc === 'string' ? rawDesc : descriptionFallback;
 
     // Build SEO data
     const seoData = buildSEOData({
       title: product.titleLong || product.title,
-      description: product.seoDescription || product.synopsis || product.description || descriptionFallback,
+      description,
       canonical: `${PUBLIC_SITE_URL}/shop/books/${slug}/${isbn}`,
       image: product.images?.[0]?.image?.url || product.images?.[0]?.url,
       imageAlt: `Cover of ${product.title}`,
@@ -103,12 +105,6 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     }
 
     console.error('Error loading book:', err);
-
-    // Return error state
-    setHeaders({
-      'Cache-Control': 'public, s-maxage=300' // Short cache on error
-    });
-
     throw error(500, 'Failed to load book');
   }
 };

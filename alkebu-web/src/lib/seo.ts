@@ -30,13 +30,22 @@ export function buildProductJsonLd(product: any, slug: string) {
   // Get image URL (fashion uses scrapedImageUrls, books use images)
   const imageUrl = product.scrapedImageUrls?.[0]?.url || product.images?.[0]?.url;
 
+  const editions: any[] = product.editions || [];
+  // Best edition: in-stock first, then most recently published, then first
+  const inStock = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0);
+  const mostRecent = editions
+    .filter((e: any) => e.datePublished)
+    .sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0];
+  const canonicalEdition = inStock || mostRecent || editions[0];
+  const canonicalIsbn = canonicalEdition?.isbn || canonicalEdition?.isbn10;
+
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: productName,
     description: descText,
-    sku: product.variations?.[0]?.sku || product.editions?.[0]?.isbn13 || product.editions?.[0]?.isbn10 || product.id,
-    isbn: product.editions?.[0]?.isbn13 || product.editions?.[0]?.isbn10,
+    sku: product.variations?.[0]?.sku || canonicalIsbn || product.id,
+    isbn: canonicalIsbn,
     brand: {
       '@type': 'Organization',
       name: product.brand || product.publisher?.name || 'Alkebu-Lan Images'
@@ -57,15 +66,21 @@ export function buildProductJsonLd(product: any, slug: string) {
         url: `${PUBLIC_SITE_URL}/shop/books/authors/${author.slug}`
       }))
     }),
-    ...(product.editions?.[0]?.pages && {
-      numberOfPages: product.editions[0].pages
+    ...(canonicalEdition?.pages && { numberOfPages: canonicalEdition.pages }),
+    ...(canonicalEdition?.datePublished && { datePublished: canonicalEdition.datePublished }),
+    ...(product.categories && product.categories.length > 0 && { genre: product.categories }),
+    // All edition ISBNs as workExample so Google can find any edition
+    ...(editions.length > 1 && {
+      workExample: editions
+        .filter((e: any) => e.isbn || e.isbn10)
+        .map((e: any) => ({
+          '@type': 'Book',
+          isbn: e.isbn || e.isbn10,
+          bookEdition: e.edition || undefined,
+          bookFormat: e.binding ? `https://schema.org/${e.binding === 'ebook' ? 'EBook' : e.binding === 'audiobook' ? 'AudiobookFormat' : 'Paperback'}` : undefined,
+          datePublished: e.datePublished || undefined,
+        }))
     }),
-    ...(product.editions?.[0]?.publishedDate && {
-      datePublished: product.editions[0].publishedDate
-    }),
-    ...(product.categories && product.categories.length > 0 && {
-      genre: product.categories
-    })
   };
 }
 
@@ -276,7 +291,7 @@ export function buildSEOData({
 }: SEOData) {
   return {
     title: `${title} | Alkebu-Lan Images`,
-    description: description.slice(0, 160),
+    description: String(description || '').slice(0, 160),
     canonical,
     image: image ? (image.startsWith('http') ? image : `${PUBLIC_SITE_URL}${image}`) : `${PUBLIC_SITE_URL}/og-image.png`,
     imageAlt: imageAlt || title,

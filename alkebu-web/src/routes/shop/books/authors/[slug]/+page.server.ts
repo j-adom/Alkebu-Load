@@ -83,10 +83,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
     
     console.error('Error loading author books:', err);
     
-    setHeaders({
-      'Cache-Control': 'public, s-maxage=300'
-    });
-
     throw error(500, 'Failed to load author');
   }
 };

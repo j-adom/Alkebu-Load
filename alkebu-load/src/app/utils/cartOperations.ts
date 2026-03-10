@@ -9,6 +9,111 @@ import {
 } from './taxShippingCalculations';
 import { sendAbandonedCartEmail, type AbandonedCartData } from './emailService';
 
+const AVAILABLE_VENDOR_KEYWORDS = [
+  'ingram',
+  'afrikan world',
+  'lushena',
+  'harper',
+  'penguin',
+];
+
+const getRelationValue = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object') return value;
+  if ('value' in (value as Record<string, unknown>)) {
+    return (value as Record<string, unknown>).value;
+  }
+  return value;
+};
+
+const hasAllowedVendorKeyword = (name: string): boolean => {
+  const normalized = name.toLowerCase();
+  return AVAILABLE_VENDOR_KEYWORDS.some((keyword) => normalized.includes(keyword));
+};
+
+async function resolveRelatedName(
+  payload: Payload,
+  relation: unknown,
+  collection: 'vendors' | 'publishers',
+): Promise<string | null> {
+  if (!relation) return null;
+
+  const relationValue = getRelationValue(relation);
+
+  if (relationValue && typeof relationValue === 'object') {
+    const relationObj = relationValue as Record<string, unknown>;
+    if (typeof relationObj.name === 'string' && relationObj.name.trim()) {
+      return relationObj.name.trim();
+    }
+    if ('id' in relationObj) {
+      relation = relationObj.id;
+    }
+  } else {
+    relation = relationValue;
+  }
+
+  if (typeof relation === 'number' || typeof relation === 'string') {
+    const relationId = String(relation).trim();
+    if (!relationId) return null;
+
+    try {
+      const doc = await payload.findByID({
+        collection,
+        id: relationId as any,
+      });
+      if (doc && typeof (doc as any).name === 'string' && (doc as any).name.trim()) {
+        return (doc as any).name.trim();
+      }
+    } catch {
+      // If lookup fails, relation may already be a plain-text name.
+      if (typeof relation === 'string' && relation.trim()) {
+        return relation.trim();
+      }
+    }
+  }
+
+  return null;
+}
+
+async function getSupplierNames(payload: Payload, product: any): Promise<string[]> {
+  const names = new Set<string>();
+
+  const vendorName = await resolveRelatedName(payload, product?.vendor, 'vendors');
+  if (vendorName) {
+    names.add(vendorName);
+  }
+
+  const publisherName = await resolveRelatedName(payload, product?.publisher, 'publishers');
+  if (publisherName) {
+    names.add(publisherName);
+  }
+
+  if (typeof product?.publisherText === 'string' && product.publisherText.trim()) {
+    names.add(product.publisherText.trim());
+  }
+
+  if (Array.isArray(product?.editions)) {
+    for (const edition of product.editions) {
+      const editionPublisher = await resolveRelatedName(payload, edition?.publisher, 'publishers');
+      if (editionPublisher) {
+        names.add(editionPublisher);
+      }
+      if (typeof edition?.publisherText === 'string' && edition.publisherText.trim()) {
+        names.add(edition.publisherText.trim());
+      }
+    }
+  }
+
+  return Array.from(names);
+}
+
+async function isVendorAvailableForBackorder(
+  payload: Payload,
+  product: any,
+): Promise<boolean> {
+  const supplierNames = await getSupplierNames(payload, product);
+  return supplierNames.some(hasAllowedVendorKeyword);
+}
+
 /**
  * Convert Payload cart items to CartItemForTax format
  */
@@ -88,13 +193,21 @@ export async function addToCart(
       return { success: false, error: 'Product not found' };
     }
 
-    // Check inventory if tracking is enabled
-    const stockLevel = product.inventory?.stockLevel
-    if (product.inventory?.trackQuantity && typeof stockLevel === 'number' && stockLevel < item.quantity) {
-      if (!product.inventory.allowBackorders) {
+    // Check inventory/availability rules.
+    const stockLevel =
+      typeof product?.inventory?.stockLevel === 'number'
+        ? product.inventory.stockLevel
+        : 0;
+    const trackQuantity = Boolean(product?.inventory?.trackQuantity);
+    const allowBackorders = Boolean(product?.inventory?.allowBackorders);
+    const inStockForQuantity = !trackQuantity || stockLevel >= item.quantity;
+
+    if (!inStockForQuantity) {
+      const vendorAvailable = await isVendorAvailableForBackorder(payload, product);
+      if (!allowBackorders && !vendorAvailable) {
         return {
           success: false,
-          error: `Only ${stockLevel} items available in stock`
+          error: `Only ${stockLevel} items available in stock`,
         };
       }
     }
@@ -124,22 +237,48 @@ export async function addToCart(
       return { success: false, error: 'Unable to create or find cart' };
     }
 
-    // Check if item already exists in cart
+    // Check if item already exists in cart. We filter in memory because
+    // polymorphic relationship queries on `product` are unreliable across adapters.
     const existingItems = await payload.find({
       collection: 'cart-items',
       where: {
-        and: [
-          { cart: { equals: cart.id } },
-          { product: { equals: item.productId } },
-          { productType: { equals: item.productType } },
-        ],
+        cart: { equals: cart.id },
       },
+      depth: 0,
+      limit: 100,
+    });
+
+    const existing = existingItems.docs.find((cartItem: any) => {
+      const relation = cartItem?.product;
+      let relatedProductId: unknown = relation;
+      let relatedProductType: unknown = cartItem?.productType;
+
+      if (relation && typeof relation === 'object') {
+        if ('value' in relation) {
+          relatedProductId = relation.value;
+        }
+        if ('relationTo' in relation) {
+          relatedProductType = relation.relationTo;
+        }
+      }
+
+      if (
+        relatedProductId &&
+        typeof relatedProductId === 'object' &&
+        'id' in (relatedProductId as Record<string, unknown>)
+      ) {
+        relatedProductId = (relatedProductId as Record<string, unknown>).id;
+      }
+
+      return (
+        String(relatedProductId) === String(item.productId) &&
+        String(relatedProductType) === String(item.productType)
+      );
     });
 
     let cartItem;
-    if (existingItems.docs.length > 0) {
+    if (existing) {
       // Update existing item quantity
-      const existing = existingItems.docs[0];
       cartItem = await payload.update({
         collection: 'cart-items',
         id: existing.id,
@@ -165,8 +304,8 @@ export async function addToCart(
           stripePriceId: (product as any).stripePriceId,
           customization: item.customization,
           availability: {
-            inStock: (product as any).inventory?.stockLevel >= (item as any).quantity,
-            stockLevel: (product as any).inventory?.stockLevel || 0,
+            inStock: inStockForQuantity,
+            stockLevel,
           },
         },
       });
@@ -244,13 +383,22 @@ export async function updateCartItemQuantity(
       return { success: false, error: 'Cart item not found or unauthorized' };
     }
 
-    // Check inventory
-    const product = cartItem.product as any;
-    if (product?.inventory?.trackQuantity && product?.inventory?.stockLevel < quantity) {
-      if (!product?.inventory?.allowBackorders) {
+    // Check inventory/availability rules
+    const product = getRelationValue(cartItem.product) as any;
+    const stockLevel =
+      typeof product?.inventory?.stockLevel === 'number'
+        ? product.inventory.stockLevel
+        : 0;
+    const trackQuantity = Boolean(product?.inventory?.trackQuantity);
+    const allowBackorders = Boolean(product?.inventory?.allowBackorders);
+    const inStockForQuantity = !trackQuantity || stockLevel >= quantity;
+
+    if (!inStockForQuantity) {
+      const vendorAvailable = await isVendorAvailableForBackorder(payload, product);
+      if (!allowBackorders && !vendorAvailable) {
         return {
           success: false,
-          error: `Only ${product?.inventory?.stockLevel} items available in stock`
+          error: `Only ${stockLevel} items available in stock`,
         };
       }
     }
@@ -262,8 +410,8 @@ export async function updateCartItemQuantity(
       data: {
         quantity,
         availability: {
-          inStock: (product?.inventory?.stockLevel || 0) >= quantity,
-          stockLevel: product?.inventory?.stockLevel || 0,
+          inStock: inStockForQuantity,
+          stockLevel,
         },
       },
     });

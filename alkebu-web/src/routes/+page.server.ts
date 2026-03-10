@@ -11,8 +11,16 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     // Get featured books for homepage
     const featuredBooks = await payloadGet<any>('/api/books?where[isFeatured][equals]=true&limit=8&depth=2');
 
-    // Get new books (recently added)
-    const newBooks = await payloadGet<any>('/api/books?sort=-createdAt&limit=8&depth=2');
+    // Get new books with cover images — the Oct 2025 batch has scraped images,
+    // the Mar 2026 batch does not, so sort oldest-first from the Oct batch
+    // by fetching books sorted by createdAt ascending (original import)
+    const newBooksRaw = await payloadGet<any>('/api/books?sort=createdAt&limit=100&depth=2');
+    const booksWithImages = (newBooksRaw.docs || []).filter(
+      (b: any) => b.images?.length > 0 || b.scrapedImageUrls?.length > 0
+    );
+    // Shuffle to show variety rather than always the same 8
+    const shuffled = booksWithImages.sort(() => Math.random() - 0.5);
+    const newBooks = { docs: shuffled.slice(0, 8) };
 
     // Get recent blog posts
     const blogPosts = await payloadGet<any>('/api/blogPosts?sort=-publishedDate&limit=4&depth=2');
@@ -33,9 +41,6 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       description: 'Discover books, art, and cultural treasures celebrating African diaspora heritage. Nashville\'s premier destination for Black literature, wellness products, and community connection.',
       canonical: PUBLIC_SITE_URL
     });
-
-    // Debug logging
-    console.log('Section3 images:', JSON.stringify(homePageData?.section3?.images, null, 2));
 
     return {
       // HomePage global data (banner, sections, etc.)

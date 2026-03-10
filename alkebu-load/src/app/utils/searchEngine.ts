@@ -61,8 +61,8 @@ class SearchEngine {
     // Books index
     this.bookIndex = new Document({
       id: 'id',
-      index: ['title', 'author', 'description', 'tags', 'categories', 'subjects'],
-      store: ['title', 'author', 'description', 'imageUrl', 'slug', 'price', 'isbn'],
+      index: ['title', 'author', 'description', 'tags', 'categories', 'subjects', 'isbns'],
+      store: ['title', 'author', 'description', 'imageUrl', 'slug', 'price', 'isbn', 'isbns'],
       tag: ['category', 'availability', 'collection'],
       tokenize: 'forward',
       resolution: 3,
@@ -134,7 +134,17 @@ class SearchEngine {
 
     try {
       switch (type) {
-        case 'books':
+        case 'books': {
+          const editions: any[] = doc.editions || [];
+          // Prefer in-stock edition, then most recently published, then first
+          const inStock = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0);
+          const mostRecent = editions
+            .filter((e: any) => e.datePublished)
+            .sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0];
+          const bestEdition = inStock || mostRecent || editions[0];
+          const isbn = bestEdition?.isbn || bestEdition?.isbn10 || '';
+          const bookSlug = isbn ? `${doc.slug || doc.id}/${isbn}` : (doc.slug || doc.id);
+          const isbns = editions.map((e: any) => e.isbn || e.isbn10 || '').filter(Boolean).join(' ');
           await this.bookIndex.addAsync(doc.id, {
             title: doc.title,
             author: doc.authors?.map((a: any) => a.name).join(' ') || doc.author,
@@ -143,11 +153,13 @@ class SearchEngine {
             categories: doc.categories?.join(' ') || '',
             subjects: doc.subjects?.map((s: any) => s.subject).join(' ') || '',
             imageUrl: doc.images?.[0]?.image?.url || '',
-            slug: doc.slug || doc.id,
-            price: doc.editions?.[0]?.price || 0,
-            isbn: doc.editions?.[0]?.isbn || ''
+            slug: bookSlug,
+            price: bestEdition?.pricing?.retailPrice || 0,
+            isbn,
+            isbns,
           });
           break;
+        }
 
         case 'blogPosts':
           await this.blogIndex.addAsync(doc.id, {

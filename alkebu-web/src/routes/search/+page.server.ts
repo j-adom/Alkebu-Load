@@ -188,7 +188,16 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 // Fallback: direct Payload REST queries when FlexSearch isn't available
 async function fallbackSearch(query: string, typeFilter: SearchType) {
   const collections = [
-    { type: 'books' as DisplayType, path: '/api/books', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/books/${i.slug}` },
+    { type: 'books' as DisplayType, path: '/api/books', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => {
+      const editions: any[] = i.editions || [];
+      const inStock = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0);
+      const mostRecent = editions
+        .filter((e: any) => e.datePublished)
+        .sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0];
+      const best = inStock || mostRecent || editions[0];
+      const isbn = best?.isbn || best?.isbn10 || '';
+      return isbn ? `/shop/books/${i.slug}/${isbn}` : `/shop/books/${i.slug}`;
+    } },
     { type: 'apparel' as DisplayType, path: '/api/fashion-jewelry', titleField: 'name', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/apparel/${i.slug}` },
     { type: 'health' as DisplayType, path: '/api/wellness-lifestyle', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/health-and-beauty/${i.slug}` },
     { type: 'home' as DisplayType, path: '/api/oils-incense', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/home-goods/${i.slug}` },
@@ -201,6 +210,10 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
     const params = new URLSearchParams({ page: '1', limit: '6', depth: '2' });
     params.append(`where[or][0][${col.titleField}][contains]`, query);
     params.append(`where[or][1][${col.descField}][contains]`, query);
+    if (col.type === 'books') {
+      params.append('where[or][2][editions.isbn][contains]', query);
+      params.append('where[or][3][editions.isbn10][contains]', query);
+    }
     try {
       const resp = await payloadGet<any>(`${col.path}?${params}`);
       return (resp.docs || []).map((item: any) => ({

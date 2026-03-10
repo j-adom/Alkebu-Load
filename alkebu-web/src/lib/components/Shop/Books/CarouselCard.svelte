@@ -12,7 +12,10 @@
 
   let binding = $derived(book.binding || book.editions?.[0]?.binding || 'Paperback');
   let price = $derived(book.pricing?.retailPrice || book.editions?.[0]?.price || 0);
-  let images = $derived(book.images?.[0] || book.editions?.[0]?.images?.[0]);
+  let images = $derived(
+    book.images?.[0] || book.editions?.[0]?.images?.[0] ||
+    (book.scrapedImageUrls?.[0]?.url ? { url: book.scrapedImageUrls[0].url } : null)
+  );
   const productId = $derived(book.id || book._id);
   const slug = $derived.by(() => {
     if (!book?.slug) return '';

@@ -178,11 +178,11 @@
 
 				<!-- Yellow circle with Sankofa icon at image junction -->
 				<div
-					class="absolute bottom-[175px] left-[52%] -translate-x-1/2 w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-glow border-4 border-background z-10"
+					class="absolute bottom-[140px] left-[52%] -translate-x-1/2 w-36 h-36 bg-primary rounded-full flex items-center justify-center shadow-glow border-4 border-background z-10"
 				>
 					<img
 						loading="lazy"
-						class="w-9 h-9"
+						class="w-24 h-24"
 						src="/assets/images/alkebulan/sankofa.svg"
 						alt="Sankofa"
 					/>
@@ -361,7 +361,8 @@
 						book.pricing?.retailPrice ??
 						0}
 					{@const bookImage =
-						book.images?.[0]?.image || book.images?.[0] || null}
+						book.images?.[0]?.image || book.images?.[0] ||
+						(book.scrapedImageUrls?.[0]?.url ? { url: book.scrapedImageUrls[0].url } : null)}
 					{@const bookIsbn =
 						primaryEdition?.isbn ||
 						primaryEdition?.isbn13 ||
@@ -450,7 +451,8 @@
 						book.pricing?.retailPrice ??
 						0}
 					{@const bookImage =
-						book.images?.[0]?.image || book.images?.[0] || null}
+						book.images?.[0]?.image || book.images?.[0] ||
+						(book.scrapedImageUrls?.[0]?.url ? { url: book.scrapedImageUrls[0].url } : null)}
 					{@const bookIsbn =
 						primaryEdition?.isbn ||
 						primaryEdition?.isbn13 ||

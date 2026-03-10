@@ -35,6 +35,26 @@ export function isPast(date: string | Date): boolean {
 }
 
 /**
+ * Extract plain text from a Payload Lexical rich-text object or return the string as-is
+ */
+export function lexicalToText(content: any): string {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (typeof content !== 'object') return '';
+  // Recursively extract text from Lexical node tree
+  function extractText(node: any): string {
+    if (!node) return '';
+    if (node.text) return node.text;
+    if (Array.isArray(node.children)) {
+      return node.children.map(extractText).join(' ');
+    }
+    if (node.root) return extractText(node.root);
+    return '';
+  }
+  return extractText(content).replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Check if a date is within the next N days
  */
 export function isWithinDays(date: string | Date, days: number): boolean {

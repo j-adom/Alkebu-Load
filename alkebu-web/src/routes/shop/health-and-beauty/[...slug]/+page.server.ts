@@ -91,10 +91,6 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     console.error('Error loading health & beauty product:', err);
 
     // Return error state
-    setHeaders({
-      'Cache-Control': 'public, s-maxage=300' // Short cache on error
-    });
-
     throw error(500, 'Failed to load product');
   }
 };

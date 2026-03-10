@@ -15,6 +15,8 @@ import { ContactPage } from './globals/ContactPage'
 import { ShopPage } from './globals/ShopPage'
 import { SiteSettings } from './globals/SiteSettings'
 
+import { searchEngine } from './app/utils/searchEngine'
+
 import Users from './collections/Users'
 import Media from './collections/Media'
 import Authors from './collections/Authors'
@@ -79,6 +81,12 @@ const generateURL: GenerateURL<any> = ({ doc }) => {
 }
 
 export default buildConfig({
+  onInit: async (payload) => {
+    // Populate FlexSearch index in the background — non-blocking
+    searchEngine.initializeWithData(payload).catch((err) => {
+      payload.logger.error({ err }, 'Failed to initialize search index')
+    })
+  },
   serverURL,
   cors: [
     'https://alkebulanimages.com',

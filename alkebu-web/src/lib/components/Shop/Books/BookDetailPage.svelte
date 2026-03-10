@@ -3,13 +3,14 @@
   import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
   import RelatedBooks from "./RelatedBooks.svelte";
   import { formatCurrency } from "$lib/utils/currency";
+  import { isVendorAvailableProduct } from "$lib/utils/availability";
   import { getImageUrl } from "$lib/payload";
   import {
     Book,
     User,
     Calendar,
     FileText,
-    Globe,
+    Building,
     Tag,
     Layers,
     ChevronRight,
@@ -55,11 +56,64 @@
     return date.getFullYear().toString();
   });
   const pages = $derived(primaryEdition?.pages);
-  const language = $derived(primaryEdition?.language);
+  const publisher = $derived(
+    (typeof book?.publisher === "object" ? book?.publisher?.name : null) ||
+    book?.publisherText ||
+    (typeof primaryEdition?.publisher === "object" ? primaryEdition?.publisher?.name : null) ||
+    primaryEdition?.publisherText ||
+    null
+  );
   const priceCents = $derived(
     primaryEdition?.pricing?.retailPrice ?? book?.pricing?.retailPrice ?? 0,
   );
   const price = $derived((priceCents || 0) / 100);
+  const stockLevel = $derived.by(() => {
+    if (typeof primaryEdition?.inventory?.stockLevel === "number") {
+      return primaryEdition.inventory.stockLevel;
+    }
+
+    if (typeof book?.inventory?.stockLevel === "number") {
+      return book.inventory.stockLevel;
+    }
+
+    return null;
+  });
+  const allowBackorders = $derived(
+    Boolean(
+      primaryEdition?.inventory?.allowBackorders ??
+        book?.inventory?.allowBackorders,
+    ),
+  );
+  const trackQuantity = $derived.by(() => {
+    if (typeof primaryEdition?.inventory?.trackQuantity === "boolean") {
+      return primaryEdition.inventory.trackQuantity;
+    }
+
+    if (typeof book?.inventory?.trackQuantity === "boolean") {
+      return book.inventory.trackQuantity;
+    }
+
+    return true;
+  });
+  const inStock = $derived.by(() => {
+    if (!trackQuantity || allowBackorders) return true;
+    if (typeof stockLevel !== "number") return true;
+    return stockLevel > 0;
+  });
+  const vendorAvailable = $derived.by(() => isVendorAvailableProduct(book));
+  const canAddToCart = $derived(inStock || vendorAvailable);
+  const addToCartLabel = $derived.by(() => {
+    if (inStock) return "Add to Cart";
+    if (vendorAvailable) return "Available to Order";
+    return "Out of Stock";
+  });
+  const availabilityMessage = $derived.by(() => {
+    if (inStock) return "In stock";
+    if (vendorAvailable) {
+      return "Available to order from vendor. Ships in a reasonable timeframe.";
+    }
+    return "Currently out of stock.";
+  });
   const coverUrl = $derived(
     getImageUrl(
       book?.images?.[0]?.image ||
@@ -70,8 +124,24 @@
       { fallback: "/assets/images/resources/placeholder-book.jpg" },
     ),
   );
-  const description = $derived(
-    book?.synopsis || book?.description || "No description available.",
+  const description = $derived.by(() => {
+    const raw = book?.synopsis || book?.description;
+    if (!raw) return "No description available.";
+    if (typeof raw === "string") return raw;
+    // Payload Lexical rich-text object — extract plain text
+    function extractText(node: any): string {
+      if (!node) return "";
+      if (node.text) return node.text;
+      if (Array.isArray(node.children))
+        return node.children.map(extractText).join(" ");
+      if (node.root) return extractText(node.root);
+      return "";
+    }
+    return extractText(raw).replace(/\s+/g, " ").trim() || "No description available.";
+  });
+  const descriptionIsHtml = $derived(
+    typeof (book?.synopsis || book?.description) === "string" &&
+    /<[a-z][\s\S]*>/i.test(book?.synopsis || book?.description || "")
   );
   const subjects = $derived(
     book?.subjects?.map((s: any) => s.subject).filter(Boolean) || [],
@@ -181,10 +251,14 @@
             <AddToCartButton
               productId={book?.id || book?._id}
               productType="books"
+              disabled={!canAddToCart}
               className="btn-primary btn-lg"
-              label="Add to Cart"
+              label={addToCartLabel}
             />
           </div>
+          <p class="text-sm text-muted-foreground">
+            {availabilityMessage}
+          </p>
         </div>
 
         <!-- Book Details Grid -->
@@ -221,15 +295,15 @@
               <p class="font-medium text-foreground">{pages}</p>
             </div>
           {/if}
-          {#if language}
+          {#if publisher}
             <div class="bg-card rounded-xl p-4 border border-border/50">
               <div
                 class="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wide mb-1"
               >
-                <Globe class="w-3 h-3" />
-                Language
+                <Building class="w-3 h-3" />
+                Publisher
               </div>
-              <p class="font-medium text-foreground capitalize">{language}</p>
+              <p class="font-medium text-foreground">{publisher}</p>
             </div>
           {/if}
         </div>
@@ -244,7 +318,7 @@
                   <p class="text-sm text-muted-foreground mb-2">Categories</p>
                   <div class="flex flex-wrap gap-2">
                     {#each categories as category}
-                      <span class="badge-primary">{category}</span>
+                      <a href="/shop/books/genres/{category}" class="badge-primary hover:opacity-80 transition-opacity">{category.replace(/-/g, ' ')}</a>
                     {/each}
                   </div>
                 </div>
@@ -258,7 +332,7 @@
                   <p class="text-sm text-muted-foreground mb-2">Subjects</p>
                   <div class="flex flex-wrap gap-2">
                     {#each subjects as subject}
-                      <span class="badge-secondary">{subject}</span>
+                      <a href="/shop/books?category={encodeURIComponent(subject)}" class="badge-secondary hover:opacity-80 transition-opacity">{subject}</a>
                     {/each}
                   </div>
                 </div>
@@ -272,9 +346,10 @@
                   <p class="text-sm text-muted-foreground mb-2">Tags</p>
                   <div class="flex flex-wrap gap-2">
                     {#each tags as tag}
-                      <span
-                        class="px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm"
-                        >{tag}</span
+                      <a
+                        href="/shop/books/tags/{encodeURIComponent(tag)}"
+                        class="px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm hover:bg-muted/70 hover:text-foreground transition-colors"
+                        >{tag}</a
                       >
                     {/each}
                   </div>
@@ -287,12 +362,12 @@
         <!-- Description -->
         <div class="pt-6 border-t border-border">
           <h3 class="text-xl font-bold font-display mb-4">About This Book</h3>
-          <div class="prose prose-gray max-w-none">
-            <p
-              class="text-muted-foreground leading-relaxed whitespace-pre-line"
-            >
-              {description}
-            </p>
+          <div class="prose prose-gray max-w-none text-muted-foreground leading-relaxed">
+            {#if descriptionIsHtml}
+              {@html description}
+            {:else}
+              <p class="whitespace-pre-line">{description}</p>
+            {/if}
           </div>
         </div>
       </div>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Red stripe -->
+  <rect width="32" height="10.667" y="0" fill="#D62B00"/>
+  <!-- Black stripe -->
+  <rect width="32" height="10.667" y="10.667" fill="#1a1a1a"/>
+  <!-- Green stripe -->
+  <rect width="32" height="10.667" y="21.333" fill="#006B3E"/>
+</svg>

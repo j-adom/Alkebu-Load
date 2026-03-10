@@ -30,9 +30,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const effectiveCartId: string = cartId || sessionId || ''
+    const effectiveCartId: string =
+      cartId !== undefined && cartId !== null && String(cartId).trim()
+        ? String(cartId)
+        : ''
     const effectiveSessionId: string =
-      sessionId || cartId || randomUUID().replace(/-/g, '')
+      sessionId !== undefined && sessionId !== null && String(sessionId).trim()
+        ? String(sessionId)
+        : effectiveCartId
+          ? ''
+          : randomUUID().replace(/-/g, '')
 
     const item: CartItem = {
       productId,

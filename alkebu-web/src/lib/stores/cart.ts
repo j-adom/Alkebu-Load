@@ -56,6 +56,34 @@ function createCartStore() {
     }
   };
 
+  const getResponseErrorMessage = async (
+    response: Response,
+    fallback: string,
+  ): Promise<string> => {
+    try {
+      const data = await response.json();
+      if (typeof data === 'string' && data.trim()) {
+        return data;
+      }
+
+      if (data && typeof data === 'object') {
+        const errorData = data as Record<string, unknown>;
+        const message =
+          errorData.error ??
+          errorData.message ??
+          errorData.details;
+
+        if (typeof message === 'string' && message.trim()) {
+          return message;
+        }
+      }
+    } catch {
+      // Ignore parse errors and use fallback below.
+    }
+
+    return fallback;
+  };
+
   const persistCart = (cart?: Partial<Cart>) => {
     if (browser && cart?.id) {
       localStorage.setItem('guest-cart-id', cart.id);
@@ -136,8 +164,9 @@ function createCartStore() {
 
           return { success: true };
         } else {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to add item to cart');
+          throw new Error(
+            await getResponseErrorMessage(response, 'Failed to add item to cart'),
+          );
         }
       } catch (error) {
         const message = getErrorMessage(error);
@@ -172,8 +201,9 @@ function createCartStore() {
           persistCart(result.cart ?? result);
           return { success: true };
         } else {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to update item');
+          throw new Error(
+            await getResponseErrorMessage(response, 'Failed to update item'),
+          );
         }
       } catch (error) {
         const message = getErrorMessage(error);
@@ -207,8 +237,9 @@ function createCartStore() {
           persistCart(result.cart ?? result);
           return { success: true };
         } else {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to remove item');
+          throw new Error(
+            await getResponseErrorMessage(response, 'Failed to remove item'),
+          );
         }
       } catch (error) {
         const message = getErrorMessage(error);
@@ -245,8 +276,9 @@ function createCartStore() {
           }
           return { success: true };
         } else {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to clear cart');
+          throw new Error(
+            await getResponseErrorMessage(response, 'Failed to clear cart'),
+          );
         }
       } catch (error) {
         const message = getErrorMessage(error);
@@ -290,8 +322,9 @@ function createCartStore() {
 
           return { success: true, checkoutUrl: result.checkoutUrl };
         } else {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to start checkout');
+          throw new Error(
+            await getResponseErrorMessage(response, 'Failed to start checkout'),
+          );
         }
       } catch (error) {
         const message = getErrorMessage(error);
