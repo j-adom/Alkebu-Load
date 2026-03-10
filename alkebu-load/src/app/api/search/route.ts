@@ -50,7 +50,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
       if (type === 'blogPosts') {
         const res = await payload.find({
-          collection: 'blog-posts',
+          collection: 'blogPosts',
           limit: perType,
           depth: 1,
           where: {
