@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { searchEngine } from '../../../utils/searchEngine'
+import { searchEngine } from '../../utils/searchEngine'
 
 // Determine best edition: in-stock → most recently published → first
 function bestEditionSlug(doc: any): string {
