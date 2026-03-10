@@ -3,6 +3,14 @@ import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 
+function stripHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, (e) => {
+    const entities: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ', '&ldquo;': '\u201c', '&rdquo;': '\u201d', '&lsquo;': '\u2018', '&rsquo;': '\u2019', '&mdash;': '\u2014', '&ndash;': '\u2013' };
+    return entities[e] ?? e;
+  }).trim();
+}
+
 type DisplayType = 'books' | 'apparel' | 'health' | 'home' | 'blog' | 'directory' | 'events';
 type SearchType = DisplayType | 'all';
 
@@ -120,7 +128,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
           return {
             type: displayType,
             title: result.title,
-            description: result.excerpt,
+            description: stripHtml(result.excerpt),
             image: result.imageUrl,
             url: resultUrl,
             author: result.author,
@@ -219,8 +227,8 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
       return (resp.docs || []).map((item: any) => ({
         type: col.type,
         title: item[col.titleField],
-        description: item[col.descField],
-        image: item[col.imgField] || item.images,
+        description: stripHtml(item[col.descField]),
+        image: item[col.imgField]?.[0]?.url || item[col.imgField]?.url || item.scrapedImageUrls?.[0]?.url || item.images?.[0]?.url || null,
         url: col.urlFn(item),
       }));
     } catch {

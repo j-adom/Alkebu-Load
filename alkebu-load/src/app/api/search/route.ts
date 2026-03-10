@@ -49,7 +49,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             type: 'books',
             excerpt: doc.synopsis || doc.excerpt || '',
             author: (doc.authors || []).map((a: any) => a.name || a).join(', '),
-            imageUrl: doc.images?.[0]?.url || doc.images?.[0] || null,
+            imageUrl: doc.images?.[0]?.url || doc.scrapedImageUrls?.[0]?.url || null,
             price: best?.pricing?.retailPrice ? best.pricing.retailPrice / 100 : null,
             slug,
             score: 1,
