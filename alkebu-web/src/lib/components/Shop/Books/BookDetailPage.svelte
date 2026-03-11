@@ -32,7 +32,10 @@
     relatedBooks = [],
   }: Props = $props();
 
-  const authors = $derived(book?.authors || []);
+  // authorsText [{name}] is populated by enrichment; authors is the relationship array (may be empty)
+  const authors = $derived(
+    (book?.authorsText?.length ? book.authorsText : book?.authors) || []
+  );
   const primaryEdition = $derived(
     book?.editions?.find((edition: any) => edition.isPrimary) ||
       book?.editions?.[0] ||

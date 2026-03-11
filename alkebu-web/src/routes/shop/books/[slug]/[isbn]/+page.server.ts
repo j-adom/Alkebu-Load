@@ -43,8 +43,12 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     // Build structured data
     const jsonLd = buildProductJsonLd(product, `${slug}/${isbn}`);
 
+    // authorsText is [{name}] from enrichment; authors is the relationship array (may be empty)
+    const authorNamesFromText = product.authorsText?.map((a: any) => a.name).filter(Boolean) || [];
+    const authorNamesFromRel = product.authors?.map((a: any) => a.name).filter(Boolean) || [];
+    const authorNames = (authorNamesFromText.length ? authorNamesFromText : authorNamesFromRel).join(', ') || 'Various Authors';
+
     // Build description with fallback
-    const authorNames = product.authors?.map((a: any) => a.name).join(', ') || 'Various Authors';
     const descriptionFallback = `${product.title} by ${authorNames}`;
     const rawDesc = product.seoDescription || product.synopsis || product.description || descriptionFallback;
     const description = typeof rawDesc === 'string' ? rawDesc : descriptionFallback;
@@ -60,44 +64,37 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       breadcrumbs
     });
 
-    // Fetch related books by the same authors
-    let relatedBooks: any[] = [];
-    if (product.authors?.length > 0) {
+    // Fetch books by the same author using authorsText name match
+    let booksByAuthor: any[] = [];
+    if (authorNamesFromText.length > 0) {
       try {
-        // Fetch books by each author and combine results
-        const authorIds = product.authors.map((a: any) => a.id || a);
-        const allRelatedBooks = new Map();
-
-        // Query for each author (Payload's REST API handles OR queries differently)
-        for (const authorId of authorIds) {
+        const allByAuthor = new Map();
+        for (const name of authorNamesFromText.slice(0, 2)) { // limit to first 2 authors
           try {
-            const booksResult = await payloadGet<any>(
-              `/api/books?where[authors][contains]=${authorId}&limit=20&depth=1`
+            const res = await payloadGet<any>(
+              `/api/books?where[authorsText.name][equals]=${encodeURIComponent(name)}&limit=20&depth=1`
             );
-
-            // Add unique books (excluding current book)
-            booksResult?.docs?.forEach((book: any) => {
+            res?.docs?.forEach((book: any) => {
               if (book.id !== product.id && book.slug && book.editions?.length > 0) {
-                allRelatedBooks.set(book.id, book);
+                allByAuthor.set(book.id, book);
               }
             });
           } catch (err) {
-            console.warn(`Failed to fetch books for author ${authorId}:`, err);
+            console.warn(`Failed to fetch books for author "${name}":`, err);
           }
         }
-
-        relatedBooks = Array.from(allRelatedBooks.values()).slice(0, 12); // Limit to 12 related books
+        booksByAuthor = Array.from(allByAuthor.values()).slice(0, 12);
       } catch (err) {
-        console.error('Error fetching related books:', err);
-        // Don't fail the page load if related books fetch fails
+        console.error('Error fetching books by author:', err);
       }
     }
 
     return {
-      book: product,  // Return as 'book' to match Svelte component expectations
+      book: product,
       settings: settings || {},
       seo: seoData,
-      relatedBooks,
+      booksByAuthor,
+      relatedBooks: [],
     };
   } catch (err: unknown) {
     if (is404Error(err)) {
