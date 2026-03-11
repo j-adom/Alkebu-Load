@@ -35,7 +35,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           collection: 'books',
           where,
           limit,
-          depth: 1,
+          depth: 2,
         })
         for (const doc of res.docs || []) {
           const slug = bestEditionSlug(doc)
@@ -43,13 +43,18 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           const best = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0) ||
             editions.filter((e: any) => e.datePublished).sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0] ||
             editions[0]
+          // authorsText is [{name}], authors is relationship to Authors collection
+          const authorNames = (doc.authorsText || []).map((a: any) => a.name).filter(Boolean)
+            || (doc.authors || []).map((a: any) => a.name || a).filter(Boolean)
+          // images[0].image is a Media doc (depth:2), scrapedImageUrls is fallback
+          const imageUrl = doc.images?.[0]?.image?.url || doc.scrapedImageUrls?.[0]?.url || null
           results.push({
             id: doc.id,
             title: doc.title,
             type: 'books',
             excerpt: doc.synopsis || doc.excerpt || '',
-            author: (doc.authors || []).map((a: any) => a.name || a).join(', '),
-            imageUrl: doc.images?.[0]?.url || doc.scrapedImageUrls?.[0]?.url || null,
+            author: authorNames.join(', '),
+            imageUrl,
             price: best?.pricing?.retailPrice ? best.pricing.retailPrice / 100 : null,
             slug,
             score: 1,
