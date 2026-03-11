@@ -221,22 +221,15 @@
           {/if}
 
           {#if authors.length}
-            <p class="text-lg flex items-center gap-2">
-              <User class="w-5 h-5 text-primary" />
+            <p class="text-lg flex items-center gap-2 flex-wrap">
+              <User class="w-5 h-5 text-primary flex-shrink-0" />
               <span class="text-muted-foreground">by</span>
               {#each authors as author, i}
-                {#if author.slug}
-                  <a
-                    href="/shop/books/authors/{author.slug}/"
-                    class="text-foreground hover:text-primary transition-colors font-medium"
-                    >{author.name}</a
-                  >{i < authors.length - 1 ? ", " : ""}
-                {:else}
-                  <span class="font-medium">{author.name}</span>{i <
-                  authors.length - 1
-                    ? ", "
-                    : ""}
-                {/if}
+                <a
+                  href="/shop/books/authors/{author.slug || author.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}/"
+                  class="text-foreground hover:text-primary transition-colors font-medium"
+                  >{author.name}</a
+                >{i < authors.length - 1 ? ", " : ""}
               {/each}
             </p>
           {/if}

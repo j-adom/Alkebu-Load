@@ -6,6 +6,7 @@
   const seo = data.seo;
   const settings = data.settings;
   const relatedBooks = data.relatedBooks;
+  const booksByAuthor = data.booksByAuthor;
 </script>
 
-<BookDetailPage {book} {seo} {settings} {relatedBooks} />
+<BookDetailPage {book} {seo} {settings} {relatedBooks} {booksByAuthor} />
