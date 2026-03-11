@@ -206,11 +206,16 @@ async function createPayloadMediaRecord(
   filesize: number,
   isbn: string,
 ): Promise<string | null> {
+  const filename = path.basename(key)
   try {
+    // Check if record already exists
+    const existing = await payloadFetch(`/api/media?where[filename][equals]=${encodeURIComponent(filename)}&limit=1`)
+    if (existing?.docs?.[0]?.id) return existing.docs[0].id
+
     const doc = await payloadFetch('/api/media', {
       method: 'POST',
       body: JSON.stringify({
-        filename: path.basename(key),
+        filename,
         mimeType,
         filesize,
         url: publicUrl,
@@ -257,7 +262,7 @@ function buildPatch(
   const hasImages = payloadBook.images?.length > 0
   const hasScraped = payloadBook.scrapedImageUrls?.length > 0
   if (!hasImages && mediaId) {
-    patch.images = [mediaId]
+    patch.images = [{ image: mediaId }]
   } else if (!hasImages && !hasScraped && isbndbBook.image) {
     patch.scrapedImageUrls = [{ url: isbndbBook.image }]
   }
