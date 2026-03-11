@@ -20,7 +20,7 @@
 import dotenv from 'dotenv'
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import path from 'path'
-import crypto from 'crypto'
+
 
 dotenv.config({ path: './.env' })
 
@@ -262,7 +262,7 @@ function buildPatch(
   const hasImages = payloadBook.images?.length > 0
   const hasScraped = payloadBook.scrapedImageUrls?.length > 0
   if (!hasImages && mediaId) {
-    patch.images = [{ image: mediaId }]
+    patch.images = [{ image: mediaId, alt: payloadBook.title || `Book cover`, isPrimary: true }]
   } else if (!hasImages && !hasScraped && isbndbBook.image) {
     patch.scrapedImageUrls = [{ url: isbndbBook.image }]
   }
