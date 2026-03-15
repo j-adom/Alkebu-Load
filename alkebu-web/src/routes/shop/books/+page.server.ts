@@ -5,7 +5,10 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
   const pageParam = url.searchParams.get('p') || url.searchParams.get('page') || '1';
   const page = parseInt(pageParam) || 1;
-  const category = url.searchParams.get('category') || undefined;
+  const requestedCategory = url.searchParams.get('category');
+  const category = bookGenres.some((genre) => genre.slug === requestedCategory)
+    ? requestedCategory || undefined
+    : undefined;
   const sortParam = url.searchParams.get('sort') || 'title-asc';
   const limitParam = url.searchParams.get('limit') || '12';
   const limit = [12, 25, 100].includes(parseInt(limitParam)) ? parseInt(limitParam) : 12;

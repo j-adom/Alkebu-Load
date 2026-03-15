@@ -37,6 +37,44 @@ export interface SearchResponse {
   facets?: Record<string, Array<{ value: string; count: number }>>;
 }
 
+type SearchBootstrapTarget = {
+  collection: string;
+  type: SearchResult['type'];
+  where?: Record<string, unknown>;
+};
+
+export const SEARCH_INDEX_BOOTSTRAP_TARGETS: SearchBootstrapTarget[] = [
+  { collection: 'books', type: 'books' },
+  { collection: 'blogPosts', type: 'blogPosts', where: { status: { equals: 'published' } } },
+  { collection: 'events', type: 'events', where: { status: { equals: 'published' } } },
+  { collection: 'businesses', type: 'businesses', where: { status: { equals: 'published' } } },
+  { collection: 'wellness-lifestyle', type: 'wellnessLifestyle' },
+  { collection: 'fashion-jewelry', type: 'fashionJewelry' },
+  { collection: 'oils-incense', type: 'oilsIncense' },
+];
+
+export function getSearchBootstrapTargets(availableCollectionSlugs?: string[]): SearchBootstrapTarget[] {
+  if (!availableCollectionSlugs || availableCollectionSlugs.length === 0) {
+    return SEARCH_INDEX_BOOTSTRAP_TARGETS;
+  }
+
+  const available = new Set(availableCollectionSlugs);
+  return SEARCH_INDEX_BOOTSTRAP_TARGETS.filter(({ collection }) => available.has(collection));
+}
+
+function getAvailableCollectionSlugs(payload: any): string[] {
+  const runtimeCollections = Object.keys(payload?.collections ?? {});
+  if (runtimeCollections.length > 0) {
+    return runtimeCollections;
+  }
+
+  const configuredCollections = (payload?.config?.collections ?? [])
+    .map((collection: any) => collection?.slug)
+    .filter(Boolean);
+
+  return configuredCollections;
+}
+
 // FlexSearch indices for different content types
 class SearchEngine {
   private bookIndex!: Document<any>;
@@ -584,44 +622,24 @@ class SearchEngine {
   // Initialize search index with existing data
   async initializeWithData(payload: any) {
     try {
-      // Load existing data from collections
-      const [books, blogPosts, events, businesses, wellnessProducts, fashionProducts, oilProducts] = await Promise.all([
-        payload.find({ collection: 'books', limit: 1000 }),
-        payload.find({ collection: 'blogPosts', limit: 1000, where: { status: { equals: 'published' } } }),
-        payload.find({ collection: 'events', limit: 1000, where: { status: { equals: 'published' } } }),
-        payload.find({ collection: 'businesses', limit: 1000, where: { status: { equals: 'published' } } }),
-        payload.find({ collection: 'wellnessLifestyle', limit: 1000 }),
-        payload.find({ collection: 'fashionJewelry', limit: 1000 }),
-        payload.find({ collection: 'oilsIncense', limit: 1000 })
-      ]);
+      const availableCollections = getAvailableCollectionSlugs(payload);
+      const bootstrapTargets = getSearchBootstrapTargets(availableCollections);
 
-      // Add documents to search indices
-      for (const book of books.docs) {
-        await this.addDocument('books', book);
-      }
+      const results = await Promise.all(
+        bootstrapTargets.map(async ({ collection, type, where }) => ({
+          type,
+          result: await payload.find({
+            collection,
+            limit: 1000,
+            ...(where ? { where } : {}),
+          }),
+        })),
+      );
 
-      for (const post of blogPosts.docs) {
-        await this.addDocument('blogPosts', post);
-      }
-
-      for (const event of events.docs) {
-        await this.addDocument('events', event);
-      }
-
-      for (const business of businesses.docs) {
-        await this.addDocument('businesses', business);
-      }
-
-      for (const product of wellnessProducts.docs) {
-        await this.addDocument('wellnessLifestyle', product);
-      }
-
-      for (const product of fashionProducts.docs) {
-        await this.addDocument('fashionJewelry', product);
-      }
-
-      for (const product of oilProducts.docs) {
-        await this.addDocument('oilsIncense', product);
+      for (const { type, result } of results) {
+        for (const doc of result.docs) {
+          await this.addDocument(type, doc);
+        }
       }
 
       console.log('Search indices initialized with existing data');

@@ -11,7 +11,7 @@
 
 import { getPayload } from 'payload';
 import config from '../src/payload.config';
-import { searchEngine } from '../src/app/utils/searchEngine';
+import { SEARCH_INDEX_BOOTSTRAP_TARGETS, searchEngine } from '../src/app/utils/searchEngine';
 
 async function initializeSearchIndices() {
   console.log('🔍 Initializing search indices...');
@@ -48,19 +48,9 @@ async function initializeSearchIndices() {
 }
 
 async function getCollectionStats(payload: any): Promise<Record<string, number>> {
-  const collections = [
-    'books',
-    'blogPosts',
-    'events', 
-    'businesses',
-    'wellnessLifestyle',
-    'fashionJewelry',
-    'oilsIncense'
-  ];
-
   const stats: Record<string, number> = {};
 
-  for (const collection of collections) {
+  for (const { collection } of SEARCH_INDEX_BOOTSTRAP_TARGETS) {
     try {
       const result = await payload.find({
         collection,

@@ -328,7 +328,7 @@
                   <p class="text-sm text-muted-foreground mb-2">Subjects</p>
                   <div class="flex flex-wrap gap-2">
                     {#each subjects as subject}
-                      <a href="/shop/books?category={encodeURIComponent(subject)}" class="badge-secondary hover:opacity-80 transition-opacity">{subject}</a>
+                      <a href="/search?q={encodeURIComponent(subject)}&types=books" class="badge-secondary hover:opacity-80 transition-opacity">{subject}</a>
                     {/each}
                   </div>
                 </div>

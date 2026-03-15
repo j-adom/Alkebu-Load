@@ -1,4 +1,5 @@
 import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv';
+import { bookGenres } from '$lib/data/catalog';
 
 export async function payloadGet<T>(path: string, init: RequestInit = {}): Promise<T> {
   const url = `${getPayloadApiUrl()}${path}`;
@@ -39,6 +40,12 @@ export interface PayloadDoc {
   id: string;
   createdAt: string;
   updatedAt: string;
+}
+
+const validBookCategorySlugs = new Set(bookGenres.map((genre) => genre.slug));
+
+function normalizeBookCategoryFilters(categories: string[] = []): string[] {
+  return categories.filter((category) => validBookCategorySlugs.has(category));
 }
 
 // Product types based on our Payload collections
@@ -331,8 +338,9 @@ export async function getRelatedBooks(
     }
 
     // Strategy 2: Same category (broader)
-    if (categories.length > 0 && relatedBooks.length < limit) {
-      const q = categories.map(c => `where[categories][in]=${encodeURIComponent(c)}`).join('&');
+    const normalizedCategories = normalizeBookCategoryFilters(categories);
+    if (normalizedCategories.length > 0 && relatedBooks.length < limit) {
+      const q = normalizedCategories.map(c => `where[categories][in]=${encodeURIComponent(c)}`).join('&');
       try {
         const res = await payloadGet<PayloadCollectionResponse<Book>>(
           `/api/books?${q}&limit=${limit * 2}&depth=1`
