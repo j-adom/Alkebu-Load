@@ -1,20 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { cart } from '$lib/stores/cart';
+  import { cart, createEmptyCart } from '$lib/stores/cart';
   import { cartDrawer } from '$lib/stores/cartDrawer';
   import CartLineItem from '$lib/components/cart/CartLineItem.svelte';
   import CartTotals from '$lib/components/cart/CartTotals.svelte';
-  import { Button } from '$lib/components/ui/button';
   import Meta from '$lib/components/Meta.svelte';
   import { ShoppingBag, ArrowLeft, Trash2, CreditCard } from 'lucide-svelte';
 
-  let cartState = $state({
-    items: [],
-    itemCount: 0,
-    subtotal: 0,
-    tax: 0,
-    total: 0,
-  });
+  let cartState = $state(createEmptyCart());
 
   let isClearing = $state(false);
   let clearError = $state<string | null>(null);
@@ -37,11 +30,6 @@
     if (!result.success) {
       clearError = result.error || 'Failed to clear cart';
     }
-  }
-
-  function handleContinueShopping() {
-    cartDrawer.close();
-    window.location.href = '/shop';
   }
 
   function handleCheckout() {
@@ -125,16 +113,10 @@
 
         <!-- Cart Summary -->
         <div class="lg:col-span-1">
-          <div class="card-modern p-6 lg:sticky lg:top-6">
-            <h2 class="text-xl font-bold text-foreground mb-6">Order Summary</h2>
+          <div class="lg:sticky lg:top-6 space-y-4">
+            <CartTotals cart={cartState} />
 
-            <CartTotals
-              subtotal={cartState.subtotal}
-              tax={cartState.tax}
-              total={cartState.total}
-            />
-
-            <div class="mt-6 space-y-3">
+            <div class="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <button
                 onclick={handleCheckout}
                 class="btn-primary w-full"
@@ -142,15 +124,9 @@
                 <CreditCard size={18} />
                 Proceed to Checkout
               </button>
-            </div>
 
-            <!-- Security Note -->
-            <div class="mt-6 pt-4 border-t border-border">
-              <p class="text-xs text-muted-foreground text-center">
-                🔒 Secure checkout powered by Stripe
-              </p>
-              <p class="text-xs text-muted-foreground text-center mt-1">
-                Taxes and shipping calculated at checkout
+              <p class="mt-4 text-sm text-muted-foreground">
+                Checkout is where shipping, tax, and payment details are finalized.
               </p>
             </div>
           </div>

@@ -44,9 +44,12 @@ SQUARE_APPLICATION_ID=your-square-application-id
 SQUARE_WEBHOOK_SIGNATURE_KEY=your-square-webhook-signature-key
 
 # Email
-RESEND_API_KEY=your-resend-api-key
 FROM_EMAIL=orders@alkebulanimages.com
 FROM_NAME=Alkebu-Lan Images
+SES_SMTP_USER=your-ses-smtp-user
+SES_SMTP_PASSWORD=your-ses-smtp-password
+SMTP_HOST=email-smtp.us-east-2.amazonaws.com
+SMTP_PORT=587
 
 # External Book APIs
 ISBNDB_API_KEY=your-isbndb-api-key
@@ -263,10 +266,10 @@ Before going live:
 - [ ] Check Payload logs
 
 ### Email Not Sending
-- [ ] Verify Resend API key in `.env`
+- [ ] Verify SMTP credentials in `.env`
 - [ ] Check FROM_EMAIL is valid
 - [ ] Verify email template in Payload
-- [ ] Check Resend logs for bounces
+- [ ] Check your SMTP provider logs for bounces or rejects
 
 ---
 

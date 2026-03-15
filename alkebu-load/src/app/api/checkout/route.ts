@@ -2,78 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 import { getAdapter } from '@/app/lib/payments/adapters';
+import {
+  buildShippingQuoteFingerprint,
+  isShippingQuoteExpired,
+} from '@/app/utils/shippingQuotes';
+import { validateTaxExemptStatus } from '@/app/utils/taxExemptValidation';
+import type { CartItemForTax, ShippingAddress } from '@/app/utils/taxShippingCalculations';
 
-/**
- * Validate tax-exempt status against customer/institutional account
- * Returns validated tax-exempt status (true only if verified)
- */
-async function validateTaxExemptStatus(
-  payload: any,
-  userId: number | string | null | undefined,
-  requestedTaxExempt: boolean
-): Promise<{ valid: boolean; reason?: string }> {
-  // If not requesting tax-exempt, no validation needed
-  if (!requestedTaxExempt) {
-    return { valid: false };
-  }
-
-  // Guest users cannot claim tax-exempt status
-  if (!userId) {
-    return { valid: false, reason: 'Guest users cannot claim tax-exempt status' };
-  }
-
-  // Look up customer record
-  const customers = await payload.find({
-    collection: 'customers',
-    where: {
-      id: { equals: userId },
-    },
-    depth: 2,
-  });
-
-  if (!customers.docs.length) {
-    return { valid: false, reason: 'Customer account not found' };
-  }
-
-  const customer = customers.docs[0];
-
-  // Check if customer has tax-exempt status
-  if (!customer.accountStatus?.taxExempt) {
-    return { valid: false, reason: 'Customer is not marked as tax-exempt' };
-  }
-
-  // If linked to an institutional account, verify it's active and verified
-  if (customer.accountStatus?.institution) {
-    const institution = typeof customer.accountStatus.institution === 'object'
-      ? customer.accountStatus.institution
-      : await payload.findByID({
-        collection: 'institutional-accounts',
-        id: customer.accountStatus.institution,
-      });
-
-    if (!institution) {
-      return { valid: false, reason: 'Linked institutional account not found' };
-    }
-
-    if (institution.status !== 'active') {
-      return { valid: false, reason: 'Institutional account is not active' };
-    }
-
-    if (!institution.taxInfo?.taxExempt) {
-      return { valid: false, reason: 'Institutional account is not tax-exempt' };
-    }
-
-    // Check if exemption is still valid
-    if (institution.taxInfo?.exemptionValidUntil) {
-      const expirationDate = new Date(institution.taxInfo.exemptionValidUntil);
-      if (expirationDate < new Date()) {
-        return { valid: false, reason: 'Tax exemption has expired' };
-      }
-    }
-  }
-
-  return { valid: true };
-}
+const normalizeShippingAddress = (shippingAddress: Record<string, unknown>): ShippingAddress => ({
+  street: typeof shippingAddress.street === 'string' ? shippingAddress.street : undefined,
+  city: typeof shippingAddress.city === 'string' ? shippingAddress.city : undefined,
+  state: typeof shippingAddress.state === 'string' ? shippingAddress.state.toUpperCase() : undefined,
+  zip: typeof shippingAddress.zip === 'string' ? shippingAddress.zip : undefined,
+  country:
+    typeof shippingAddress.country === 'string' && shippingAddress.country.trim()
+      ? shippingAddress.country.toUpperCase()
+      : 'US',
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,6 +33,7 @@ export async function POST(request: NextRequest) {
       taxExempt,
       provider = 'stripe',
       shippingAddress,
+      selectedShippingRateId,
     } = body;
 
     // Validate required fields
@@ -142,12 +88,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedShippingAddress = normalizeShippingAddress(shippingAddress);
+    const addressIsComplete = Boolean(
+      normalizedShippingAddress.street &&
+      normalizedShippingAddress.city &&
+      normalizedShippingAddress.state &&
+      normalizedShippingAddress.zip,
+    );
+
+    if (!addressIsComplete) {
+      return NextResponse.json(
+        { error: 'A complete US shipping address is required' },
+        { status: 400 },
+      );
+    }
+
     // Validate tax-exempt status against customer/institutional accounts
     const taxExemptValidation = await validateTaxExemptStatus(
       payload,
       typeof cart.user === 'object' && cart.user !== null ? cart.user.id : cart.user,
       !!taxExempt
     );
+
+    const taxItems: CartItemForTax[] = (cart.items as any[]).map((item) => ({
+      product: typeof item.product === 'object' ? item.product : { pricing: {} },
+      productType: item.productType,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    }));
+    const shippingQuoteFingerprint = buildShippingQuoteFingerprint(
+      taxItems,
+      normalizedShippingAddress,
+      taxExemptValidation.valid,
+    );
+    const lockedShippingRateId =
+      typeof selectedShippingRateId === 'string' && selectedShippingRateId.trim()
+        ? selectedShippingRateId.trim()
+        : typeof (cart as any).selectedShippingRateId === 'string'
+          ? (cart as any).selectedShippingRateId
+          : null;
+    const quoteExpiresAt =
+      typeof (cart as any).shippingQuoteExpiresAt === 'string'
+        ? (cart as any).shippingQuoteExpiresAt
+        : (cart as any).shippingQuoteExpiresAt instanceof Date
+          ? (cart as any).shippingQuoteExpiresAt.toISOString()
+          : null;
+    const quoteIsExpired = isShippingQuoteExpired(quoteExpiresAt);
+    const cartTotalAmount = typeof cart.totalAmount === 'number' ? cart.totalAmount : null;
+    const cartTaxAmount = typeof (cart as any).totalTax === 'number' ? (cart as any).totalTax : null;
+    const cartShippingAmount =
+      typeof (cart as any).shippingAmount === 'number' ? (cart as any).shippingAmount : null;
+
+    if (!lockedShippingRateId) {
+      return NextResponse.json(
+        { error: 'Shipping quote is required. Refresh checkout pricing and try again.' },
+        { status: 409 },
+      );
+    }
+
+    if (
+      quoteIsExpired ||
+      String((cart as any).selectedShippingRateId || '') !== lockedShippingRateId ||
+      String((cart as any).shippingQuoteFingerprint || '') !== shippingQuoteFingerprint ||
+      cartTotalAmount === null ||
+      cartTaxAmount === null ||
+      cartShippingAmount === null
+    ) {
+      return NextResponse.json(
+        { error: 'Shipping quote is stale. Refresh checkout pricing and try again.' },
+        { status: 409 },
+      );
+    }
 
     // Log if tax-exempt was requested but not validated
     if (taxExempt && !taxExemptValidation.valid) {
@@ -161,9 +172,14 @@ export async function POST(request: NextRequest) {
       collection: 'carts',
       id: cartId,
       data: {
-        shippingAddress,
+        shippingAddress: {
+          ...shippingAddress,
+          state: normalizedShippingAddress.state,
+          country: normalizedShippingAddress.country,
+        },
         guestEmail: cart.user ? undefined : customerEmail,
         taxExempt: taxExemptValidation.valid,
+        selectedShippingRateId: lockedShippingRateId,
       },
     });
 
@@ -173,7 +189,8 @@ export async function POST(request: NextRequest) {
       customerEmail,
       successUrl,
       cancelUrl,
-      taxExempt,
+      taxExempt: taxExemptValidation.valid,
+      shippingAddress,
     });
 
     // Persist provider metadata on cart for later reconciliation

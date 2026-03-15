@@ -27,6 +27,7 @@ export interface Cart {
   tax: number;
   shipping: number;
   total: number;
+  hasEstimatedTotals: boolean;
   status: 'active' | 'abandoned' | 'converted' | 'checkout';
 }
 
@@ -38,6 +39,7 @@ export const createEmptyCart = (): Cart => ({
   tax: 0,
   shipping: 0,
   total: 0,
+  hasEstimatedTotals: false,
   status: 'active'
 });
 
@@ -90,6 +92,14 @@ function createCartStore() {
     }
   };
 
+  const resetLocalCart = () => {
+    set(createEmptyCart());
+
+    if (browser) {
+      localStorage.removeItem('guest-cart-id');
+    }
+  };
+
   return {
     subscribe,
     set,
@@ -104,7 +114,7 @@ function createCartStore() {
         if (userId) {
           params.append('userId', userId);
         } else if (guestCartId) {
-          params.append('sessionId', guestCartId);
+          params.append('cartId', guestCartId);
         }
 
         const response = await fetch(`/api/cart/summary?${params.toString()}`);
@@ -287,11 +297,16 @@ function createCartStore() {
       }
     },
 
+    resetLocal() {
+      resetLocalCart();
+    },
+
     // Start checkout with configured provider
     async checkout(options?: {
       shippingAddress?: any
       customerEmail?: string
       taxExempt?: boolean
+      selectedShippingRateId?: string
     }) {
       try {
         const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
@@ -308,6 +323,7 @@ function createCartStore() {
             shippingAddress: options?.shippingAddress,
             customerEmail: options?.customerEmail,
             taxExempt: options?.taxExempt,
+            selectedShippingRateId: options?.selectedShippingRateId,
             provider: paymentProvider.slug,
           }),
         });

@@ -1,21 +1,21 @@
 # Phase 1 Launch - Next Steps Summary
 
-**Date:** February 11, 2026
+**Date:** March 14, 2026
 **Timeline:** Final stretch to launch
-**Status:** 🔄 Backend Complete, Checkout Integration Complete, Data Import & Testing Remaining
+**Status:** 🔄 Stripe checkout hardening, data import, and browser QA remaining
 
 ---
 
-## Recent Progress (February 2026)
+## Recent Progress (March 2026)
 
 ### ✅ E-Commerce Backend Complete
 - **Unified Tax/Shipping Calculations** - Single source of truth in `taxShippingCalculations.ts`
 - **Payment Adapter Pattern** - Pluggable support for Stripe and Square
-- **Square Webhooks** - Full implementation with signature verification
+- **Square Inventory Webhooks** - Signature verification and inventory sync are implemented
 - **Refund API** - Full/partial refunds via `/api/refund` (admin-only with JWT auth)
 - **Tax-Exempt Validation** - Verified against institutional accounts
 - **Inventory Management** - Auto-decrement on order confirmation
-- **Tennessee Tax Rules** - 7% state + 2-2.75% local, books are tax-exempt
+- **Tennessee Tax Rules** - 7% state + 2-2.75% local on Tennessee shipments; out-of-state shipments remain untaxed and verified tax-exempt accounts pay no tax
 
 ### ✅ Order Management System (Feb 11)
 - **Staff Order Dashboard** - Tablet-optimized admin view at `/admin/order-dashboard`
@@ -28,10 +28,11 @@
 - **Afrocentric Email Templates** - Branded with Kente Gold, Forest Green, Terracotta
 - **Customer Notifications** - Order confirmation + shipping status update emails
 
-### ✅ Checkout Flow Complete (Feb 11)
+### ✅ Checkout Flow Implemented (QA Remaining)
 - **Checkout Page** - Shipping address form with live tax/shipping preview
-- **Checkout Preview API** - Debounced real-time cost calculation as customer types
-- **Stripe Redirect** - Seamless handoff to Stripe Embedded Checkout
+- **Checkout Preview API** - Debounced real-time quote-locked cost calculation as customer types
+- **Shipping Options** - Media Mail defaults for book-only carts with fallback rates if Shippo is unavailable
+- **Stripe Redirect** - Seamless handoff to Stripe hosted checkout
 - **Success Page** - Order confirmation with order number, cart auto-cleared
 - **Cancel Page** - Friendly cancellation message, cart preserved
 
@@ -61,7 +62,7 @@
 ### 2. Environment Setup (1 hour)
 ```bash
 # Get Stripe test keys from https://stripe.com
-# Get Square credentials from Square Dashboard
+# Get Square credentials from Square Dashboard (inventory sync / optional hosted checkout)
 # Update alkebu-load/.env and alkebu-web/.env
 
 # Required environment variables:
@@ -71,6 +72,9 @@ SQUARE_ACCESS_TOKEN=...
 SQUARE_LOCATION_ID=...
 SQUARE_WEBHOOK_SIGNATURE_KEY=...  # For Square webhook validation
 FREE_SHIPPING_THRESHOLD=7500      # $75 in cents
+
+# Optional but recommended for live carrier quotes:
+SHIPPO_API_TOKEN=shippo_live_...
 
 # Then test locally:
 cd alkebu-load && pnpm dev
@@ -106,7 +110,7 @@ pnpm tsx scripts/import-apparel.ts
 - [ ] Proceed to checkout → form displays
 - [ ] Fill address → validates (US only)
 - [ ] Tax calculates correctly:
-  - [ ] Tennessee addresses: 7% state + local tax (books exempt)
+  - [ ] Tennessee addresses: 7% state + local tax on shipped goods
   - [ ] Out-of-state: No tax
   - [ ] Tax-exempt accounts: No tax
 - [ ] Shipping calculates correctly:
@@ -180,7 +184,7 @@ pnpm tsx scripts/import-apparel.ts
 taxShippingCalculations.ts (Single Source of Truth)
     │
     ├── Tennessee: 7% state + 2-2.75% local (city-based)
-    ├── Books: TAX EXEMPT (TN Code § 67-6-329)
+    ├── Tennessee shipments: taxable unless the account is validated tax-exempt
     ├── Out-of-state: 0% (no nexus)
     └── Tax-exempt accounts: 0% (verified against institutional-accounts)
 ```
@@ -204,13 +208,13 @@ Checkout Form
     ↓
 Enter shipping address (US only)
     ↓
-Tax calculated (books exempt, TN rates applied)
+Tax calculated (TN rates applied, exemptions validated)
     ↓
 Shipping calculated (weight-based)
     ↓
 Tax-exempt validated (if claimed)
     ↓
-Payment provider selected (Stripe/Square)
+Launch payment path: Stripe hosted checkout
     ↓
 Redirect to hosted checkout
     ↓
@@ -290,7 +294,7 @@ Before going live, verify:
 ✅ All product images display
 ✅ Add to cart works (drawer opens)
 ✅ Checkout form collects address
-✅ Tax calculates correctly (books exempt, TN rates)
+✅ Tax calculates correctly (TN shipped goods taxed, exempt accounts honored)
 ✅ Shipping calculates correctly (weight-based)
 ✅ Stripe test payment processes
 ✅ Order appears in admin
@@ -344,8 +348,7 @@ A: Make sure using test cards (4242...), webhook listener running, no CORS error
 
 **Q: Tax not calculating correctly**
 A: Tax is now calculated in `taxShippingCalculations.ts`. Check:
-- Books are automatically tax-exempt in Tennessee
-- Tennessee addresses use 7% state + local rate (city-based)
+- Tennessee shipments use 7% state + local rate (city-based)
 - Out-of-state addresses have 0% tax (no nexus)
 - Tax-exempt flag is validated against institutional accounts
 
@@ -361,7 +364,7 @@ A: Check order has `payment.stripePaymentIntentId` and `payment.paymentStatus ==
 
 Once Phase 1 complete & tested:
 
-- Phase 2: Shipping integration with Shippo API
+- Phase 2: Shipping label automation with Shippo API
 - Phase 2: Blog system & content
 - Phase 2: Events calendar (linked to hi.events)
 - Phase 3: Full product catalog
@@ -395,4 +398,4 @@ Questions? Check CLAUDE.md for AI assistant context or relevant docs.
 
 ---
 
-*Last updated: February 11, 2026*
+*Last updated: March 14, 2026*

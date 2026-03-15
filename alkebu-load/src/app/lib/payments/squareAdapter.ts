@@ -1,10 +1,4 @@
 import type { PaymentAdapter, InitPaymentParams } from './adapters';
-import {
-  calculateShipping,
-  calculateTax,
-  calculateTotalWeight,
-  type CartItemForTax,
-} from '@/app/utils/taxShippingCalculations';
 import crypto from 'node:crypto';
 
 /**
@@ -51,28 +45,35 @@ export const squareAdapter = (): PaymentAdapter => {
       },
     }));
 
-    // Build tax calculation items
-    const taxItems: CartItemForTax[] = cart.items.map((item: any) => ({
-      product: typeof item.product === 'object' ? item.product : { pricing: {} },
-      productType: item.productType,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    }));
+    const taxAmount = typeof cart.totalTax === 'number' ? cart.totalTax : 0;
+    const shippingAmount = typeof cart.shippingAmount === 'number' ? cart.shippingAmount : 0;
+    const shippingLabelParts = [
+      typeof cart.shippingCarrier === 'string' ? cart.shippingCarrier : null,
+      typeof cart.shippingService === 'string' ? cart.shippingService : null,
+    ].filter(Boolean);
+    const shippingLabel = shippingLabelParts.join(' ') || cart.shippingMethod || 'Standard';
 
-    // Calculate shipping
-    const totalWeight = calculateTotalWeight(taxItems);
-    const shipping = calculateShipping(
-      totalWeight,
-      'standard',
-      cart.shippingAddress?.state || 'TN',
-    );
+    if (shippingAmount > 0) {
+      lineItems.push({
+        name: `Shipping - ${shippingLabel}`,
+        quantity: '1',
+        basePriceMoney: {
+          amount: BigInt(shippingAmount),
+          currency: 'USD',
+        },
+      });
+    }
 
-    // Calculate tax (using unified tax calculation with book exemption)
-    const taxCalc = calculateTax(
-      taxItems,
-      cart.shippingAddress,
-      cart.taxExempt,
-    );
+    if (taxAmount > 0) {
+      lineItems.push({
+        name: 'Tennessee Sales Tax',
+        quantity: '1',
+        basePriceMoney: {
+          amount: BigInt(taxAmount),
+          currency: 'USD',
+        },
+      });
+    }
 
     const idempotencyKey = crypto.randomUUID();
 
@@ -87,36 +88,16 @@ export const squareAdapter = (): PaymentAdapter => {
       order: {
         locationId,
         lineItems,
-        taxes: taxCalc.amount > 0
-          ? [
-            {
-              uid: 'sales-tax',
-              name: 'Sales Tax',
-              type: 'ADDITIVE' as const,
-              percentage: String((taxCalc.rate * 100).toFixed(2)),
-            },
-          ]
-          : undefined,
-        serviceCharges: shipping.cost > 0
-          ? [
-            {
-              uid: 'shipping',
-              name: `Shipping (${shipping.method})`,
-              calculationPhase: 'SUBTOTAL_PHASE' as const,
-              amountMoney: {
-                amount: BigInt(shipping.cost),
-                currency: 'USD',
-              },
-              taxable: false,
-            },
-          ]
-          : undefined,
       },
     };
 
     const result = await (client.checkout as any).createPaymentLink(requestBody);
     const checkoutUrl = result.paymentLink?.url;
     const providerPaymentId = result.paymentLink?.id;
+    const providerOrderId =
+      result.paymentLink?.orderId ||
+      result.paymentLink?.order_id ||
+      result.relatedResources?.orders?.[0]?.id;
 
     if (!checkoutUrl || !providerPaymentId) {
       throw new Error('Failed to create Square checkout link');
@@ -129,6 +110,7 @@ export const squareAdapter = (): PaymentAdapter => {
       data: {
         provider: 'square',
         providerPaymentId,
+        providerOrderId,
         status: 'checkout',
       },
     });
@@ -219,6 +201,7 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
     collection: 'carts',
     where: {
       or: [
+        { providerOrderId: { equals: orderId } },
         { providerPaymentId: { equals: orderId } },
         { providerPaymentId: { equals: paymentId } },
       ],
@@ -262,7 +245,10 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
   // Create order from cart
   const orderData = {
     orderNumber: `ALK-${Date.now().toString(36).toUpperCase()}`,
-    customer: cart.user,
+    customer:
+      cart.user && typeof cart.user === 'object' && 'id' in cart.user
+        ? cart.user.id
+        : cart.user,
     guestEmail: cart.guestEmail,
     status: 'paid',
     items: cart.items.map((item: any) => ({
@@ -278,6 +264,17 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
     shippingAmount,
     totalAmount,
     shippingAddress: cart.shippingAddress,
+    fulfillment: {
+      shippingMethod: cart.shippingMethod || 'standard',
+      shippingService: cart.shippingService,
+      shippingRateId: cart.selectedShippingRateId,
+      quoteSource: cart.shippingQuoteSource,
+      carrier:
+        typeof cart.shippingCarrier === 'string' &&
+        ['usps', 'ups', 'fedex', 'local'].includes(cart.shippingCarrier.toLowerCase())
+          ? cart.shippingCarrier.toLowerCase()
+          : undefined,
+    },
     payment: {
       provider: 'square',
       providerPaymentId: paymentId,

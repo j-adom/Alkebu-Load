@@ -32,11 +32,18 @@ export interface ShippingCalculation {
 
 export interface CartItemForTax {
   product: {
+    importSource?: string;
     pricing?: {
       taxCode?: string;
       retailPrice?: number;
       shippingWeight?: number;
     };
+    editions?: Array<{
+      binding?: string;
+      pricing?: {
+        shippingWeight?: number;
+      };
+    }>;
   };
   productType: string;
   quantity: number;
@@ -67,18 +74,11 @@ const isTennesseeZip = (zip?: string | null): boolean => {
 };
 
 /**
- * Check if a product is tax-exempt (e.g., books in Tennessee)
- * Books are exempt from sales tax in Tennessee under Tenn. Code Ann. § 67-6-329
+ * Check if a product is tax-exempt.
+ * Launch checkout taxes all shipped goods to Tennessee unless the customer
+ * is a validated tax-exempt account.
  */
 export function isProductTaxExempt(item: CartItemForTax): boolean {
-  // Check explicit tax code
-  if (item.product?.pricing?.taxCode === 'books_tax_free') {
-    return true;
-  }
-  // Books collection is tax-exempt in Tennessee
-  if (item.productType === 'books') {
-    return true;
-  }
   return false;
 }
 
@@ -87,7 +87,7 @@ export function isProductTaxExempt(item: CartItemForTax): boolean {
  *
  * Rules:
  * - Only US addresses are supported
- * - Tennessee: 7% state + local rate (2.25-2.75%), books are exempt
+ * - Tennessee: 7% state + local rate (2.25-2.75%) on all shipped goods
  * - Other US states: No nexus, 0% tax (Alkebu-Lan only has physical presence in TN)
  * - Tax-exempt customers/institutions pay no tax
  */
@@ -121,13 +121,11 @@ export function calculateTax(
     return { rate: 0, amount: 0, exempt: false };
   }
 
-  // Calculate taxable amount (excluding tax-exempt items like books)
+  // Calculate taxable amount for all shipped goods.
   let taxableAmount = 0;
-  let totalAmount = 0;
 
   for (const item of items) {
     const itemTotal = item.quantity * item.unitPrice;
-    totalAmount += itemTotal;
 
     if (!isProductTaxExempt(item)) {
       taxableAmount += itemTotal;
@@ -209,6 +207,20 @@ const SHIPPING_RATES = {
   },
 };
 
+const USPS_MEDIA_MAIL_RATES: Record<number, number> = {
+  1: 413,
+  2: 487,
+  3: 561,
+  4: 635,
+  5: 709,
+  6: 783,
+  7: 857,
+  8: 931,
+  9: 1005,
+  10: 1079,
+};
+const USPS_MEDIA_MAIL_INCREMENTAL_RATE = 74;
+
 // Default weights by product type (in ounces)
 const DEFAULT_WEIGHTS: Record<string, number> = {
   'books': 8,              // Average paperback
@@ -224,12 +236,73 @@ export function getDefaultWeight(productType: string): number {
   return DEFAULT_WEIGHTS[productType] || 4; // 4oz default
 }
 
+function normalizeBinding(binding?: string | null): string {
+  return binding?.toLowerCase().trim() || '';
+}
+
+function getDefaultBookWeight(binding?: string | null): number {
+  const normalizedBinding = normalizeBinding(binding);
+
+  if (normalizedBinding === 'hardcover') {
+    return 16;
+  }
+
+  if (
+    normalizedBinding === 'ebook' ||
+    normalizedBinding === 'audiobook'
+  ) {
+    return 0;
+  }
+
+  return 8;
+}
+
+function getBookBinding(item: CartItemForTax): string | undefined {
+  return item.product?.editions?.find(Boolean)?.binding;
+}
+
+function resolveItemWeight(item: CartItemForTax): number {
+  const editionWeight = item.product?.editions?.find(
+    (edition) =>
+      typeof edition?.pricing?.shippingWeight === 'number' &&
+      edition.pricing.shippingWeight > 0,
+  )?.pricing?.shippingWeight;
+
+  if (typeof editionWeight === 'number' && editionWeight > 0) {
+    return editionWeight;
+  }
+
+  const topLevelWeight = item.product?.pricing?.shippingWeight;
+
+  if (item.productType === 'books') {
+    const binding = getBookBinding(item);
+
+    // Most current book records appear to have a blanket 16oz top-level weight.
+    // Treat that as a placeholder unless an edition weight is present.
+    if (typeof topLevelWeight === 'number' && topLevelWeight > 0 && topLevelWeight !== 16) {
+      return topLevelWeight;
+    }
+
+    return getDefaultBookWeight(binding);
+  }
+
+  if (typeof topLevelWeight === 'number' && topLevelWeight > 0) {
+    return topLevelWeight;
+  }
+
+  return getDefaultWeight(item.productType);
+}
+
+function isBookOnlyOrder(items: CartItemForTax[]): boolean {
+  return items.length > 0 && items.every((item) => item.productType === 'books');
+}
+
 /**
  * Calculate total weight for cart items
  */
 export function calculateTotalWeight(items: CartItemForTax[]): number {
   return items.reduce((total, item) => {
-    const weight = item.product?.pricing?.shippingWeight || getDefaultWeight(item.productType);
+    const weight = resolveItemWeight(item);
     return total + (weight * item.quantity);
   }, 0);
 }
@@ -265,6 +338,19 @@ export function calculateShipping(
   };
 }
 
+export function calculateUspsMediaMailShipping(totalWeightOz: number): ShippingCalculation {
+  const billablePounds = Math.max(1, Math.ceil(totalWeightOz / 16));
+  const baseCost =
+    USPS_MEDIA_MAIL_RATES[billablePounds] ??
+    USPS_MEDIA_MAIL_RATES[10] + ((billablePounds - 10) * USPS_MEDIA_MAIL_INCREMENTAL_RATE);
+
+  return {
+    method: 'media-mail',
+    cost: baseCost,
+    estimatedDays: 5,
+  };
+}
+
 /**
  * Check if order qualifies for free shipping
  */
@@ -296,16 +382,19 @@ export function calculateOrderTotals(
     return sum + (item.quantity * item.unitPrice);
   }, 0);
 
-  // Calculate tax (with item-level exemptions for books)
+  // Calculate tax (all shipped goods are taxable in Tennessee unless customer exempt)
   const tax = calculateTax(items, shippingAddress, taxExempt);
 
   // Calculate shipping
   const totalWeight = calculateTotalWeight(items);
-  const shipping = calculateShipping(
-    totalWeight,
-    shippingMethod,
-    shippingAddress?.state || 'TN'
-  );
+  const shipping =
+    isBookOnlyOrder(items) && shippingMethod === 'standard'
+      ? calculateUspsMediaMailShipping(totalWeight)
+      : calculateShipping(
+        totalWeight,
+        shippingMethod,
+        shippingAddress?.state || 'TN'
+      );
 
   // Apply free shipping threshold
   if (qualifiesForFreeShipping(subtotal)) {

@@ -72,7 +72,22 @@ async function enrichWithIsbndb(identifier: ProductIdentifier): Promise<Enriched
     
     // Transform ISBNDB response to our format (reusing existing logic)
     const { transformIsbndbToPayload } = await import('./bookImport')
-    return transformIsbndbToPayload({ book: data.book })
+    const payloadData = transformIsbndbToPayload({ book: data.book })
+
+    return {
+      title: payloadData.title,
+      titleLong: payloadData.titleLong,
+      authors: payloadData.authorsText,
+      publisher: payloadData.publisherText,
+      description: payloadData.description,
+      synopsis: payloadData.synopsis,
+      excerpt: payloadData.excerpt,
+      categories: payloadData.categories,
+      subjects: payloadData.subjects,
+      images: payloadData.scrapedImageUrls,
+      editions: payloadData.editions,
+      importSource: payloadData.importSource,
+    }
 
   } catch (error) {
     console.error('❌ ISBNDB enrichment failed:', error)
@@ -118,78 +133,30 @@ async function enrichWithGoogleBooks(identifier: ProductIdentifier): Promise<Enr
     console.log(`✅ Google Books data found for: ${bookInfo.title}`)
 
     // Transform Google Books response to our format
-    return transformGoogleBooksToPayload(bookInfo, identifier)
+    const { transformGoogleBooksToPayload } = await import('./bookImport')
+    const payloadData = transformGoogleBooksToPayload(bookInfo, {
+      isbn13: identifier.type === 'isbn13' ? identifier.value : undefined,
+      isbn10: identifier.type === 'isbn10' ? identifier.value : undefined,
+    })
+
+    return {
+      title: payloadData.title,
+      titleLong: payloadData.titleLong,
+      authors: payloadData.authorsText,
+      publisher: payloadData.publisherText,
+      description: payloadData.description,
+      synopsis: payloadData.synopsis,
+      categories: payloadData.categories,
+      subjects: payloadData.subjects,
+      images: payloadData.scrapedImageUrls,
+      editions: payloadData.editions,
+      importSource: payloadData.importSource,
+    }
 
   } catch (error) {
     console.error('❌ Google Books enrichment failed:', error)
     return null
   }
-}
-
-function transformGoogleBooksToPayload(bookInfo: any, identifier: ProductIdentifier): EnrichedProductData {
-  // Extract ISBNs from industryIdentifiers
-  let isbn13 = ''
-  let isbn10 = ''
-  
-  if (bookInfo.industryIdentifiers) {
-    for (const id of bookInfo.industryIdentifiers) {
-      if (id.type === 'ISBN_13') isbn13 = id.identifier
-      if (id.type === 'ISBN_10') isbn10 = id.identifier
-    }
-  }
-
-  // Map categories to our system
-  const categories = mapGoogleBooksCategories(bookInfo.categories || [])
-  
-  return {
-    title: bookInfo.title || '',
-    titleLong: bookInfo.subtitle ? `${bookInfo.title}: ${bookInfo.subtitle}` : undefined,
-    authors: (bookInfo.authors || []).map((name: string) => ({ name })),
-    publisher: bookInfo.publisher,
-    description: bookInfo.description,
-    categories,
-    subjects: (bookInfo.categories || []).map((cat: string) => ({ subject: cat })),
-    images: bookInfo.imageLinks ? [
-      { url: bookInfo.imageLinks.thumbnail || bookInfo.imageLinks.smallThumbnail }
-    ].filter(img => img.url) : [],
-    editions: [{
-      isbn: isbn13 || (identifier.type === 'isbn13' ? identifier.value : undefined),
-      isbn10: isbn10 || (identifier.type === 'isbn10' ? identifier.value : undefined),
-      pages: bookInfo.pageCount,
-      datePublished: bookInfo.publishedDate,
-      language: bookInfo.language || 'en'
-    }],
-    importSource: 'google-books'
-  }
-}
-
-function mapGoogleBooksCategories(googleCategories: string[]): string[] {
-  const categoryMap: Record<string, string> = {
-    'biography': 'biography-autobiography',
-    'history': 'history',
-    'fiction': 'literature-fiction',
-    'religion': 'religion-spirituality',
-    'political science': 'politics-social-science',
-    'business': 'business-economics',
-    'health': 'health-wellness',
-    'juvenile': 'children-young-adult',
-    'art': 'arts-culture',
-    'education': 'education-academia'
-  }
-
-  const categories: string[] = []
-  
-  for (const category of googleCategories) {
-    const lowerCategory = category.toLowerCase()
-    for (const [key, value] of Object.entries(categoryMap)) {
-      if (lowerCategory.includes(key)) {
-        categories.push(value)
-        break
-      }
-    }
-  }
-
-  return [...new Set(categories)] // Remove duplicates
 }
 
 // Open Library API integration (free alternative)

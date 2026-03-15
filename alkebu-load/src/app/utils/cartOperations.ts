@@ -1,12 +1,9 @@
 import type { Payload } from 'payload';
 import {
-  calculateTax,
-  calculateShipping,
-  calculateTotalWeight,
-  calculateOrderTotals,
   type CartItemForTax,
   type ShippingAddress,
 } from './taxShippingCalculations';
+import { isShippingQuoteExpired } from './shippingQuotes';
 import { sendAbandonedCartEmail, type AbandonedCartData } from './emailService';
 
 const AVAILABLE_VENDOR_KEYWORDS = [
@@ -130,7 +127,7 @@ function mapCartItemsForTax(items: any[]): CartItemForTax[] {
       }
     }
     return {
-      product: productData ? { pricing: productData.pricing } : { pricing: {} },
+      product: productData || { pricing: {} },
       productType: item.productType || 'books',
       quantity: item.quantity || 1,
       unitPrice: item.unitPrice || 0,
@@ -170,8 +167,25 @@ export interface CartSummary {
   tax: number;
   shipping: number;
   total: number;
+  hasEstimatedTotals: boolean;
   items: any[];
 }
+
+const buildSubtotal = (items: CartItemForTax[]): number =>
+  items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+
+const getQuoteResetData = () => ({
+  totalTax: 0,
+  shippingAmount: 0,
+  selectedShippingRateId: null,
+  shippingCarrier: null,
+  shippingService: null,
+  shippingMethod: null,
+  shippingQuoteSource: null,
+  shippingQuoteExpiresAt: null,
+  shippingQuoteFingerprint: null,
+  shippingEstimatedDays: null,
+});
 
 /**
  * Add item to cart using Local API for performance
@@ -453,14 +467,40 @@ export async function getCartSummary(
       depth: 2,
     });
 
-    // Build items for tax calculation
-    const taxItems = mapCartItemsForTax(items.docs);
+    const shippingAddress = normalizeShippingAddress((cart as any).shippingAddress);
+    const addressIsComplete = Boolean(
+      shippingAddress?.street &&
+      shippingAddress?.city &&
+      shippingAddress?.state &&
+      shippingAddress?.zip,
+    );
+    const hasEstimatedTotals = Boolean(
+      addressIsComplete &&
+      (cart as any).selectedShippingRateId &&
+      !isShippingQuoteExpired((cart as any).shippingQuoteExpiresAt) &&
+      (cart as any).totalAmount !== null &&
+      (cart as any).totalAmount !== undefined,
+    );
 
-    // Calculate totals using unified calculation (respects book tax exemption)
-    const totals = (calculateOrderTotals as any)(taxItems, normalizeShippingAddress((cart as any).shippingAddress), {
-      taxExempt: (cart as any).taxExempt || false,
-      shippingMethod: 'standard',
-    });
+    const taxItems = mapCartItemsForTax(items.docs);
+    const subtotal = buildSubtotal(taxItems);
+
+    const totals = hasEstimatedTotals
+      ? {
+        subtotal,
+        tax: { amount: (cart as any).totalTax || 0 },
+        shipping: {
+          cost: (cart as any).shippingAmount || 0,
+          method: (cart as any).shippingMethod || 'standard',
+        },
+        total: (cart as any).totalAmount || subtotal,
+      }
+      : {
+        subtotal,
+        tax: { amount: 0 },
+        shipping: { cost: 0 },
+        total: subtotal,
+      };
 
     return {
       id: String(cart.id),
@@ -469,6 +509,7 @@ export async function getCartSummary(
       tax: totals.tax.amount,
       shipping: totals.shipping.cost,
       total: totals.total,
+      hasEstimatedTotals,
       items: items.docs as any,
     };
 
@@ -507,7 +548,7 @@ export async function clearCart(
       id: cartId,
       data: {
         totalAmount: 0,
-        totalTax: 0,
+        ...getQuoteResetData(),
         status: 'active',
       },
     });
@@ -577,12 +618,6 @@ export async function markCartAbandoned(
  */
 async function updateCartTotals(payload: Payload, cartId: string): Promise<void> {
   try {
-    const cart = await payload.findByID({
-      collection: 'carts',
-      id: cartId,
-      depth: 1,
-    });
-
     const items = await payload.find({
       collection: 'cart-items',
       where: {
@@ -591,23 +626,16 @@ async function updateCartTotals(payload: Payload, cartId: string): Promise<void>
       depth: 2,
     });
 
-    // Build items for tax calculation
     const taxItems = mapCartItemsForTax(items.docs);
+    const subtotal = buildSubtotal(taxItems);
 
-    // Calculate totals using unified calculation (respects book tax exemption)
-    const totals = (calculateOrderTotals as any)(taxItems, normalizeShippingAddress((cart as any).shippingAddress), {
-      taxExempt: (cart as any).taxExempt || false,
-      shippingMethod: 'standard',
-    });
-
-    // Update cart with new totals
+    // Item or address changes invalidate any previously locked shipping quote.
     await (payload as any).update({
       collection: 'carts',
       id: String(cartId),
       data: {
-        totalAmount: totals.total,
-        totalTax: totals.tax.amount,
-        shippingAmount: totals.shipping.cost,
+        totalAmount: subtotal,
+        ...getQuoteResetData(),
         lastActivity: new Date().toISOString(),
       } as any,
     });

@@ -31,7 +31,7 @@ export const Orders: CollectionConfig = {
     {
       name: 'customer',
       type: 'relationship',
-      relationTo: 'customers',
+      relationTo: 'users',
       admin: {
         description: 'Customer who placed the order',
       },
@@ -260,9 +260,31 @@ export const Orders: CollectionConfig = {
           options: [
             { label: 'Standard Shipping', value: 'standard' },
             { label: 'Expedited Shipping', value: 'expedited' },
+            { label: 'USPS Media Mail', value: 'media_mail' },
             { label: 'Local Pickup', value: 'pickup' },
             { label: 'In-Store Pickup', value: 'store_pickup' },
           ],
+        },
+        {
+          name: 'shippingService',
+          type: 'text',
+          admin: {
+            description: 'Exact carrier service selected at checkout',
+          },
+        },
+        {
+          name: 'shippingRateId',
+          type: 'text',
+          admin: {
+            description: 'Locked shipping quote ID used for checkout',
+          },
+        },
+        {
+          name: 'quoteSource',
+          type: 'text',
+          admin: {
+            description: 'Source of the selected shipping quote',
+          },
         },
         {
           name: 'trackingNumber',

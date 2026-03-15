@@ -239,9 +239,13 @@ STRIPE_PUBLIC_KEY=pk_test_your-public-key
 ISBNDB_API_KEY=your-isbndb-key
 GOOGLE_BOOKS_API_KEY=your-google-books-key
 
-# Email (Resend)
-RESEND_API_KEY=re_your-resend-key
-RESEND_FROM_EMAIL=noreply@yourdomain.com
+# Email (SES SMTP or generic SMTP)
+FROM_EMAIL=noreply@yourdomain.com
+FROM_NAME=Alkebu-Lan Images
+SES_SMTP_USER=your-ses-smtp-user
+SES_SMTP_PASSWORD=your-ses-smtp-password
+SMTP_HOST=email-smtp.us-east-2.amazonaws.com
+SMTP_PORT=587
 
 # File Storage (Cloudinary)
 CLOUDINARY_CLOUD_NAME=your-cloud-name

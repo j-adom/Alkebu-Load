@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 import {
-    calculateOrderTotals,
+    calculateTax,
     type CartItemForTax,
     type ShippingAddress,
 } from '@/app/utils/taxShippingCalculations';
+import {
+    buildShippingQuoteFingerprint,
+    formatShippingMethodLabel,
+    getShippingMethodCode,
+    getShippingQuotes,
+} from '@/app/utils/shippingQuotes';
+import { validateTaxExemptStatus } from '@/app/utils/taxExemptValidation';
 
 /**
  * POST /api/checkout/preview
@@ -19,11 +26,23 @@ export async function POST(request: NextRequest) {
         const payload = await getPayload({ config });
         const body = await request.json();
 
-        const { cartId, shippingAddress, taxExempt = false, shippingMethod = 'standard' } = body;
+        const {
+            cartId,
+            shippingAddress,
+            taxExempt = false,
+            selectedShippingRateId,
+        } = body;
 
         if (!cartId) {
             return NextResponse.json(
                 { error: 'cartId is required' },
+                { status: 400 },
+            );
+        }
+
+        if (shippingAddress?.country && shippingAddress.country.toUpperCase() !== 'US') {
+            return NextResponse.json(
+                { error: 'Only US shipping addresses are supported' },
                 { status: 400 },
             );
         }
@@ -46,10 +65,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({
                 subtotal: 0,
                 tax: { rate: 0, amount: 0, exempt: false },
-                shipping: { method: shippingMethod, cost: 0, estimatedDays: 0 },
+                shipping: { method: 'standard', cost: 0, estimatedDays: 0 },
+                shippingOptions: [],
+                selectedShippingRateId: null,
+                quoteExpiresAt: null,
                 total: 0,
+                taxExempt: false,
             });
         }
+
+        const taxExemptValidation = await validateTaxExemptStatus(
+            payload,
+            typeof cart.user === 'object' && cart.user !== null ? cart.user.id : cart.user,
+            !!taxExempt,
+        );
 
         // Map cart items to the format expected by calculateOrderTotals
         const taxItems: CartItemForTax[] = cart.items.map((item: any) => ({
@@ -69,16 +98,89 @@ export async function POST(request: NextRequest) {
             }
             : null;
 
-        const totals = calculateOrderTotals(taxItems, address, {
-            taxExempt,
-            shippingMethod,
+        const subtotal = taxItems.reduce(
+            (sum, item) => sum + (item.quantity * item.unitPrice),
+            0,
+        );
+
+        const addressIsComplete = Boolean(
+            address?.street &&
+            address?.city &&
+            address?.state &&
+            address?.zip,
+        );
+
+        if (!addressIsComplete) {
+            return NextResponse.json({
+                subtotal,
+                tax: { rate: 0, amount: 0, exempt: false },
+                shipping: { method: 'standard', cost: 0, estimatedDays: 0 },
+                shippingOptions: [],
+                selectedShippingRateId: null,
+                quoteExpiresAt: null,
+                total: subtotal,
+                taxExempt: taxExemptValidation.valid,
+                taxExemptDenied: taxExempt && !taxExemptValidation.valid
+                    ? taxExemptValidation.reason
+                    : undefined,
+            });
+        }
+
+        const quote = await getShippingQuotes({
+            items: taxItems,
+            shippingAddress: address,
+            subtotal,
+            selectedShippingRateId,
+        });
+        const tax = calculateTax(taxItems, address, taxExemptValidation.valid);
+        const total = subtotal + tax.amount + quote.selectedOption.amount;
+        const shippingMethod = getShippingMethodCode(quote.selectedOption);
+        const shippingFingerprint = buildShippingQuoteFingerprint(
+            taxItems,
+            address,
+            taxExemptValidation.valid,
+        );
+
+        await payload.update({
+            collection: 'carts',
+            id: cartId,
+            data: {
+                shippingAddress,
+                taxExempt: taxExemptValidation.valid,
+                totalAmount: total,
+                totalTax: tax.amount,
+                shippingAmount: quote.selectedOption.amount,
+                selectedShippingRateId: quote.selectedShippingRateId,
+                shippingCarrier: quote.selectedOption.carrier,
+                shippingService: quote.selectedOption.service,
+                shippingMethod,
+                shippingQuoteSource: quote.quoteSource,
+                shippingQuoteExpiresAt: quote.quoteExpiresAt,
+                shippingQuoteFingerprint: shippingFingerprint,
+                shippingEstimatedDays: quote.selectedOption.estimatedDays,
+            },
         });
 
         return NextResponse.json({
-            subtotal: totals.subtotal,
-            tax: totals.tax,
-            shipping: totals.shipping,
-            total: totals.total,
+            subtotal,
+            tax,
+            shipping: {
+                method: shippingMethod,
+                label: formatShippingMethodLabel(quote.selectedOption),
+                cost: quote.selectedOption.amount,
+                estimatedDays: quote.selectedOption.estimatedDays,
+                carrier: quote.selectedOption.carrier,
+                service: quote.selectedOption.service,
+                isMediaMail: quote.selectedOption.isMediaMail,
+            },
+            shippingOptions: quote.shippingOptions,
+            selectedShippingRateId: quote.selectedShippingRateId,
+            quoteExpiresAt: quote.quoteExpiresAt,
+            total,
+            taxExempt: taxExemptValidation.valid,
+            taxExemptDenied: taxExempt && !taxExemptValidation.valid
+                ? taxExemptValidation.reason
+                : undefined,
         });
     } catch (error) {
         console.error('Checkout preview error:', error);

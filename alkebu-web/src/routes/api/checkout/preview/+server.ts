@@ -12,6 +12,11 @@ const CART_SESSION_COOKIE = 'cart_session'
 export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
     const payloadApiUrl = getPayloadApiUrl()
     const payload = await request.json()
+    const normalizedCountry = payload?.shippingAddress?.country?.trim?.().toUpperCase?.()
+
+    if (normalizedCountry) {
+        payload.shippingAddress.country = normalizedCountry
+    }
 
     // Inject cart ID from cookie if not provided
     if (!payload.cartId) {

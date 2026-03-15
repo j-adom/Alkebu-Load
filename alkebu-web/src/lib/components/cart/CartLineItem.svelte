@@ -1,7 +1,7 @@
 <script lang="ts">
   import PayloadImage from '$lib/components/PayloadImage.svelte';
   import { cart } from '$lib/stores/cart';
-  import { formatCurrency } from '$lib/utils/currency';
+  import { formatCents } from '$lib/utils/currency';
   import { Minus, Plus, Trash2, Loader2 } from 'lucide-svelte';
 
   interface Props {
@@ -122,7 +122,7 @@
 
         <div class="text-sm sm:text-right">
           <span class="text-muted-foreground">@ </span>
-          <span class="font-medium">{formatCurrency(unitPrice)}</span>
+          <span class="font-medium">{formatCents(unitPrice)}</span>
         </div>
       </div>
 
@@ -161,7 +161,7 @@
         <div class="flex items-center gap-4">
           <div class="text-right">
             <p class="text-xs text-muted-foreground">Subtotal</p>
-            <p class="text-lg font-bold text-primary">{formatCurrency(lineTotal)}</p>
+            <p class="text-lg font-bold text-primary">{formatCents(lineTotal)}</p>
           </div>
           <button
             type="button"

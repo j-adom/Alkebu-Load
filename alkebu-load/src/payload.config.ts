@@ -183,15 +183,15 @@ export default buildConfig({
     }),
   ],
   email: nodemailerAdapter({
-    defaultFromAddress: process.env.SMTP_FROM || 'noreply@alkebulanimages.com',
-    defaultFromName: 'Alkebu-Lan Images',
+    defaultFromAddress: process.env.FROM_EMAIL || process.env.SMTP_FROM || 'noreply@alkebulanimages.com',
+    defaultFromName: process.env.FROM_NAME || 'Alkebu-Lan Images',
     transportOptions: {
-      host: 'email-smtp.us-east-2.amazonaws.com',
-      port: 587,
-      secure: false,
+      host: process.env.SMTP_HOST || 'email-smtp.us-east-2.amazonaws.com',
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: parseInt(process.env.SMTP_PORT || '587', 10) === 465,
       auth: {
-        user: process.env.SES_SMTP_USER,
-        pass: process.env.SES_SMTP_PASSWORD,
+        user: process.env.SES_SMTP_USER || process.env.SMTP_USER,
+        pass: process.env.SES_SMTP_PASSWORD || process.env.SMTP_PASSWORD,
       },
     },
   }),

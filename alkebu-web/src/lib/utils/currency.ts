@@ -16,6 +16,15 @@ export function formatCurrency(
   }).format(amount);
 }
 
+export function formatCents(
+  value: number | null | undefined,
+  currency: string = DEFAULT_CURRENCY,
+  locale: string = DEFAULT_LOCALE,
+): string {
+  const amount = typeof value === 'number' && Number.isFinite(value) ? value / 100 : 0;
+  return formatCurrency(amount, currency, locale);
+}
+
 export function formatNumber(
   value: number | null | undefined,
   locale: string = DEFAULT_LOCALE,

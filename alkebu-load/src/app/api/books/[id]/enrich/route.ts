@@ -1,31 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
+import { buildBookMetadataPatch, type GoogleBooksVolumeInfo, type IsbndbBook } from '@/app/utils/bookImport'
 
 const ISBNDB_API_KEY = process.env.ISBNDB_API_KEY || ''
 const ISBNDB_BASE_URL = 'https://api2.isbndb.com'
 const GOOGLE_BOOKS_API_KEY = process.env.GOOGLE_BOOKS_API_KEY || ''
 
 interface ISBNdbResponse {
-    book?: {
-        title?: string
-        title_long?: string
-        authors?: string[]
-        publisher?: string
-        date_published?: string
-        pages?: number
-        overview?: string
-        synopsis?: string
-        excerpt?: string
-        subjects?: string[]
-        image?: string
-        binding?: string
-        dimensions?: string
-        language?: string
-        isbn?: string
-        isbn13?: string
-        dewey_decimal?: string
-    }
+    book?: IsbndbBook
 }
 
 async function fetchFromISBNdb(isbn: string): Promise<ISBNdbResponse | null> {
@@ -51,7 +34,7 @@ async function fetchFromISBNdb(isbn: string): Promise<ISBNdbResponse | null> {
     }
 }
 
-async function fetchFromGoogleBooks(isbn: string): Promise<any> {
+async function fetchFromGoogleBooks(isbn: string): Promise<GoogleBooksVolumeInfo | null> {
     try {
         if (!GOOGLE_BOOKS_API_KEY) return null
 
@@ -62,117 +45,11 @@ async function fetchFromGoogleBooks(isbn: string): Promise<any> {
         const data = await response.json() as any
 
         if (!data.items || data.items.length === 0) return null
-        return data.items[0].volumeInfo
+        return data.items[0].volumeInfo as GoogleBooksVolumeInfo
     } catch (error) {
         console.error(`Google Books fetch error for ${isbn}:`, error)
         return null
     }
-}
-
-function buildEnrichmentUpdate(book: any, isbndbData: ISBNdbResponse | null, googleData: any): { updateData: any, fieldCount: number } {
-    const updateData: any = {}
-    let fieldCount = 0
-
-    // Prefer ISBNdb, fall back to Google Books
-    const source = isbndbData?.book || googleData
-
-    if (!source) {
-        return { updateData, fieldCount }
-    }
-
-    // Update authors
-    if (isbndbData?.book?.authors && !book.authorsText?.length) {
-        updateData.authorsText = isbndbData.book.authors.map((name: string) => ({ name }))
-        fieldCount++
-    }
-
-    // Update publisher
-    if (isbndbData?.book?.publisher && !book.publisherText) {
-        updateData.publisherText = isbndbData.book.publisher
-        fieldCount++
-    }
-
-    // Update description/overview
-    if (isbndbData?.book?.overview && !book.description) {
-        updateData.description = isbndbData.book.overview
-        fieldCount++
-    } else if (googleData?.description && !book.description) {
-        updateData.description = googleData.description
-        fieldCount++
-    }
-
-    // Update synopsis
-    if (isbndbData?.book?.synopsis && !book.synopsis) {
-        updateData.synopsis = isbndbData.book.synopsis
-        fieldCount++
-    }
-
-    // Update excerpt
-    if (isbndbData?.book?.excerpt && !book.excerpt) {
-        updateData.excerpt = isbndbData.book.excerpt
-        fieldCount++
-    }
-
-    // Update title_long
-    if (isbndbData?.book?.title_long && !book.titleLong) {
-        updateData.titleLong = isbndbData.book.title_long
-        fieldCount++
-    }
-
-    // Update subjects
-    if (isbndbData?.book?.subjects && isbndbData.book.subjects.length > 0) {
-        updateData.subjects = isbndbData.book.subjects.map((s: string) => ({ subject: s }))
-        fieldCount++
-    } else if (googleData?.categories && googleData.categories.length > 0) {
-        updateData.subjects = googleData.categories.map((c: string) => ({ subject: c }))
-        fieldCount++
-    }
-
-    // Update binding
-    if (isbndbData?.book?.binding && !book.editions?.[0]?.binding) {
-        if (!updateData.editions) updateData.editions = book.editions
-        if (updateData.editions?.[0]) {
-            updateData.editions[0].binding = isbndbData.book.binding
-            fieldCount++
-        }
-    }
-
-    // Update pages
-    if (isbndbData?.book?.pages && !book.editions?.[0]?.pages) {
-        if (!updateData.editions) updateData.editions = book.editions
-        if (updateData.editions?.[0]) {
-            updateData.editions[0].pages = isbndbData.book.pages
-            fieldCount++
-        }
-    } else if (googleData?.pageCount && !book.editions?.[0]?.pages) {
-        if (!updateData.editions) updateData.editions = book.editions
-        if (updateData.editions?.[0]) {
-            updateData.editions[0].pages = googleData.pageCount
-            fieldCount++
-        }
-    }
-
-    // Update publication date
-    if (isbndbData?.book?.date_published && !book.editions?.[0]?.datePublished) {
-        if (!updateData.editions) updateData.editions = book.editions
-        if (updateData.editions?.[0]) {
-            updateData.editions[0].datePublished = isbndbData.book.date_published
-            fieldCount++
-        }
-    } else if (googleData?.publishedDate && !book.editions?.[0]?.datePublished) {
-        if (!updateData.editions) updateData.editions = book.editions
-        if (updateData.editions?.[0]) {
-            updateData.editions[0].datePublished = googleData.publishedDate
-            fieldCount++
-        }
-    }
-
-    // Always update tracking fields
-    updateData.isbndbChecked = true
-    updateData.lastEnrichedAt = new Date().toISOString()
-    updateData.enrichmentErrors = null
-
-    return { updateData, fieldCount: fieldCount + 2 }
 }
 
 export async function POST(
@@ -214,7 +91,7 @@ export async function POST(
 
         // Try ISBNdb first, fall back to Google Books
         const isbndbData = await fetchFromISBNdb(isbn)
-        let googleData = null
+        let googleData: GoogleBooksVolumeInfo | null = null
 
         if (!isbndbData?.book) {
             console.log(`   ISBNdb miss, trying Google Books...`)
@@ -244,7 +121,12 @@ export async function POST(
         }
 
         // Build update and apply
-        const { updateData, fieldCount } = buildEnrichmentUpdate(book, isbndbData, googleData)
+        const { updateData, fieldsUpdated } = buildBookMetadataPatch(book, {
+            isbndbBook: isbndbData?.book,
+            googleVolumeInfo: googleData,
+            markChecked: true,
+        })
+        ;(updateData as any).enrichmentErrors = null
 
         const updated = await payload.update({
             collection: 'books',
@@ -252,12 +134,12 @@ export async function POST(
             data: updateData as any,
         })
 
-        console.log(`   ✅ Enriched ${fieldCount} fields`)
+        console.log(`   ✅ Enriched ${fieldsUpdated} fields`)
 
         return NextResponse.json({
             success: true,
-            message: `Successfully enriched ${fieldCount} fields`,
-            fieldsUpdated: fieldCount,
+            message: `Successfully enriched ${fieldsUpdated} fields`,
+            fieldsUpdated,
             source: isbndbData?.book ? 'ISBNdb' : 'Google Books',
             book: updated
         })

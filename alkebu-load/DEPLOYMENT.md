@@ -44,10 +44,24 @@ STRIPE_SECRET_KEY=<your-stripe-secret>
 STRIPE_PUBLISHABLE_KEY=<your-stripe-publishable>
 STRIPE_WEBHOOK_SECRET=<your-stripe-webhook-secret>
 
+# Shippo (OPTIONAL but recommended for live carrier quotes; app falls back to static rates if unavailable)
+SHIPPO_API_TOKEN=<your-shippo-token>
+SHIPPO_SHIP_FROM_NAME=Alkebu-Lan Images
+SHIPPO_SHIP_FROM_STREET1=2721 Jefferson St.
+SHIPPO_SHIP_FROM_CITY=Nashville
+SHIPPO_SHIP_FROM_STATE=TN
+SHIPPO_SHIP_FROM_ZIP=37208
+SHIPPO_SHIP_FROM_COUNTRY=US
+SHIPPO_SHIP_FROM_EMAIL=info@alkebulanimages.com
+SHIPPO_SHIP_FROM_PHONE=6153214111
+
 # Email (REQUIRED for transactional emails)
-RESEND_API_KEY=<your-resend-key>
 FROM_EMAIL=orders@alkebulanimages.com
 FROM_NAME=Alkebu-Lan Images
+SES_SMTP_USER=<your-ses-smtp-user>
+SES_SMTP_PASSWORD=<your-ses-smtp-password>
+SMTP_HOST=email-smtp.us-east-2.amazonaws.com
+SMTP_PORT=587
 
 # External APIs (OPTIONAL but recommended)
 ISBNDB_API_KEY=<your-isbndb-key>

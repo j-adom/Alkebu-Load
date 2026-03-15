@@ -92,12 +92,73 @@ export const Carts: CollectionConfig = {
       name: 'shippingAddress',
       type: 'group',
       fields: [
+        { name: 'firstName', type: 'text' },
+        { name: 'lastName', type: 'text' },
+        { name: 'company', type: 'text' },
         { name: 'street', type: 'text' },
+        { name: 'street2', type: 'text' },
         { name: 'city', type: 'text' },
         { name: 'state', type: 'text' },
         { name: 'zip', type: 'text' },
         { name: 'country', type: 'text', defaultValue: 'US' },
+        { name: 'phone', type: 'text' },
       ],
+    },
+    {
+      name: 'selectedShippingRateId',
+      type: 'text',
+      admin: {
+        description: 'Locked shipping quote ID selected during checkout',
+      },
+    },
+    {
+      name: 'shippingCarrier',
+      type: 'text',
+      admin: {
+        description: 'Carrier for the selected shipping quote',
+      },
+    },
+    {
+      name: 'shippingService',
+      type: 'text',
+      admin: {
+        description: 'Service name for the selected shipping quote',
+      },
+    },
+    {
+      name: 'shippingMethod',
+      type: 'text',
+      admin: {
+        description: 'Normalized shipping method code',
+      },
+    },
+    {
+      name: 'shippingQuoteSource',
+      type: 'text',
+      admin: {
+        description: 'Source of the selected shipping quote (shippo or fallback)',
+      },
+    },
+    {
+      name: 'shippingQuoteExpiresAt',
+      type: 'date',
+      admin: {
+        description: 'When the selected shipping quote expires',
+      },
+    },
+    {
+      name: 'shippingQuoteFingerprint',
+      type: 'text',
+      admin: {
+        description: 'Hash of cart items + shipping address when quote was generated',
+      },
+    },
+    {
+      name: 'shippingEstimatedDays',
+      type: 'number',
+      admin: {
+        description: 'Estimated delivery days for the selected quote',
+      },
     },
     {
       name: 'taxExempt',
@@ -157,6 +218,13 @@ export const Carts: CollectionConfig = {
       type: 'text',
       admin: {
         description: 'Provider payment/checkout identifier',
+      },
+    },
+    {
+      name: 'providerOrderId',
+      type: 'text',
+      admin: {
+        description: 'Provider order identifier when checkout creates an order before payment completion',
       },
     },
     {

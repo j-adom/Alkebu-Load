@@ -27,8 +27,8 @@
 ### Backend (alkebu-load)
 - **CMS/E-commerce**: Payload CMS 3.54.0 with TypeScript
 - **Database**: PostgreSQL (production) / SQLite (development)
-- **Payments**: Stripe Embedded Checkout (primary), Square POS (inventory sync only)
-- **Email**: Resend for transactional emails
+- **Payments**: Stripe hosted Checkout (primary), Square POS inventory sync, Square hosted checkout adapter under validation
+- **Email**: Amazon SES SMTP with generic SMTP fallback for transactional emails
 - **Search**: Three-tier system (FlexSearch + PostgreSQL FTS + External APIs)
 - **File Storage**: Cloudinary for images
 - **Authentication**: Payload JWT tokens (no external auth libraries)

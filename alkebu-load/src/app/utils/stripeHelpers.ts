@@ -1,16 +1,13 @@
 import type { Payload } from 'payload';
 import Stripe from 'stripe';
-import { sendOrderConfirmation, sendOrderStatusUpdate, sendStaffOrderNotification, type OrderConfirmationData, type StaffNotificationData } from './emailService';
+import { sendOrderConfirmation, sendStaffOrderNotification, type OrderConfirmationData, type StaffNotificationData } from './emailService';
+import { isShippingQuoteExpired } from './shippingQuotes';
 import {
-  calculateTax,
   calculateTaxFromSubtotal,
   calculateShipping as calcShipping,
-  calculateTotalWeight,
-  calculateOrderTotals,
   type TaxCalculation,
   type ShippingCalculation,
   type ShippingAddress,
-  type CartItemForTax,
 } from './taxShippingCalculations';
 
 export interface CheckoutSessionData {
@@ -23,6 +20,53 @@ export interface CheckoutSessionData {
 
 // Re-export types for backwards compatibility
 export type { TaxCalculation, ShippingCalculation };
+
+const readString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const splitFullName = (fullName: unknown): { firstName?: string; lastName?: string } => {
+  const normalized = readString(fullName);
+  if (!normalized) return {};
+
+  const parts = normalized.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0] };
+  }
+
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts[parts.length - 1],
+  };
+};
+
+type AddressRecord = Record<string, unknown>;
+
+export function buildOrderShippingAddress(
+  cartShippingAddress: AddressRecord | null | undefined,
+  session: any,
+) {
+  const cartAddress = cartShippingAddress && typeof cartShippingAddress === 'object'
+    ? cartShippingAddress
+    : {};
+  const stripeAddress = session?.shipping_details?.address || session?.customer_details?.address || {};
+  const stripeName = splitFullName(session?.shipping_details?.name || session?.customer_details?.name);
+
+  return {
+    firstName: readString(cartAddress.firstName) || stripeName.firstName || 'Customer',
+    lastName: readString(cartAddress.lastName) || stripeName.lastName || 'Order',
+    company: readString(cartAddress.company),
+    street: readString(cartAddress.street) || readString(stripeAddress.line1) || '',
+    street2: readString(cartAddress.street2) || readString(stripeAddress.line2),
+    city: readString(cartAddress.city) || readString(stripeAddress.city) || '',
+    state: readString(cartAddress.state) || readString(stripeAddress.state) || '',
+    zip: readString(cartAddress.zip) || readString(stripeAddress.postal_code) || '',
+    country: readString(cartAddress.country) || readString(stripeAddress.country) || 'US',
+    phone: readString(cartAddress.phone) || readString(session?.customer_details?.phone),
+  };
+}
 
 /**
  * Calculate sales tax based on shipping address
@@ -78,11 +122,37 @@ export async function createCheckoutSession(
       throw new Error('Cart not found or empty');
     }
 
-    // Build line items and prepare for tax calculation
+    const shippingRateId =
+      typeof (cart as any).selectedShippingRateId === 'string'
+        ? (cart as any).selectedShippingRateId.trim()
+        : '';
+    const shippingQuoteExpiresAt = (cart as any).shippingQuoteExpiresAt;
+    const shippingQuoteIsExpired = isShippingQuoteExpired(
+      shippingQuoteExpiresAt instanceof Date
+        ? shippingQuoteExpiresAt
+        : typeof shippingQuoteExpiresAt === 'string'
+          ? shippingQuoteExpiresAt
+          : null,
+    );
+    const taxAmount = typeof (cart as any).totalTax === 'number' ? (cart as any).totalTax : null;
+    const shippingAmount =
+      typeof (cart as any).shippingAmount === 'number' ? (cart as any).shippingAmount : null;
+    const totalAmount = typeof (cart as any).totalAmount === 'number' ? (cart as any).totalAmount : null;
+
+    if (!shippingRateId || shippingQuoteIsExpired) {
+      throw new Error('Shipping quote is missing or expired');
+    }
+
+    if (taxAmount === null || shippingAmount === null || totalAmount === null) {
+      throw new Error('Cart pricing is incomplete');
+    }
+
+    // Build line items from the locked cart pricing
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-    const taxItems: CartItemForTax[] = [];
+    let subtotalAmount = 0;
 
     for (const item of (cart.items as any[])) {
+      subtotalAmount += (item.unitPrice || 0) * (item.quantity || 0);
       lineItems.push({
         price_data: {
           currency: 'usd',
@@ -97,49 +167,40 @@ export async function createCheckoutSession(
         },
         quantity: item.quantity,
       });
-
-      taxItems.push({
-        product: typeof item.product === 'object' ? item.product : { pricing: {} },
-        productType: item.productType,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-      });
     }
 
-    // Calculate totals using unified calculation (with book tax exemption)
-    const shippingAddress = (cart as any).shippingAddress;
-    const totals = calculateOrderTotals(taxItems, shippingAddress as any, {
-      taxExempt: (cart as any).taxExempt || false,
-      shippingMethod: 'standard',
-    });
+    if (subtotalAmount + taxAmount + shippingAmount !== totalAmount) {
+      throw new Error('Cart pricing is out of sync with the locked checkout quote');
+    }
 
     // Add shipping as line item
-    if (totals.shipping.cost > 0) {
+    if (shippingAmount > 0) {
+      const shippingLabelParts = [
+        typeof (cart as any).shippingCarrier === 'string' ? (cart as any).shippingCarrier : null,
+        typeof (cart as any).shippingService === 'string' ? (cart as any).shippingService : null,
+      ].filter(Boolean);
+
       lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
-            name: `Shipping - ${totals.shipping.method}`,
+            name: `Shipping - ${shippingLabelParts.join(' ') || (cart as any).shippingMethod || 'Standard'}`,
           },
-          unit_amount: totals.shipping.cost,
+          unit_amount: shippingAmount,
         },
         quantity: 1,
       });
     }
 
     // Add tax as line item if applicable
-    // Note: Books are tax-exempt in Tennessee, so tax only applies to non-book items
-    if (totals.tax.amount > 0) {
+    if (taxAmount > 0) {
       lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
             name: 'Tennessee Sales Tax',
-            description: totals.tax.breakdown
-              ? `State: $${(totals.tax.breakdown.stateTax / 100).toFixed(2)}, Local: $${(totals.tax.breakdown.localTax / 100).toFixed(2)}`
-              : undefined,
           },
-          unit_amount: totals.tax.amount,
+          unit_amount: taxAmount,
         },
         quantity: 1,
       });
@@ -156,6 +217,8 @@ export async function createCheckoutSession(
       metadata: {
         cartId: sessionData.cartId,
         payloadCartId: cart.id,
+        shippingRateId,
+        shippingMethod: String((cart as any).shippingMethod || 'standard'),
       },
       shipping_address_collection: {
         allowed_countries: ['US'],
@@ -183,9 +246,6 @@ export async function createCheckoutSession(
       id: sessionData.cartId,
       data: {
         status: 'checkout',
-        totalAmount: totals.total,
-        totalTax: totals.tax.amount,
-        shippingAmount: totals.shipping.cost,
         stripeSessionId: session.id,
       },
     });
@@ -279,14 +339,25 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     }
 
     // Calculate shipping amount from cart (or recalculate)
-    const shippingAmount = (cart as any).shippingAmount || 0;
-    const subtotalAmount = ((cart as any).totalAmount || 0) - ((cart as any).totalTax || 0) - shippingAmount;
+    const shippingAmount = typeof (cart as any).shippingAmount === 'number' ? (cart as any).shippingAmount : 0;
+    const taxAmount = typeof (cart as any).totalTax === 'number' ? (cart as any).totalTax : 0;
+    const totalAmount = typeof (cart as any).totalAmount === 'number' ? (cart as any).totalAmount : 0;
+    const subtotalAmount = totalAmount - taxAmount - shippingAmount;
+    const normalizedCarrier = (() => {
+      const value = String((cart as any).shippingCarrier || '').toLowerCase();
+      if (value === 'usps' || value === 'ups' || value === 'fedex') return value;
+      return undefined;
+    })();
+    const customerId =
+      cart.user && typeof cart.user === 'object' && 'id' in cart.user
+        ? (cart.user as any).id
+        : cart.user;
 
     // Create order from cart
     const orderData = {
       orderNumber: `ALK-${Date.now().toString(36).toUpperCase()}`,
-      customer: cart.user,
-      guestEmail: cart.user ? undefined : session.customer_details?.email,
+      customer: customerId,
+      guestEmail: customerId ? undefined : (cart as any).guestEmail || session.customer_details?.email,
       status: 'paid',
       items: (cart.items || []).map((item: any) => ({
         product: typeof item.product === 'object' ? item.product.id : item.product,
@@ -299,10 +370,10 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         customization: item.customization,
       })),
       subtotalAmount,
-      taxAmount: cart.totalTax || 0,
+      taxAmount,
       shippingAmount,
-      totalAmount: cart.totalAmount,
-      shippingAddress: cart.shippingAddress,
+      totalAmount,
+      shippingAddress: buildOrderShippingAddress((cart as any).shippingAddress, session),
       payment: {
         provider: 'stripe',
         providerPaymentId: session.id,
@@ -311,6 +382,13 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         stripePaymentIntentId: session.payment_intent,
         paymentStatus: 'succeeded',
         paymentMethod: session.payment_method_types?.[0] || 'card',
+      },
+      fulfillment: {
+        shippingMethod: (cart as any).shippingMethod || 'standard',
+        shippingService: (cart as any).shippingService,
+        shippingRateId: (cart as any).selectedShippingRateId,
+        quoteSource: (cart as any).shippingQuoteSource,
+        carrier: normalizedCarrier,
       },
       source: 'website',
     };

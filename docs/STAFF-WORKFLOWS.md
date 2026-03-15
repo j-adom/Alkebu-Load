@@ -251,7 +251,7 @@ HAPPY PATH TEST:
   [ ] Update quantity --> total updates
   [ ] Go to /checkout --> form displays
   [ ] Enter address --> tax/shipping calculate live
-  [ ] Tennessee address --> tax shows (books exempt)
+  [ ] Tennessee address --> tax shows on shipped goods
   [ ] Out-of-state --> $0 tax
   [ ] Click "Continue to Payment"
   [ ] Stripe checkout loads

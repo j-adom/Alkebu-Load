@@ -1,11 +1,23 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { cart } from "$lib/stores/cart";
-  import { formatCurrency } from "$lib/utils/currency";
+  import { formatCents } from "$lib/utils/currency";
   import Meta from "$lib/components/Meta.svelte";
   import { browser } from "$app/environment";
 
+  type ShippingOption = {
+    id: string;
+    carrier: string;
+    service: string;
+    amount: number;
+    estimatedDays: number;
+    isDefault: boolean;
+    isMediaMail: boolean;
+    method: string;
+  };
+
   let cartState = $state({
+    id: "",
     items: [] as any[],
     itemCount: 0,
     subtotal: 0,
@@ -27,17 +39,47 @@
   let zip = $state("");
   let country = $state("US");
   let taxExempt = $state(false);
+  let taxExemptNotice = $state<string | null>(null);
+  let previewError = $state<string | null>(null);
+
+  function buildShippingAddress() {
+    return {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      street: street.trim(),
+      city: city.trim(),
+      state: state.trim().toUpperCase(),
+      zip: zip.trim(),
+      country: country.trim().toUpperCase() || "US",
+    };
+  }
 
   // Preview state
   let previewLoading = $state(false);
   let previewTax = $state(0);
   let previewShipping = $state(0);
   let previewShippingMethod = $state("");
+  let previewShippingLabel = $state("");
   let previewShippingDays = $state(0);
   let previewTotal = $state(0);
   let hasPreview = $state(false);
+  let shippingOptions = $state<ShippingOption[]>([]);
+  let selectedShippingRateId = $state("");
+  let quoteExpiresAt = $state<string | null>(null);
   let previewTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  function isQuoteExpired(expiresAt: string | null) {
+    if (!expiresAt) return true;
+    const parsed = Date.parse(expiresAt);
+    return Number.isNaN(parsed) || parsed <= Date.now();
+  }
+
+  function formatShippingMethod(method: string) {
+    if (method === "media-mail") return "USPS Media Mail";
+    if (method === "expedited") return "Expedited";
+    if (method === "pickup") return "Store Pickup";
+    return "Standard";
+  }
   $effect(() => {
     const unsubscribe = cart.subscribe((value) => {
       cartState = value;
@@ -45,31 +87,67 @@
     return unsubscribe;
   });
 
+  const isAddressReady = $derived(
+    firstName.trim() &&
+      lastName.trim() &&
+      street.trim() &&
+      city.trim() &&
+      state.trim() &&
+      zip.trim(),
+  );
+
   // Debounced preview when address fields change
   $effect(() => {
-    // Track all address-related fields to trigger reactivity
-    const _deps = [city, state, zip, country, taxExempt, cartState.id];
+    const _deps = [
+      firstName,
+      lastName,
+      street,
+      city,
+      state,
+      zip,
+      country,
+      taxExempt,
+      cartState.id,
+    ];
 
-    if (browser && cartState.id && state && zip) {
+    if (!browser) return;
+
+    if (!cartState.id || !isAddressReady) {
       if (previewTimeout) clearTimeout(previewTimeout);
-      previewTimeout = setTimeout(() => {
-        fetchPreview();
-      }, 500);
+      hasPreview = false;
+      previewError = null;
+      shippingOptions = [];
+      selectedShippingRateId = "";
+      quoteExpiresAt = null;
+      previewTax = 0;
+      previewShipping = 0;
+      previewShippingMethod = "";
+      previewShippingLabel = "";
+      previewShippingDays = 0;
+      previewTotal = cartState.subtotal || 0;
+      return;
     }
+
+    if (previewTimeout) clearTimeout(previewTimeout);
+    previewTimeout = setTimeout(() => {
+      fetchPreview(selectedShippingRateId || undefined);
+    }, 500);
   });
 
-  async function fetchPreview() {
-    if (!cartState.id || !state) return;
+  async function fetchPreview(rateId?: string) {
+    if (!cartState.id || !isAddressReady) return false;
 
     previewLoading = true;
+    previewError = null;
     try {
       const response = await fetch("/api/checkout/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cartId: cartState.id,
-          shippingAddress: { street, city, state, zip, country },
+          shippingAddress: buildShippingAddress(),
           taxExempt,
+          selectedShippingRateId: rateId,
         }),
       });
 
@@ -78,15 +156,42 @@
         previewTax = data.tax?.amount ?? 0;
         previewShipping = data.shipping?.cost ?? 0;
         previewShippingMethod = data.shipping?.method ?? "standard";
+        previewShippingLabel = data.shipping?.label ?? formatShippingMethod(data.shipping?.method ?? "standard");
         previewShippingDays = data.shipping?.estimatedDays ?? 0;
-        previewTotal = data.total ?? 0;
+        previewTotal = data.total ?? cartState.subtotal;
+        shippingOptions = data.shippingOptions ?? [];
+        selectedShippingRateId = data.selectedShippingRateId ?? "";
+        quoteExpiresAt = data.quoteExpiresAt ?? null;
+        taxExemptNotice = data.taxExemptDenied ?? null;
         hasPreview = true;
+        return true;
+      } else {
+        const data = await response.json().catch(() => ({}));
+        previewError = data?.error || "Failed to refresh shipping and tax.";
+        hasPreview = false;
+        shippingOptions = [];
+        selectedShippingRateId = "";
+        taxExemptNotice = null;
+        quoteExpiresAt = null;
+        return false;
       }
     } catch (err) {
       console.error("Failed to fetch checkout preview:", err);
+      previewError = "Failed to refresh shipping and tax.";
+      hasPreview = false;
+      shippingOptions = [];
+      selectedShippingRateId = "";
+      taxExemptNotice = null;
+      quoteExpiresAt = null;
+      return false;
     } finally {
       previewLoading = false;
     }
+  }
+
+  async function handleShippingSelection(rateId: string) {
+    selectedShippingRateId = rateId;
+    await fetchPreview(rateId);
   }
 
   async function handleSubmit(e: Event) {
@@ -103,14 +208,30 @@
       return;
     }
 
-    checkoutState = "processing";
+    if (!selectedShippingRateId) {
+      checkoutError = "Select a shipping method to continue.";
+      return;
+    }
+
     checkoutError = null;
+
+    if (!hasPreview || isQuoteExpired(quoteExpiresAt)) {
+      const refreshed = await fetchPreview(selectedShippingRateId || undefined);
+      if (!refreshed || !selectedShippingRateId) {
+        checkoutState = "error";
+        checkoutError = previewError || "Refresh shipping and tax before continuing.";
+        return;
+      }
+    }
+
+    checkoutState = "processing";
 
     try {
       const result = await cart.checkout({
-        shippingAddress: { street, city, state, zip, country },
+        shippingAddress: buildShippingAddress(),
         customerEmail: email,
         taxExempt,
+        selectedShippingRateId,
       });
 
       if (!result.success) {
@@ -134,12 +255,18 @@
       cartState.itemCount > 0,
   );
 
+  const hasValidShippingQuote = $derived(
+    cartState.itemCount === 0 || (hasPreview && !!selectedShippingRateId),
+  );
+
   // Use preview values if available, otherwise fall back to cart store
   const displayTax = $derived(hasPreview ? previewTax : cartState.tax);
   const displayShipping = $derived(
     hasPreview ? previewShipping : cartState.shipping,
   );
-  const displayTotal = $derived(hasPreview ? previewTotal : cartState.total);
+  const displayTotal = $derived(
+    hasPreview ? previewTotal : cartState.total || cartState.subtotal,
+  );
 </script>
 
 <Meta
@@ -302,8 +429,72 @@
                   >This is a tax-exempt organization</span
                 >
               </label>
+              {#if taxExemptNotice}
+                <p class="mt-2 text-sm text-destructive">{taxExemptNotice}</p>
+              {/if}
             </div>
           </div>
+        </section>
+
+        <!-- Shipping Method -->
+        <section class="rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <h2 class="text-lg font-semibold text-foreground mb-4">
+            Shipping Method
+          </h2>
+
+          {#if !isAddressReady}
+            <p class="text-sm text-muted-foreground">
+              Enter your full shipping address to load live shipping options.
+            </p>
+          {:else if previewLoading && !hasPreview}
+            <p class="text-sm text-muted-foreground">Loading shipping options…</p>
+          {:else if shippingOptions.length > 0}
+            <div class="space-y-3">
+              {#each shippingOptions as option (option.id)}
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition hover:border-primary/40">
+                  <input
+                    type="radio"
+                    name="shipping-rate"
+                    value={option.id}
+                    checked={selectedShippingRateId === option.id}
+                    disabled={previewLoading}
+                    onchange={() => handleShippingSelection(option.id)}
+                    class="mt-1 h-4 w-4 border-input text-primary focus:ring-primary/50"
+                  />
+                  <span class="flex-1">
+                    <span class="flex items-center justify-between gap-4">
+                      <span class="font-medium text-foreground">
+                        {option.carrier} {option.service}
+                        {#if option.isMediaMail}
+                          <span class="ml-2 text-xs uppercase tracking-wide text-accent">Default for books</span>
+                        {/if}
+                      </span>
+                      <span class="font-semibold text-foreground">
+                        {option.amount === 0 ? "Free" : formatCents(option.amount)}
+                      </span>
+                    </span>
+                    <span class="mt-1 block text-sm text-muted-foreground">
+                      {option.estimatedDays > 0
+                        ? `${option.estimatedDays} business day${option.estimatedDays !== 1 ? "s" : ""}`
+                        : "Delivery estimate unavailable"}
+                    </span>
+                  </span>
+                </label>
+              {/each}
+            </div>
+          {:else if previewError}
+            <p class="text-sm text-destructive">{previewError}</p>
+          {:else}
+            <p class="text-sm text-muted-foreground">
+              No shipping options are currently available for this address.
+            </p>
+          {/if}
+
+          {#if hasPreview && quoteExpiresAt}
+            <p class="mt-3 text-xs text-muted-foreground">
+              Rates are locked for about 30 minutes and will be refreshed if they expire before payment.
+            </p>
+          {/if}
         </section>
 
         <!-- Order Summary -->
@@ -318,7 +509,7 @@
                   {item.productTitle || item.product?.title || "Product"} x {item.quantity}
                 </span>
                 <span class="font-medium text-foreground">
-                  {formatCurrency(item.totalPrice || 0)}
+                  {formatCents(item.totalPrice || 0)}
                 </span>
               </div>
             {/each}
@@ -327,7 +518,7 @@
               <div class="flex justify-between mb-2">
                 <span class="text-muted-foreground">Subtotal</span>
                 <span class="text-foreground"
-                  >{formatCurrency(cartState.subtotal)}</span
+                  >{formatCents(cartState.subtotal)}</span
                 >
               </div>
 
@@ -336,12 +527,14 @@
                   Shipping
                   {#if previewLoading}
                     <span class="text-xs opacity-60">(calculating…)</span>
-                  {:else if hasPreview && previewShippingDays > 0}
-                    <span class="text-xs opacity-60"
-                      >({previewShippingDays} day{previewShippingDays !== 1
-                        ? "s"
-                        : ""})</span
-                    >
+                  {:else if hasPreview}
+                    <span class="text-xs opacity-60">
+                      ({previewShippingLabel || formatShippingMethod(previewShippingMethod)}{previewShippingDays > 0
+                        ? `, ${previewShippingDays} day${previewShippingDays !== 1 ? "s" : ""}`
+                        : ""})
+                    </span>
+                  {:else if !isAddressReady}
+                    <span class="text-xs opacity-60">(enter address)</span>
                   {/if}
                 </span>
                 <span class="text-foreground">
@@ -350,7 +543,7 @@
                   {:else if displayShipping === 0 && hasPreview}
                     <span class="text-accent font-medium">Free</span>
                   {:else}
-                    {formatCurrency(displayShipping)}
+                    {formatCents(displayShipping)}
                   {/if}
                 </span>
               </div>
@@ -366,7 +559,7 @@
                   {#if previewLoading}
                     <span class="opacity-40">—</span>
                   {:else}
-                    {formatCurrency(displayTax)}
+                    {formatCents(displayTax)}
                   {/if}
                 </span>
               </div>
@@ -379,7 +572,7 @@
                   {#if previewLoading}
                     <span class="opacity-40 text-base">Calculating…</span>
                   {:else}
-                    {formatCurrency(displayTotal)}
+                    {formatCents(displayTotal)}
                   {/if}
                 </span>
               </div>
@@ -399,7 +592,7 @@
         <!-- Submit -->
         <button
           type="submit"
-          disabled={!isFormValid || checkoutState === "processing"}
+          disabled={!isFormValid || !hasValidShippingQuote || checkoutState === "processing"}
           class="btn-primary w-full text-lg"
         >
           {checkoutState === "processing"
@@ -408,7 +601,11 @@
         </button>
 
         <p class="text-center text-xs text-muted-foreground">
-          You'll be redirected to Stripe to complete your payment securely.
+          {#if !hasValidShippingQuote}
+            Select a shipping method to continue to payment.
+          {:else}
+            You'll be redirected to Stripe to complete your payment securely.
+          {/if}
         </p>
       </form>
     {/if}

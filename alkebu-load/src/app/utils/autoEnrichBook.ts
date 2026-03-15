@@ -4,41 +4,11 @@
  */
 
 import { findOrCreateAuthor } from './authorMatching';
-
-interface ISBNdbBook {
-  title?: string;
-  title_long?: string;
-  authors?: string[];
-  publisher?: string;
-  date_published?: string;
-  synopsis?: string;
-  overview?: string;
-  subjects?: string[];
-  pages?: number;
-  language?: string;
-  binding?: string;
-  image?: string;
-}
-
-interface GoogleBooksItem {
-  volumeInfo: {
-    title?: string;
-    authors?: string[];
-    publisher?: string;
-    publishedDate?: string;
-    description?: string;
-    categories?: string[];
-    pageCount?: number;
-    language?: string;
-    imageLinks?: {
-      thumbnail?: string;
-      small?: string;
-    };
-  };
-}
+import type { GoogleBooksVolumeInfo, IsbndbBook } from './bookImport';
+import { buildBookMetadataPatch } from './bookImport';
 
 // Fetch from ISBNdb
-async function fetchFromISBNdb(isbn: string): Promise<ISBNdbBook | null> {
+async function fetchFromISBNdb(isbn: string): Promise<IsbndbBook | null> {
   if (!process.env.ISBNDB_API_KEY) {
     return null;
   }
@@ -62,7 +32,7 @@ async function fetchFromISBNdb(isbn: string): Promise<ISBNdbBook | null> {
 }
 
 // Fetch from Google Books
-async function fetchFromGoogleBooks(isbn: string): Promise<GoogleBooksItem | null> {
+async function fetchFromGoogleBooks(isbn: string): Promise<{ volumeInfo?: GoogleBooksVolumeInfo } | null> {
   try {
     // Google Books works without API key for basic searches
     // Adding API key increases rate limits but is optional
@@ -98,11 +68,6 @@ export async function autoEnrichBookFromISBN(data: any, operation: string) {
     return data;
   }
 
-  // Skip if already has author data (don't override existing data)
-  if (data.authorsText && data.authorsText.length > 0) {
-    return data;
-  }
-
   console.log(`🔍 Auto-enriching book from ISBN: ${isbn}`);
 
   try {
@@ -117,81 +82,19 @@ export async function autoEnrichBookFromISBN(data: any, operation: string) {
       return data;
     }
 
-    // Enrich title
-    if (!data.title && (isbndbData?.title || googleData?.volumeInfo.title)) {
-      data.title = isbndbData?.title || googleData?.volumeInfo.title;
-      console.log(`  ✅ Added title: ${data.title}`);
-    }
-    if (!data.titleLong && isbndbData?.title_long) {
-      data.titleLong = isbndbData.title_long;
-    }
+    const { updateData, fieldsUpdated } = buildBookMetadataPatch(data, {
+      isbndbBook: isbndbData,
+      googleVolumeInfo: googleData?.volumeInfo,
+      markChecked: true,
+    });
 
-    // Enrich authors
-    const authors = isbndbData?.authors || googleData?.volumeInfo.authors || [];
-    if (authors.length > 0) {
-      data.authorsText = authors.map((name: string) => ({ name }));
-      console.log(`  ✅ Added authors: ${authors.join(', ')}`);
+    Object.assign(data, updateData);
+
+    if (operation === 'create' && !data.importSource && (isbndbData || googleData?.volumeInfo)) {
+      data.importSource = isbndbData ? 'isbndb' : 'google-books';
     }
 
-    // Enrich publisher
-    if (!data.publisherText && (isbndbData?.publisher || googleData?.volumeInfo.publisher)) {
-      data.publisherText = isbndbData?.publisher || googleData?.volumeInfo.publisher;
-      console.log(`  ✅ Added publisher: ${data.publisherText}`);
-    }
-
-    // Enrich description/synopsis
-    if (!data.synopsis && (isbndbData?.synopsis || googleData?.volumeInfo.description)) {
-      data.synopsis = isbndbData?.synopsis || googleData?.volumeInfo.description?.substring(0, 500);
-      console.log(`  ✅ Added synopsis`);
-    }
-
-    // Enrich subjects
-    const subjects = isbndbData?.subjects || googleData?.volumeInfo.categories || [];
-    if (subjects.length > 0 && (!data.subjects || data.subjects.length === 0)) {
-      data.subjects = subjects.map((subject: string) => ({ subject }));
-      console.log(`  ✅ Added subjects: ${subjects.join(', ')}`);
-    }
-
-    // Enrich image URLs
-    const imageUrls: string[] = [];
-    if (isbndbData?.image) imageUrls.push(isbndbData.image);
-    if (googleData?.volumeInfo.imageLinks?.thumbnail) imageUrls.push(googleData.volumeInfo.imageLinks.thumbnail);
-    if (googleData?.volumeInfo.imageLinks?.small) imageUrls.push(googleData.volumeInfo.imageLinks.small);
-
-    if (imageUrls.length > 0 && (!data.scrapedImageUrls || data.scrapedImageUrls.length === 0)) {
-      data.scrapedImageUrls = imageUrls.map((url: string) => ({ url }));
-      console.log(`  ✅ Added ${imageUrls.length} image URL(s)`);
-    }
-
-    // Enrich edition data
-    if (data.editions && data.editions.length > 0) {
-      const edition = data.editions[0];
-
-      if (!edition.pages && (isbndbData?.pages || googleData?.volumeInfo.pageCount)) {
-        edition.pages = isbndbData?.pages || googleData?.volumeInfo.pageCount;
-      }
-      if (!edition.language && (isbndbData?.language || googleData?.volumeInfo.language)) {
-        edition.language = isbndbData?.language || googleData?.volumeInfo.language;
-      }
-      if (!edition.binding && isbndbData?.binding) {
-        edition.binding = isbndbData.binding.toLowerCase();
-      }
-      if (!edition.datePublished && (isbndbData?.date_published || googleData?.volumeInfo.publishedDate)) {
-        edition.datePublished = isbndbData?.date_published || googleData?.volumeInfo.publishedDate;
-      }
-      if (!edition.publisherText && (isbndbData?.publisher || googleData?.volumeInfo.publisher)) {
-        edition.publisherText = isbndbData?.publisher || googleData?.volumeInfo.publisher;
-      }
-
-      data.editions[0] = edition;
-    }
-
-    // Mark as auto-imported if this was a create operation
-    if (operation === 'create' && !data.importSource) {
-      data.importSource = 'auto-enriched';
-    }
-
-    console.log(`✅ Auto-enrichment complete for: ${data.title || isbn}`);
+    console.log(`✅ Auto-enrichment complete for: ${data.title || isbn} (${fieldsUpdated} field(s) updated)`);
 
   } catch (error) {
     console.error('Error during auto-enrichment:', error);

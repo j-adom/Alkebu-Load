@@ -1,7 +1,7 @@
 import type { PayloadRequest } from 'payload';
 
 // Type definitions for isbndb response
-interface IsbndbBook {
+export interface IsbndbBook {
   publisher?: string;
   synopsis?: string;
   language?: string;
@@ -36,6 +36,31 @@ interface IsbndbBook {
   }>;
 }
 
+export interface GoogleBooksVolumeInfo {
+  title?: string;
+  subtitle?: string;
+  authors?: string[];
+  publisher?: string;
+  publishedDate?: string;
+  description?: string;
+  categories?: string[];
+  pageCount?: number;
+  language?: string;
+  printType?: string;
+  industryIdentifiers?: Array<{
+    type?: string;
+    identifier?: string;
+  }>;
+  imageLinks?: {
+    smallThumbnail?: string;
+    thumbnail?: string;
+    small?: string;
+    medium?: string;
+    large?: string;
+    extraLarge?: string;
+  };
+}
+
 // Type for CSV row data
 interface CsvBookRow {
   ISBN?: number | string;
@@ -50,8 +75,118 @@ interface CsvBookRow {
   Stores?: number;
 }
 
+const toOunces = (value?: number, unit?: string): number | undefined => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+
+  const normalizedUnit = unit?.toLowerCase().trim();
+
+  switch (normalizedUnit) {
+    case 'oz':
+    case 'ounce':
+    case 'ounces':
+      return Math.round(value * 100) / 100;
+    case 'lb':
+    case 'lbs':
+    case 'pound':
+    case 'pounds':
+      return Math.round(value * 16 * 100) / 100;
+    case 'g':
+    case 'gram':
+    case 'grams':
+      return Math.round((value / 28.349523125) * 100) / 100;
+    case 'kg':
+    case 'kilogram':
+    case 'kilograms':
+      return Math.round((value * 35.27396195) * 100) / 100;
+    default:
+      return undefined;
+  }
+};
+
+const toCents = (value?: string): number | undefined => {
+  if (!value) return undefined;
+
+  const normalized = value.replace(/[^0-9.]/g, '').trim();
+  if (!normalized) return undefined;
+
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+
+  return Math.round(parsed * 100);
+};
+
+const normalizeText = (value?: string | null): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const uniqueStrings = (values: Array<string | undefined>): string[] => {
+  const seen = new Set<string>();
+  const results: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizeText(value);
+    if (!normalized) continue;
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    results.push(normalized);
+  }
+
+  return results;
+};
+
+const normalizeImageUrl = (url?: string | null): string | undefined => {
+  const normalized = normalizeText(url);
+  if (!normalized) return undefined;
+
+  return normalized.replace(/^http:\/\//i, 'https://');
+};
+
+export const normalizeBookBinding = (binding?: string | null): string | undefined => {
+  const normalized = binding?.toLowerCase().trim();
+  if (!normalized) return undefined;
+
+  if (normalized.includes('mass')) return 'mass-market';
+  if (normalized.includes('hard')) return 'hardcover';
+  if (
+    normalized.includes('paperback') ||
+    normalized.includes('softcover') ||
+    normalized.includes('soft cover') ||
+    normalized.includes('trade paperback')
+  ) {
+    return 'paperback';
+  }
+  if (normalized.includes('audio')) return 'audiobook';
+  if (normalized.includes('ebook') || normalized.includes('kindle') || normalized.includes('digital')) {
+    return 'ebook';
+  }
+
+  return undefined;
+};
+
+export const normalizePublishedDate = (date?: string | null): string | undefined => {
+  const normalized = normalizeText(date);
+  if (!normalized) return undefined;
+
+  if (/^\d{4}$/.test(normalized)) {
+    return `${normalized}-01-01`;
+  }
+
+  if (/^\d{4}-\d{2}$/.test(normalized)) {
+    return `${normalized}-01`;
+  }
+
+  return normalized;
+};
+
 // Auto-categorization mapping helper
-const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: string[]): string[] => {
+export const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: string[]): string[] => {
   const categories = [];
   const combined = [...scrapedCategories, ...scrapedSubjects].map(c => c.toLowerCase());
   
@@ -176,7 +311,7 @@ const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: st
 };
 
 // Auto-assign collections based on content
-const mapToCollections = (title: string, authors: string[], subjects: string[], synopsis?: string): string[] => {
+export const mapToCollections = (title: string, authors: string[], subjects: string[], synopsis?: string): string[] => {
   const collections = [];
   const content = [title, ...authors, ...subjects, synopsis || ''].join(' ').toLowerCase();
   
@@ -250,27 +385,32 @@ export const transformIsbndbToPayload = (isbndbResponse: { book: IsbndbBook }) =
   const book = isbndbResponse.book;
   
   // Parse authors
-  const authors = (book.authors || []).map(name => ({ name: name.trim() }));
+  const authorsText = uniqueStrings(book.authors || []).map(name => ({ name }));
   
   // Parse subjects
-  const subjects = (book.subjects || []).map(subject => ({ subject: subject.trim() }));
+  const subjectValues = uniqueStrings(book.subjects || []);
+  const subjects = subjectValues.map(subject => ({ subject }));
   
   // Create raw categories array (isbndb doesn't have categories, so we use subjects)
-  const rawCategories = (book.subjects || []).map(subject => ({ category: subject.trim() }));
+  const rawCategories = subjectValues.map(subject => ({ category: subject }));
   
   // Auto-categorize
-  const categories = mapCategoriesToPayload([], book.subjects || []);
+  const categories = mapCategoriesToPayload([], subjectValues);
   
   // Auto-assign to collections
   const collections = mapToCollections(
-    book.title || '',
-    book.authors || [],
-    book.subjects || [],
-    book.synopsis
+    book.title || book.title_long || '',
+    uniqueStrings(book.authors || []),
+    subjectValues,
+    book.synopsis || book.overview
   ).map(collectionName => ({ collectionName }));
   
   // Handle dimensions
   let dimensionsText = book.dimensions;
+  const shippingWeightOz = toOunces(
+    book.dimensions_structured?.weight?.value,
+    book.dimensions_structured?.weight?.unit,
+  );
   if (book.dimensions_structured) {
     const { length, width, height, weight } = book.dimensions_structured;
     const parts = [];
@@ -285,35 +425,51 @@ export const transformIsbndbToPayload = (isbndbResponse: { book: IsbndbBook }) =
   const edition = {
     isbn: book.isbn13 || book.isbn || book.isbn10,
     isbn10: book.isbn10 || book.isbn,
-    binding: book.binding?.toLowerCase().replace(/\s+/g, '-') || 'paperback',
+    publisherText: normalizeText(book.publisher),
+    binding: normalizeBookBinding(book.binding) || 'paperback',
+    edition: normalizeText(book.edition),
     pages: book.pages || undefined,
-    datePublished: book.date_published || undefined,
-    language: book.language || 'en',
+    datePublished: normalizePublishedDate(book.date_published),
+    language: normalizeText(book.language) || 'en',
     dimensions: dimensionsText || undefined,
+    pricing: shippingWeightOz ? { shippingWeight: shippingWeightOz } : undefined,
     isAvailable: true
   };
   
   // Handle images
-  const scrapedImageUrls = [];
-  if (book.image) scrapedImageUrls.push({ url: book.image });
-  if (book.image_original && book.image_original !== book.image) {
-    scrapedImageUrls.push({ url: book.image_original });
-  }
+  const scrapedImageUrls = uniqueStrings([
+    normalizeImageUrl(book.image),
+    normalizeImageUrl(book.image_original),
+  ]).map((url) => ({ url }));
   
   // Handle reviews
-  const reviews = (book.reviews || []).map(review => ({ review: review.trim() }));
+  const reviews = uniqueStrings(book.reviews || []).map(review => ({ review }));
   
   // Handle dewey decimal
-  const deweyDecimal = (book.dewey_decimal || []).map(code => ({ code: code.trim() }));
+  const deweyValues = Array.isArray(book.dewey_decimal)
+    ? uniqueStrings(book.dewey_decimal)
+    : uniqueStrings([book.dewey_decimal as unknown as string]);
+  const deweyDecimal = deweyValues.map(code => ({ code }));
+
+  const compareAtPrice = toCents(book.msrp);
+  const topLevelPricing: Record<string, unknown> = {};
+
+  if (shippingWeightOz) {
+    topLevelPricing.shippingWeight = shippingWeightOz;
+  }
+
+  if (compareAtPrice) {
+    topLevelPricing.compareAtPrice = compareAtPrice;
+  }
   
   return {
-    title: book.title || '',
+    title: book.title || book.title_long || '',
     titleLong: book.title_long || undefined,
-    authors,
-    publisher: book.publisher || undefined,
-    description: book.overview || book.synopsis || undefined,
-    synopsis: book.synopsis || undefined,
-    excerpt: book.excerpt || undefined,
+    authorsText,
+    publisherText: normalizeText(book.publisher),
+    description: normalizeText(book.overview) || normalizeText(book.synopsis),
+    synopsis: normalizeText(book.synopsis) || normalizeText(book.overview),
+    excerpt: normalizeText(book.excerpt),
     editions: [edition],
     categories,
     rawCategories,
@@ -325,18 +481,85 @@ export const transformIsbndbToPayload = (isbndbResponse: { book: IsbndbBook }) =
     importSource: 'isbndb',
     importDate: new Date().toISOString(),
     isActive: true,
+    pricing: Object.keys(topLevelPricing).length > 0 ? topLevelPricing : undefined,
     seo: {
-      title: book.title || '',
-      description: book.synopsis?.substring(0, 160) || undefined,
-      keywords: (book.subjects || []).join(', ')
+      title: book.title || book.title_long || '',
+      description: (normalizeText(book.synopsis) || normalizeText(book.overview))?.substring(0, 160) || undefined,
+      keywords: subjectValues.join(', ')
     }
+  };
+};
+
+export const transformGoogleBooksToPayload = (
+  volumeInfo: GoogleBooksVolumeInfo,
+  identifier?: { isbn13?: string; isbn10?: string },
+) => {
+  const authors = uniqueStrings(volumeInfo.authors || []);
+  const categories = uniqueStrings(volumeInfo.categories || []);
+  const title = normalizeText(volumeInfo.title) || '';
+  const subtitle = normalizeText(volumeInfo.subtitle);
+  const titleLong = subtitle ? `${title}: ${subtitle}` : undefined;
+
+  let isbn13 = normalizeText(identifier?.isbn13);
+  let isbn10 = normalizeText(identifier?.isbn10);
+
+  for (const id of volumeInfo.industryIdentifiers || []) {
+    if (id.type === 'ISBN_13' && !isbn13) isbn13 = normalizeText(id.identifier);
+    if (id.type === 'ISBN_10' && !isbn10) isbn10 = normalizeText(id.identifier);
+  }
+
+  const scrapedImageUrls = uniqueStrings([
+    normalizeImageUrl(volumeInfo.imageLinks?.extraLarge),
+    normalizeImageUrl(volumeInfo.imageLinks?.large),
+    normalizeImageUrl(volumeInfo.imageLinks?.medium),
+    normalizeImageUrl(volumeInfo.imageLinks?.thumbnail),
+    normalizeImageUrl(volumeInfo.imageLinks?.small),
+    normalizeImageUrl(volumeInfo.imageLinks?.smallThumbnail),
+  ]).map((url) => ({ url }));
+
+  return {
+    title,
+    titleLong,
+    authorsText: authors.map((name) => ({ name })),
+    publisherText: normalizeText(volumeInfo.publisher),
+    description: normalizeText(volumeInfo.description),
+    synopsis: normalizeText(volumeInfo.description)?.substring(0, 500),
+    editions: [{
+      isbn: isbn13,
+      isbn10,
+      publisherText: normalizeText(volumeInfo.publisher),
+      binding: normalizeBookBinding(volumeInfo.printType),
+      pages: volumeInfo.pageCount || undefined,
+      datePublished: normalizePublishedDate(volumeInfo.publishedDate),
+      language: normalizeText(volumeInfo.language) || 'en',
+      isAvailable: true,
+    }],
+    categories: mapCategoriesToPayload(categories, categories),
+    rawCategories: categories.map((category) => ({ category })),
+    subjects: categories.map((subject) => ({ subject })),
+    collections: mapToCollections(
+      title,
+      authors,
+      categories,
+      normalizeText(volumeInfo.description),
+    ).map((collectionName) => ({ collectionName })),
+    scrapedImageUrls,
+    importSource: 'google-books',
+    importDate: new Date().toISOString(),
+    isActive: true,
+    seo: {
+      title,
+      description: normalizeText(volumeInfo.description)?.substring(0, 160),
+      keywords: categories.join(', '),
+    },
   };
 };
 
 // Transform CSV data to PayloadCMS format
 export const transformCsvToPayload = (csvRow: CsvBookRow) => {
   // Parse authors (comma-separated in CSV)
-  const authors = (csvRow.Authors || '').split(',').map(name => ({ name: name.trim() })).filter(a => a.name);
+  const authorNames = uniqueStrings((csvRow.Authors || '').split(','));
+  const authorsText = authorNames.map(name => ({ name }));
   
   // Parse categories and subjects
   const rawCategories = (csvRow.Categories || '').split(',').map(cat => ({ category: cat.trim() })).filter(c => c.category);
@@ -350,7 +573,7 @@ export const transformCsvToPayload = (csvRow: CsvBookRow) => {
   // Auto-assign to collections
   const collections = mapToCollections(
     csvRow.Title || '',
-    authors.map(a => a.name),
+    authorNames,
     subjectStrings,
     csvRow.Description
   ).map(collectionName => ({ collectionName }));
@@ -364,8 +587,8 @@ export const transformCsvToPayload = (csvRow: CsvBookRow) => {
   
   return {
     title: csvRow.Title || '',
-    authors,
-    publisher: csvRow.Publisher || undefined,
+    authorsText,
+    publisherText: csvRow.Publisher || undefined,
     description: csvRow.Description || undefined,
     editions: [edition],
     categories,
@@ -380,6 +603,218 @@ export const transformCsvToPayload = (csvRow: CsvBookRow) => {
       description: csvRow.Description?.substring(0, 160) || undefined,
       keywords: subjectStrings.join(', ')
     }
+  };
+};
+
+const isMeaningfulText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const mergeObjectArrays = <T extends Record<string, unknown>>(
+  existing: T[] | undefined,
+  incoming: T[] | undefined,
+  key: keyof T,
+): T[] | undefined => {
+  const merged: T[] = [];
+  const seen = new Set<string>();
+
+  for (const item of [...(existing || []), ...(incoming || [])]) {
+    const raw = item?.[key];
+    if (!isMeaningfulText(raw)) continue;
+
+    const normalized = raw.trim();
+    const lookup = normalized.toLowerCase();
+    if (seen.has(lookup)) continue;
+
+    seen.add(lookup);
+    merged.push({
+      ...item,
+      [key]: normalized,
+    });
+  }
+
+  return merged.length > 0 ? merged : undefined;
+};
+
+const mergeSeo = (existingSeo: any, incomingSeo: any) => {
+  const nextSeo = { ...(existingSeo || {}) };
+  let changed = false;
+
+  if (!isMeaningfulText(nextSeo.title) && isMeaningfulText(incomingSeo?.title)) {
+    nextSeo.title = incomingSeo.title.trim();
+    changed = true;
+  }
+
+  if (!isMeaningfulText(nextSeo.description) && isMeaningfulText(incomingSeo?.description)) {
+    nextSeo.description = incomingSeo.description.trim();
+    changed = true;
+  }
+
+  if (!isMeaningfulText(nextSeo.keywords) && isMeaningfulText(incomingSeo?.keywords)) {
+    nextSeo.keywords = incomingSeo.keywords.trim();
+    changed = true;
+  }
+
+  return changed ? nextSeo : undefined;
+};
+
+export const buildBookMetadataPatch = (
+  book: any,
+  args: {
+    isbndbBook?: IsbndbBook | null;
+    googleVolumeInfo?: GoogleBooksVolumeInfo | null;
+    markChecked?: boolean;
+  },
+) => {
+  const { isbndbBook, googleVolumeInfo, markChecked = true } = args;
+
+  const currentIsbn = book?.editions?.[0]?.isbn;
+  const currentIsbn10 = book?.editions?.[0]?.isbn10;
+  const isbndbPayload = isbndbBook ? transformIsbndbToPayload({ book: isbndbBook }) : null;
+  const googlePayload = googleVolumeInfo
+    ? transformGoogleBooksToPayload(googleVolumeInfo, {
+      isbn13: currentIsbn,
+      isbn10: currentIsbn10,
+    })
+    : null;
+  const preferred = [isbndbPayload, googlePayload].filter(Boolean) as Array<Record<string, any>>;
+
+  const patch: Record<string, unknown> = {};
+  let fieldsUpdated = 0;
+
+  const pickText = (...values: unknown[]): string | undefined => {
+    for (const value of values) {
+      if (isMeaningfulText(value)) return value.trim();
+    }
+
+    return undefined;
+  };
+
+  const setIfMissing = (field: string, ...values: unknown[]) => {
+    if (isMeaningfulText(book?.[field])) return;
+    const nextValue = pickText(...values);
+    if (!nextValue) return;
+    patch[field] = nextValue;
+    fieldsUpdated += 1;
+  };
+
+  setIfMissing('title', ...preferred.map((source) => source.title));
+  setIfMissing('titleLong', ...preferred.map((source) => source.titleLong));
+  setIfMissing('publisherText', ...preferred.map((source) => source.publisherText));
+  setIfMissing('description', ...preferred.map((source) => source.description));
+  setIfMissing(
+    'synopsis',
+    ...preferred.map((source) => source.synopsis),
+    ...preferred.map((source) => source.description),
+  );
+  setIfMissing('excerpt', ...preferred.map((source) => source.excerpt));
+
+  const mergedAuthors = mergeObjectArrays(book?.authorsText, preferred.flatMap((source) => source.authorsText || []), 'name');
+  if (JSON.stringify(mergedAuthors || []) !== JSON.stringify(book?.authorsText || [])) {
+    patch.authorsText = mergedAuthors;
+    fieldsUpdated += 1;
+  }
+
+  const mergedSubjects = mergeObjectArrays(book?.subjects, preferred.flatMap((source) => source.subjects || []), 'subject');
+  if (JSON.stringify(mergedSubjects || []) !== JSON.stringify(book?.subjects || [])) {
+    patch.subjects = mergedSubjects;
+    fieldsUpdated += 1;
+  }
+
+  const mergedRawCategories = mergeObjectArrays(book?.rawCategories, preferred.flatMap((source) => source.rawCategories || []), 'category');
+  if (JSON.stringify(mergedRawCategories || []) !== JSON.stringify(book?.rawCategories || [])) {
+    patch.rawCategories = mergedRawCategories;
+    fieldsUpdated += 1;
+  }
+
+  const mergedCollections = mergeObjectArrays(book?.collections, preferred.flatMap((source) => source.collections || []), 'collectionName');
+  if (JSON.stringify(mergedCollections || []) !== JSON.stringify(book?.collections || [])) {
+    patch.collections = mergedCollections;
+    fieldsUpdated += 1;
+  }
+
+  const mergedImages = mergeObjectArrays(book?.scrapedImageUrls, preferred.flatMap((source) => source.scrapedImageUrls || []), 'url');
+  if (JSON.stringify(mergedImages || []) !== JSON.stringify(book?.scrapedImageUrls || [])) {
+    patch.scrapedImageUrls = mergedImages;
+    fieldsUpdated += 1;
+  }
+
+  const mergedDewey = mergeObjectArrays(book?.deweyDecimal, preferred.flatMap((source) => source.deweyDecimal || []), 'code');
+  if (JSON.stringify(mergedDewey || []) !== JSON.stringify(book?.deweyDecimal || [])) {
+    patch.deweyDecimal = mergedDewey;
+    fieldsUpdated += 1;
+  }
+
+  const mergedReviews = mergeObjectArrays(book?.reviews, preferred.flatMap((source) => source.reviews || []), 'review');
+  if (JSON.stringify(mergedReviews || []) !== JSON.stringify(book?.reviews || [])) {
+    patch.reviews = mergedReviews;
+    fieldsUpdated += 1;
+  }
+
+  if (preferred.length > 0) {
+    const existingEdition = book?.editions?.[0] || {};
+    const nextEdition = { ...existingEdition };
+    let editionChanged = false;
+
+    const maybeSetEdition = (field: string, ...values: unknown[]) => {
+      if (existingEdition?.[field]) return;
+      const nextValue = values.find((value) => value !== undefined && value !== null && value !== '');
+      if (nextValue === undefined) return;
+      nextEdition[field] = nextValue;
+      editionChanged = true;
+      fieldsUpdated += 1;
+    };
+
+    maybeSetEdition('isbn10', ...preferred.map((source) => source.editions?.[0]?.isbn10));
+    maybeSetEdition('publisherText', ...preferred.map((source) => source.editions?.[0]?.publisherText), patch.publisherText);
+    maybeSetEdition('binding', ...preferred.map((source) => source.editions?.[0]?.binding));
+    maybeSetEdition('edition', ...preferred.map((source) => source.editions?.[0]?.edition));
+    maybeSetEdition('pages', ...preferred.map((source) => source.editions?.[0]?.pages));
+    maybeSetEdition('datePublished', ...preferred.map((source) => source.editions?.[0]?.datePublished));
+    maybeSetEdition('language', ...preferred.map((source) => source.editions?.[0]?.language));
+    maybeSetEdition('dimensions', ...preferred.map((source) => source.editions?.[0]?.dimensions));
+
+    const incomingEditionWeight = preferred.find((source) => source.editions?.[0]?.pricing?.shippingWeight)
+      ?.editions?.[0]?.pricing?.shippingWeight;
+    if (!existingEdition?.pricing?.shippingWeight && incomingEditionWeight) {
+      nextEdition.pricing = {
+        ...(existingEdition.pricing || {}),
+        shippingWeight: incomingEditionWeight,
+      };
+      editionChanged = true;
+      fieldsUpdated += 1;
+    }
+
+    if (editionChanged) {
+      patch.editions = [nextEdition, ...(book?.editions || []).slice(1)];
+    }
+  }
+
+  const nextTopLevelWeight = preferred.find((source) => source.pricing?.shippingWeight)?.pricing?.shippingWeight;
+  if (!book?.pricing?.shippingWeight && nextTopLevelWeight) {
+    patch.pricing = {
+      ...(book?.pricing || {}),
+      shippingWeight: nextTopLevelWeight,
+    };
+    fieldsUpdated += 1;
+  }
+
+  const seoPatch = mergeSeo(book?.seo, preferred.find((source) => source.seo)?.seo);
+  if (seoPatch) {
+    patch.seo = seoPatch;
+    fieldsUpdated += 1;
+  }
+
+  if (markChecked) {
+    if (!book?.isbndbChecked) {
+      patch.isbndbChecked = true;
+      fieldsUpdated += 1;
+    }
+    patch.lastEnrichedAt = new Date().toISOString();
+  }
+
+  return {
+    updateData: patch,
+    fieldsUpdated,
   };
 };
 

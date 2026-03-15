@@ -11,7 +11,7 @@
   // Clear cart after successful checkout
   onMount(() => {
     if (browser && sessionId && status?.orderCreated) {
-      cart.clear();
+      cart.resetLocal();
     }
   });
 </script>

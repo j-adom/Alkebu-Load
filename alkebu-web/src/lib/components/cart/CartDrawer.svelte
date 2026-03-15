@@ -1,35 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { ArrowRight, ShieldCheck, ShoppingBag } from 'lucide-svelte';
+
   import CartLineItem from '$lib/components/cart/CartLineItem.svelte';
-  import CartTotals from '$lib/components/cart/CartTotals.svelte';
   import { cart, createEmptyCart } from '$lib/stores/cart';
   import { cartDrawer } from '$lib/stores/cartDrawer';
-  import { paymentProvider } from '$lib/paymentProvider';
-
-  interface Props {
-    user?: {
-      email?: string | null;
-    } | null;
-  }
-
-  let { user = null }: Props = $props();
+  import { formatCents } from '$lib/utils/currency';
 
   let cartState = $state(createEmptyCart());
-  let checkoutEmail = $state(user?.email ?? '');
-  let taxExempt = $state(false);
-  let checkoutError = $state<string | null>(null);
-  let isCheckingOut = $state(false);
+  let actionError = $state<string | null>(null);
   let isClearing = $state(false);
   let isOpen = $state(false);
-  let shippingAddress = $state({
-    street: '',
-    city: '',
-    state: '',
-    zip: '',
-    country: 'US',
-  });
 
   const isCartEmpty = $derived(cartState.itemCount === 0);
+  const hasEstimatedTotals = $derived(Boolean(cartState.hasEstimatedTotals));
 
   $effect(() => {
     const unsubscribe = cart.subscribe((value) => {
@@ -41,14 +25,11 @@
   $effect(() => {
     const unsubscribe = cartDrawer.subscribe((value) => {
       isOpen = value;
+      if (value) {
+        actionError = null;
+      }
     });
     return unsubscribe;
-  });
-
-  $effect(() => {
-    if (user?.email && !checkoutEmail) {
-      checkoutEmail = user.email;
-    }
   });
 
   $effect(() => {
@@ -63,6 +44,7 @@
         cartDrawer.close();
       }
     };
+
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   });
@@ -71,49 +53,23 @@
     cartDrawer.close();
   }
 
-  function validateShipping() {
-    if (!shippingAddress.street || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) {
-      return 'Please enter a complete US shipping address.';
-    }
-    if (shippingAddress.country && shippingAddress.country !== 'US') {
-      return 'Only US shipping addresses are supported.';
-    }
-    return null;
-  }
-
-  async function handleCheckout(event: SubmitEvent) {
-    event.preventDefault();
-    if (isCartEmpty || isCheckingOut) return;
-
-    const validationError = validateShipping();
-    if (validationError) {
-      checkoutError = validationError;
-      return;
-    }
-
-    checkoutError = null;
-    isCheckingOut = true;
-
-    const result = await cart.checkout({
-      customerEmail: checkoutEmail || undefined,
-      taxExempt,
-      shippingAddress,
-    });
-
-    isCheckingOut = false;
-
-    if (!result.success) {
-      checkoutError = result.error || 'Unable to start checkout';
-    }
+  function navigateTo(path: string) {
+    closeDrawer();
+    window.location.href = path;
   }
 
   async function handleClearCart() {
     if (isCartEmpty || isClearing) return;
+
     isClearing = true;
+    actionError = null;
+
     const result = await cart.clear();
+
     isClearing = false;
+
     if (!result.success) {
-      checkoutError = result.error || 'Failed to clear cart';
+      actionError = result.error || 'Failed to clear cart';
     }
   }
 </script>
@@ -124,7 +80,7 @@
   onclick={closeDrawer}
 ></div>
 
-<aside
+<div
   class={`cart-drawer ${isOpen ? 'open' : ''}`}
   aria-hidden={!isOpen}
   aria-modal="true"
@@ -139,6 +95,7 @@
         {cartState.itemCount} {cartState.itemCount === 1 ? 'item' : 'items'}
       </p>
     </div>
+
     <button
       type="button"
       class="cart-drawer__close"
@@ -153,140 +110,102 @@
     {#if isCartEmpty}
       <div class="cart-drawer__empty">
         <p class="text-lg font-semibold text-foreground">Your cart is empty</p>
-        <p class="mt-2 text-muted-foreground">Browse the shop to discover books and gifts.</p>
-        <a href="/shop" class="btn-primary mt-6" onclick={closeDrawer}>
-          Continue shopping
-        </a>
+        <p class="mt-2 text-muted-foreground">Add a few books or gifts, then come back here to review them.</p>
+        <button type="button" class="btn-primary mt-6" onclick={closeDrawer}>
+          Continue browsing
+        </button>
       </div>
     {:else}
+      <div class="cart-drawer__intro">
+        <div>
+          <p class="cart-drawer__eyebrow">Review order</p>
+          <p class="cart-drawer__intro-text">
+            Keep shopping, open the full cart, or continue to checkout when you’re ready.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="font-semibold text-destructive hover:text-destructive/80"
+          onclick={handleClearCart}
+          disabled={isClearing}
+        >
+          {isClearing ? 'Clearing…' : 'Clear cart'}
+        </button>
+      </div>
+
       <div class="cart-drawer__items">
-        {#each cartState.items as item}
+        {#each cartState.items as item (item.id)}
           <CartLineItem {item} />
         {/each}
       </div>
 
       <div class="cart-drawer__footer">
-        <div class="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            {cartState.itemCount} {cartState.itemCount === 1 ? 'item' : 'items'}
-          </span>
-          <button
-            type="button"
-            class="font-semibold text-destructive hover:text-destructive/80"
-            onclick={handleClearCart}
-            disabled={isClearing}
-          >
-            {isClearing ? 'Clearing…' : 'Clear cart'}
-          </button>
+        <section class="cart-drawer__summary">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-muted-foreground">Subtotal</span>
+            <span class="font-semibold text-foreground">{formatCents(cartState.subtotal)}</span>
+          </div>
+
+          {#if hasEstimatedTotals}
+            <div class="mt-3 space-y-2 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-muted-foreground">Estimated tax</span>
+                <span class="font-medium text-foreground">{formatCents(cartState.tax)}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-muted-foreground">Estimated shipping</span>
+                <span class="font-medium text-foreground">{formatCents(cartState.shipping)}</span>
+              </div>
+            </div>
+          {:else}
+            <p class="mt-3 text-sm text-muted-foreground">
+              Shipping and sales tax are calculated at checkout after you enter your address.
+            </p>
+          {/if}
+
+          <div class="mt-4 flex items-center justify-between border-t border-border pt-4">
+            <span class="text-base font-semibold text-foreground">
+              {hasEstimatedTotals ? 'Estimated total' : 'Current subtotal'}
+            </span>
+            <span class="text-2xl font-bold text-primary">{formatCents(cartState.total)}</span>
+          </div>
+        </section>
+
+        <div class="cart-drawer__benefits">
+          <div class="cart-drawer__benefit">
+            <ShieldCheck size={16} />
+            <span>Secure Stripe checkout on the next step</span>
+          </div>
+          <div class="cart-drawer__benefit">
+            <ShoppingBag size={16} />
+            <span>You can still adjust quantities before you pay</span>
+          </div>
         </div>
 
-        <CartTotals cart={cartState}>
-          <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); handleCheckout(); }}>
-            <div>
-              <label for="drawer-checkout-email" class="text-sm font-medium text-muted-foreground">Email address</label>
-              <input
-                id="drawer-checkout-email"
-                type="email"
-                placeholder="you@example.com"
-                bind:value={checkoutEmail}
-                class="input-modern mt-1"
-                required
-              />
-              <p class="mt-1 text-xs text-muted-foreground">Receipts and updates are sent here.</p>
-            </div>
+        {#if actionError}
+          <p class="text-sm text-destructive">{actionError}</p>
+        {/if}
 
-            <div class="grid grid-cols-1 gap-3">
-              <div>
-                <label class="text-sm font-medium text-muted-foreground">Street address</label>
-                <input
-                  type="text"
-                  placeholder="123 Jefferson St"
-                  bind:value={shippingAddress.street}
-                  class="input-modern mt-1"
-                  required
-                />
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-sm font-medium text-muted-foreground">City</label>
-                  <input
-                    type="text"
-                    placeholder="Nashville"
-                    bind:value={shippingAddress.city}
-                    class="input-modern mt-1"
-                    required
-                  />
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-muted-foreground">State</label>
-                  <input
-                    type="text"
-                    placeholder="TN"
-                    bind:value={shippingAddress.state}
-                    class="input-modern mt-1 uppercase"
-                    maxlength="2"
-                    required
-                  />
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-sm font-medium text-muted-foreground">ZIP code</label>
-                  <input
-                    type="text"
-                    placeholder="37208"
-                    bind:value={shippingAddress.zip}
-                    class="input-modern mt-1"
-                    required
-                  />
-                </div>
-                <div>
-                  <label class="text-sm font-medium text-muted-foreground">Country</label>
-                  <input
-                    type="text"
-                    bind:value={shippingAddress.country}
-                    class="input-modern mt-1 uppercase"
-                    readonly
-                  />
-                </div>
-              </div>
-              <p class="text-xs text-muted-foreground">
-                Tennessee addresses are charged 9.75% sales tax. Other US addresses are not taxed. We ship to US addresses only.
-              </p>
-            </div>
+        <div class="flex flex-col gap-3">
+          <button type="button" class="btn-primary w-full" onclick={() => navigateTo('/checkout')}>
+            Continue to checkout
+            <ArrowRight size={18} />
+          </button>
 
-            <label class="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                bind:checked={taxExempt}
-                class="rounded border-input text-primary focus:ring-primary/50"
-              />
-              Tax exempt order (institutional or wholesale)
-            </label>
-
-            {#if checkoutError}
-              <p class="text-sm text-destructive">{checkoutError}</p>
-            {/if}
-
-            <div class="flex flex-col gap-2">
-              <button
-                type="submit"
-                class="btn-primary w-full"
-                disabled={isCheckingOut}
-              >
-                {isCheckingOut ? `Redirecting to ${paymentProvider.name}…` : `Checkout with ${paymentProvider.name}`}
-              </button>
-              <p class="text-xs text-muted-foreground text-center">
-                Payments are processed by {paymentProvider.name}.
-                {#if paymentProvider.note}{paymentProvider.note}{/if}
-              </p>
-            </div>
-          </form>
-        </CartTotals>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" class="btn-outline w-full" onclick={() => navigateTo('/cart')}>
+              View cart
+            </button>
+            <button type="button" class="btn-ghost w-full" onclick={closeDrawer}>
+              Keep shopping
+            </button>
+          </div>
+        </div>
       </div>
     {/if}
   </div>
-</aside>
+</div>
 
 <style>
   .cart-overlay {
@@ -309,7 +228,7 @@
     position: fixed;
     top: 0;
     right: 0;
-    width: min(420px, 100%);
+    width: min(32rem, 100%);
     height: 100%;
     background: hsl(var(--background));
     box-shadow: -12px 0 24px rgba(0, 0, 0, 0.15);
@@ -328,8 +247,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.5rem;
+    padding: 1.25rem 1.5rem;
     border-bottom: 1px solid hsl(var(--border));
+    background:
+      linear-gradient(180deg, hsl(var(--card)) 0%, color-mix(in srgb, hsl(var(--card)) 75%, hsl(var(--muted))) 100%);
   }
 
   .cart-drawer__title {
@@ -366,26 +287,76 @@
     overflow: hidden;
   }
 
+  .cart-drawer__intro {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.5rem 0;
+  }
+
+  .cart-drawer__eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--primary));
+  }
+
+  .cart-drawer__intro-text {
+    margin-top: 0.35rem;
+    font-size: 0.95rem;
+    color: hsl(var(--muted-foreground));
+    max-width: 24rem;
+  }
+
   .cart-drawer__items {
     flex: 1;
     overflow-y: auto;
-    padding: 1.5rem;
+    padding: 1rem 1.5rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
   }
 
   .cart-drawer__footer {
-    padding: 1.5rem;
+    padding: 1.25rem 1.5rem 1.5rem;
     border-top: 1px solid hsl(var(--border));
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.875rem;
+    background: color-mix(in srgb, hsl(var(--card)) 88%, hsl(var(--muted)));
+  }
+
+  .cart-drawer__summary {
+    border: 1px solid hsl(var(--border));
+    border-radius: 1.25rem;
+    background: hsl(var(--card));
+    padding: 1rem;
+  }
+
+  .cart-drawer__benefits {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .cart-drawer__benefit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: hsl(var(--muted-foreground));
   }
 
   .cart-drawer__empty {
     padding: 2rem;
     text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .cart-drawer__intro {
+      flex-direction: column;
+    }
   }
 
   :global(body.cart-drawer-open) {

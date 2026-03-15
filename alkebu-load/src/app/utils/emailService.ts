@@ -82,14 +82,29 @@ export interface DailyDigestData {
   adminUrl: string;
 }
 
-// Create reusable transporter using Resend SMTP
+const readEnv = (...keys: string[]): string | undefined => {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+
+  return undefined;
+};
+
+const smtpHost = readEnv('SMTP_HOST') || 'email-smtp.us-east-2.amazonaws.com';
+const smtpPort = parseInt(readEnv('SMTP_PORT') || '587', 10);
+const smtpSecure = smtpPort === 465;
+const smtpUser = readEnv('SES_SMTP_USER', 'SMTP_USER');
+const smtpPassword = readEnv('SES_SMTP_PASSWORD', 'SMTP_PASSWORD');
+
+// Create reusable transporter using Amazon SES SMTP with generic SMTP fallback.
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
+    user: smtpUser,
+    pass: smtpPassword,
   },
 });
 

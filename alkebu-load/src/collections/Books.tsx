@@ -776,10 +776,11 @@ const Books: CollectionConfig = {
           return;
         }
 
-        // AUTO-ENRICH: Fetch book data from ISBNdb/Google Books if ISBN is provided
-        // This runs FIRST so the enriched data can be used by subsequent hooks
-        // ⚠️ TEMPORARILY DISABLED FOR BATCH ENRICHMENT SCRIPT
-        // await autoEnrichBookFromISBN(data, operation);
+        // AUTO-ENRICH: Fetch book data from ISBNdb/Google Books if ISBN is provided.
+        // Disable only when a bulk script explicitly sets the env flag.
+        if (process.env.DISABLE_AUTO_BOOK_ENRICHMENT !== 'true') {
+          await autoEnrichBookFromISBN(data, operation);
+        }
 
         // Auto-generate SEO fields if empty
         if (!data.seo?.title && data.title) {

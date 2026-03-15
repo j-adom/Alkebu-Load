@@ -196,7 +196,7 @@
               loading="lazy"
               src={coverUrl}
               alt={book?.title}
-              class="w-full h-auto max-h-[520px] object-contain transition-transform duration-500 group-hover:scale-105"
+              class="w-full h-auto max-h-[620px] object-contain transition-transform duration-500 group-hover:scale-105"
             />
           </div>
           <!-- Format Badge -->

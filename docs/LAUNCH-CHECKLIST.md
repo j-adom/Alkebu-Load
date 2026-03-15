@@ -1,7 +1,7 @@
 # Launch Checklist - Alkebulanimages 2.0
 
 **Target:** Go live with online ordering
-**Status:** Backend + Frontend complete, data import + deployment remaining
+**Status:** Core build complete, checkout hardening + data import + deployment remaining
 
 ---
 
@@ -90,9 +90,12 @@
   SQUARE_WEBHOOK_SIGNATURE_KEY=<production-key>
 
   # Email
-  RESEND_API_KEY=<production-key>
   FROM_EMAIL=orders@alkebulanimages.com
   FROM_NAME=Alkebu-Lan Images
+  SES_SMTP_USER=<production-ses-smtp-user>
+  SES_SMTP_PASSWORD=<production-ses-smtp-password>
+  SMTP_HOST=email-smtp.us-east-2.amazonaws.com
+  SMTP_PORT=587
   STAFF_NOTIFICATION_EMAIL=info@alkebulanimages.com
   ORDER_ADMIN_BASE_URL=https://api.alkebulanimages.com
 
@@ -164,8 +167,8 @@
 
 ## Phase E: Email Configuration (You)
 
-- [ ] **Verify Resend domain**
-  - Add DNS records for `alkebulanimages.com` in Resend dashboard
+- [ ] **Verify SMTP sender configuration**
+  - Confirm SES SMTP credentials are valid in production
   - SPF, DKIM, and DMARC records for deliverability
   - Verify sending works from `orders@alkebulanimages.com`
 
@@ -230,6 +233,6 @@
 
 ### Monthly
 - [ ] Review shipping costs vs revenue
-- [ ] Evaluate Shippo migration (if order volume > 20/week)
+- [ ] Evaluate Shippo label automation (if order volume > 20/week)
 - [ ] Add new books to catalog
 - [ ] Update business directory listings

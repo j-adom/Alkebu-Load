@@ -1,6 +1,6 @@
 # Alkebulanimages 2.0 - Product Requirements Document
 
-**Last Updated:** February 11, 2026
+**Last Updated:** March 14, 2026
 
 ## Executive Summary
 
@@ -24,16 +24,17 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Technical**: 99.9% uptime, <2s page load times, mobile-first responsive design
 - **B2B**: 3+ institutional accounts active within year one (Phase 2)
 
-## Current Status (February 2026)
+## Current Status (March 2026)
 
 ### Completed
 - **Payload CMS Backend** - All collections, relationships, access control
 - **E-Commerce Engine** - Carts (Local API), Orders, Stripe checkout, tax/shipping calculations
+- **Production Deployment** - Backend live at `payload.alkebulanimages.com`, storefront deployed via Cloudflare Worker
 - **Square POS Sync** - Webhook-based inventory synchronization
 - **Book Enrichment System** - ISBNdb/Google Books batch enrichment, admin UI refresh button, bulk ISBN import
-- **Search System** - Three-tier: FlexSearch (client) + PostgreSQL FTS (server) + External APIs
-- **Payment Adapter Pattern** - Pluggable Stripe + Square adapters with webhook handling
-- **Tax Calculation** - Tennessee 7% state + local, books tax-exempt per TN Code 67-6-329
+- **Search System** - FlexSearch + Payload/PostgreSQL-backed search APIs are live; external discovery plumbing exists in backend
+- **Payment Adapter Pattern** - Pluggable Stripe + Square adapters with webhook handling; Stripe is the verified launch path and Square checkout still needs end-to-end validation
+- **Tax Calculation** - Tennessee destination-based tax rules are implemented in checkout; Tennessee shipments are taxed and out-of-state shipments are not
 - **UI/UX Modernization** - Afrocentric design system (Kente colors), responsive layouts
 - **Events System** - Full backend + frontend with filtering
 - **Business Directory** - Collection with businessType/inDirectory/directoryCategory distinctions
@@ -41,12 +42,15 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Email System** - Afrocentric branded templates, customer confirmations, staff notifications, daily digest
 
 ### In Progress
-- **Frontend-Backend Integration** - Connecting SvelteKit checkout flow to payment APIs
+- **Checkout Hardening** - Quote-locked Stripe checkout is implemented; stale quotes are now suppressed in cart summaries and refreshed before payment, but end-to-end browser QA and production smoke testing still remain
+- **Shippo Shipping Integration** - Checkout preview now supports normalized shipping options, Media Mail defaults for book-only orders, and fallback rates when Shippo is unavailable; live production credential validation is still pending
+- **Square Hosted Checkout Validation** - The adapter now persists Square order IDs for reconciliation, but hosted checkout still needs sandbox/production verification before it should be treated as launch-ready
 - **Data Import** - Product catalog export from Square and import to Payload
-- **Production Deployment** - Docker on Hostinger VPS, Cloudflare Pages for frontend
+- **Content/Community Frontend Alignment** - Blog, reviews/comments, and advanced search UI still need polish to match backend schema/capabilities
+- **Transactional Email Verification** - SES-aligned transport is wired in code, but deployed verification still needs a protected test endpoint or controlled production test
 
 ### Planned (Post-Launch)
-- **Phase 2**: Shippo shipping integration, blog content, advanced search features
+- **Phase 2**: Blog content, advanced search features, deeper fulfillment automation
 - **Phase 3**: NocoDB for business intelligence, n8n for workflow automation
 - **Phase 4**: Mobile app, loyalty program, multi-language support
 
@@ -55,9 +59,9 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 ### Technology Stack
 - **Backend**: Payload CMS 3.68.5 with Next.js 15, PostgreSQL (production) / SQLite (dev)
 - **Frontend**: SvelteKit 2.8 with Svelte 5, TailwindCSS, shadcn-svelte
-- **Hosting**: Hostinger VPS with Docker (backend), Cloudflare Pages (frontend)
-- **Payments**: Stripe Embedded Checkout (primary), Square POS (inventory sync only)
-- **Email**: Resend SMTP for transactional emails (nodemailer)
+- **Hosting**: Payload-hosted backend at `payload.alkebulanimages.com`, Cloudflare Worker frontend for `alkebulanimages.com`
+- **Payments**: Stripe hosted Checkout (primary), Square POS inventory sync, Square hosted checkout adapter under validation
+- **Email**: Amazon SES SMTP for transactional emails (nodemailer)
 - **Search**: FlexSearch + PostgreSQL FTS + ISBNdb/Google Books/Open Library
 - **Authentication**: Payload JWT tokens (OAuth future phase)
 - **CDN**: Cloudinary for images, Cloudflare for static assets
@@ -89,7 +93,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - External book discovery via ISBNdb, Google Books, Open Library
 - Quote requests for unavailable titles (24-72hr response)
 - Persistent shopping carts with Local API (<50ms operations)
-- Stripe Embedded Checkout with automatic Tennessee tax calculation
+- Stripe hosted Checkout with preview-locked Tennessee tax and shipping totals
 - Account management with order history and wishlists
 
 #### Staff Features
@@ -104,15 +108,19 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 
 ### 1b. Shipping Management
 
-#### Phase 1 (Current) - Pirate Ship (Manual)
+#### Phase 1 (Current) - Pirate Ship (Manual Fulfillment)
 - Staff creates shipping labels in Pirate Ship (external, no API)
 - Staff enters tracking number + carrier in Order Dashboard
 - System auto-sends customer shipping notification with tracking
-- Weight-based shipping calculation in checkout
+- Checkout preview persists normalized shipping quotes and selected method before payment
 - Free shipping over $75 threshold
 
-#### Phase 2 (When Volume Justifies) - Shippo API
-- Real-time carrier rates (USPS, UPS, FedEx)
+#### Phase 1.5 (Current Checkout Rating) - Shippo API
+- Live carrier rating for checkout pricing (USPS, UPS, FedEx)
+- Book-only carts default to USPS Media Mail but customers can switch methods
+- Shipping quote lock with expiry/fingerprint validation before Stripe session creation
+
+#### Phase 2 (When Volume Justifies) - Shippo Operational Automation
 - Automated label generation from Payload admin
 - Webhook-based tracking updates
 - Multi-location fulfillment routing
@@ -152,6 +160,14 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - **Order Status Update** - Customer notified on status changes (shipped, delivered)
 - **Daily Digest** - 7 AM CT outstanding orders summary for staff
 - **Abandoned Cart** - Recovery email for inactive carts
+
+#### March 12, 2026 Progress Note
+- Checkout preview now acts as the authoritative pricing source for tax, shipping, and total before payment
+- Stripe session creation uses persisted quote-locked cart totals instead of recalculating shipping/tax at payment time
+- Book shipping weights now support edition-first lookup with paperback/hardcover fallback defaults and a backfill script for existing catalog cleanup
+- Transactional email code now targets Amazon SES SMTP consistently across Payload and custom email utilities
+- Deployed backend health verified at `payload.alkebulanimages.com/api/health`
+- Deployed transactional email delivery is not yet verified because there is no safe protected test-email endpoint and the local backend env is still missing an SES SMTP password
 
 #### Design System
 - Kente Gold (#D4A030) CTAs, Forest Green (#2E5C48) header/footer
@@ -196,27 +212,27 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 ## Development Phases
 
 ### Phase 1: MVP & Launch (Current)
-**Status: ~85% complete**
+**Status: ~78% complete**
 - [x] Payload CMS with all collections
 - [x] Square POS webhook integration
 - [x] Book import & enrichment system
 - [x] E-commerce backend (carts, orders, checkout, refunds)
 - [x] Payment adapter pattern (Stripe + Square)
-- [x] Tax calculation (Tennessee rules, book exemption)
+- [x] Tax calculation (Tennessee destination-based rules in checkout)
 - [x] UI/UX modernization (Afrocentric design system)
 - [x] Events system (backend + frontend)
 - [x] Business directory with type distinctions
 - [x] Order management (dashboard, notifications, daily digest)
 - [x] Email system (Afrocentric branded templates)
 - [x] Refund API with admin-only auth
-- [ ] Frontend-backend checkout integration
+- [x] Frontend-backend checkout integration
 - [ ] Data import from Square
-- [ ] Production deployment (Docker + Cloudflare)
-- [ ] End-to-end testing & QA
+- [x] Production deployment
+- [ ] End-to-end checkout/browser QA
 - [ ] Staff training
 
 ### Phase 2: Enhanced Features (Post-Launch)
-- Shippo shipping API integration (when volume justifies cost)
+- Operational Shippo label automation (when volume justifies cost)
 - Blog content creation & publishing workflow
 - Advanced search features (voice, barcode)
 - Customer loyalty integration
@@ -241,16 +257,16 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 
 ## Infrastructure
 
-### Backend (Hostinger VPS)
-- Docker container running Payload CMS + Next.js
-- PostgreSQL database
-- Nginx reverse proxy with SSL (Let's Encrypt)
-- Automated daily backups
+### Backend (`payload.alkebulanimages.com`)
+- Payload-hosted Next.js + Payload CMS deployment
+- Production database managed through Payload hosting stack
+- TLS enabled on custom domain
+- Backups/ops handled through current hosting platform processes
 
-### Frontend (Cloudflare Pages)
-- Git-based deployment from main branch
-- Edge caching globally
-- Custom domain (alkebulanimages.com)
+### Frontend (Cloudflare Worker)
+- Worker-based deployment serving `alkebulanimages.com`
+- Edge caching globally through Cloudflare
+- Frontend consumes Payload APIs from `payload.alkebulanimages.com`
 
 ### Scheduled Jobs (Payload)
 - `cleanup-abandoned-carts` - Every 2 hours
@@ -282,9 +298,10 @@ SQUARE_ACCESS_TOKEN=...
 SQUARE_WEBHOOK_SIGNATURE_KEY=...
 
 # Email
-RESEND_API_KEY=...
 FROM_EMAIL=orders@alkebulanimages.com
-SMTP_HOST=smtp.resend.com
+FROM_NAME=Alkebu-Lan Images
+SES_SMTP_USER=...
+SES_SMTP_PASSWORD=...
 STAFF_NOTIFICATION_EMAIL=info@alkebulanimages.com
 ORDER_ADMIN_BASE_URL=https://admin.alkebulanimages.com
 
@@ -303,8 +320,10 @@ FREE_SHIPPING_THRESHOLD=7500
 - `alkebu-load/src/collections/Orders.ts` - Order collection with fulfillment tracking
 - `alkebu-load/src/app/utils/stripeHelpers.ts` - Stripe checkout + webhook processing
 - `alkebu-load/src/app/utils/taxShippingCalculations.ts` - Tax/shipping logic
+- `alkebu-load/src/app/utils/shippingQuotes.ts` - Shippo/fallback quote normalization + quote locking
 - `alkebu-load/src/app/utils/cartOperations.ts` - Cart CRUD via Local API
 - `alkebu-load/src/app/api/checkout/route.ts` - Checkout session creation
+- `alkebu-load/src/app/api/checkout/preview/route.ts` - Checkout pricing preview + quote persistence
 - `alkebu-load/src/app/api/refund/route.ts` - Refund API (admin-only)
 
 ### Order Management
