@@ -75,6 +75,64 @@ function getAvailableCollectionSlugs(payload: any): string[] {
   return configuredCollections;
 }
 
+function extractLexicalText(node: unknown): string {
+  if (!node || typeof node !== 'object') {
+    return '';
+  }
+
+  const lexicalNode = node as Record<string, unknown>;
+  const text = lexicalNode.text;
+  if (typeof text === 'string') {
+    return text;
+  }
+
+  const children = lexicalNode.children;
+  if (Array.isArray(children)) {
+    return children
+      .map((child) => extractLexicalText(child))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  return '';
+}
+
+export function toSearchText(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => toSearchText(entry))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+
+    if (record.root && typeof record.root === 'object') {
+      return extractLexicalText(record.root);
+    }
+
+    return Object.values(record)
+      .map((entry) => toSearchText(entry))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  return '';
+}
+
 // FlexSearch indices for different content types
 class SearchEngine {
   private bookIndex!: Document<any>;
@@ -184,13 +242,13 @@ class SearchEngine {
           const bookSlug = isbn ? `${doc.slug || doc.id}/${isbn}` : (doc.slug || doc.id);
           const isbns = editions.map((e: any) => e.isbn || e.isbn10 || '').filter(Boolean).join(' ');
           await this.bookIndex.addAsync(doc.id, {
-            title: doc.title,
-            author: doc.authors?.map((a: any) => a.name).join(' ') || doc.author,
-            description: doc.description,
-            tags: doc.tags?.map((t: any) => t.tag).join(' ') || '',
-            categories: doc.categories?.join(' ') || '',
-            subjects: doc.subjects?.map((s: any) => s.subject).join(' ') || '',
-            imageUrl: doc.images?.[0]?.image?.url || '',
+            title: toSearchText(doc.title),
+            author: toSearchText(doc.authors?.map((a: any) => a.name).join(' ') || doc.author),
+            description: toSearchText(doc.description ?? doc.synopsis ?? doc.excerpt),
+            tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
+            categories: toSearchText(doc.categories),
+            subjects: toSearchText(doc.subjects?.map((s: any) => s.subject) || ''),
+            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
             slug: bookSlug,
             price: bestEdition?.pricing?.retailPrice || 0,
             isbn,
@@ -201,12 +259,12 @@ class SearchEngine {
 
         case 'blogPosts':
           await this.blogIndex.addAsync(doc.id, {
-            title: doc.title,
-            excerpt: doc.excerpt,
-            content: doc.content,
-            tags: doc.tags?.map((t: any) => t.tag).join(' ') || '',
-            author: doc.author?.name || doc.guestAuthor || '',
-            imageUrl: doc.featuredImage?.url || '',
+            title: toSearchText(doc.title),
+            excerpt: toSearchText(doc.excerpt),
+            content: toSearchText(doc.content),
+            tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
+            author: toSearchText(doc.author?.name || doc.guestAuthor || ''),
+            imageUrl: toSearchText(doc.featuredImage?.url || ''),
             slug: doc.slug,
             publishDate: doc.publishDate
           });
@@ -214,27 +272,27 @@ class SearchEngine {
 
         case 'events':
           await this.eventIndex.addAsync(doc.id, {
-            title: doc.title,
-            description: doc.description,
-            tags: doc.tags?.map((t: any) => t.tag).join(' ') || '',
-            organizer: doc.organizer?.name || doc.guestOrganizer || '',
+            title: toSearchText(doc.title),
+            description: toSearchText(doc.description ?? doc.shortDescription),
+            tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
+            organizer: toSearchText(doc.organizer?.name || doc.guestOrganizer || ''),
             startDate: doc.startDate,
-            venue: doc.venue?.name || '',
+            venue: toSearchText(doc.venue?.name || doc.venue || ''),
             slug: doc.slug,
-            imageUrl: doc.featuredImage?.url || ''
+            imageUrl: toSearchText(doc.featuredImage?.url || '')
           });
           break;
 
         case 'businesses':
           await this.businessIndex.addAsync(doc.id, {
-            name: doc.name,
-            description: doc.description,
-            services: doc.services?.map((s: any) => s.service).join(' ') || '',
-            tags: doc.tags?.map((t: any) => t.tag).join(' ') || '',
-            owner: doc.owner?.name || '',
-            address: `${doc.address?.street} ${doc.address?.city}`,
-            phone: doc.contact?.phone || '',
-            imageUrl: doc.images?.[0]?.image?.url || '',
+            name: toSearchText(doc.name),
+            description: toSearchText(doc.description ?? doc.shortDescription),
+            services: toSearchText(doc.services?.map((s: any) => s.service) || ''),
+            tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
+            owner: toSearchText(doc.owner?.name || ''),
+            address: toSearchText(`${doc.address?.street || ''} ${doc.address?.city || ''}`),
+            phone: toSearchText(doc.contact?.phone || ''),
+            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
             slug: doc.slug
           });
           break;
@@ -243,12 +301,12 @@ class SearchEngine {
         case 'fashionJewelry':
         case 'oilsIncense':
           await this.productIndex.addAsync(doc.id, {
-            name: doc.name,
-            description: doc.description,
-            brand: doc.brand || '',
-            tags: doc.tags?.map((t: any) => t.tag).join(' ') || '',
-            scent: doc.scent || doc.baseScent || '',
-            imageUrl: doc.images?.[0]?.image?.url || '',
+            name: toSearchText(doc.name || doc.title),
+            description: toSearchText(doc.description),
+            brand: toSearchText(doc.brand?.name || doc.brand || ''),
+            tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
+            scent: toSearchText(doc.scent || doc.baseScent || ''),
+            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
             price: doc.variants?.[0]?.price || doc.variations?.[0]?.price || 0,
             type: type
           });

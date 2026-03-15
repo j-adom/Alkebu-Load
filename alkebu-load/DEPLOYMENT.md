@@ -190,11 +190,22 @@ docker exec <container-id> chown -R nextjs:nodejs /app/media
 
 ### Database Migrations
 
-Payload handles migrations automatically, but you can run manually:
+This image ships a minimal Next.js standalone runtime. The running container does
+not include `pnpm`, `cross-env`, or the full project source tree, so commands
+like `docker exec <container-id> pnpm payload migrate` will fail there.
+
+If you need to run migrations manually, run them in the deploy/build
+environment or in a separate one-off container that has the full repository and
+dependencies installed:
 
 ```bash
-docker exec <container-id> pnpm payload migrate
+pnpm payload migrate
 ```
+
+For Coolify, the practical pattern is:
+- Run migrations as a pre-deploy command or one-off job against the new image.
+- Wait for `https://payload.alkebulanimages.com/api/health` to return healthy.
+- Only then promote the frontend deploy.
 
 ## Security Considerations
 
