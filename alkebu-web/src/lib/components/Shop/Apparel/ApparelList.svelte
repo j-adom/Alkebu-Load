@@ -29,10 +29,6 @@
         sort = $bindable(),
         perPage = 12
     } = $props();
-
-    console.log(products);
-    
-
     const numArray = [1,2,3,4,5]
     let range = $derived(pageCount < 6 ? [...Array(pageCount).keys()].map(i=>i+1)
                 :currentPage < 3 ? numArray.map(num => num += 1)

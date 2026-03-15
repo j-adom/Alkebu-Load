@@ -66,9 +66,30 @@
   const availableSizes = $derived(product?.availableSizes || []);
   const availableColors = $derived(product?.availableColors?.map((c: any) => c.colorName || c) || []);
 
-  let selectedType = $state(variations.find((v: any) => v.isAvailable)?.productType || availableTypes[0]);
-  let selectedSize = $state(variations.find((v: any) => v.isAvailable)?.size || availableSizes[0]);
-  let selectedColor = $state(variations.find((v: any) => v.isAvailable)?.color || availableColors[0]);
+  let selectedType = $state<string | undefined>();
+  let selectedSize = $state<string | undefined>();
+  let selectedColor = $state<string | undefined>();
+
+  $effect(() => {
+    const nextType = variations.find((v: any) => v.isAvailable)?.productType || availableTypes[0];
+    if (!selectedType || !availableTypes.includes(selectedType)) {
+      selectedType = nextType;
+    }
+  });
+
+  $effect(() => {
+    const nextSize = variations.find((v: any) => v.isAvailable)?.size || availableSizes[0];
+    if (!selectedSize || !availableSizes.includes(selectedSize)) {
+      selectedSize = nextSize;
+    }
+  });
+
+  $effect(() => {
+    const nextColor = variations.find((v: any) => v.isAvailable)?.color || availableColors[0];
+    if (!selectedColor || !availableColors.includes(selectedColor)) {
+      selectedColor = nextColor;
+    }
+  });
 
   const selectedVariation = $derived.by(() =>
     variations.find((variation: any) =>

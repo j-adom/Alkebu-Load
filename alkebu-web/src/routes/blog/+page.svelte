@@ -6,14 +6,16 @@
   import dayjs from "dayjs";
 
   let { data } = $props();
-  const posts = data.posts || [];
-  const settings = data.settings || {};
-  const metadata = data.seo;
+  const posts = $derived(data.posts || []);
+  const settings = $derived(data.settings || {});
+  const metadata = $derived(data.seo);
 
   const placeholderImage = '/assets/images/resources/placeholder.jpg';
-  const bannerUrl = settings.banner
-    ? urlFor(settings.banner).width(1920).height(600).auto('format').url()
-    : '/assets/images/resources/page-header-bg.jpg';
+  const bannerUrl = $derived.by(() =>
+    settings.banner
+      ? urlFor(settings.banner).width(1920).height(600).auto('format').url()
+      : '/assets/images/resources/page-header-bg.jpg'
+  );
 
   const imageForPost = (post: any) =>
     urlFor(post.mainImage || post.featuredImage || placeholderImage)

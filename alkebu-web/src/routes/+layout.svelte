@@ -13,7 +13,7 @@
   import CartDrawer from '$lib/components/cart/CartDrawer.svelte';
 
   let { settings, children, user } = $props();
-  const settings$ = writable(settings);
+  const settings$ = writable<any>(undefined);
 
   // Keep the writable store in sync with the settings prop
   $effect(() => {

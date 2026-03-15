@@ -4,16 +4,16 @@
 
   let { data } = $props();
 
-  const businesses = data.businesses || [];
-  const pagination = data.pagination || { page: 1, totalPages: 1, totalDocs: businesses.length };
-  const businessCategories = data.businessCategories || [];
-  const directoryCategories = data.directoryCategories || [];
-  const locations = data.locations || [];
-  const currentCategory = data.currentCategory || '';
-  const currentDirectoryCategory = data.currentDirectoryCategory || '';
-  const currentLocation = data.currentLocation || '';
-  const showVerified = data.showVerified || false;
-  const metadata = data.seo;
+  const businesses = $derived(data.businesses || []);
+  const pagination = $derived.by(() => data.pagination || { page: 1, totalPages: 1, totalDocs: businesses.length });
+  const businessCategories = $derived(data.businessCategories || []);
+  const directoryCategories = $derived(data.directoryCategories || []);
+  const locations = $derived(data.locations || []);
+  const currentCategory = $derived(data.currentCategory || '');
+  const currentDirectoryCategory = $derived(data.currentDirectoryCategory || '');
+  const currentLocation = $derived(data.currentLocation || '');
+  const showVerified = $derived(data.showVerified || false);
+  const metadata = $derived(data.seo);
 
   const placeholderImage = '/assets/images/resources/placeholder.jpg';
 

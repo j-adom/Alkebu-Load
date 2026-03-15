@@ -9,11 +9,19 @@
   let { data } = $props();
 
   let searchInput: HTMLInputElement = $state();
-  let searchQuery = $state($page.url.searchParams.get('q') || '');
-  let typeFilter = $state((data.typeFilter as string) || ($page.url.searchParams.get('type') as string) || 'all');
-  const availableTypes = data.availableTypes || [];
+  let searchQuery = $state('');
+  let typeFilter = $state('all');
+  const initialSearchQuery = $derived($page.url.searchParams.get('q') || '');
+  const initialTypeFilter = $derived((data.typeFilter as string) || ($page.url.searchParams.get('type') as string) || 'all');
+  const availableTypes = $derived(data.availableTypes || []);
+  const seo = $derived(data.seo || {});
   const typeLabel = (value: string) => availableTypes.find((t: any) => t.value === value)?.label || value;
   const isString = (val: unknown): val is string => typeof val === 'string';
+
+  $effect(() => {
+    searchQuery = initialSearchQuery;
+    typeFilter = initialTypeFilter;
+  });
 
   const handleSearch = () => {
     if (browser) {
@@ -42,12 +50,12 @@
 </script>
 
 <svelte:head>
-  <title>{data.seo?.title}</title>
-  <meta name="description" content={data.seo?.description} />
-  {#if data.seo?.canonical}
-    <link rel="canonical" href={data.seo.canonical} />
+  <title>{seo?.title}</title>
+  <meta name="description" content={seo?.description} />
+  {#if seo?.canonical}
+    <link rel="canonical" href={seo.canonical} />
   {/if}
-  {#if data.seo?.noIndex}
+  {#if seo?.noIndex}
     <meta name="robots" content="noindex,nofollow" />
   {/if}
 </svelte:head>

@@ -28,11 +28,11 @@
 	} = $props();
 	
 	const apiStore = writable(undefined);
-	const orientationStore = writable(orientation);
+	const orientationStore = writable("horizontal");
 	const canScrollPrev = writable(false);
 	const canScrollNext = writable(false);
-	const optionsStore = writable(opts);
-	const pluginStore = writable(plugins);
+	const optionsStore = writable({});
+	const pluginStore = writable([]);
 	const scrollSnapsStore = writable([]);
 	const selectedIndexStore = writable(0);
 	run(() => {

@@ -12,7 +12,9 @@
   }
 
   let { data } = $props();
-  const { section1, section2 } = data.contact
+  const contact = $derived(data.contact ?? {});
+  const section1 = $derived(contact.section1 ?? {});
+  const section2 = $derived(contact.section2 ?? {});
 </script>
 
 <Meta {metadata} />

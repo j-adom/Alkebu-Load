@@ -14,21 +14,23 @@
     product,
     image,
     quantity = 1,
-    color = product.colors?.[0],
-    size = product.sizes?.[0],
+    color = undefined,
+    size = undefined,
     icon = false,
   }: Props = $props();
 
-  let colors = product.colors?.map((c) => c.color) || [];
-  let sizes = product.sizes || [];
+  const colors = $derived(product.colors?.map((c) => c.color) || []);
+  const sizes = $derived(product.sizes || []);
 
-  let sizeOptions = sizes.length > 1 ? sizes.join('|') : sizes[0];
-  let colorOptions = colors.length > 1 ? colors.join('|') : colors[0];
-  let weight = product.weight ? product.weight : '2';
+  const resolvedSize = $derived(size ?? sizes[0]);
+  const resolvedColor = $derived(color ?? colors[0]);
+  const sizeOptions = $derived(sizes.length > 1 ? sizes.join('|') : sizes[0]);
+  const colorOptions = $derived(colors.length > 1 ? colors.join('|') : colors[0]);
+  const weight = $derived(product.weight ? product.weight : '2');
   const productId = $derived(product?.id || product?._id);
   const customization = $derived.by(() => ({
-    size,
-    color,
+    size: resolvedSize,
+    color: resolvedColor,
   }));
   const buttonClass = $derived(icon ? 'all_product_icon' : 'btn-primary');
 </script>
@@ -39,7 +41,7 @@
   quantity={quantity}
   customization={customization}
   className={buttonClass}
-  disabled={!color || !size}
+  disabled={!resolvedColor || !resolvedSize}
   iconOnly={icon}
   label="Add to Cart"
 />

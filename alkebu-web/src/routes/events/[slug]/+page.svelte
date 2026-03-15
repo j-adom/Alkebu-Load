@@ -4,21 +4,32 @@
   import { formatDate } from '$lib/utils/date';
 
   let { data } = $props();
-  const { event, relatedEvents, isPastEvent, seo } = data;
+  const event = $derived(data.event || {});
+  const relatedEvents = $derived(data.relatedEvents || []);
+  const isPastEvent = $derived(Boolean(data.isPastEvent));
+  const seo = $derived(data.seo);
 
   // Format event dates
-  const startDate = new Date(event.startDate);
-  const endDate = event.endDate ? new Date(event.endDate) : null;
+  const startDate = $derived(event.startDate ? new Date(event.startDate) : null);
+  const endDate = $derived(event.endDate ? new Date(event.endDate) : null);
 
-  const dateDisplay = endDate && endDate.toDateString() !== startDate.toDateString()
-    ? `${formatDate(event.startDate)} - ${formatDate(event.endDate)}`
-    : formatDate(event.startDate);
+  const dateDisplay = $derived.by(() =>
+    startDate
+      ? endDate && endDate.toDateString() !== startDate.toDateString()
+        ? `${formatDate(event.startDate)} - ${formatDate(event.endDate)}`
+        : formatDate(event.startDate)
+      : ''
+  );
 
-  const timeDisplay = new Date(event.startDate).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
+  const timeDisplay = $derived.by(() =>
+    event.startDate
+      ? new Date(event.startDate).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
+      : ''
+  );
 </script>
 
 <Meta metadata={seo} />

@@ -3,7 +3,10 @@
   import { urlFor } from '$lib/payload';
 
   let { data } = $props();
-  const { business, relatedBusinesses, reviews, seo } = data;
+  const business = $derived(data.business || {});
+  const relatedBusinesses = $derived(data.relatedBusinesses || []);
+  const reviews = $derived(data.reviews || []);
+  const seo = $derived(data.seo);
 
   // Format business hours
   function formatHours(hours: any) {
@@ -16,7 +19,7 @@
     }));
   }
 
-  const formattedHours = formatHours(business.hours);
+  const formattedHours = $derived(formatHours(business.hours));
 </script>
 
 <Meta metadata={seo} />

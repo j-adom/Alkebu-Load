@@ -13,7 +13,7 @@
         return[...Array(count)].map( ()=> _arr.splice(Math.floor(Math.random() * _arr.length), 1)[0] ).filter(Boolean); 
     }
     
-    let randFeatured = shuffle(featured, 5);
+    const randFeatured = $derived.by(() => shuffle(featured ?? [], 5));
 
     const getPrice = (product: any) => {
         const priceCents = product?.pricing?.retailPrice ?? product?.editions?.[0]?.price ?? 0;

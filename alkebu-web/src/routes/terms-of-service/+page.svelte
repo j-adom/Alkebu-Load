@@ -1,7 +1,7 @@
 <script>
   import { urlFor } from '$lib/payload';
   let { data } = $props();
-  const { settings } = data;
+  const settings = $derived(data.settings || {});
 </script>
 
 <svelte:head>

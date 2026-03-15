@@ -5,12 +5,12 @@
 
   let { data } = $props();
 
-  const events = data.events || [];
-  const pagination = data.pagination || { page: 1, totalPages: 1, totalDocs: events.length };
-  const eventTypes = data.eventTypes || [];
-  const currentType = data.currentType || '';
-  const upcoming = data.upcoming ?? true;
-  const metadata = data.seo;
+  const events = $derived(data.events || []);
+  const pagination = $derived.by(() => data.pagination || { page: 1, totalPages: 1, totalDocs: events.length });
+  const eventTypes = $derived(data.eventTypes || []);
+  const currentType = $derived(data.currentType || '');
+  const upcoming = $derived(data.upcoming ?? true);
+  const metadata = $derived(data.seo);
 
   const placeholderImage = '/assets/images/resources/placeholder.jpg';
 

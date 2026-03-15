@@ -14,11 +14,11 @@
     };
 
     let { data } = $props();
-    const shop = data.shop ?? {};
-    const sectionImages = shop.section1?.images ?? [];
+    const shop = $derived(data.shop ?? {});
+    const sectionImages = $derived(shop.section1?.images ?? []);
 
     // Category card data
-    const categories = [
+    const categories = $derived.by(() => [
         {
             title: "Book",
             subtitle: "Catalogue",
@@ -47,7 +47,7 @@
             image: sectionImages?.[3],
             enabled: false,
         },
-    ];
+    ]);
 </script>
 
 <Meta {metadata} />

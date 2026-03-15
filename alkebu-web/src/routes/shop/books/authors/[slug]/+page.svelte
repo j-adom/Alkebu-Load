@@ -4,19 +4,19 @@
 
   let { data } = $props();
 
-  const author = data.author;
-  const books = data.books || [];
-  const pagination = data.pagination || { page: 1, totalPages: 1, totalDocs: books.length, limit: 24 };
-  const currentPage = pagination.page || 1;
-  const pageSize = pagination.limit || 24;
-  const totalDocs = pagination.totalDocs || books.length;
-  const sort = data.currentSort || 'newest';
+  const author = $derived(data.author);
+  const books = $derived(data.books || []);
+  const pagination = $derived.by(() => data.pagination || { page: 1, totalPages: 1, totalDocs: books.length, limit: 24 });
+  const currentPage = $derived(pagination.page || 1);
+  const pageSize = $derived(pagination.limit || 24);
+  const totalDocs = $derived(pagination.totalDocs || books.length);
+  const sort = $derived(data.currentSort || 'newest');
 
-  const metadata = data.seo || {
+  const metadata = $derived.by(() => data.seo || {
     title: `Books by ${author?.name || 'Author'}`,
     description: `Explore titles by ${author?.name || 'this author'}.`,
     url: `/shop/books/authors/${author?.slug || ''}`
-  };
+  });
 </script>
 
 <Meta {metadata} />

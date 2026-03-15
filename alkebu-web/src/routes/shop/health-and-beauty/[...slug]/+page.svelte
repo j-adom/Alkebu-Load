@@ -5,12 +5,16 @@
   import { formatCurrency } from '$lib/utils/currency';
 
   let { data } = $props();
-  const { product, productType, seo } = data;
+  const product = $derived(data.product || {});
+  const productType = $derived(data.productType);
+  const seo = $derived(data.seo);
 
-  const price = product.pricing?.retailPrice || product.price || 0;
-  const inStock = product.inventory?.trackInventory
-    ? product.inventory.stockLevel > 0
-    : true;
+  const price = $derived(product.pricing?.retailPrice || product.price || 0);
+  const inStock = $derived(
+    product.inventory?.trackInventory
+      ? product.inventory.stockLevel > 0
+      : true
+  );
 </script>
 
 <Meta metadata={seo} />

@@ -12,15 +12,15 @@
   }
 
   let { data } = $props();
-  const about = data.about ?? {};
-  const description = about.description ?? '';
-  const section1 = about.section1 ?? {};
-  const section2 = about.section2 ?? {};
-  const section1Images = section1.images ?? [];
-  const image0 = section1Images?.[0]?.image ?? section1Images?.[0];
-  const image1 = section1Images?.[1]?.image ?? section1Images?.[1];
-  const image2 = section1Images?.[2]?.image ?? section1Images?.[2];
-  const section2Image = section2.section2image ?? section2.image;
+  const about = $derived(data.about ?? {});
+  const description = $derived(about.description ?? '');
+  const section1 = $derived(about.section1 ?? {});
+  const section2 = $derived(about.section2 ?? {});
+  const section1Images = $derived(section1.images ?? []);
+  const image0 = $derived(section1Images?.[0]?.image ?? section1Images?.[0]);
+  const image1 = $derived(section1Images?.[1]?.image ?? section1Images?.[1]);
+  const image2 = $derived(section1Images?.[2]?.image ?? section1Images?.[2]);
+  const section2Image = $derived(section2.section2image ?? section2.image);
 
   const principles = [
     { icon: Hand, title: 'Black Owned & Operated' },
@@ -119,7 +119,7 @@
         <div class="group p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:-translate-y-1">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-xl bg-kente-gold/20 flex items-center justify-center group-hover:bg-kente-gold/30 transition-colors">
-              <svelte:component this={principle.icon} class="w-7 h-7 text-kente-gold" />
+              <principle.icon class="w-7 h-7 text-kente-gold" />
             </div>
             <h3 class="font-semibold text-lg">{principle.title}</h3>
           </div>
@@ -132,7 +132,7 @@
 <!-- CTA Section -->
 <section
   class="relative py-24 md:py-32 bg-cover bg-center overflow-hidden"
-  style="background-image: url({urlFor(section2?.section2image).width(1920).height(600).auto('format').url()});"
+  style="background-image: url({urlFor(section2Image).width(1920).height(600).auto('format').url()});"
 >
   <div class="absolute inset-0 bg-gradient-to-r from-kente-forest/95 via-kente-indigo/90 to-kente-forest/95"></div>
   <div class="container mx-auto px-4 relative z-10 text-center">

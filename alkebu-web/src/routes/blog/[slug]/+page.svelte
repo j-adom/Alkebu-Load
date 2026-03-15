@@ -6,7 +6,8 @@
   import dayjs from "dayjs";
 
   let { data } = $props();
-  const { settings, post } = data;
+  const settings = $derived(data.settings || {});
+  const post = $derived(data.post || {});
 </script>
 
 <!-- Modern Page Header -->

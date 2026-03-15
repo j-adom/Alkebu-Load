@@ -18,7 +18,12 @@
 	import Meta from "$lib/components/Meta.svelte";
 
 	let { data } = $props();
-	const { banner, section2, section3, section4, featured, newBooks } = data;
+	const banner = $derived(data.banner);
+	const section2 = $derived(data.section2);
+	const section3 = $derived(data.section3);
+	const section4 = $derived(data.section4);
+	const featured = $derived(data.featured);
+	const newBooks = $derived(data.newBooks);
 
 	const metadata = {
 		title: `Alkebu-Lan Images, Nashville's only Black-owned bookstore`,
@@ -59,28 +64,30 @@
 	];
 
 	// Business services data
-	const businessServices = section4?.images
-		? [
-				{
-					title: "Wholesale",
-					subtitle: "solutions",
-					image: section4.images[0],
-					desc: "Partner with us for bulk orders and wholesale pricing for retailers and distributors.",
-				},
-				{
-					title: "Institutional",
-					subtitle: "Contracts",
-					image: section4.images[1],
-					desc: "Libraries, schools, and organizations can benefit from our institutional partnerships.",
-				},
-				{
-					title: "Non-profit",
-					subtitle: "projects",
-					image: section4.images[2],
-					desc: "We support community initiatives and non-profit organizations with special programs.",
-				},
-			]
-		: [];
+	const businessServices = $derived.by(() =>
+		section4?.images
+			? [
+					{
+						title: "Wholesale",
+						subtitle: "solutions",
+						image: section4.images[0],
+						desc: "Partner with us for bulk orders and wholesale pricing for retailers and distributors.",
+					},
+					{
+						title: "Institutional",
+						subtitle: "Contracts",
+						image: section4.images[1],
+						desc: "Libraries, schools, and organizations can benefit from our institutional partnerships.",
+					},
+					{
+						title: "Non-profit",
+						subtitle: "projects",
+						image: section4.images[2],
+						desc: "We support community initiatives and non-profit organizations with special programs.",
+					},
+				]
+			: [],
+	);
 </script>
 
 <Meta {metadata} />
