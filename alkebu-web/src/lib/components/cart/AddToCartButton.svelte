@@ -41,8 +41,11 @@
   let showSuccessState = $state(false);
   let errorMessage = $state<string | null>(null);
 
-  async function handleAdd() {
+  async function handleAdd(event: MouseEvent) {
     if (disabled || !productId || isAdding) return;
+
+    event.preventDefault();
+    event.stopPropagation();
 
     isAdding = true;
     errorMessage = null;

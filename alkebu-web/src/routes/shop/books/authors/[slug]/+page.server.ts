@@ -1,4 +1,4 @@
-import { payloadGet } from '$lib/server/payload';
+import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -19,7 +19,11 @@ async function resolveAuthorName(slug: string): Promise<string | null> {
   const nameGuess = slugToName(slug);
   // Use 'like' operator to find books with a matching author name
   const res = await payloadGet<any>(
-    `/api/books?where[authorsText.name][like]=${encodeURIComponent(nameGuess)}&limit=5&depth=0`
+    `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
+      'where[authorsText.name][like]': nameGuess,
+      limit: '5',
+      depth: '0',
+    })).toString()}`
   );
   for (const book of res?.docs || []) {
     for (const a of book.authorsText || []) {
@@ -60,7 +64,9 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       'where[authorsText.name][equals]': authorName
     });
 
-    const booksData = await payloadGet<any>(`/api/books?${booksParams.toString()}`);
+    const booksData = await payloadGet<any>(
+      `/api/books?${appendBookStorefrontFilters(booksParams).toString()}`,
+    );
 
     // Build breadcrumbs
     const breadcrumbs = [

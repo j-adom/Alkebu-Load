@@ -1,4 +1,4 @@
-import { payloadGet } from '$lib/server/payload';
+import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -29,10 +29,19 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       'where[tags][in]': tag.id
     });
 
-    const booksData = await payloadGet<any>(`/api/books?${booksParams.toString()}`);
+    const booksData = await payloadGet<any>(
+      `/api/books?${appendBookStorefrontFilters(booksParams).toString()}`,
+    );
     
     // Get featured books with this tag
-    const featuredBooksData = await payloadGet<any>(`/api/books?where[tags][in]=${tag.id}&where[featured][equals]=true&limit=4&depth=1`);
+    const featuredBooksData = await payloadGet<any>(
+      `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
+        'where[tags][in]': String(tag.id),
+        'where[featured][equals]': 'true',
+        limit: '4',
+        depth: '1',
+      })).toString()}`,
+    );
 
     // Build breadcrumbs
     const breadcrumbs = [

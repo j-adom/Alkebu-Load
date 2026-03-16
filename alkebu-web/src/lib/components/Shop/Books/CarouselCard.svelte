@@ -1,7 +1,7 @@
 <script lang="ts">
   import BookCover from './BookCover.svelte';
   import PayloadImage from "$lib/components/PayloadImage.svelte";
-  import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
+  import BookPurchaseAction from "./BookPurchaseAction.svelte";
   import { formatCurrency } from "$lib/utils/currency";
 
   interface Props {
@@ -16,7 +16,6 @@
     book.images?.[0] || book.editions?.[0]?.images?.[0] ||
     (book.scrapedImageUrls?.[0]?.url ? { url: book.scrapedImageUrls[0].url } : null)
   );
-  const productId = $derived(book.id || book._id);
   const slug = $derived.by(() => {
     if (!book?.slug) return '';
     if (typeof book.slug === 'string') return book.slug;
@@ -74,10 +73,9 @@
                 <BookCover title={book.title} subtitle={book.subtitle} />
             {/if}
             <div class="all_product_hover">
-                <AddToCartButton
+                <BookPurchaseAction
+                    {book}
                     className="all_product_icon add-to-cart"
-                    productId={productId}
-                    productType="books"
                     iconOnly={true}
                     label={`Add ${book.title} to cart`}
                 />

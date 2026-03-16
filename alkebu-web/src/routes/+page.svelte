@@ -12,7 +12,7 @@
 	} from "lucide-svelte";
 
 	import BookCover from "$lib/components/Shop/Books/BookCover.svelte";
-	import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
+	import BookPurchaseAction from "$lib/components/Shop/Books/BookPurchaseAction.svelte";
 	import { formatCurrency } from "$lib/utils/currency";
 
 	import Meta from "$lib/components/Meta.svelte";
@@ -401,10 +401,9 @@
 									<div
 										class="absolute bottom-4 left-0 right-0 flex justify-center"
 									>
-										<AddToCartButton
+										<BookPurchaseAction
+											book={book}
 											className="btn-primary btn-sm"
-											productId={book.id || book._id}
-											productType="books"
 											iconOnly={true}
 											label={`Add ${book.title} to cart`}
 										/>
@@ -491,10 +490,9 @@
 									<div
 										class="absolute bottom-4 left-0 right-0 flex justify-center"
 									>
-										<AddToCartButton
+										<BookPurchaseAction
+											book={book}
 											className="btn-primary btn-sm"
-											productId={book.id || book._id}
-											productType="books"
 											iconOnly={true}
 											label={`Add ${book.title} to cart`}
 										/>

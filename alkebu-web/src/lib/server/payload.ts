@@ -48,11 +48,23 @@ function normalizeBookCategoryFilters(categories: string[] = []): string[] {
   return categories.filter((category) => validBookCategorySlugs.has(category));
 }
 
+export type BookAvailabilityStatus = 'available' | 'request-only' | 'discontinued';
+
+export function appendBookStorefrontFilters(params: URLSearchParams): URLSearchParams {
+  params.set('where[availabilityStatus][not_equals]', 'discontinued');
+  return params;
+}
+
+export function buildBookStorefrontPath(params: URLSearchParams): string {
+  return `/api/books?${appendBookStorefrontFilters(params).toString()}`;
+}
+
 // Product types based on our Payload collections
 export interface Book extends PayloadDoc {
   title: string;
   titleLong?: string;
   slug: string;
+  availabilityStatus?: BookAvailabilityStatus;
   description?: string;
   seoDescription?: string;
   authors?: Author[];
@@ -228,12 +240,29 @@ export interface Business extends PayloadDoc {
 
 // Common query helpers
 export async function getProductBySlug(slug: string, collection: 'books' | 'wellness-lifestyle' | 'fashion-jewelry' | 'oils-incense' = 'books') {
-  const response = await payloadGet<PayloadCollectionResponse<any>>(`/api/${collection}?where[slug][equals]=${encodeURIComponent(slug)}&limit=1&depth=2`);
+  const params = new URLSearchParams({
+    'where[slug][equals]': slug,
+    limit: '1',
+    depth: '2',
+  });
+  const path = collection === 'books'
+    ? buildBookStorefrontPath(params)
+    : `/api/${collection}?${params.toString()}`;
+  const response = await payloadGet<PayloadCollectionResponse<any>>(path);
   return response.docs[0] || null;
 }
 
 export async function getProducts(page = 1, limit = 12, collection: 'books' | 'wellness-lifestyle' | 'fashion-jewelry' | 'oils-incense' = 'books') {
-  return await payloadGet<PayloadCollectionResponse<any>>(`/api/${collection}?page=${page}&limit=${limit}&depth=1&sort=-createdAt`);
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    depth: '1',
+    sort: '-createdAt',
+  });
+  const path = collection === 'books'
+    ? buildBookStorefrontPath(params)
+    : `/api/${collection}?${params.toString()}`;
+  return await payloadGet<PayloadCollectionResponse<any>>(path);
 }
 
 export async function getBlogPostBySlug(slug: string) {
@@ -281,9 +310,13 @@ export async function getBooksByAuthor(
   try {
     // Build query for books by any of these authors
     const authorsQuery = authorIds.map(id => `where[authors][in]=${encodeURIComponent(id)}`).join('&');
+    const params = new URLSearchParams(authorsQuery);
+    params.set('limit', String(limit + 1));
+    params.set('depth', '1');
+    params.set('sort', '-createdAt');
 
     const response = await payloadGet<PayloadCollectionResponse<Book>>(
-      `/api/books?${authorsQuery}&limit=${limit + 1}&depth=1&sort=-createdAt`
+      buildBookStorefrontPath(params)
     );
 
     // Filter out the current book
@@ -327,8 +360,11 @@ export async function getRelatedBooks(
       if (collectionValues.length > 0) {
         const q = collectionValues.map((c: string) => `where[collections.collectionName][in]=${encodeURIComponent(c)}`).join('&');
         try {
+          const params = new URLSearchParams(q);
+          params.set('limit', String(limit * 2));
+          params.set('depth', '1');
           const res = await payloadGet<PayloadCollectionResponse<Book>>(
-            `/api/books?${q}&limit=${limit * 2}&depth=1`
+            buildBookStorefrontPath(params)
           );
           addUnique(res.docs);
         } catch (e) {
@@ -342,8 +378,11 @@ export async function getRelatedBooks(
     if (normalizedCategories.length > 0 && relatedBooks.length < limit) {
       const q = normalizedCategories.map(c => `where[categories][in]=${encodeURIComponent(c)}`).join('&');
       try {
+        const params = new URLSearchParams(q);
+        params.set('limit', String(limit * 2));
+        params.set('depth', '1');
         const res = await payloadGet<PayloadCollectionResponse<Book>>(
-          `/api/books?${q}&limit=${limit * 2}&depth=1`
+          buildBookStorefrontPath(params)
         );
         addUnique(res.docs);
       } catch (e) {
@@ -354,8 +393,13 @@ export async function getRelatedBooks(
     // Strategy 3: Recent books as fallback
     if (relatedBooks.length < limit) {
       try {
+        const params = new URLSearchParams({
+          limit: String(limit * 2),
+          depth: '1',
+          sort: '-createdAt',
+        });
         const res = await payloadGet<PayloadCollectionResponse<Book>>(
-          `/api/books?limit=${limit * 2}&depth=1&sort=-createdAt`
+          buildBookStorefrontPath(params)
         );
         addUnique(res.docs);
       } catch (e) {

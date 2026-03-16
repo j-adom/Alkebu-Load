@@ -1,9 +1,9 @@
 <script lang="ts">
   import Meta from "$lib/components/Meta.svelte";
-  import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
+  import BookPurchaseAction from "./BookPurchaseAction.svelte";
   import RelatedBooks from "./RelatedBooks.svelte";
   import { formatCurrency } from "$lib/utils/currency";
-  import { isVendorAvailableProduct } from "$lib/utils/availability";
+  import { getBookAvailabilityMessage } from "$lib/utils/bookAvailability";
   import { getImageUrl } from "$lib/payload";
   import {
     Book,
@@ -70,53 +70,7 @@
     primaryEdition?.pricing?.retailPrice ?? book?.pricing?.retailPrice ?? 0,
   );
   const price = $derived((priceCents || 0) / 100);
-  const stockLevel = $derived.by(() => {
-    if (typeof primaryEdition?.inventory?.stockLevel === "number") {
-      return primaryEdition.inventory.stockLevel;
-    }
-
-    if (typeof book?.inventory?.stockLevel === "number") {
-      return book.inventory.stockLevel;
-    }
-
-    return null;
-  });
-  const allowBackorders = $derived(
-    Boolean(
-      primaryEdition?.inventory?.allowBackorders ??
-        book?.inventory?.allowBackorders,
-    ),
-  );
-  const trackQuantity = $derived.by(() => {
-    if (typeof primaryEdition?.inventory?.trackQuantity === "boolean") {
-      return primaryEdition.inventory.trackQuantity;
-    }
-
-    if (typeof book?.inventory?.trackQuantity === "boolean") {
-      return book.inventory.trackQuantity;
-    }
-
-    return true;
-  });
-  const inStock = $derived.by(() => {
-    if (!trackQuantity || allowBackorders) return true;
-    if (typeof stockLevel !== "number") return true;
-    return stockLevel > 0;
-  });
-  const vendorAvailable = $derived.by(() => isVendorAvailableProduct(book));
-  const canAddToCart = $derived(inStock || vendorAvailable);
-  const addToCartLabel = $derived.by(() => {
-    if (inStock) return "Add to Cart";
-    if (vendorAvailable) return "Available to Order";
-    return "Out of Stock";
-  });
-  const availabilityMessage = $derived.by(() => {
-    if (inStock) return "In stock";
-    if (vendorAvailable) {
-      return "Available to order from vendor. Ships in a reasonable timeframe.";
-    }
-    return "Currently out of stock.";
-  });
+  const availabilityMessage = $derived(getBookAvailabilityMessage(book));
   const coverUrl = $derived(
     getImageUrl(
       book?.images?.[0]?.image ||
@@ -244,12 +198,9 @@
                 {formatCurrency(price)}
               </p>
             </div>
-            <AddToCartButton
-              productId={book?.id || book?._id}
-              productType="books"
-              disabled={!canAddToCart}
+            <BookPurchaseAction
+              {book}
               className="btn-primary btn-lg"
-              label={addToCartLabel}
             />
           </div>
           <p class="text-sm text-muted-foreground">

@@ -1,4 +1,4 @@
-import { getProductBySlug, payloadGet } from '$lib/server/payload';
+import { appendBookStorefrontFilters, getProductBySlug, payloadGet } from '$lib/server/payload';
 import { buildProductJsonLd, buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -72,7 +72,11 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
         for (const name of authorNamesFromText.slice(0, 2)) { // limit to first 2 authors
           try {
             const res = await payloadGet<any>(
-              `/api/books?where[authorsText.name][equals]=${encodeURIComponent(name)}&limit=20&depth=1`
+              `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
+                'where[authorsText.name][equals]': name,
+                limit: '20',
+                depth: '1',
+              })).toString()}`
             );
             res?.docs?.forEach((book: any) => {
               if (book.id !== product.id && book.slug && book.editions?.length > 0) {

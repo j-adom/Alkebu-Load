@@ -1,12 +1,24 @@
 import type { RequestHandler } from './$types';
-import { payloadGet, type PayloadCollectionResponse } from '$lib/server/payload';
+import {
+  buildBookStorefrontPath,
+  payloadGet,
+  type PayloadCollectionResponse,
+} from '$lib/server/payload';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 
 export const GET: RequestHandler = async () => {
   try {
     // Pull just slugs/updatedAt; keep it light
     const [books, posts, events, businesses, fashion, wellness, oils] = await Promise.all([
-      payloadGet<PayloadCollectionResponse<any>>('/api/books?limit=5000&depth=0&select=slug,updatedAt'),
+      payloadGet<PayloadCollectionResponse<any>>(
+        buildBookStorefrontPath(
+          new URLSearchParams({
+            limit: '5000',
+            depth: '0',
+            select: 'slug,updatedAt',
+          }),
+        ),
+      ),
       payloadGet<PayloadCollectionResponse<any>>('/api/blogPosts?where[status][equals]=published&limit=5000&depth=0&select=slug,updatedAt'),
       payloadGet<PayloadCollectionResponse<any>>('/api/events?where[status][equals]=published&limit=5000&depth=0&select=slug,updatedAt'),
       payloadGet<PayloadCollectionResponse<any>>('/api/businesses?limit=5000&depth=0&select=slug,updatedAt'),

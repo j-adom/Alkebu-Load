@@ -1,4 +1,4 @@
-import { payloadGet, getProducts } from '$lib/server/payload';
+import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { bookGenres } from '$lib/data/catalog';
 import type { PageServerLoad } from './$types';
 
@@ -35,7 +35,9 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       params.append('where[categories][in]', category);
     }
 
-    const products = await payloadGet<any>(`/api/books?${params.toString()}`);
+    const products = await payloadGet<any>(
+      `/api/books?${appendBookStorefrontFilters(params).toString()}`,
+    );
 
     // Get site settings global
     const settings = await payloadGet<any>('/api/globals/siteSettings?depth=1');

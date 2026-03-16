@@ -16,13 +16,21 @@ export function buildProductJsonLd(product: any, slug: string) {
   // Determine product type URL path
   const productType = product.primaryType === 'clothing-design' ? 'apparel' : 'books';
 
+  const bookAvailabilityStatus =
+    product.availabilityStatus === 'request-only' || product.availabilityStatus === 'discontinued'
+      ? product.availabilityStatus
+      : 'available';
   const offers = price ? {
     '@type': 'Offer',
     priceCurrency: 'USD',
     price: price.toFixed(2),
-    availability: product.inventory?.stockLevel > 0 || product.isActive !== false ?
-      'https://schema.org/InStock' :
-      'https://schema.org/OutOfStock',
+    availability: productType === 'books'
+      ? (bookAvailabilityStatus === 'available'
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock')
+      : product.inventory?.stockLevel > 0 || product.isActive !== false
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
     url: `${PUBLIC_SITE_URL}/shop/${productType}/${slug}`,
     priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days from now
   } : undefined;

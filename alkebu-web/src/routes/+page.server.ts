@@ -1,4 +1,4 @@
-import { payloadGet } from '$lib/server/payload';
+import { buildBookStorefrontPath, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -9,12 +9,28 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const homePageData = await payloadGet<any>('/api/globals/homePage?depth=2');
 
     // Get featured books for homepage
-    const featuredBooks = await payloadGet<any>('/api/books?where[isFeatured][equals]=true&limit=8&depth=2');
+    const featuredBooks = await payloadGet<any>(
+      buildBookStorefrontPath(
+        new URLSearchParams({
+          'where[isFeatured][equals]': 'true',
+          limit: '8',
+          depth: '2',
+        }),
+      ),
+    );
 
     // Get new books with cover images — the Oct 2025 batch has scraped images,
     // the Mar 2026 batch does not, so sort oldest-first from the Oct batch
     // by fetching books sorted by createdAt ascending (original import)
-    const newBooksRaw = await payloadGet<any>('/api/books?sort=createdAt&limit=100&depth=2');
+    const newBooksRaw = await payloadGet<any>(
+      buildBookStorefrontPath(
+        new URLSearchParams({
+          sort: 'createdAt',
+          limit: '100',
+          depth: '2',
+        }),
+      ),
+    );
     const booksWithImages = (newBooksRaw.docs || []).filter(
       (b: any) => b.images?.length > 0 || b.scrapedImageUrls?.length > 0
     );

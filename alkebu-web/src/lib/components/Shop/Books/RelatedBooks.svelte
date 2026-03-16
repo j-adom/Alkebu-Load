@@ -2,7 +2,7 @@
   import * as Carousel from "$lib/components/ui/carousel";
   import { formatCurrency } from "$lib/utils/currency";
   import { getImageUrl } from "$lib/payload";
-  import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
+  import BookPurchaseAction from "./BookPurchaseAction.svelte";
 
   interface Props {
     books: any[];
@@ -85,10 +85,9 @@
                     <div
                       class="absolute bottom-0 left-0 right-0 p-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
                     >
-                      <AddToCartButton
+                      <BookPurchaseAction
+                        {book}
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg"
-                        productId={book.id || book._id}
-                        productType="books"
                         iconOnly={false}
                         label="Add to Cart"
                       />

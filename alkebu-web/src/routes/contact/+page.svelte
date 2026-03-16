@@ -1,4 +1,5 @@
 <script>
+  import { page } from '$app/stores';
   import { urlFor } from '$lib/payload';
   import Meta from '$lib/components/Meta.svelte'
   import { MapPin, Mail, Phone, ChevronRight, Send, ArrowRight } from 'lucide-svelte';
@@ -98,11 +99,11 @@
               </div>
               <div>
                 <label for="subject" class="block text-sm font-medium mb-2">Subject</label>
-                <input type="text" id="subject" name="subject" placeholder="How can we help?" class="input-modern" required>
+                <input type="text" id="subject" name="subject" placeholder="How can we help?" class="input-modern" value={$page.url.searchParams.get('subject') || ''} required>
               </div>
               <div class="md:col-span-2">
                 <label for="message" class="block text-sm font-medium mb-2">Message</label>
-                <textarea id="message" name="message" placeholder="Write your message..." class="textarea-modern" rows="5" required></textarea>
+                <textarea id="message" name="message" placeholder="Write your message..." class="textarea-modern" rows="5" required>{$page.url.searchParams.get('message') || ''}</textarea>
               </div>
               <div class="md:col-span-2">
                 <button type="submit" class="btn-primary">

@@ -1,4 +1,4 @@
-import { payloadGet } from '$lib/server/payload';
+import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -221,6 +221,7 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
     if (col.type === 'books') {
       params.append('where[or][2][editions.isbn][contains]', query);
       params.append('where[or][3][editions.isbn10][contains]', query);
+      appendBookStorefrontFilters(params);
     }
     try {
       const resp = await payloadGet<any>(`${col.path}?${params}`);

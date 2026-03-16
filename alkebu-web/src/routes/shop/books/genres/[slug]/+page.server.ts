@@ -1,4 +1,4 @@
-import { payloadGet } from '$lib/server/payload';
+import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import { bookGenres } from '$lib/data/catalog';
@@ -39,10 +39,19 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       'where[categories][in]': genre.slug
     });
 
-    const booksData = await payloadGet<any>(`/api/books?${booksParams.toString()}`);
+    const booksData = await payloadGet<any>(
+      `/api/books?${appendBookStorefrontFilters(booksParams).toString()}`,
+    );
 
     // Get featured books in this genre
-    const featuredBooksData = await payloadGet<any>(`/api/books?where[categories][in]=${genre.slug}&where[isFeatured][equals]=true&limit=4&depth=1`);
+    const featuredBooksData = await payloadGet<any>(
+      `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
+        'where[categories][in]': genre.slug,
+        'where[isFeatured][equals]': 'true',
+        limit: '4',
+        depth: '1',
+      })).toString()}`,
+    );
 
     // Get site settings global
     const settings = await payloadGet<any>('/api/globals/siteSettings?depth=1');
