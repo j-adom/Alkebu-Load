@@ -96,6 +96,12 @@ Frontend:
 
 ## Production Backend Deploy
 
+Operational notes from production:
+
+- A plain Coolify backend redeploy is enough for env-only changes such as `STAFF_NOTIFICATION_EMAIL`.
+- Production Postgres is current for the app fields now in use, but the repo is not yet cleanly `payload migrate`-able end to end because older historical migrations are still SQLite-specific.
+- For the current ISBNdb account / edge behavior, `50` ISBNs per bulk request is the stable default. Larger batches can fail intermittently even though ISBNdb documents higher theoretical limits.
+
 Current live backend app:
 
 - Coolify app dir: `/data/coolify/applications/tcoks4wcgsokg0gw8kw4sgw4`
@@ -116,7 +122,7 @@ tar cz --exclude=.git --exclude=node_modules --exclude=.next --exclude=alkebulan
 ssh alkebu-vps 'rm -rf /tmp/alkebu-load-release-20260315 && mkdir -p /tmp/alkebu-load-release-20260315 && tar xzf /tmp/alkebu-load-release-20260315.tgz -C /tmp/alkebu-load-release-20260315'
 ```
 
-### 3. Run the Payload migration in a one-off Node container
+### 3. Preferred migration path
 
 The VPS itself does not have `node` or `pnpm`, so run the migration in Docker:
 
@@ -128,6 +134,10 @@ ssh alkebu-vps 'docker run --rm \
   node:22-alpine \
   sh -lc "apk add --no-cache libc6-compat && npm install -g pnpm && pnpm install --frozen-lockfile && pnpm payload migrate"'
 ```
+
+Current caveat:
+
+- This is still blocked by the old SQLite-era migrations in the repo. Until those are ported or retired, production schema changes may need to be applied with additive SQL instead of a full `payload migrate`.
 
 ### 4. Build the new backend image on the VPS
 

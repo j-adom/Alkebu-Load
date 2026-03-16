@@ -13,15 +13,14 @@
 
 import dotenv from 'dotenv'
 dotenv.config({ path: './.env' })
+import { fetchISBNdbBatchBooks } from './lib/isbndbBatch'
 
 const PAYLOAD_URL = process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000'
 const PAYLOAD_API_KEY = process.env.PAYLOAD_API_KEY || ''
 const PAYLOAD_ADMIN_EMAIL = process.env.PAYLOAD_ADMIN_EMAIL || ''
 const PAYLOAD_ADMIN_PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD || ''
 const ISBNDB_API_KEY = process.env.ISBNDB_API_KEY || ''
-const ISBNDB_BASE_URL = 'https://api2.isbndb.com'
-
-const ISBNDB_BATCH_SIZE = 1000 // ISBNdb batch endpoint supports up to 1000
+const ISBNDB_BATCH_SIZE = Math.max(1, Math.min(1000, Number.parseInt(process.env.ISBNDB_BATCH_SIZE || '50', 10)))
 const PAYLOAD_PAGE_SIZE = 100  // books per Payload REST page
 const SAVE_CONCURRENCY = 5     // parallel Payload PATCH requests
 const DELAY_MS = 500           // pause between ISBNdb batch calls (ms)
@@ -80,30 +79,16 @@ async function fetchISBNdbBatch(isbns: string[]): Promise<Map<string, string>> {
   const imageMap = new Map<string, string>()
   if (isbns.length === 0) return imageMap
 
-  try {
-    const res = await fetch(`${ISBNDB_BASE_URL}/books`, {
-      method: 'POST',
-      headers: {
-        'Authorization': ISBNDB_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ isbns }),
-      signal: AbortSignal.timeout(60000),
-    })
+  const data = await fetchISBNdbBatchBooks(isbns, {
+    apiKey: ISBNDB_API_KEY,
+    logger: (message) => console.log(`  ${message}`),
+  })
 
-    if (!res.ok) {
-      console.warn(`  ⚠️  ISBNdb batch ${res.status} for ${isbns.length} ISBNs`)
-      return imageMap
+  for (const [isbn, book] of data.entries()) {
+    const image = typeof book.image === 'string' ? book.image : ''
+    if (image) {
+      imageMap.set(isbn, image)
     }
-
-    const data = await res.json() as any
-    for (const book of data?.data || []) {
-      const isbn = book.isbn13 || book.isbn
-      const image = book.image
-      if (isbn && image) imageMap.set(isbn, image)
-    }
-  } catch (err: any) {
-    console.warn(`  ⚠️  ISBNdb batch error: ${err.message}`)
   }
 
   return imageMap

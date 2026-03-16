@@ -20,6 +20,8 @@
 import dotenv from 'dotenv'
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import path from 'path'
+import { normalizeBookBinding, normalizePublishedDate } from '../src/app/utils/bookImport'
+import { fetchISBNdbBatchBooks, type ISBNdbBatchBook } from './lib/isbndbBatch'
 
 
 dotenv.config({ path: './.env' })
@@ -29,8 +31,6 @@ const PAYLOAD_API_KEY = process.env.PAYLOAD_API_KEY || ''
 const PAYLOAD_ADMIN_EMAIL = process.env.PAYLOAD_ADMIN_EMAIL || ''
 const PAYLOAD_ADMIN_PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD || ''
 const ISBNDB_API_KEY = process.env.ISBNDB_API_KEY || ''
-const ISBNDB_BASE_URL = 'https://api2.isbndb.com'
-
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || ''
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || ''
 const R2_BUCKET = process.env.R2_BUCKET || 'alkebulan-online'
@@ -38,7 +38,7 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || ''
 const R2_ENDPOINT = process.env.R2_ENDPOINT || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
 const R2_PUBLIC_URL_BASE = (process.env.R2_PUBLIC_URL_BASE || 'https://media.alkebulanimages.com').replace(/\/$/, '')
 
-const ISBNDB_BATCH_SIZE = 1000
+const ISBNDB_BATCH_SIZE = Math.max(1, Math.min(1000, Number.parseInt(process.env.ISBNDB_BATCH_SIZE || '50', 10)))
 const PAYLOAD_PAGE_SIZE = 100
 const SAVE_CONCURRENCY = 5
 const IMAGE_CONCURRENCY = 3
@@ -110,7 +110,7 @@ async function payloadFetch(path: string, options: RequestInit = {}): Promise<an
 
 // ── ISBNdb batch ──────────────────────────────────────────────────────────────
 
-interface ISBNdbBook {
+interface ISBNdbBook extends ISBNdbBatchBook {
   isbn13?: string
   isbn?: string
   title?: string
@@ -125,35 +125,80 @@ interface ISBNdbBook {
   subjects?: string[]
   authors?: string[]
   dewey_decimal?: string[]
+  dimensions?: string
+  dimensions_structured?: {
+    length?: { unit?: string; value?: number }
+    width?: { unit?: string; value?: number }
+    height?: { unit?: string; value?: number }
+    weight?: { unit?: string; value?: number }
+  }
+}
+
+const isReliableTopLevelWeight = (weight: number | null | undefined, binding?: string | null): boolean => {
+  if (typeof weight !== 'number' || !Number.isFinite(weight) || weight <= 0) return false
+  if (weight !== 16) return true
+  return normalizeBookBinding(binding) === 'hardcover'
+}
+
+const toOunces = (value?: number, unit?: string): number | undefined => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return undefined
+  }
+
+  const normalizedUnit = unit?.toLowerCase().trim()
+
+  switch (normalizedUnit) {
+    case 'oz':
+    case 'ounce':
+    case 'ounces':
+      return Math.round(value * 100) / 100
+    case 'lb':
+    case 'lbs':
+    case 'pound':
+    case 'pounds':
+      return Math.round(value * 16 * 100) / 100
+    case 'g':
+    case 'gram':
+    case 'grams':
+      return Math.round((value / 28.349523125) * 100) / 100
+    case 'kg':
+    case 'kilogram':
+    case 'kilograms':
+      return Math.round(value * 35.27396195 * 100) / 100
+    default:
+      return undefined
+  }
+}
+
+const buildDimensionsText = (book: ISBNdbBook): string | undefined => {
+  let dimensionsText = book.dimensions?.trim() || undefined
+  const structured = book.dimensions_structured
+  if (!structured) return dimensionsText
+
+  const parts: string[] = []
+  const pushDimension = (label: string, dimension?: { unit?: string; value?: number }) => {
+    if (typeof dimension?.value === 'number' && Number.isFinite(dimension.value) && dimension.unit) {
+      parts.push(`${label}: ${dimension.value}${dimension.unit}`)
+    }
+  }
+
+  pushDimension('H', structured.height)
+  pushDimension('W', structured.width)
+  pushDimension('L', structured.length)
+  pushDimension('Weight', structured.weight)
+
+  if (parts.length > 0) {
+    dimensionsText = parts.join(', ')
+  }
+
+  return dimensionsText
 }
 
 async function fetchISBNdbBatch(isbns: string[]): Promise<Map<string, ISBNdbBook>> {
-  const resultMap = new Map<string, ISBNdbBook>()
-  if (isbns.length === 0) return resultMap
-
-  try {
-    const res = await fetch(`${ISBNDB_BASE_URL}/books`, {
-      method: 'POST',
-      headers: {
-        'Authorization': ISBNDB_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ isbns }),
-      signal: AbortSignal.timeout(60000),
-    })
-    if (!res.ok) {
-      console.warn(`  ⚠️  ISBNdb batch ${res.status}: ${(await res.text()).slice(0, 100)}`)
-      return resultMap
-    }
-    const data = await res.json() as any
-    for (const book of data?.data || []) {
-      const isbn = book.isbn13 || book.isbn
-      if (isbn) resultMap.set(isbn, book)
-    }
-  } catch (err: any) {
-    console.warn(`  ⚠️  ISBNdb batch error: ${err.message}`)
-  }
-  return resultMap
+  return fetchISBNdbBatchBooks(isbns, {
+    apiKey: ISBNDB_API_KEY,
+    logger: (message) => console.log(`  ${message}`),
+  }) as Promise<Map<string, ISBNdbBook>>
 }
 
 // ── R2 image upload ───────────────────────────────────────────────────────────
@@ -236,6 +281,13 @@ function buildPatch(
   mediaId: string | null,
 ): Record<string, any> | null {
   const patch: Record<string, any> = {}
+  const normalizedBinding = normalizeBookBinding(isbndbBook.binding)
+  const normalizedDate = normalizePublishedDate(isbndbBook.date_published)
+  const shippingWeightOz = toOunces(
+    isbndbBook.dimensions_structured?.weight?.value,
+    isbndbBook.dimensions_structured?.weight?.unit,
+  )
+  const dimensionsText = buildDimensionsText(isbndbBook)
 
   // Authors — populate authorsText if missing
   const existingAuthors: any[] = payloadBook.authorsText || []
@@ -273,20 +325,40 @@ function buildPatch(
     const editionPatch: Record<string, any> = {}
 
     if (!edition.pages && isbndbBook.pages) editionPatch.pages = isbndbBook.pages
-    if (!edition.datePublished && isbndbBook.date_published) {
-      const raw = isbndbBook.date_published
-      const parsed = raw.length === 4 ? new Date(`${raw}-01-01`) : new Date(raw)
-      if (!isNaN(parsed.getTime())) editionPatch.datePublished = parsed.toISOString()
+    if (!edition.datePublished && normalizedDate) {
+      editionPatch.datePublished = normalizedDate
     }
-    if ((!edition.binding || edition.binding === 'unknown') && isbndbBook.binding) {
-      editionPatch.binding = isbndbBook.binding.toLowerCase()
+    if ((!edition.binding || edition.binding === 'unknown') && normalizedBinding) {
+      editionPatch.binding = normalizedBinding
     }
     if (!edition.edition && isbndbBook.edition) {
       editionPatch.edition = isbndbBook.edition
     }
+    if (!edition.dimensions && dimensionsText) {
+      editionPatch.dimensions = dimensionsText
+    }
+    if (
+      (!edition.pricing?.shippingWeight || edition.pricing.shippingWeight <= 0) &&
+      shippingWeightOz !== undefined
+    ) {
+      editionPatch.pricing = {
+        ...(edition.pricing || {}),
+        shippingWeight: shippingWeightOz,
+      }
+    }
 
     if (Object.keys(editionPatch).length > 0) {
       patch.editions = [{ ...edition, ...editionPatch }]
+    }
+  }
+
+  if (
+    shippingWeightOz !== undefined &&
+    !isReliableTopLevelWeight(payloadBook.pricing?.shippingWeight, edition?.binding || normalizedBinding)
+  ) {
+    patch.pricing = {
+      ...(payloadBook.pricing || {}),
+      shippingWeight: shippingWeightOz,
     }
   }
 
