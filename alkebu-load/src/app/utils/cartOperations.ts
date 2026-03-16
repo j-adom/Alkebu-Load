@@ -5,6 +5,11 @@ import {
 } from './taxShippingCalculations';
 import { isShippingQuoteExpired } from './shippingQuotes';
 import { sendAbandonedCartEmail, type AbandonedCartData } from './emailService';
+import {
+  resolveCartProductTitle,
+  resolveCartProductUnitPrice,
+  resolveCartStripePriceId,
+} from './cartProductDetails';
 
 const AVAILABLE_VENDOR_KEYWORDS = [
   'ingram',
@@ -171,6 +176,27 @@ export interface CartSummary {
   items: any[];
 }
 
+export async function getCartItems(
+  payload: Payload,
+  cartId: string,
+  depth: number = 2,
+): Promise<any[]> {
+  const items = await payload.find({
+    collection: 'cart-items',
+    where: {
+      cart: { equals: cartId },
+    },
+    depth,
+    limit: 100,
+  });
+
+  return items.docs as any[];
+}
+
+export function mapStoredCartItemsForTax(items: any[]): CartItemForTax[] {
+  return mapCartItemsForTax(items);
+}
+
 const buildSubtotal = (items: CartItemForTax[]): number =>
   items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
@@ -205,6 +231,24 @@ export async function addToCart(
 
     if (!product) {
       return { success: false, error: 'Product not found' };
+    }
+
+    if (item.productType === 'books') {
+      const availabilityStatus = String(product?.availabilityStatus || 'available');
+
+      if (availabilityStatus === 'request-only') {
+        return {
+          success: false,
+          error: 'This title is not available for direct purchase. Please request this title instead.',
+        };
+      }
+
+      if (availabilityStatus === 'discontinued') {
+        return {
+          success: false,
+          error: 'This title is no longer available.',
+        };
+      }
     }
 
     // Check inventory/availability rules.
@@ -302,6 +346,9 @@ export async function addToCart(
         },
       });
     } else {
+      const productTitle = resolveCartProductTitle(product, item.customization);
+      const unitPrice = resolveCartProductUnitPrice(product, item.customization);
+
       // Create new cart item
       cartItem = await (payload as any).create({
         collection: 'cart-items',
@@ -312,10 +359,10 @@ export async function addToCart(
             value: (item as any).productId,
           },
           productType: (item as any).productType,
-          productTitle: (product as any).title,
+          productTitle,
           quantity: (item as any).quantity,
-          unitPrice: (product as any).pricing?.retailPrice || 0,
-          stripePriceId: (product as any).stripePriceId,
+          unitPrice,
+          stripePriceId: resolveCartStripePriceId(product, item.customization),
           customization: item.customization,
           availability: {
             inStock: inStockForQuantity,
@@ -459,13 +506,7 @@ export async function getCartSummary(
       return null;
     }
 
-    const items = await payload.find({
-      collection: 'cart-items',
-      where: {
-        cart: { equals: cartId },
-      },
-      depth: 2,
-    });
+    const itemDocs = await getCartItems(payload, cartId, 2);
 
     const shippingAddress = normalizeShippingAddress((cart as any).shippingAddress);
     const addressIsComplete = Boolean(
@@ -482,7 +523,7 @@ export async function getCartSummary(
       (cart as any).totalAmount !== undefined,
     );
 
-    const taxItems = mapCartItemsForTax(items.docs);
+    const taxItems = mapCartItemsForTax(itemDocs);
     const subtotal = buildSubtotal(taxItems);
 
     const totals = hasEstimatedTotals
@@ -504,13 +545,13 @@ export async function getCartSummary(
 
     return {
       id: String(cart.id),
-      itemCount: items.docs.reduce((count, item) => count + (item.quantity || 0), 0),
+      itemCount: itemDocs.reduce((count, item) => count + (item.quantity || 0), 0),
       subtotal: totals.subtotal,
       tax: totals.tax.amount,
       shipping: totals.shipping.cost,
       total: totals.total,
       hasEstimatedTotals,
-      items: items.docs as any,
+      items: itemDocs as any,
     };
 
   } catch (error) {
@@ -618,15 +659,9 @@ export async function markCartAbandoned(
  */
 async function updateCartTotals(payload: Payload, cartId: string): Promise<void> {
   try {
-    const items = await payload.find({
-      collection: 'cart-items',
-      where: {
-        cart: { equals: cartId },
-      },
-      depth: 2,
-    });
+    const itemDocs = await getCartItems(payload, cartId, 2);
 
-    const taxItems = mapCartItemsForTax(items.docs);
+    const taxItems = mapCartItemsForTax(itemDocs);
     const subtotal = buildSubtotal(taxItems);
 
     // Item or address changes invalidate any previously locked shipping quote.

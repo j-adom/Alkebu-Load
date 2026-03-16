@@ -13,7 +13,7 @@ test.after(() => {
   }
 });
 
-test('book-only orders default to media mail in fallback quotes', async () => {
+test('book-only orders default to media mail in estimated quotes', async () => {
   delete process.env.SHIPPO_API_TOKEN;
 
   const quote = await getShippingQuotes({
@@ -44,6 +44,7 @@ test('book-only orders default to media mail in fallback quotes', async () => {
 
   assert.strictEqual(quote.selectedOption.isMediaMail, true);
   assert.strictEqual(quote.selectedOption.service, 'Media Mail');
+  assert.strictEqual(quote.selectedOption.amount, 413);
   assert.ok(quote.shippingOptions.some((option) => option.service === 'Standard'));
 });
 
@@ -80,15 +81,15 @@ test('book-only orders can switch away from media mail', async () => {
       country: 'US',
     },
     subtotal: 2500,
-    selectedShippingRateId: 'fallback-expedited',
+    selectedShippingRateId: 'best-available-expedited',
   });
 
-  assert.strictEqual(quote.selectedShippingRateId, 'fallback-expedited');
+  assert.strictEqual(quote.selectedShippingRateId, 'best-available-expedited');
   assert.strictEqual(quote.selectedOption.method, 'expedited');
   assert.strictEqual(quote.selectedOption.isMediaMail, false);
 });
 
-test('shippo API failures fall back to static rates when token is configured', async () => {
+test('shippo API failures use estimated rates when token is configured', async () => {
   process.env.SHIPPO_API_TOKEN = 'shippo_test_token';
 
   const quote = await getShippingQuotes({
@@ -122,11 +123,11 @@ test('shippo API failures fall back to static rates when token is configured', a
       }) as any,
   });
 
-  assert.strictEqual(quote.quoteSource, 'fallback');
+  assert.strictEqual(quote.quoteSource, 'estimated');
   assert.strictEqual(quote.selectedOption.service, 'Media Mail');
 });
 
-test('empty Shippo rate responses fall back to static rates', async () => {
+test('empty Shippo rate responses use estimated rates', async () => {
   process.env.SHIPPO_API_TOKEN = 'shippo_test_token';
 
   const quote = await getShippingQuotes({
@@ -157,6 +158,39 @@ test('empty Shippo rate responses fall back to static rates', async () => {
       }) as any,
   });
 
-  assert.strictEqual(quote.quoteSource, 'fallback');
-  assert.ok(quote.shippingOptions.some((option) => option.id === 'fallback-media-mail'));
+  assert.strictEqual(quote.quoteSource, 'estimated');
+  assert.ok(quote.shippingOptions.some((option) => option.id === 'best-available-media-mail'));
+});
+
+test('book-only estimated media mail adds one dollar per additional book', async () => {
+  delete process.env.SHIPPO_API_TOKEN;
+
+  const quote = await getShippingQuotes({
+    items: [
+      {
+        product: {
+          editions: [
+            {
+              binding: 'paperback',
+              pricing: {},
+            },
+          ],
+        },
+        productType: 'books',
+        quantity: 3,
+        unitPrice: 2000,
+      },
+    ] as any,
+    shippingAddress: {
+      street: '2721 Jefferson St',
+      city: 'Nashville',
+      state: 'TN',
+      zip: '37208',
+      country: 'US',
+    },
+    subtotal: 6000,
+  });
+
+  assert.strictEqual(quote.selectedOption.id, 'best-available-media-mail');
+  assert.strictEqual(quote.selectedOption.amount, 613);
 });

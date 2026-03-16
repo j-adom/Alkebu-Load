@@ -17,6 +17,32 @@ function bestEditionSlug(doc: any): string {
 
 const ISBN_RE = /^[\d\-X]{9,13}$/i
 
+async function filterDiscontinuedBookResults(payload: any, results: any[]) {
+  const bookIds = results
+    .filter((result) => result?.type === 'books' && result?.id !== undefined && result?.id !== null)
+    .map((result) => String(result.id));
+
+  if (bookIds.length === 0) {
+    return results;
+  }
+
+  const allowedBooks = await payload.find({
+    collection: 'books',
+    where: {
+      and: [
+        { id: { in: bookIds } },
+        { availabilityStatus: { not_equals: 'discontinued' } },
+      ],
+    },
+    limit: bookIds.length,
+    depth: 0,
+  });
+
+  const allowedIds = new Set((allowedBooks.docs || []).map((doc: any) => String(doc.id)));
+
+  return results.filter((result) => result?.type !== 'books' || allowedIds.has(String(result.id)));
+}
+
 async function payloadSearch(payload: any, query: string, types: string[], limit: number) {
   const results: any[] = []
 
@@ -27,9 +53,15 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
     // Books — synopsis and excerpt are textarea (plain text); description is richText (jsonb)
     want('books') && (async () => {
       try {
-        const where: any = ISBN_RE.test(query)
+        const contentWhere: any = ISBN_RE.test(query)
           ? { or: [{ 'editions.isbn': { equals: query } }, { 'editions.isbn10': { equals: query } }] }
           : { or: [{ title: { contains: query } }, { synopsis: { contains: query } }, { excerpt: { contains: query } }] }
+        const where: any = {
+          and: [
+            { availabilityStatus: { not_equals: 'discontinued' } },
+            contentWhere,
+          ],
+        };
 
         const res = await payload.find({
           collection: 'books',
@@ -262,6 +294,8 @@ export async function GET(req: NextRequest) {
     source = 'postgresql'
     internalResults = await payloadSearch(payload, query, types, limit)
   }
+
+  internalResults = await filterDiscontinuedBookResults(payload, internalResults)
 
   const searchTime = Date.now() - start
 

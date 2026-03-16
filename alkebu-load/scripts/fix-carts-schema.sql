@@ -1,0 +1,14 @@
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_address_first_name character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_address_last_name character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_address_company character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_address_street2 character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_address_phone character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS selected_shipping_rate_id character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_carrier character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_service character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_method character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_quote_source character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_quote_expires_at timestamp(3) with time zone;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_quote_fingerprint character varying;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS shipping_estimated_days numeric;
+ALTER TABLE carts ADD COLUMN IF NOT EXISTS provider_order_id character varying;

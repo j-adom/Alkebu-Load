@@ -44,7 +44,11 @@ type SearchBootstrapTarget = {
 };
 
 export const SEARCH_INDEX_BOOTSTRAP_TARGETS: SearchBootstrapTarget[] = [
-  { collection: 'books', type: 'books' },
+  {
+    collection: 'books',
+    type: 'books',
+    where: { availabilityStatus: { not_equals: 'discontinued' } },
+  },
   { collection: 'blogPosts', type: 'blogPosts', where: { status: { equals: 'published' } } },
   { collection: 'events', type: 'events', where: { status: { equals: 'published' } } },
   { collection: 'businesses', type: 'businesses', where: { status: { equals: 'published' } } },
@@ -231,6 +235,10 @@ class SearchEngine {
     try {
       switch (type) {
         case 'books': {
+          if (doc?.availabilityStatus === 'discontinued') {
+            return;
+          }
+
           const editions: any[] = doc.editions || [];
           // Prefer in-stock edition, then most recently published, then first
           const inStock = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0);

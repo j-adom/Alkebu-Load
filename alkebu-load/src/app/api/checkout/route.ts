@@ -3,6 +3,10 @@ import { getPayload } from 'payload';
 import config from '@payload-config';
 import { getAdapter } from '@/app/lib/payments/adapters';
 import {
+  getCartItems,
+  mapStoredCartItemsForTax,
+} from '@/app/utils/cartOperations';
+import {
   buildShippingQuoteFingerprint,
   isShippingQuoteExpired,
 } from '@/app/utils/shippingQuotes';
@@ -71,7 +75,7 @@ export async function POST(request: NextRequest) {
     const cart = await payload.findByID({
       collection: 'carts',
       id: cartId,
-      depth: 2,
+      depth: 0,
     });
 
     if (!cart) {
@@ -81,7 +85,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!cart.items || cart.items.length === 0) {
+    const cartItems = await getCartItems(payload, String(cartId), 2);
+
+    if (!cartItems.length) {
       return NextResponse.json(
         { error: 'Cart is empty' },
         { status: 400 }
@@ -110,12 +116,7 @@ export async function POST(request: NextRequest) {
       !!taxExempt
     );
 
-    const taxItems: CartItemForTax[] = (cart.items as any[]).map((item) => ({
-      product: typeof item.product === 'object' ? item.product : { pricing: {} },
-      productType: item.productType,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    }));
+    const taxItems: CartItemForTax[] = mapStoredCartItemsForTax(cartItems);
     const shippingQuoteFingerprint = buildShippingQuoteFingerprint(
       taxItems,
       normalizedShippingAddress,

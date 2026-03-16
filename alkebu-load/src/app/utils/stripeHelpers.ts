@@ -1,6 +1,7 @@
 import type { Payload } from 'payload';
 import Stripe from 'stripe';
 import { sendOrderConfirmation, sendStaffOrderNotification, type OrderConfirmationData, type StaffNotificationData } from './emailService';
+import { getCartItems } from './cartOperations';
 import { isShippingQuoteExpired } from './shippingQuotes';
 import {
   calculateTaxFromSubtotal,
@@ -43,6 +44,26 @@ const splitFullName = (fullName: unknown): { firstName?: string; lastName?: stri
 };
 
 type AddressRecord = Record<string, unknown>;
+
+const getCartItemProductId = (item: any): string | number | undefined => {
+  const relation = item?.product;
+
+  if (relation && typeof relation === 'object') {
+    if ('value' in relation) {
+      const value = relation.value;
+      if (value && typeof value === 'object' && 'id' in value) {
+        return value.id as string | number | undefined;
+      }
+      return value as string | number | undefined;
+    }
+
+    if ('id' in relation) {
+      return relation.id as string | number | undefined;
+    }
+  }
+
+  return relation as string | number | undefined;
+};
 
 export function buildOrderShippingAddress(
   cartShippingAddress: AddressRecord | null | undefined,
@@ -111,14 +132,15 @@ export async function createCheckoutSession(
   sessionData: CheckoutSessionData
 ): Promise<{ sessionId: string; checkoutUrl: string }> {
   try {
-    // Get cart with items
+    // Active cart line items live in cart-items, not cart.items on the cart doc.
     const cart = await payload.findByID({
       collection: 'carts',
       id: sessionData.cartId,
-      depth: 2,
+      depth: 0,
     });
+    const cartItems = await getCartItems(payload, String(sessionData.cartId), 2);
 
-    if (!cart || !cart.items?.length) {
+    if (!cart || !cartItems.length) {
       throw new Error('Cart not found or empty');
     }
 
@@ -151,7 +173,7 @@ export async function createCheckoutSession(
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     let subtotalAmount = 0;
 
-    for (const item of (cart.items as any[])) {
+    for (const item of cartItems) {
       subtotalAmount += (item.unitPrice || 0) * (item.quantity || 0);
       lineItems.push({
         price_data: {
@@ -159,7 +181,7 @@ export async function createCheckoutSession(
           product_data: {
             name: item.productTitle,
             metadata: {
-              productId: typeof item.product === 'object' ? item.product.id : item.product,
+              productId: String(getCartItemProductId(item) || ''),
               productType: item.productType,
             },
           },
@@ -323,6 +345,12 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     }
 
     const cart = carts.docs[0];
+    const cartItems = await getCartItems(payload, String(cart.id), 2);
+
+    if (!cartItems.length) {
+      console.error('Cart items not found for session:', session.id);
+      return;
+    }
 
     // Prevent duplicate order creation
     const existingOrder = await payload.find({
@@ -359,8 +387,8 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
       customer: customerId,
       guestEmail: customerId ? undefined : (cart as any).guestEmail || session.customer_details?.email,
       status: 'paid',
-      items: (cart.items || []).map((item: any) => ({
-        product: typeof item.product === 'object' ? item.product.id : item.product,
+      items: cartItems.map((item: any) => ({
+        product: getCartItemProductId(item),
         productType: item.productType,
         productTitle: item.productTitle,
         quantity: item.quantity,
@@ -401,11 +429,18 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     console.log('Order created successfully:', orderData.orderNumber);
 
     // Decrement inventory for each item
-    for (const item of (cart.items || []) as any[]) {
+    for (const item of cartItems as any[]) {
       try {
-        const productId = typeof item.product === 'object' ? item.product.id : item.product;
-        const product = typeof item.product === 'object'
-          ? item.product
+        const productId = getCartItemProductId(item);
+        if (productId === undefined || productId === null || productId === '') {
+          continue;
+        }
+
+        const productRelation = item.product;
+        const product = productRelation && typeof productRelation === 'object' && 'value' in productRelation
+          ? productRelation.value
+          : typeof productRelation === 'object'
+            ? productRelation
           : await payload.findByID({
             collection: item.productType as any,
             id: productId,

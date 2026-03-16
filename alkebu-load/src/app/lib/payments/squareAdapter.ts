@@ -1,5 +1,26 @@
 import type { PaymentAdapter, InitPaymentParams } from './adapters';
 import crypto from 'node:crypto';
+import { getCartItems } from '@/app/utils/cartOperations';
+
+const getCartItemProductId = (item: any): string | number | undefined => {
+  const relation = item?.product;
+
+  if (relation && typeof relation === 'object') {
+    if ('value' in relation) {
+      const value = relation.value;
+      if (value && typeof value === 'object' && 'id' in value) {
+        return value.id as string | number | undefined;
+      }
+      return value as string | number | undefined;
+    }
+
+    if ('id' in relation) {
+      return relation.id as string | number | undefined;
+    }
+  }
+
+  return relation as string | number | undefined;
+};
 
 /**
  * Square adapter (hosted checkout via Payment Links).
@@ -24,19 +45,21 @@ export const squareAdapter = (): PaymentAdapter => {
       token: accessToken,
     });
 
-    // Load cart and build line items
+    // Load cart and build line items from cart-items, which is the source of
+    // truth for active carts in this app.
     const cart = await payload.findByID({
       collection: 'carts',
       id: params.cartId,
-      depth: 2,
+      depth: 0,
     });
+    const cartItems = await getCartItems(payload, String(params.cartId), 2);
 
-    if (!cart || !cart.items?.length) {
+    if (!cart || !cartItems.length) {
       throw new Error('Cart not found or empty');
     }
 
     // Build line items for Square
-    const lineItems = cart.items.map((item: any) => ({
+    const lineItems = cartItems.map((item: any) => ({
       name: item.productTitle || 'Item',
       quantity: String(item.quantity || 1),
       basePriceMoney: {
@@ -215,6 +238,12 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
   }
 
   const cart = carts.docs[0];
+  const cartItems = await getCartItems(payload, String(cart.id), 2);
+
+  if (!cartItems.length) {
+    console.log('No cart items found for Square payment:', paymentId);
+    return;
+  }
 
   // Check if order already exists
   const existingOrder = await payload.find({
@@ -232,7 +261,7 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
   }
 
   // Calculate amounts
-  const subtotal = cart.items.reduce((sum: number, item: any) => {
+  const subtotal = cartItems.reduce((sum: number, item: any) => {
     return sum + (item.quantity * item.unitPrice);
   }, 0);
 
@@ -251,8 +280,8 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
         : cart.user,
     guestEmail: cart.guestEmail,
     status: 'paid',
-    items: cart.items.map((item: any) => ({
-      product: typeof item.product === 'object' ? item.product.id : item.product,
+    items: cartItems.map((item: any) => ({
+      product: getCartItemProductId(item),
       productType: item.productType,
       productTitle: item.productTitle,
       quantity: item.quantity,
@@ -294,11 +323,14 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
   console.log('Order created from Square payment:', orderData.orderNumber);
 
   // Decrement inventory
-  for (const item of cart.items) {
+  for (const item of cartItems) {
     try {
-      const productId = typeof item.product === 'object' ? item.product.id : item.product;
-      const product = typeof item.product === 'object'
-        ? item.product
+      const productId = getCartItemProductId(item);
+      const productRelation = item.product;
+      const product = productRelation && typeof productRelation === 'object' && 'value' in productRelation
+        ? productRelation.value
+        : typeof productRelation === 'object'
+          ? productRelation
         : await payload.findByID({
           collection: item.productType,
           id: productId,

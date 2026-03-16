@@ -64,7 +64,7 @@ const Books: CollectionConfig = {
   slug: 'books',
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'authors', 'publisher', 'vendor', 'categories', 'isActive', 'isbndbChecked'],
+    defaultColumns: ['title', 'authors', 'publisher', 'vendor', 'availabilityStatus', 'isActive', 'isbndbChecked'],
     group: 'Inventory',
     components: {
       views: {
@@ -592,6 +592,21 @@ const Books: CollectionConfig = {
       admin: {
         description: 'Any errors encountered during enrichment (for debugging)'
       }
+    },
+    {
+      name: 'availabilityStatus',
+      type: 'select',
+      defaultValue: 'available',
+      index: true,
+      options: [
+        { label: 'Available', value: 'available' },
+        { label: 'Request Only', value: 'request-only' },
+        { label: 'Discontinued', value: 'discontinued' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Controls storefront purchase behavior and visibility.',
+      },
     },
     {
       name: 'isActive',

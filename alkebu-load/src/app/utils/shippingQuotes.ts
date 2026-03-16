@@ -29,7 +29,7 @@ export type ShippingQuoteResult = {
   selectedShippingRateId: string;
   selectedOption: ShippingOption;
   quoteExpiresAt: string;
-  quoteSource: 'shippo' | 'fallback';
+  quoteSource: 'shippo' | 'estimated';
 };
 
 type FetchLike = typeof fetch;
@@ -105,6 +105,19 @@ const getEstimatedDays = (rate: Record<string, unknown>): number => {
 
 const isBookOnlyOrder = (items: CartItemForTax[]): boolean =>
   items.length > 0 && items.every((item) => item.productType === 'books');
+
+const getBookItemCount = (items: CartItemForTax[]): number =>
+  items.reduce((count, item) => count + Math.max(0, item.quantity || 0), 0);
+
+const calculateEstimatedBookMediaMailShipping = (items: CartItemForTax[]) => {
+  const baseRate = calculateUspsMediaMailShipping(1);
+  const bookCount = Math.max(1, getBookItemCount(items));
+
+  return {
+    ...baseRate,
+    cost: baseRate.cost + ((bookCount - 1) * 100),
+  };
+};
 
 const getShipFromAddress = (): ShippoAddress => ({
   name: readEnv('SHIPPO_SHIP_FROM_NAME') || 'Alkebu-Lan Images',
@@ -236,9 +249,9 @@ const buildFallbackOptions = (
   const options: ShippingOption[] = [];
 
   if (isBookOnlyOrder(items)) {
-    const mediaMail = calculateUspsMediaMailShipping(totalWeightOz);
+    const mediaMail = calculateEstimatedBookMediaMailShipping(items);
     options.push({
-      id: 'fallback-media-mail',
+      id: 'best-available-media-mail',
       carrier: 'USPS',
       service: 'Media Mail',
       amount: mediaMail.cost,
@@ -251,8 +264,8 @@ const buildFallbackOptions = (
 
   const standard = calculateShipping(totalWeightOz, 'standard', shippingAddress.state || 'TN');
   options.push({
-    id: 'fallback-standard',
-    carrier: 'Fallback',
+    id: 'best-available-standard',
+    carrier: 'Best Available',
     service: 'Standard',
     amount: standard.cost,
     estimatedDays: standard.estimatedDays,
@@ -263,8 +276,8 @@ const buildFallbackOptions = (
 
   const expedited = calculateShipping(totalWeightOz, 'expedited', shippingAddress.state || 'TN');
   options.push({
-    id: 'fallback-expedited',
-    carrier: 'Fallback',
+    id: 'best-available-expedited',
+    carrier: 'Best Available',
     service: 'Expedited',
     amount: expedited.cost,
     estimatedDays: expedited.estimatedDays,
@@ -330,7 +343,7 @@ export async function getShippingQuotes(
   const shippoToken = readEnv('SHIPPO_API_TOKEN');
 
   let options: ShippingOption[] = [];
-  let quoteSource: 'shippo' | 'fallback' = 'shippo';
+  let quoteSource: 'shippo' | 'estimated' = 'shippo';
 
   if (shippoToken) {
     try {
@@ -368,14 +381,14 @@ export async function getShippingQuotes(
       }
     } catch (error) {
       console.warn(
-        'Falling back to static shipping quotes after Shippo quote failure:',
+        'Using estimated shipping quotes after Shippo quote failure:',
         error,
       );
-      quoteSource = 'fallback';
+      quoteSource = 'estimated';
       options = buildFallbackOptions(items, shippingAddress, subtotal);
     }
   } else {
-    quoteSource = 'fallback';
+    quoteSource = 'estimated';
     options = buildFallbackOptions(items, shippingAddress, subtotal);
   }
 

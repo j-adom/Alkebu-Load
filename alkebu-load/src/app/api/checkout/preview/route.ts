@@ -7,6 +7,10 @@ import {
     type ShippingAddress,
 } from '@/app/utils/taxShippingCalculations';
 import {
+    getCartItems,
+    mapStoredCartItemsForTax,
+} from '@/app/utils/cartOperations';
+import {
     buildShippingQuoteFingerprint,
     formatShippingMethodLabel,
     getShippingMethodCode,
@@ -47,11 +51,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get cart with populated items
+        // Get cart document and line items. The cart.items relationship is not
+        // the source of truth for active carts in this app; cart-items are.
         const cart = await payload.findByID({
             collection: 'carts',
             id: cartId,
-            depth: 2,
+            depth: 0,
         });
 
         if (!cart) {
@@ -61,7 +66,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (!cart.items?.length) {
+        const cartItems = await getCartItems(payload, String(cartId), 2);
+
+        if (!cartItems.length) {
             return NextResponse.json({
                 subtotal: 0,
                 tax: { rate: 0, amount: 0, exempt: false },
@@ -81,12 +88,7 @@ export async function POST(request: NextRequest) {
         );
 
         // Map cart items to the format expected by calculateOrderTotals
-        const taxItems: CartItemForTax[] = cart.items.map((item: any) => ({
-            product: typeof item.product === 'object' ? item.product : { pricing: {} },
-            productType: item.productType,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-        }));
+        const taxItems: CartItemForTax[] = mapStoredCartItemsForTax(cartItems);
 
         const address: ShippingAddress | null = shippingAddress
             ? {
