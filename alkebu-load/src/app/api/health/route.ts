@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@payload-config';
+import { getEmailRuntimeConfig } from '@/app/utils/emailConfig';
 
 /**
  * Health check endpoint for Coolify/Docker
@@ -17,10 +18,21 @@ export async function GET() {
       limit: 1,
     });
 
+    const email = getEmailRuntimeConfig();
+
     return NextResponse.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       database: 'connected',
+      email: {
+        provider: email.provider,
+        configured: email.configured,
+        host: email.host,
+        port: email.port,
+        fromEmail: email.fromEmail,
+        staffNotificationEmail: email.staffNotificationEmail,
+        missing: email.missing,
+      },
     });
   } catch (error) {
     console.error('Health check failed:', error);

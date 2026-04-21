@@ -821,7 +821,8 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
 
       // Send abandoned cart email
       try {
-        const emailSent = await sendAbandonedCartEmail(emailData);
+        const emailResult = await sendAbandonedCartEmail(emailData);
+        const emailSent = emailResult.success;
 
         // Update cart status and mark email as sent
         await payload.update({

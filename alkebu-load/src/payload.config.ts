@@ -39,6 +39,7 @@ import { CartItems } from './collections/CartItems'
 import { Orders } from './collections/Orders'
 import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
+import { getEmailRuntimeConfig, getEmailTransportOptions } from './app/utils/emailConfig'
 
 
 const filename = fileURLToPath(import.meta.url)
@@ -47,6 +48,7 @@ const dirname = path.dirname(filename)
 const serverURL = process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000'
 const publicSiteURL = process.env.PAYLOAD_PUBLIC_SITE_URL || 'https://alkebulanimages.com'
 const databaseURI = process.env.DATABASE_URI
+const emailRuntime = getEmailRuntimeConfig()
 
 const resolveDatabaseAdapter = async () => {
   if (databaseURI?.startsWith('postgres')) {
@@ -183,17 +185,9 @@ export default buildConfig({
     }),
   ],
   email: nodemailerAdapter({
-    defaultFromAddress: process.env.FROM_EMAIL || process.env.SMTP_FROM || 'noreply@alkebulanimages.com',
-    defaultFromName: process.env.FROM_NAME || 'Alkebu-Lan Images',
-    transportOptions: {
-      host: process.env.SMTP_HOST || 'email-smtp.us-east-2.amazonaws.com',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: parseInt(process.env.SMTP_PORT || '587', 10) === 465,
-      auth: {
-        user: process.env.SES_SMTP_USER || process.env.SMTP_USER,
-        pass: process.env.SES_SMTP_PASSWORD || process.env.SMTP_PASSWORD,
-      },
-    },
+    defaultFromAddress: emailRuntime.fromEmail,
+    defaultFromName: emailRuntime.fromName,
+    transportOptions: getEmailTransportOptions(),
   }),
   jobs: {
     tasks: [

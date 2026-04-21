@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import type { Payload } from 'payload';
 import {
   generateOrderConfirmationTemplate,
   generateAbandonedCartTemplate,
@@ -7,11 +6,25 @@ import {
   generateStaffNotificationTemplate,
   generateDailyDigestTemplate,
 } from './emailTemplates';
+import { getEmailRuntimeConfig, type EmailProvider } from './emailConfig';
 
 export interface EmailTemplate {
   subject: string;
   html: string;
   text: string;
+}
+
+export interface EmailSendResult {
+  success: boolean;
+  provider: EmailProvider;
+  host: string;
+  port: number;
+  secure: boolean;
+  from: string;
+  to: string;
+  subject: string;
+  messageId?: string;
+  error?: string;
 }
 
 export interface OrderConfirmationData {
@@ -82,78 +95,116 @@ export interface DailyDigestData {
   adminUrl: string;
 }
 
-const readEnv = (...keys: string[]): string | undefined => {
-  for (const key of keys) {
-    const value = process.env[key]?.trim();
-    if (value) return value;
+function formatError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return typeof error === 'string' ? error : 'Unknown email error';
+}
+
+function getTransporter() {
+  const config = getEmailRuntimeConfig();
+
+  if (!config.configured) {
+    throw new Error(`Email is not configured. Missing: ${config.missing.join(', ')}`);
   }
 
-  return undefined;
+  return {
+    config,
+    transporter: nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth: {
+        user: config.user,
+        pass: config.password,
+      },
+    }),
+  };
+}
+
+const fromLine = () => {
+  const config = getEmailRuntimeConfig();
+  return `${config.fromName} <${config.fromEmail}>`;
 };
 
-const smtpHost = readEnv('SMTP_HOST') || 'email-smtp.us-east-2.amazonaws.com';
-const smtpPort = parseInt(readEnv('SMTP_PORT') || '587', 10);
-const smtpSecure = smtpPort === 465;
-const smtpUser = readEnv('SES_SMTP_USER', 'SMTP_USER');
-const smtpPassword = readEnv('SES_SMTP_PASSWORD', 'SMTP_PASSWORD');
+async function sendTemplateEmail(params: {
+  to: string;
+  template: EmailTemplate;
+}): Promise<EmailSendResult> {
+  const { to, template } = params;
 
-// Create reusable transporter using Amazon SES SMTP with generic SMTP fallback.
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpSecure,
-  auth: {
-    user: smtpUser,
-    pass: smtpPassword,
-  },
-});
-
-const fromLine = () => `${process.env.FROM_NAME || 'Alkebu-Lan Images'} <${process.env.FROM_EMAIL || 'orders@alkebulanimages.com'}>`;
-
-/**
- * Send order confirmation email to customer
- */
-export async function sendOrderConfirmation(data: OrderConfirmationData): Promise<boolean> {
   try {
-    const template = generateOrderConfirmationTemplate(data);
-
-    await transporter.sendMail({
+    const { config, transporter } = getTransporter();
+    const info = await transporter.sendMail({
       from: fromLine(),
-      to: data.customerEmail,
+      to,
+      replyTo: config.replyToEmail,
       subject: template.subject,
       html: template.html,
       text: template.text,
     });
 
-    console.log(`Order confirmation sent to ${data.customerEmail} for order ${data.orderNumber}`);
-    return true;
+    return {
+      success: true,
+      provider: config.provider,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      from: fromLine(),
+      to,
+      subject: template.subject,
+      messageId: info.messageId,
+    };
   } catch (error) {
-    console.error('Error sending order confirmation email:', error);
-    return false;
+    const config = getEmailRuntimeConfig();
+    const message = formatError(error);
+    console.error(`Email delivery failed for "${template.subject}" to ${to}:`, error);
+
+    return {
+      success: false,
+      provider: config.provider,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      from: fromLine(),
+      to,
+      subject: template.subject,
+      error: message,
+    };
   }
+}
+
+/**
+ * Send order confirmation email to customer
+ */
+export async function sendOrderConfirmation(data: OrderConfirmationData): Promise<EmailSendResult> {
+  const template = generateOrderConfirmationTemplate(data);
+  const result = await sendTemplateEmail({
+    to: data.customerEmail,
+    template,
+  });
+
+  if (result.success) {
+    console.log(`Order confirmation sent to ${data.customerEmail} for order ${data.orderNumber}`);
+  }
+
+  return result;
 }
 
 /**
  * Send abandoned cart recovery email to customer
  */
-export async function sendAbandonedCartEmail(data: AbandonedCartData): Promise<boolean> {
-  try {
-    const template = generateAbandonedCartTemplate(data);
+export async function sendAbandonedCartEmail(data: AbandonedCartData): Promise<EmailSendResult> {
+  const template = generateAbandonedCartTemplate(data);
+  const result = await sendTemplateEmail({
+    to: data.customerEmail,
+    template,
+  });
 
-    await transporter.sendMail({
-      from: fromLine(),
-      to: data.customerEmail,
-      subject: template.subject,
-      html: template.html,
-      text: template.text,
-    });
-
+  if (result.success) {
     console.log(`Abandoned cart email sent to ${data.customerEmail} for cart ${data.cartId}`);
-    return true;
-  } catch (error) {
-    console.error('Error sending abandoned cart email:', error);
-    return false;
   }
+
+  return result;
 }
 
 /**
@@ -165,84 +216,89 @@ export async function sendOrderStatusUpdate(
   oldStatus: string,
   newStatus: string,
   trackingNumber?: string
-): Promise<boolean> {
-  try {
-    const template = generateOrderStatusTemplate(orderNumber, oldStatus, newStatus, trackingNumber);
+): Promise<EmailSendResult> {
+  const template = generateOrderStatusTemplate(orderNumber, oldStatus, newStatus, trackingNumber);
+  const result = await sendTemplateEmail({
+    to: customerEmail,
+    template,
+  });
 
-    await transporter.sendMail({
-      from: fromLine(),
-      to: customerEmail,
-      subject: template.subject,
-      html: template.html,
-      text: template.text,
-    });
-
+  if (result.success) {
     console.log(`Order status update sent to ${customerEmail} for order ${orderNumber}: ${oldStatus} → ${newStatus}`);
-    return true;
-  } catch (error) {
-    console.error('Error sending order status update email:', error);
-    return false;
   }
+
+  return result;
 }
 
 /**
  * Send new order notification email to staff
  */
-export async function sendStaffOrderNotification(data: StaffNotificationData): Promise<boolean> {
-  try {
-    const staffEmail = process.env.STAFF_NOTIFICATION_EMAIL || 'info@alkebulanimages.com';
-    const template = generateStaffNotificationTemplate(data);
+export async function sendStaffOrderNotification(data: StaffNotificationData): Promise<EmailSendResult> {
+  const staffEmail = getEmailRuntimeConfig().staffNotificationEmail;
+  const template = generateStaffNotificationTemplate(data);
+  const result = await sendTemplateEmail({
+    to: staffEmail,
+    template,
+  });
 
-    await transporter.sendMail({
-      from: fromLine(),
-      to: staffEmail,
-      subject: template.subject,
-      html: template.html,
-      text: template.text,
-    });
-
+  if (result.success) {
     console.log(`Staff order notification sent to ${staffEmail} for order ${data.orderNumber}`);
-    return true;
-  } catch (error) {
-    console.error('Error sending staff order notification:', error);
-    return false;
   }
+
+  return result;
 }
 
 /**
  * Send daily outstanding orders digest to staff
  */
-export async function sendDailyOrderDigest(data: DailyDigestData): Promise<boolean> {
-  try {
-    const staffEmail = process.env.STAFF_NOTIFICATION_EMAIL || 'info@alkebulanimages.com';
-    const template = generateDailyDigestTemplate(data);
+export async function sendDailyOrderDigest(data: DailyDigestData): Promise<EmailSendResult> {
+  const staffEmail = getEmailRuntimeConfig().staffNotificationEmail;
+  const template = generateDailyDigestTemplate(data);
+  const result = await sendTemplateEmail({
+    to: staffEmail,
+    template,
+  });
 
-    await transporter.sendMail({
-      from: fromLine(),
-      to: staffEmail,
-      subject: template.subject,
-      html: template.html,
-      text: template.text,
-    });
-
+  if (result.success) {
     console.log(`Daily order digest sent to ${staffEmail}: ${data.totalOrderCount} orders`);
-    return true;
-  } catch (error) {
-    console.error('Error sending daily order digest:', error);
-    return false;
   }
+
+  return result;
 }
 
 /**
  * Test email configuration
  */
-export async function testEmailConnection(): Promise<boolean> {
+export async function testEmailConnection(): Promise<EmailSendResult> {
   try {
+    const { config, transporter } = getTransporter();
     await transporter.verify();
     console.log('Email server connection verified');
-    return true;
+
+    return {
+      success: true,
+      provider: config.provider,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      from: fromLine(),
+      to: config.staffNotificationEmail,
+      subject: 'SMTP connection test',
+    };
   } catch (error) {
+    const config = getEmailRuntimeConfig();
     console.error('Email server connection failed:', error);
-    return false;
+
+    return {
+      success: false,
+      provider: config.provider,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      from: fromLine(),
+      to: config.staffNotificationEmail,
+      subject: 'SMTP connection test',
+      error: formatError(error),
+    };
   }
 }

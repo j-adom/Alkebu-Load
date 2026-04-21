@@ -5,7 +5,7 @@ export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
     useAsTitle: 'orderNumber',
-    defaultColumns: ['orderNumber', 'customer', 'status', 'totalAmount', 'createdAt'],
+    defaultColumns: ['orderNumber', 'customer', 'status', 'totalAmount', 'payment.paymentStatus', 'createdAt'],
     group: 'E-Commerce',
   },
   access: {
@@ -392,6 +392,55 @@ export const Orders: CollectionConfig = {
       admin: {
         description: 'Internal staff notes about this order',
       },
+    },
+    {
+      name: 'emailNotifications',
+      type: 'group',
+      admin: {
+        description: 'Transactional email delivery status for this order',
+      },
+      fields: [
+        {
+          name: 'customerConfirmation',
+          type: 'group',
+          fields: [
+            {
+              name: 'status',
+              type: 'select',
+              options: [
+                { label: 'Pending', value: 'pending' },
+                { label: 'Sent', value: 'sent' },
+                { label: 'Failed', value: 'failed' },
+                { label: 'Skipped', value: 'skipped' },
+              ],
+            },
+            { name: 'recipient', type: 'email' },
+            { name: 'provider', type: 'text' },
+            { name: 'sentAt', type: 'date' },
+            { name: 'error', type: 'textarea' },
+          ],
+        },
+        {
+          name: 'staffNotification',
+          type: 'group',
+          fields: [
+            {
+              name: 'status',
+              type: 'select',
+              options: [
+                { label: 'Pending', value: 'pending' },
+                { label: 'Sent', value: 'sent' },
+                { label: 'Failed', value: 'failed' },
+                { label: 'Skipped', value: 'skipped' },
+              ],
+            },
+            { name: 'recipient', type: 'email' },
+            { name: 'provider', type: 'text' },
+            { name: 'sentAt', type: 'date' },
+            { name: 'error', type: 'textarea' },
+          ],
+        },
+      ],
     },
     {
       name: 'refunds',

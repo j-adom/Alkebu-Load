@@ -1,6 +1,12 @@
 import type { Payload } from 'payload';
 import Stripe from 'stripe';
-import { sendOrderConfirmation, sendStaffOrderNotification, type OrderConfirmationData, type StaffNotificationData } from './emailService';
+import { getEmailRuntimeConfig } from './emailConfig';
+import {
+  sendOrderConfirmation,
+  sendStaffOrderNotification,
+  type OrderConfirmationData,
+  type StaffNotificationData,
+} from './emailService';
 import { getCartItems } from './cartOperations';
 import { isShippingQuoteExpired } from './shippingQuotes';
 import {
@@ -382,10 +388,12 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         : cart.user;
 
     // Create order from cart
+    const emailConfig = getEmailRuntimeConfig();
+    const customerEmail = (cart as any).guestEmail || session.customer_details?.email;
     const orderData = {
       orderNumber: `ALK-${Date.now().toString(36).toUpperCase()}`,
       customer: customerId,
-      guestEmail: customerId ? undefined : (cart as any).guestEmail || session.customer_details?.email,
+      guestEmail: customerId ? undefined : customerEmail,
       status: 'paid',
       items: cartItems.map((item: any) => ({
         product: getCartItemProductId(item),
@@ -417,6 +425,19 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         shippingRateId: (cart as any).selectedShippingRateId,
         quoteSource: (cart as any).shippingQuoteSource,
         carrier: normalizedCarrier,
+      },
+      emailNotifications: {
+        customerConfirmation: {
+          status: customerEmail ? 'pending' : 'skipped',
+          recipient: customerEmail,
+          provider: emailConfig.provider,
+          error: customerEmail ? undefined : 'Customer email missing from checkout session',
+        },
+        staffNotification: {
+          status: 'pending',
+          recipient: emailConfig.staffNotificationEmail,
+          provider: emailConfig.provider,
+        },
       },
       source: 'website',
     };
@@ -474,27 +495,50 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
 
     // Send order confirmation email
     try {
-      const emailData: OrderConfirmationData = {
-        orderNumber: orderData.orderNumber,
-        customerName: session.customer_details?.name || 'Customer',
-        customerEmail: orderData.guestEmail || session.customer_details?.email,
-        items: orderData.items.map((item: any) => ({
-          productTitle: item.productTitle,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-        })),
-        subtotal: orderData.subtotalAmount,
-        tax: orderData.taxAmount,
-        shipping: orderData.shippingAmount,
-        total: orderData.totalAmount || 0,
-        shippingAddress: orderData.shippingAddress,
-      };
+      if (customerEmail) {
+        const emailData: OrderConfirmationData = {
+          orderNumber: orderData.orderNumber,
+          customerName: session.customer_details?.name || 'Customer',
+          customerEmail,
+          items: orderData.items.map((item: any) => ({
+            productTitle: item.productTitle,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+          })),
+          subtotal: orderData.subtotalAmount,
+          tax: orderData.taxAmount,
+          shipping: orderData.shippingAmount,
+          total: orderData.totalAmount || 0,
+          shippingAddress: orderData.shippingAddress,
+        };
 
-      await sendOrderConfirmation(emailData);
+        const customerEmailResult = await sendOrderConfirmation(emailData);
+        await (payload as any).update({
+          collection: 'orders',
+          id: order.id,
+          data: {
+            'emailNotifications.customerConfirmation.status': customerEmailResult.success ? 'sent' : 'failed',
+            'emailNotifications.customerConfirmation.recipient': customerEmail,
+            'emailNotifications.customerConfirmation.provider': customerEmailResult.provider,
+            'emailNotifications.customerConfirmation.sentAt': customerEmailResult.success ? new Date().toISOString() : null,
+            'emailNotifications.customerConfirmation.error': customerEmailResult.error || null,
+          } as any,
+        });
+      }
     } catch (emailError) {
       console.error('Error sending order confirmation email:', emailError);
-      // Don't throw - order creation succeeded even if email failed
+      await (payload as any).update({
+        collection: 'orders',
+        id: order.id,
+        data: {
+          'emailNotifications.customerConfirmation.status': 'failed',
+          'emailNotifications.customerConfirmation.recipient': customerEmail,
+          'emailNotifications.customerConfirmation.provider': emailConfig.provider,
+          'emailNotifications.customerConfirmation.sentAt': null,
+          'emailNotifications.customerConfirmation.error': emailError instanceof Error ? emailError.message : 'Unknown email error',
+        } as any,
+      });
     }
 
     // Send staff notification email
@@ -503,7 +547,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         orderNumber: orderData.orderNumber,
         orderId: String(order.id),
         customerName: session.customer_details?.name || 'Guest',
-        customerEmail: orderData.guestEmail || session.customer_details?.email,
+        customerEmail: customerEmail || 'Not provided',
         items: orderData.items.map((item: any) => ({
           productTitle: item.productTitle,
           quantity: item.quantity,
@@ -519,10 +563,31 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         paymentMethod: session.payment_method_types?.[0] || 'card',
       };
 
-      await sendStaffOrderNotification(staffData);
+      const staffEmailResult = await sendStaffOrderNotification(staffData);
+      await (payload as any).update({
+        collection: 'orders',
+        id: order.id,
+        data: {
+          'emailNotifications.staffNotification.status': staffEmailResult.success ? 'sent' : 'failed',
+          'emailNotifications.staffNotification.recipient': emailConfig.staffNotificationEmail,
+          'emailNotifications.staffNotification.provider': staffEmailResult.provider,
+          'emailNotifications.staffNotification.sentAt': staffEmailResult.success ? new Date().toISOString() : null,
+          'emailNotifications.staffNotification.error': staffEmailResult.error || null,
+        } as any,
+      });
     } catch (staffEmailError) {
       console.error('Error sending staff order notification:', staffEmailError);
-      // Non-blocking - order creation succeeded
+      await (payload as any).update({
+        collection: 'orders',
+        id: order.id,
+        data: {
+          'emailNotifications.staffNotification.status': 'failed',
+          'emailNotifications.staffNotification.recipient': emailConfig.staffNotificationEmail,
+          'emailNotifications.staffNotification.provider': emailConfig.provider,
+          'emailNotifications.staffNotification.sentAt': null,
+          'emailNotifications.staffNotification.error': staffEmailError instanceof Error ? staffEmailError.message : 'Unknown email error',
+        } as any,
+      });
     }
   } catch (error) {
     console.error('Error handling checkout completion:', error);
