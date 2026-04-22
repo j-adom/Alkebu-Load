@@ -213,6 +213,9 @@ const getQuoteResetData = () => ({
   shippingEstimatedDays: null,
 });
 
+const shouldEnforceInventoryForProduct = (productType: string): boolean =>
+  productType !== 'books';
+
 /**
  * Add item to cart using Local API for performance
  */
@@ -251,16 +254,17 @@ export async function addToCart(
       }
     }
 
-    // Check inventory/availability rules.
+    // Books remain purchasable unless explicitly marked request-only/discontinued.
     const stockLevel =
       typeof product?.inventory?.stockLevel === 'number'
         ? product.inventory.stockLevel
         : 0;
     const trackQuantity = Boolean(product?.inventory?.trackQuantity);
     const allowBackorders = Boolean(product?.inventory?.allowBackorders);
+    const shouldEnforceInventory = shouldEnforceInventoryForProduct(item.productType);
     const inStockForQuantity = !trackQuantity || stockLevel >= item.quantity;
 
-    if (!inStockForQuantity) {
+    if (shouldEnforceInventory && !inStockForQuantity) {
       const vendorAvailable = await isVendorAvailableForBackorder(payload, product);
       if (!allowBackorders && !vendorAvailable) {
         return {
@@ -365,7 +369,7 @@ export async function addToCart(
           stripePriceId: resolveCartStripePriceId(product, item.customization),
           customization: item.customization,
           availability: {
-            inStock: inStockForQuantity,
+            inStock: !trackQuantity || stockLevel > 0,
             stockLevel,
           },
         },
@@ -452,9 +456,12 @@ export async function updateCartItemQuantity(
         : 0;
     const trackQuantity = Boolean(product?.inventory?.trackQuantity);
     const allowBackorders = Boolean(product?.inventory?.allowBackorders);
+    const shouldEnforceInventory = shouldEnforceInventoryForProduct(
+      String(cartItem.productType || ''),
+    );
     const inStockForQuantity = !trackQuantity || stockLevel >= quantity;
 
-    if (!inStockForQuantity) {
+    if (shouldEnforceInventory && !inStockForQuantity) {
       const vendorAvailable = await isVendorAvailableForBackorder(payload, product);
       if (!allowBackorders && !vendorAvailable) {
         return {
@@ -471,7 +478,7 @@ export async function updateCartItemQuantity(
       data: {
         quantity,
         availability: {
-          inStock: inStockForQuantity,
+          inStock: !trackQuantity || stockLevel > 0,
           stockLevel,
         },
       },

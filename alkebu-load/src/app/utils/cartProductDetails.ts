@@ -24,6 +24,14 @@ const normalizePriceToCents = (value: unknown): number | null => {
   return Math.round(amount >= 1000 ? amount : amount * 100);
 };
 
+const normalizeBookPriceToCents = (value: unknown): number | null => {
+  const amount = asFiniteNumber(value);
+
+  if (amount === null) return null;
+
+  return Math.round(amount);
+};
+
 const matchesText = (left: unknown, right: unknown): boolean => {
   const leftValue = asNonEmptyString(left);
   const rightValue = asNonEmptyString(right);
@@ -108,10 +116,15 @@ export const resolveCartProductUnitPrice = (
 ): number => {
   const bookEdition = resolveBookEdition(product, customization);
   const fashionVariation = resolveFashionVariation(product, customization);
+  const hasBookPricing =
+    bookEdition?.pricing?.retailPrice !== undefined ||
+    product?.pricing?.retailPrice !== undefined;
 
   return (
-    normalizePriceToCents(bookEdition?.pricing?.retailPrice) ??
-    normalizePriceToCents(product?.pricing?.retailPrice) ??
+    (hasBookPricing
+      ? normalizeBookPriceToCents(bookEdition?.pricing?.retailPrice) ??
+        normalizeBookPriceToCents(product?.pricing?.retailPrice)
+      : null) ??
     normalizePriceToCents(fashionVariation?.price) ??
     normalizePriceToCents(product?.price) ??
     0

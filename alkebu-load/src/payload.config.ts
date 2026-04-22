@@ -102,6 +102,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
     components: {
+      afterNavLinks: ['/app/components/OrderDashboardNavLink'],
       views: {
         'order-dashboard': {
           Component: '/app/components/OrderDashboardView',

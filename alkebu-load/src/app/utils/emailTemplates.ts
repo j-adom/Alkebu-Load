@@ -14,7 +14,7 @@ const BRAND = {
   mutedText: '#6B5E58',
   borderLight: '#E8DDD4',
   address: 'Nashville, TN',
-  phone: '(615) 299-1899',
+  phone: '(615) 321-4111',
   website: 'alkebulanimages.com',
   email: process.env.FROM_EMAIL || 'orders@alkebulanimages.com',
 };
