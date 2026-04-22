@@ -396,7 +396,9 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
       guestEmail: customerId ? undefined : customerEmail,
       status: 'paid',
       items: cartItems.map((item: any) => ({
-        product: getCartItemProductId(item),
+        product: item.product?.relationTo
+          ? { relationTo: item.product.relationTo, value: getCartItemProductId(item) }
+          : getCartItemProductId(item),
         productType: item.productType,
         productTitle: item.productTitle,
         quantity: item.quantity,

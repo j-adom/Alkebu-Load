@@ -583,6 +583,25 @@ export interface Order {
    * Internal staff notes about this order
    */
   internalNotes?: string | null;
+  /**
+   * Transactional email delivery status for this order
+   */
+  emailNotifications?: {
+    customerConfirmation?: {
+      status?: ('pending' | 'sent' | 'failed' | 'skipped') | null;
+      recipient?: string | null;
+      provider?: string | null;
+      sentAt?: string | null;
+      error?: string | null;
+    };
+    staffNotification?: {
+      status?: ('pending' | 'sent' | 'failed' | 'skipped') | null;
+      recipient?: string | null;
+      provider?: string | null;
+      sentAt?: string | null;
+      error?: string | null;
+    };
+  };
   refunds?:
     | {
         /**
@@ -5483,6 +5502,28 @@ export interface OrdersSelect<T extends boolean = true> {
       };
   customerNotes?: T;
   internalNotes?: T;
+  emailNotifications?:
+    | T
+    | {
+        customerConfirmation?:
+          | T
+          | {
+              status?: T;
+              recipient?: T;
+              provider?: T;
+              sentAt?: T;
+              error?: T;
+            };
+        staffNotification?:
+          | T
+          | {
+              status?: T;
+              recipient?: T;
+              provider?: T;
+              sentAt?: T;
+              error?: T;
+            };
+      };
   refunds?:
     | T
     | {
