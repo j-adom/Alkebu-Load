@@ -107,12 +107,14 @@ export async function validateTaxExemptStatus(
       return { valid: false, reason: 'Institutional account is not active' };
     }
 
-    if (!institution.taxInfo?.taxExempt) {
+    const taxInfo = (institution as { taxInfo?: { taxExempt?: boolean; exemptionValidUntil?: string | null } }).taxInfo;
+
+    if (!taxInfo?.taxExempt) {
       return { valid: false, reason: 'Institutional account is not tax-exempt' };
     }
 
-    if (institution.taxInfo?.exemptionValidUntil) {
-      const expirationDate = new Date(institution.taxInfo.exemptionValidUntil);
+    if (taxInfo.exemptionValidUntil) {
+      const expirationDate = new Date(taxInfo.exemptionValidUntil);
       if (expirationDate < new Date()) {
         return { valid: false, reason: 'Tax exemption has expired' };
       }

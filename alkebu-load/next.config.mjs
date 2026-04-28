@@ -6,14 +6,14 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
 
-  // Skip ESLint during builds (warnings treated as errors in CI)
+  // Fail builds on ESLint errors. Warnings (e.g. no-explicit-any) still pass.
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
 
-  // Skip TypeScript errors during builds (handle via local linting)
+  // Fail builds on TypeScript errors.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Exclude packages that break webpack bundling

@@ -105,14 +105,11 @@ export async function POST(request: NextRequest) {
             0,
         );
 
-        const addressIsComplete = Boolean(
-            address?.street &&
-            address?.city &&
-            address?.state &&
-            address?.zip,
-        );
+        const addressIsComplete =
+            address !== null &&
+            Boolean(address.street && address.city && address.state && address.zip);
 
-        if (!addressIsComplete) {
+        if (!addressIsComplete || address === null) {
             return NextResponse.json({
                 subtotal,
                 tax: { rate: 0, amount: 0, exempt: false },

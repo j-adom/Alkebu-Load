@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 
 const OrderDashboardNavLink: React.FC = () => {
   return (
@@ -9,7 +10,7 @@ const OrderDashboardNavLink: React.FC = () => {
         borderTop: '1px solid rgba(122, 93, 59, 0.18)',
       }}
     >
-      <a
+      <Link
         href="/admin/order-dashboard"
         style={{
           display: 'block',
@@ -30,7 +31,7 @@ const OrderDashboardNavLink: React.FC = () => {
         <div style={{ marginTop: '0.3rem', fontSize: '0.82rem', lineHeight: 1.45, opacity: 0.9 }}>
           Open the improved order workflow with filters, fulfillment actions, and Stripe reconciliation.
         </div>
-      </a>
+      </Link>
     </div>
   )
 }
