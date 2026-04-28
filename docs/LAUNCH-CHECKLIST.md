@@ -142,6 +142,8 @@
 
 - [ ] **Advanced search UI**
   - Backend search plumbing exists. Improve filters, analytics display, typo handling UI, barcode/voice search, and external discovery flows after launch.
+  - **Author cards in search results.** Author-name queries currently surface matching books (via `authorsText.name`); a richer experience would index the `Authors` collection itself and show author cards alongside book results, with a click-through to an author page listing their full bibliography. Requires extending `SEARCH_INDEX_BOOTSTRAP_TARGETS` and adding an `'authors'` result type to the search response, plus a frontend card component.
+  - **Backfill `authors` relationship from `authorsText`.** Production books store author names in the denormalized `authorsText` array; the `authors` relationship to the Authors collection is mostly empty. A backfill script (match-by-name → link, create-if-missing) would unlock cleaner relational queries, author-page bibliography lookups, and per-author filtering.
 
 - [ ] **Blog/reviews/comments workflows**
   - Backend collections exist. Finish editor workflow, moderation screens, spam controls, and frontend display after commerce launch.

@@ -249,9 +249,15 @@ class SearchEngine {
           const isbn = bestEdition?.isbn || bestEdition?.isbn10 || '';
           const bookSlug = isbn ? `${doc.slug || doc.id}/${isbn}` : (doc.slug || doc.id);
           const isbns = editions.map((e: any) => e.isbn || e.isbn10 || '').filter(Boolean).join(' ');
+          // authorsText (denormalized array of {name}) is the populated source
+          // for imported books; authors relationship is mostly empty.
+          const authorNamesForIndex = [
+            ...(Array.isArray(doc.authors) ? doc.authors.map((a: any) => a?.name).filter(Boolean) : []),
+            ...(Array.isArray(doc.authorsText) ? doc.authorsText.map((a: any) => a?.name).filter(Boolean) : []),
+          ].filter(Boolean).join(' ') || doc.author || ''
           await this.bookIndex.addAsync(doc.id, {
             title: toSearchText(doc.title),
-            author: toSearchText(doc.authors?.map((a: any) => a.name).join(' ') || doc.author),
+            author: toSearchText(authorNamesForIndex),
             description: toSearchText(doc.description ?? doc.synopsis ?? doc.excerpt),
             tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
             categories: toSearchText(doc.categories),

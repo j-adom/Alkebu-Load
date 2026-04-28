@@ -55,7 +55,17 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
       try {
         const contentWhere: any = ISBN_RE.test(query)
           ? { or: [{ 'editions.isbn': { equals: query } }, { 'editions.isbn10': { equals: query } }] }
-          : { or: [{ title: { contains: query } }, { synopsis: { contains: query } }, { excerpt: { contains: query } }] }
+          : {
+              or: [
+                { title: { contains: query } },
+                { synopsis: { contains: query } },
+                { excerpt: { contains: query } },
+                // authorsText is the denormalized array-of-{name} field that's
+                // actually populated for imported books; the authors relationship
+                // is mostly empty in production data.
+                { 'authorsText.name': { contains: query } },
+              ],
+            }
         const where: any = {
           and: [
             { availabilityStatus: { not_equals: 'discontinued' } },
