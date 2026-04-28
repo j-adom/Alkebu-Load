@@ -275,8 +275,8 @@ The drawer implements:
 
 ## Related Documentation
 
-- [Cart Store](../src/lib/stores/cart.ts)
-- [Add to Cart Button](../src/lib/components/cart/AddToCartButton.svelte)
+- [Cart Store](../alkebu-web/src/lib/stores/cart.ts)
+- [Add to Cart Button](../alkebu-web/src/lib/components/cart/AddToCartButton.svelte)
 - [Checkout Documentation](./PHASE1-SETUP.md#checkout-flow)
 
 ---

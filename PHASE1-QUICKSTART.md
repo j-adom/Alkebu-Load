@@ -1,5 +1,7 @@
 # Phase 1 Launch - Next Steps Summary
 
+> **Historical note (April 28, 2026):** This file is preserved for Phase 1 context and older local testing notes. The current launch source of truth is [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md), and the current production backend is `https://payload.alkebulanimages.com`.
+
 **Date:** March 14, 2026
 **Timeline:** Final stretch to launch
 **Status:** 🔄 Stripe checkout hardening, data import, and browser QA remaining
@@ -97,7 +99,7 @@ pnpm tsx scripts/import-apparel.ts
 # Check book records have isbndbChecked: true and lastEnrichedAt timestamp
 ```
 
-**New Feature:** Books are now auto-enriched with ISBNdb data (authors, descriptions, cover images). See [BOOK-ENRICHMENT-WORKFLOW.md](../docs/BOOK-ENRICHMENT-WORKFLOW.md) for manual refresh and bulk ISBN import.
+**New Feature:** Books are now auto-enriched with ISBNdb data (authors, descriptions, cover images). See [BOOK-ENRICHMENT-WORKFLOW.md](docs/BOOK-ENRICHMENT-WORKFLOW.md) for manual refresh and bulk ISBN import.
 
 ---
 

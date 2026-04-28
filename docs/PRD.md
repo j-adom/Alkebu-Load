@@ -1,6 +1,6 @@
 # Alkebulanimages 2.0 - Product Requirements Document
 
-**Last Updated:** March 14, 2026
+**Last Updated:** April 28, 2026
 
 ## Executive Summary
 
@@ -24,12 +24,12 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Technical**: 99.9% uptime, <2s page load times, mobile-first responsive design
 - **B2B**: 3+ institutional accounts active within year one (Phase 2)
 
-## Current Status (March 2026)
+## Current Status (April 2026)
 
 ### Completed
 - **Payload CMS Backend** - All collections, relationships, access control
 - **E-Commerce Engine** - Carts (Local API), Orders, Stripe checkout, tax/shipping calculations
-- **Production Deployment** - Backend live at `payload.alkebulanimages.com`, storefront deployed via Cloudflare Worker
+- **Production Deployment** - Backend live at `payload.alkebulanimages.com`, storefront deployed at `alkebulanimages.com` via Cloudflare
 - **Square POS Sync** - Webhook-based inventory synchronization
 - **Book Enrichment System** - ISBNdb/Google Books batch enrichment, admin UI refresh button, bulk ISBN import
 - **Search System** - FlexSearch + Payload/PostgreSQL-backed search APIs are live; external discovery plumbing exists in backend
@@ -57,9 +57,9 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 ## Technical Architecture
 
 ### Technology Stack
-- **Backend**: Payload CMS 3.68.5 with Next.js 15, PostgreSQL (production) / SQLite (dev)
-- **Frontend**: SvelteKit 2.8 with Svelte 5, TailwindCSS, shadcn-svelte
-- **Hosting**: Payload-hosted backend at `payload.alkebulanimages.com`, Cloudflare Worker frontend for `alkebulanimages.com`
+- **Backend**: Payload CMS 3.x with Next.js 15, PostgreSQL (production) / SQLite (dev)
+- **Frontend**: SvelteKit with Svelte 5, TailwindCSS, shadcn-svelte
+- **Hosting**: Payload-hosted backend at `payload.alkebulanimages.com`, Cloudflare storefront at `alkebulanimages.com`
 - **Payments**: Stripe hosted Checkout (primary), Square POS inventory sync, Square hosted checkout adapter under validation
 - **Email**: Amazon SES SMTP for transactional emails (nodemailer)
 - **Search**: FlexSearch + PostgreSQL FTS + ISBNdb/Google Books/Open Library
@@ -212,7 +212,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 ## Development Phases
 
 ### Phase 1: MVP & Launch (Current)
-**Status: ~78% complete**
+**Status:** Core build is close; follow [Launch Checklist](LAUNCH-CHECKLIST.md) for the current production readiness board.
 - [x] Payload CMS with all collections
 - [x] Square POS webhook integration
 - [x] Book import & enrichment system
@@ -263,8 +263,8 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - TLS enabled on custom domain
 - Backups/ops handled through current hosting platform processes
 
-### Frontend (Cloudflare Worker)
-- Worker-based deployment serving `alkebulanimages.com`
+### Frontend (Cloudflare)
+- Cloudflare deployment serving `alkebulanimages.com`
 - Edge caching globally through Cloudflare
 - Frontend consumes Payload APIs from `payload.alkebulanimages.com`
 

@@ -1,38 +1,53 @@
-# create-svelte
+# Alkebu Web
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+SvelteKit storefront for Alkebulanimages 2.0.
 
-## Creating a project
+## Role
 
-If you're seeing this, you've probably already done this step. Congrats!
+`alkebu-web` renders the public storefront at `https://alkebulanimages.com`. It consumes Payload APIs from `alkebu-load`, including catalog data, cart/checkout endpoints, events, directory listings, globals, media, and search.
+
+## Local Development
+
+Start the backend first:
 
 ```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+cd ../alkebu-load
+pnpm dev
 ```
 
-## Developing
+Then start the storefront:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+```bash
+cd ../alkebu-web
+npm install
+npm run dev
+```
+
+Default local URLs:
+
+- Storefront: `http://localhost:5173`
+- Backend/API: `http://localhost:3000`
+- Payload admin: `http://localhost:3000/admin`
+
+## Scripts
 
 ```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
+npm run check
+npm run check:svelte
 npm run build
+npm run preview
+npm run sync:payment-provider
 ```
 
-You can preview the production build with `npm run preview`.
+## Important Environment Variables
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+- `PAYLOAD_API_URL` - backend API URL; local default is `http://localhost:3000`, production is `https://payload.alkebulanimages.com`.
+- `PUBLIC_SITE_URL` - public storefront URL; production is `https://alkebulanimages.com`.
+
+## Notes
+
+- Global legacy JavaScript has been removed from `src/app.html`; avoid reintroducing jQuery/template scripts globally.
+- Shared image rendering should use `src/lib/components/PayloadImage.svelte` where possible so images SSR correctly.
+- Current launch priorities live in [../docs/LAUNCH-CHECKLIST.md](../docs/LAUNCH-CHECKLIST.md).
+- Main documentation index: [../docs/README.md](../docs/README.md).

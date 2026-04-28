@@ -1,11 +1,15 @@
 # Alkebulanimages 2.0 - Development Guide
 
+**Updated:** April 28, 2026  
+**Production backend:** `https://payload.alkebulanimages.com`  
+**Production storefront:** `https://alkebulanimages.com`
+
 ## Project Overview
 
 Alkebulanimages 2.0 is a modern e-commerce platform for a Nashville-based Black-owned bookstore, built with Payload CMS backend and SvelteKit frontend.
 
 ### Architecture
-- **Backend**: Payload CMS 3.54.0 with integrated e-commerce (`alkebu-load/`)
+- **Backend**: Payload CMS 3.x with integrated e-commerce (`alkebu-load/`)
 - **Frontend**: SvelteKit with Svelte 5 (`alkebu-web/`)
 - **Future**: Shared types library (`alkebu-shared/`)
 
@@ -580,22 +584,18 @@ npm run test:e2e
 
 ## Deployment
 
-### Backend (Hostinger VPS)
+### Backend (`payload.alkebulanimages.com`)
 ```bash
 # Production build
 pnpm build
 
-# Docker deployment
-docker build -t alkebu-load .
-docker run -p 3000:3000 alkebu-load
-
 # Environment setup
 # Configure production .env
-# Set up PostgreSQL database  
-# Configure Nginx reverse proxy
+# Set up PostgreSQL database
+# Configure Stripe, Square, SES SMTP, and Payload public URLs
 ```
 
-### Frontend (Cloudflare Pages)
+### Frontend (`alkebulanimages.com`)
 ```bash
 # Build command
 npm run build
@@ -712,8 +712,8 @@ npm run dev -- --verbose
 ❌ **Common Mistake**: Production URLs in local development
 ```bash
 # alkebu-web/.env.local - WRONG for local dev:
-PAYLOAD_API_URL=https://api.alkebulanimages.com  # ❌ Production URL
-PUBLIC_SITE_URL=https://alkebulanimages.com      # ❌ Production URL
+PAYLOAD_API_URL=https://payload.alkebulanimages.com  # ❌ Production URL
+PUBLIC_SITE_URL=https://alkebulanimages.com          # ❌ Production URL
 
 # CORRECT for local dev:
 PAYLOAD_API_URL=http://localhost:3000  # ✅ Local backend

@@ -1,5 +1,9 @@
 # Deployment Guide
 
+**Updated:** April 28, 2026  
+**Current backend:** `https://payload.alkebulanimages.com`  
+**Current storefront:** `https://alkebulanimages.com`
+
 This repo has two deployable apps:
 - `alkebu-load` — Payload CMS (backend)
 - `alkebu-web` — SvelteKit frontend
@@ -10,7 +14,7 @@ Follow the steps below for each.
 - Node 18.20+ or 20+ (match `package.json` engines)
 - PNPM or NPM
 - Backend env vars: `PAYLOAD_SECRET`, `DATABASE_URI` (or SQLite for dev), email/SMTP, Stripe keys, optional Square keys.
-- Frontend env vars: `PAYLOAD_BASE_URL` pointing at the deployed backend/API.
+- Frontend env vars: `PAYLOAD_API_URL=https://payload.alkebulanimages.com` and `PUBLIC_SITE_URL=https://alkebulanimages.com`.
 
 ---
 
@@ -22,9 +26,11 @@ Follow the steps below for each.
 2) Set environment
    - `PAYLOAD_SECRET` (required)
    - `DATABASE_URI` (Postgres in prod, SQLite accepted for local)
+   - `PAYLOAD_PUBLIC_SERVER_URL=https://payload.alkebulanimages.com`
+   - `PAYLOAD_PUBLIC_SITE_URL=https://alkebulanimages.com`
    - Email SMTP settings
-   - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-   - Square (optional): `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`, `SQUARE_ENVIRONMENT` (sandbox|production)
+   - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`
+   - Square: `SQUARE_ACCESS_TOKEN`, `SQUARE_WEBHOOK_SIGNATURE_KEY`
 
 3) Build / run
    - Dev: `npm run dev`
@@ -32,8 +38,8 @@ Follow the steps below for each.
    - Start: `npm run start`
 
 4) Webhooks
-   - Point Stripe webhooks to: `/api/payment-webhook/stripe`
-   - Point Square webhooks to: `/api/payment-webhook/square` (once enabled)
+   - Stripe launch endpoint: `https://payload.alkebulanimages.com/api/stripe-webhook`
+   - Square catalog endpoint: `https://payload.alkebulanimages.com/api/webhooks/square-catalog`
 
 5) CMS toggle
    - In Payload admin > Globals > Site Settings, choose the default payment provider (Stripe or Square). Frontend will read this at build time.
@@ -46,7 +52,8 @@ Follow the steps below for each.
    - `npm install` (or `pnpm install`)
 
 2) Set environment
-   - `PAYLOAD_BASE_URL` to the deployed backend (e.g., `https://api.example.com`)
+   - `PAYLOAD_API_URL=https://payload.alkebulanimages.com`
+   - `PUBLIC_SITE_URL=https://alkebulanimages.com`
 
 3) Sync payment provider info (must run before build)
    - `npm run sync:payment-provider`
@@ -58,7 +65,7 @@ Follow the steps below for each.
    - Preview: `npm run preview`
 
 5) Deploy
-   - Deploy the built app to your hosting provider (e.g., Vercel, Cloudflare, or your chosen platform) with `PAYLOAD_BASE_URL` set.
+   - Deploy the built app to the current Cloudflare hosting target with the environment above.
 
 ---
 
@@ -67,3 +74,6 @@ Follow the steps below for each.
 - Frontend shows “Payments are processed by …” matching the provider selected in Site Settings.
 - Stripe/Square webhook endpoints reachable and secrets configured.
 - Database migrations applied or `payload` init run.
+- `https://payload.alkebulanimages.com/api/health` returns healthy.
+- Contact/order emails send successfully with production SES SMTP credentials.
+- See [Launch Checklist](LAUNCH-CHECKLIST.md) for the full smoke test.

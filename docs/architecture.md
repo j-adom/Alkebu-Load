@@ -1,10 +1,14 @@
 # Alkebulanimages 2.0 - Architecture Overview
 
-## Current Status (Updated January 2025)
+**Updated:** April 28, 2026  
+**Current backend:** `https://payload.alkebulanimages.com`  
+**Current storefront:** `https://alkebulanimages.com`
+
+## Current Status
 
 ### Production Ready
-- **alkebu-load**: Payload CMS 3.54.0 backend with integrated e-commerce, Square POS sync, Stripe payments
-- **alkebu-web**: SvelteKit frontend (Svelte 5) with Cloudflare adapter, migrated from Sapper/Sanity to Payload integration
+- **alkebu-load**: Payload CMS 3.x backend with integrated e-commerce, Square POS sync, Stripe payments, order management, email notifications, and product enrichment
+- **alkebu-web**: SvelteKit frontend with Svelte 5, TailwindCSS, Cloudflare deployment, cart/checkout integration, events, directory, and catalog routes
 
 ### Planned/Future
 - **alkebu-shared**: TypeScript types and utilities shared between services
@@ -25,7 +29,7 @@
 ## Technology Stack
 
 ### Backend (alkebu-load)
-- **CMS/E-commerce**: Payload CMS 3.54.0 with TypeScript
+- **CMS/E-commerce**: Payload CMS 3.x with TypeScript
 - **Database**: PostgreSQL (production) / SQLite (development)
 - **Payments**: Stripe hosted Checkout (primary), Square POS inventory sync, Square hosted checkout adapter under validation
 - **Email**: Amazon SES SMTP with generic SMTP fallback for transactional emails
@@ -44,8 +48,8 @@
 - **Caching**: SSR with Cloudflare-compatible cache headers
 
 ### Infrastructure
-- **Backend Hosting**: Hostinger VPS with Docker
-- **Frontend Hosting**: Cloudflare Pages with edge caching
+- **Backend Hosting**: `payload.alkebulanimages.com`
+- **Frontend Hosting**: `alkebulanimages.com` on Cloudflare
 - **CDN**: Cloudinary for images, Cloudflare for static assets
 - **Database**: Managed PostgreSQL (Neon.tech or similar)
 
@@ -309,18 +313,18 @@ SEO Optimization:
 
 ### Backend (alkebu-load)
 ```
-Hostinger VPS:
-├── Docker container (Payload CMS)
-├── PostgreSQL database
-├── Nginx reverse proxy
-├── SSL certificates (Let's Encrypt)
-└── Backup scripts (daily)
+payload.alkebulanimages.com:
+├── Payload CMS / Next.js backend
+├── Production PostgreSQL database
+├── TLS on public backend/admin domain
+├── Stripe and Square webhook endpoints
+└── Transactional email via SES SMTP
 ```
 
 ### Frontend (alkebu-web)
 ```
-Cloudflare Pages:
-├── Git-based deployment
+alkebulanimages.com:
+├── Cloudflare deployment
 ├── Edge caching globally
 ├── Custom domains
 ├── Analytics integration

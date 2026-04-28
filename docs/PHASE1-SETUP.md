@@ -1,6 +1,8 @@
 # Phase 1: MVP Launch - Complete Implementation Guide
 
-**Status:** ✅ Ready to start Phase 1  
+> **Historical note (April 28, 2026):** This guide is preserved for original Phase 1 setup context. For current launch blockers, production URLs, and smoke tests, use [LAUNCH-CHECKLIST.md](LAUNCH-CHECKLIST.md).
+
+**Historical status:** Ready to start Phase 1 at time of writing  
 **Target:** 2-3 weeks to MVP launch  
 **Updated:** January 25, 2026
 

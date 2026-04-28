@@ -1,5 +1,8 @@
 # Alkebu-Load Deployment Guide (Coolify)
 
+**Current production backend:** `https://payload.alkebulanimages.com`  
+**Primary deployment checklist:** [../docs/LAUNCH-CHECKLIST.md](../docs/LAUNCH-CHECKLIST.md)
+
 ## Prerequisites
 
 - Coolify instance running
@@ -32,7 +35,8 @@ DATABASE_URI=postgresql://user:password@postgres:5432/alkebulanimages
 
 # Payload CMS (REQUIRED)
 PAYLOAD_SECRET=<generate-secure-32-char-string>
-PAYLOAD_PUBLIC_SERVER_URL=https://your-domain.com
+PAYLOAD_PUBLIC_SERVER_URL=https://payload.alkebulanimages.com
+PAYLOAD_PUBLIC_SITE_URL=https://alkebulanimages.com
 
 # Square POS (REQUIRED for inventory sync)
 SQUARE_ACCESS_TOKEN=<your-square-token>
