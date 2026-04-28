@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getEmailRuntimeConfig } from '@/app/utils/emailConfig';
 
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+const MAX_FIELD_LENGTHS = {
+  name: 120,
+  email: 254,
+  phone: 40,
+  subject: 160,
+  message: 5000,
+};
+
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
 const sanitizeText = (value: unknown): string => {
   if (typeof value !== 'string') return '';
   return value.trim();
@@ -20,14 +32,44 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+const getClientKey = (request: NextRequest): string =>
+  request.headers.get('cf-connecting-ip') ||
+  request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+  'unknown';
+
+const isRateLimited = (key: string): boolean => {
+  const now = Date.now();
+  const current = rateLimitBuckets.get(key);
+
+  if (!current || current.resetAt <= now) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  current.count += 1;
+  return current.count > RATE_LIMIT_MAX;
+};
+
+const fieldIsTooLong = (field: keyof typeof MAX_FIELD_LENGTHS, value: string): boolean =>
+  value.length > MAX_FIELD_LENGTHS[field];
+
 export async function POST(request: NextRequest) {
   try {
+    const clientKey = getClientKey(request);
+    if (isRateLimited(clientKey)) {
+      return NextResponse.json(
+        { error: 'Too many messages. Please wait a few minutes and try again.' },
+        { status: 429 },
+      );
+    }
+
     const body = await request.json();
     const name = sanitizeText(body?.name);
     const email = sanitizeEmail(body?.email);
     const phone = sanitizeText(body?.phone);
     const subject = sanitizeText(body?.subject);
     const message = sanitizeText(body?.message);
+    const website = sanitizeText(body?.website);
     const escapedName = escapeHtml(name);
     const escapedEmail = escapeHtml(email);
     const escapedPhone = escapeHtml(phone);
@@ -41,9 +83,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (website) {
+      return NextResponse.json({ success: true });
+    }
+
     if (!isValidEmail(email)) {
       return NextResponse.json(
         { error: 'Enter a valid email address.' },
+        { status: 400 },
+      );
+    }
+
+    if (
+      fieldIsTooLong('name', name) ||
+      fieldIsTooLong('email', email) ||
+      fieldIsTooLong('phone', phone) ||
+      fieldIsTooLong('subject', subject) ||
+      fieldIsTooLong('message', message)
+    ) {
+      return NextResponse.json(
+        { error: 'One or more fields is too long.' },
         { status: 400 },
       );
     }

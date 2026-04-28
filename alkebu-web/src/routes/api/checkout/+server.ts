@@ -51,5 +51,14 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   )
 
   const data = await response.json()
-  return json(data, { status: response.status })
+  const result = json(data, { status: response.status })
+
+  if (response.ok && data?.orderCreated) {
+    result.headers.append(
+      'set-cookie',
+      `${CART_SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`,
+    )
+  }
+
+  return result
 }

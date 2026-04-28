@@ -50,6 +50,10 @@ const publicSiteURL = process.env.PAYLOAD_PUBLIC_SITE_URL || 'https://alkebulani
 const databaseURI = process.env.DATABASE_URI
 const emailRuntime = getEmailRuntimeConfig()
 
+if (process.env.NODE_ENV === 'production' && !process.env.PAYLOAD_SECRET) {
+  throw new Error('PAYLOAD_SECRET is required in production')
+}
+
 const resolveDatabaseAdapter = async () => {
   if (databaseURI?.startsWith('postgres')) {
     const { postgresAdapter } = await import('@payloadcms/db-postgres')

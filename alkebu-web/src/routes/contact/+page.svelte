@@ -12,10 +12,11 @@
     url: '/contact/'
   }
 
-  let { data } = $props();
+  let { data, form } = $props();
   const contact = $derived(data.contact ?? {});
   const section1 = $derived(contact.section1 ?? {});
   const section2 = $derived(contact.section2 ?? {});
+  const formValues = $derived(form?.values ?? {});
 </script>
 
 <Meta {metadata} />
@@ -83,27 +84,50 @@
             <div class="w-16 h-1 bg-primary mt-4"></div>
           </div>
 
-          <form method="POST" data-netlify="true" name="contact" class="space-y-6">
+          {#if form?.success}
+            <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              {form.message}
+            </div>
+          {/if}
+
+          {#if form?.error}
+            <div class="mb-6 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {form.error}
+            </div>
+          {/if}
+
+          <form method="POST" class="space-y-6">
+            <div class="hidden" aria-hidden="true">
+              <label for="website">Website</label>
+              <input
+                type="text"
+                id="website"
+                name="website"
+                tabindex="-1"
+                autocomplete="off"
+                value={formValues.website || ''}
+              />
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label for="name" class="block text-sm font-medium mb-2">Your Name</label>
-                <input type="text" id="name" name="name" placeholder="John Doe" class="input-modern" required>
+                <input type="text" id="name" name="name" placeholder="John Doe" class="input-modern" value={formValues.name || ''} required>
               </div>
               <div>
                 <label for="email" class="block text-sm font-medium mb-2">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="john@example.com" class="input-modern" required>
+                <input type="email" id="email" name="email" placeholder="john@example.com" class="input-modern" value={formValues.email || ''} required>
               </div>
               <div>
                 <label for="phone" class="block text-sm font-medium mb-2">Phone Number</label>
-                <input type="tel" id="phone" name="phone" placeholder="(615) 555-0123" class="input-modern">
+                <input type="tel" id="phone" name="phone" placeholder="(615) 555-0123" class="input-modern" value={formValues.phone || ''}>
               </div>
               <div>
                 <label for="subject" class="block text-sm font-medium mb-2">Subject</label>
-                <input type="text" id="subject" name="subject" placeholder="How can we help?" class="input-modern" value={$page.url.searchParams.get('subject') || ''} required>
+                <input type="text" id="subject" name="subject" placeholder="How can we help?" class="input-modern" value={formValues.subject || $page.url.searchParams.get('subject') || ''} required>
               </div>
               <div class="md:col-span-2">
                 <label for="message" class="block text-sm font-medium mb-2">Message</label>
-                <textarea id="message" name="message" placeholder="Write your message..." class="textarea-modern" rows="5" required>{$page.url.searchParams.get('message') || ''}</textarea>
+                <textarea id="message" name="message" placeholder="Write your message..." class="textarea-modern" rows="5" required>{formValues.message || $page.url.searchParams.get('message') || ''}</textarea>
               </div>
               <div class="md:col-span-2">
                 <button type="submit" class="btn-primary">

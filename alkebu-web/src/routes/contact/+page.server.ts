@@ -1,7 +1,9 @@
+import { fail } from '@sveltejs/kit';
 import { payloadGet } from '$lib/server/payload';
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ setHeaders }) => {
   try {
@@ -38,4 +40,71 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       })
     };
   }
+};
+
+export const actions: Actions = {
+  default: async ({ request, fetch }) => {
+    const formData = await request.formData();
+
+    const values = {
+      name: String(formData.get('name') || '').trim(),
+      email: String(formData.get('email') || '').trim(),
+      phone: String(formData.get('phone') || '').trim(),
+      subject: String(formData.get('subject') || '').trim(),
+      message: String(formData.get('message') || '').trim(),
+      website: String(formData.get('website') || '').trim(),
+    };
+
+    if (!values.name || !values.email || !values.subject || !values.message) {
+      return fail(400, {
+        success: false,
+        values,
+        error: 'Please complete the required fields before sending your message.',
+      });
+    }
+
+    try {
+      const response = await fetch(`${getPayloadApiUrl()}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getPayloadAuthHeader(),
+        },
+        body: JSON.stringify(values),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        return fail(response.status, {
+          success: false,
+          values,
+          error:
+            typeof data?.error === 'string'
+              ? data.error
+              : 'Unable to send your message right now.',
+        });
+      }
+
+      return {
+        success: true,
+        message: 'Thanks for reaching out. Your message has been sent.',
+        values: {
+          name: '',
+          email: '',
+          phone: '',
+          subject: '',
+          message: '',
+          website: '',
+        },
+      };
+    } catch (error) {
+      console.error('Contact form action failed:', error);
+      return fail(500, {
+        success: false,
+        values,
+        error: 'Unable to send your message right now. Please try again later.',
+      });
+    }
+  },
 };

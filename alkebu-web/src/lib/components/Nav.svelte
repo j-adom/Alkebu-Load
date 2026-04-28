@@ -1,14 +1,21 @@
 <script>
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { Search, ShoppingBag, Menu, X, Phone, Mail, ChevronDown, Facebook, Twitter, Instagram } from 'lucide-svelte';
+	import { Search, Menu, X, Phone, Mail, ChevronDown, Facebook, Twitter, Instagram } from 'lucide-svelte';
 	import CartIconButton from '$lib/components/cart/CartIconButton.svelte';
 	
 	let mobileMenuOpen = $state(false);
 	let scrolled = $state(false);
 	let shopDropdownOpen = $state(false);
+	let desktopSearchQuery = $state('');
+	let mobileSearchQuery = $state('');
 	
 	let activeUrl = $derived($page.url.pathname);
+
+	$effect(() => {
+		desktopSearchQuery = $page.url.searchParams.get('q') || '';
+		mobileSearchQuery = $page.url.searchParams.get('q') || '';
+	});
 	
 	// Handle scroll for sticky header effect
 	$effect(() => {
@@ -172,13 +179,19 @@
 			
 			<!-- Right Side Actions -->
 			<div class="flex items-center gap-2">
-				<a 
-					href="/search" 
-					class="p-2 rounded-full text-foreground hover:text-primary hover:bg-muted transition-colors"
-					aria-label="Search"
-				>
-					<Search size={20} />
-				</a>
+				<form action="/search" method="GET" class="hidden xl:block">
+					<label class="relative block">
+						<span class="sr-only">Search the store</span>
+						<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+						<input
+							type="search"
+							name="q"
+							bind:value={desktopSearchQuery}
+							placeholder="Search books and products"
+							class="h-11 w-72 rounded-full border border-border bg-background pl-10 pr-4 text-sm text-foreground outline-none transition-colors focus:border-primary"
+						/>
+					</label>
+				</form>
 				<CartIconButton />
 			</div>
 		</div>
@@ -217,6 +230,19 @@
 		
 		<!-- Navigation Links -->
 		<nav class="flex-1 overflow-y-auto p-4">
+			<form action="/search" method="GET" class="mb-4">
+				<label class="relative block">
+					<span class="sr-only">Search the store</span>
+					<Search class="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+					<input
+						type="search"
+						name="q"
+						bind:value={mobileSearchQuery}
+						placeholder="Search books and products"
+						class="h-12 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-sm text-foreground outline-none transition-colors focus:border-primary"
+					/>
+				</label>
+			</form>
 			<div class="space-y-1">
 				<a 
 					href="/" 
