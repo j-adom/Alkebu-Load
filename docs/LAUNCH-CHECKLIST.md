@@ -97,15 +97,19 @@
   - Simple in-memory rate limiting is useful but not enough for multi-instance production.
   - Add Cloudflare Turnstile or Cloudflare WAF/rate limiting for `/contact` and `/api/contact`.
 
-- [ ] **Make production build fail on backend type/lint errors**
-  - `next.config.mjs` still has `ignoreDuringBuilds` and `ignoreBuildErrors`.
-  - Keep them only if CI separately blocks bad builds.
+- [x] **Make production build fail on backend type/lint errors**
+  - Removed `ignoreDuringBuilds` and `ignoreBuildErrors` in `next.config.mjs`. Type and lint errors now block production deploys.
 
 ### P2 - UX and Content Polish
 
 - [ ] **Replace old homepage demo/blog sections**
   - Homepage still contains legacy static/demo-looking content and old template classes.
   - Use real Payload content, featured books, events, directory highlights, and store calls to action.
+
+- [ ] **Activate FlexSearch as a real cache tier**
+  - Today the search route tries FlexSearch first and falls back to PostgreSQL FTS, but the in-memory index is never bootstrapped in containerized deploys, so FlexSearch always returns 0 and PostgreSQL serves every query. PostgreSQL is fast enough for the launch catalog (~5K books, 50-200ms per request), so this is a performance polish item, not a correctness one.
+  - Three sub-problems must be solved together: (1) **bootstrap timing** — server-startup hook to call `loadFromPayload()` before serving, lazy load on first search, or out-of-process Redis-backed index; (2) **index freshness** — Payload `afterChange`/`afterDelete` hooks to keep the index in sync as content changes, or accept periodic full rebuilds; (3) **memory footprint** — measure on Coolify before relying on it, since the index lives in container memory.
+  - Defer until after the author-cards search work (P3) so the bootstrap target list is designed once for books + authors together.
 
 - [ ] **Implement real newsletter signup**
   - Source TODO: `alkebu-web/src/lib/components/Footer.svelte`
