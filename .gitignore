@@ -1,10 +1,21 @@
-alkebu-web/.env.local
-alkebu-web/.svelte-kit/
-alkebu-load/.env
+# Secrets — never commit, ever.
+# Globs match at any depth so new workspaces are protected by default.
+# .env.example files are explicitly re-included as committable templates.
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# Build output
 alkebu-load/.next/
+alkebu-web/.svelte-kit/
 node_modules/
+
+# Editor / OS
 .DS_Store
-.claude/settings.local.json
-alkebu-load/.claude/settings.local.json
-alkebu-web/.claude/settings.local.json
-alkebu-web/.env
+
+# Claude Code per-machine settings
+**/.claude/settings.local.json
+
+# remember plugin: session handoffs and tool-call activity logs
+.remember/
