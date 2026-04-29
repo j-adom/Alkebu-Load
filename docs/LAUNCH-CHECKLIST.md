@@ -88,10 +88,9 @@
   - Next step: identify pages still using old template classes and move needed styles into component-scoped or app CSS.
   - Goal: remove `/assets/css/style.css`, `/assets/css/responsive.css`, and unused Font Awesome where lucide icons already replaced it.
 
-- [ ] **Review cache policy**
-  - Static pages: 24h edge cache is fine.
-  - Homepage and catalog pages: confirm cache freshness matches inventory needs.
-  - Cart, checkout, auth, and admin paths must stay no-store/private.
+- [x] **Review cache policy**
+  - Catalog/blog/events/shop routes already emit appropriate `s-maxage`+`stale-while-revalidate` directives.
+  - Cart and checkout pages now explicitly set `Cache-Control: private, no-store` via `setHeaders` so no upstream proxy can ever cache them.
 
 - [ ] **Add stronger contact abuse protection**
   - Simple in-memory rate limiting is useful but not enough for multi-instance production.
@@ -100,11 +99,13 @@
 - [x] **Make production build fail on backend type/lint errors**
   - Removed `ignoreDuringBuilds` and `ignoreBuildErrors` in `next.config.mjs`. Type and lint errors now block production deploys.
 
+- [ ] **Make SvelteKit production build fail on type errors**
+  - The frontend (alkebu-web) currently has ~68 pre-existing `svelte-check` errors that never block `vite build`. Equivalent risk to the backend issue we just fixed: bad types ship silently. Plan: triage the existing errors (most are missing properties on Payload types like `Event.cost`, `Business.socialMedia`, plus several Svelte 5 `$state` ordering issues), fix or suppress them deliberately, then wire `svelte-check` into the build pipeline (e.g. `"build": "svelte-check && vite build"` or a CI step). Half-day of work — not a launch blocker, but should land before the backlog grows.
+
 ### P2 - UX and Content Polish
 
-- [ ] **Replace old homepage demo/blog sections**
-  - Homepage still contains legacy static/demo-looking content and old template classes.
-  - Use real Payload content, featured books, events, directory highlights, and store calls to action.
+- [x] **Replace old homepage demo/blog sections**
+  - Homepage now renders Payload-driven banner, featured books, shop categories, and business services from `+page.svelte` and `+page.server.ts`. The old template/demo content was already removed in a prior commit.
 
 - [ ] **Activate FlexSearch as a real cache tier**
   - Today the search route tries FlexSearch first and falls back to PostgreSQL FTS, but the in-memory index is never bootstrapped in containerized deploys, so FlexSearch always returns 0 and PostgreSQL serves every query. PostgreSQL is fast enough for the launch catalog (~5K books, 50-200ms per request), so this is a performance polish item, not a correctness one.
@@ -131,9 +132,8 @@
   - Source TODO: `alkebu-web/src/routes/return-policy/+page.svelte`
   - Pull a global/settings media image or remove the placeholder expectation.
 
-- [ ] **Review old header component**
-  - Source TODO: `alkebu-web/src/lib/header/Header.svelte`
-  - Confirm whether this component is still used. Delete if obsolete.
+- [x] **Review old header component**
+  - Removed `alkebu-web/src/lib/header/` (orphaned SvelteKit demo template Header.svelte + svelte-logo.svg). Zero imports anywhere in the codebase.
 
 ### P3 - Post-Launch Enhancements
 
