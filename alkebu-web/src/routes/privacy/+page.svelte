@@ -133,9 +133,12 @@
           </div>
 
           <div>
-            <h3 class="font-semibold text-foreground mb-2">How to Opt Out (Reply STOP or UNSUBSCRIBE)</h3>
+            <h3 class="font-semibold text-foreground mb-2">How to Opt Out (Reply STOP, CANCEL, or UNSUBSCRIBE)</h3>
+            <p class="text-sm text-foreground/80 mb-3">
+              <strong>You may opt out of SMS messages at any time by replying STOP, CANCEL, or UNSUBSCRIBE to any message.</strong> We also honor <strong>END</strong> and <strong>QUIT</strong> as additional opt-out commands. After you reply with any of these keywords, we will send a single confirmation message and will not text you again unless you opt back in.
+            </p>
             <p class="text-sm text-foreground/80">
-              You may opt out of text messages at any time by replying <strong>STOP</strong> or <strong>UNSUBSCRIBE</strong> to any text message from us. We also honor <strong>END</strong>, <strong>CANCEL</strong>, and <strong>QUIT</strong> as opt-out commands. After you reply with any of these keywords, we will send a single confirmation message and will not text you again unless you opt back in. You may opt back in by replying <strong>START</strong> or by contacting us. After opting out, we will only respond to your inquiries via phone callback or email.
+              You may opt back in by replying <strong>START</strong> or by contacting us. After opting out, we will only respond to your inquiries via phone callback or email.
             </p>
           </div>
 
