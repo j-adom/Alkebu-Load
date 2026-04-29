@@ -100,7 +100,28 @@
           <div>
             <h3 class="font-semibold text-foreground mb-2">When and How You Opt In</h3>
             <p class="text-sm text-foreground/80">
-              You consent to receive text messages from us when you (1) call our store phone number and engage in a conversation that you indicate may continue by text, (2) provide your mobile number through our website, an in-store form, or an order — and indicate you would like a text response, or (3) reply to a text we send confirming your interest in continuing by text. We will only text you about <strong>your specific inquiry, order, or request</strong>. Message frequency varies based on the conversation. <strong>Consent to receive text messages is not a condition of any purchase.</strong>
+              You consent to receive text messages from us when you (1) call our store phone number and engage in a conversation in which you give explicit verbal consent to be texted (see verbal opt-in script below), (2) provide your mobile number through our website, an in-store form, or an order — and indicate you would like a text response, or (3) reply to a text we send confirming your interest in continuing by text. We will only text you about <strong>your specific inquiry, order, or request</strong>. Message frequency varies based on the conversation. <strong>Consent to receive text messages is not a condition of any purchase.</strong>
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-foreground mb-2">Verbal Opt-In Script (Phone Calls)</h3>
+            <p class="text-sm text-foreground/80 mb-3">
+              When a customer calls our store and the conversation indicates a text follow-up would be useful (for example, sending product details, an order update, or a special-request confirmation), our staff use the following script to capture explicit verbal consent before any text message is sent:
+            </p>
+            <div class="bg-muted rounded-lg p-4 text-sm text-foreground/90 italic border-l-4 border-primary">
+              <p class="mb-2">
+                <strong class="not-italic">Staff:</strong> "This is [staff name] with Alkebu-Lan Images. I can send that information to you by text message if you'd like. We'd only text you about this specific request. Message and data rates may apply, and you can reply STOP at any time to opt out. Would you like me to send a text to the phone number you're calling from?"
+              </p>
+              <p class="mb-2">
+                <strong class="not-italic">Customer must respond:</strong> "Yes" (or equivalent affirmative).
+              </p>
+              <p>
+                <strong class="not-italic">Staff confirms:</strong> "Great. I'll text you shortly. Reply STOP at any time to stop receiving texts from us."
+              </p>
+            </div>
+            <p class="text-sm text-foreground/80 mt-3">
+              Staff are trained to <strong>not</strong> send any text message until the customer has given explicit verbal consent using this script. If a customer does not affirmatively agree, we follow up by phone callback or email instead. Verbal consent is logged with the date and time so we can verify opt-in if questioned.
             </p>
           </div>
 
