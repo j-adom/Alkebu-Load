@@ -191,7 +191,10 @@ export async function POST(request: NextRequest) {
 
     await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
-      to: config.staffNotificationEmail,
+      // Contact-form messages always go to info@. Order notifications use
+      // STAFF_NOTIFICATION_EMAIL (orders@) — those are different inboxes by
+      // design and shouldn't share an env var.
+      to: 'info@alkebulanimages.com',
       replyTo: `${name} <${email}>`,
       subject: `[Contact Form] ${subject}`,
       text: [

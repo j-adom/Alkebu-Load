@@ -1,5 +1,6 @@
 <script>
   import { page } from '$app/stores';
+  import { enhance } from '$app/forms';
   import { urlFor } from '$lib/payload';
   import Meta from '$lib/components/Meta.svelte'
   import { MapPin, Mail, Phone, ChevronRight, Send, ArrowRight } from 'lucide-svelte';
@@ -101,7 +102,7 @@
             </div>
           {/if}
 
-          <form method="POST" class="space-y-6">
+          <form method="POST" class="space-y-6" use:enhance>
             <div class="hidden" aria-hidden="true">
               <label for="website">Website</label>
               <input
