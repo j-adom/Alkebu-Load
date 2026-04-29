@@ -1,5 +1,6 @@
 <script lang="ts">
   import Meta from '$lib/components/Meta.svelte';
+  import LexicalRenderer from '$lib/components/LexicalRenderer.svelte';
   import { urlFor } from '$lib/payload';
   import { formatDate } from '$lib/utils/date';
 
@@ -91,16 +92,8 @@
           <h1 class="text-3xl lg:text-4xl font-bold mb-4 text-foreground">{event.title}</h1>
 
           {#if event.description}
-            <div class="prose max-w-none mb-8">
-              <p class="text-lg text-gray-700">{event.description}</p>
-            </div>
-          {/if}
-
-          <!-- Event Content/Details -->
-          {#if event.content}
-            <div class="prose max-w-none">
-              <!-- TODO: Add rich text renderer for event.content -->
-              {@html event.content}
+            <div class="prose prose-lg max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary hover:prose-a:text-primary/80 mb-8">
+              <LexicalRenderer content={event.description} />
             </div>
           {/if}
         </div>

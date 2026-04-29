@@ -116,13 +116,14 @@
   - Source TODO: `alkebu-web/src/lib/components/Footer.svelte`
   - Decide provider: Listmonk, Mailchimp, or simple staff notification capture.
 
-- [ ] **Render rich event content**
-  - Source TODO: `alkebu-web/src/routes/events/[slug]/+page.svelte`
-  - Use existing `LexicalRenderer` if event content comes from Payload Lexical rich text.
+- [x] **Render rich event content**
+  - Replaced broken `<p>{event.description}</p>` with `<LexicalRenderer content={event.description} />` in `events/[slug]/+page.svelte`. The `description` field is Lexical JSON (per the Events collection schema, `richText` and required), so the old code was rendering `[object Object]` to customers on every event page. Also removed a dead `{#if event.content}` branch — the `content` field doesn't exist on the Events collection.
 
-- [ ] **Add related products where server data exists**
-  - Source TODOs: health-and-beauty and home-goods detail pages.
-  - Reuse the existing related grid pattern from books/apparel.
+- [ ] **Add related products on health-and-beauty and home-goods detail pages**
+  - **Server side is already done** — both `[...slug]/+page.server.ts` files fetch related products via `getRelatedProducts(...)` and return `relatedProducts` in the payload.
+  - **Client templates** still have `<!-- TODO: Add related products once implemented in server -->` markers and don't render the data.
+  - The reusable `$lib/components/Shop/RelatedProductsGrid.svelte` already exists (zero call sites today) and accepts `products`, `productType`, optional `title`, optional `basePath`. Wiring it in is a 4-line change per page.
+  - **Currently blocked by data**: those collections have no real products yet beyond books and apparel, so wiring this now would only render an empty section. Defer until at least a handful of wellness/oils/home-goods items exist so the rendering can be visually verified before customers see it.
 
 - [ ] **Clean up home goods taxonomy**
   - Source TODOs note that art, imports, and home decor need dedicated collections or a clear mapping.
