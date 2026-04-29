@@ -22,7 +22,7 @@
 
 <section class="py-12 lg:py-16">
   <div class="container mx-auto px-6 lg:px-12 max-w-4xl">
-    <p class="text-sm text-muted-foreground mb-8">Last updated: February 2026</p>
+    <p class="text-sm text-muted-foreground mb-8">Last updated: April 2026</p>
 
     <div class="prose max-w-none space-y-10">
 
@@ -67,9 +67,9 @@
           <div class="bg-muted rounded-lg p-5">
             <h3 class="font-semibold text-foreground mb-2">Information from Third-Party Sources</h3>
             <ul class="list-disc list-inside space-y-1 text-sm text-foreground/80 pl-2">
-              <li>Payment confirmation data from Stripe</li>
-              <li>Inventory data from our point-of-sale system (Square POS)</li>
-              <li>Analytics data from web analytics services</li>
+              <li>Payment confirmation data from our payment processor</li>
+              <li>Inventory and order data from our retail point-of-sale system</li>
+              <li>Aggregate engagement metrics from our self-hosted, privacy-focused analytics</li>
             </ul>
           </div>
         </div>
@@ -93,32 +93,46 @@
       <div class="bg-card rounded-xl p-6 lg:p-8 border-2 border-primary/20">
         <h2 class="text-2xl font-bold text-foreground mb-4">3. Text Messaging & Phone Communications</h2>
         <p class="text-foreground/80 mb-4">
-          Alkebu-Lan Images uses a business phone system (Grasshopper) to manage calls to our store. When you call our store phone number, the following applies:
+          Alkebu-Lan Images uses a business phone system to manage calls and conversational text messages with our customers. Our SMS program is designed for <strong>one-to-one conversational messaging</strong> in response to customer-initiated contact — for example, replying to a question you asked, confirming the status of an order or special request, or following up on an in-store conversation. We do not send marketing or promotional text blasts.
         </p>
 
         <div class="space-y-4">
           <div>
-            <h3 class="font-semibold text-foreground mb-2">Conversational Text Messaging</h3>
+            <h3 class="font-semibold text-foreground mb-2">When and How You Opt In</h3>
             <p class="text-sm text-foreground/80">
-              When you call our store, we may respond to your call via text message to provide requested information, answer product questions, confirm store hours, or follow up on your inquiry. These text messages are <strong>conversational and transactional in nature</strong> - they are direct responses to your initiated contact with our store, not marketing messages. By calling our store phone number, you consent to receiving text message responses related to your inquiry.
+              You consent to receive text messages from us when you (1) call our store phone number and engage in a conversation that you indicate may continue by text, (2) provide your mobile number through our website, an in-store form, or an order — and indicate you would like a text response, or (3) reply to a text we send confirming your interest in continuing by text. We will only text you about <strong>your specific inquiry, order, or request</strong>. Message frequency varies based on the conversation. <strong>Consent to receive text messages is not a condition of any purchase.</strong>
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-foreground mb-2">Message and Data Rates</h3>
+            <p class="text-sm text-foreground/80">
+              <strong>Message and data rates may apply</strong> based on your mobile carrier plan. Alkebu-Lan Images does not charge for text messages, but your carrier may charge you for sending or receiving SMS messages. Contact your wireless provider for details about your plan.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-foreground mb-2">How to Opt Out (Reply STOP)</h3>
+            <p class="text-sm text-foreground/80">
+              You may opt out of text messages at any time by replying <strong>STOP</strong> to any text message from us. After you reply STOP, we will send a single confirmation message and will not text you again unless you opt back in. You may opt back in by replying <strong>START</strong> or by contacting us. After opting out, we will only respond to your inquiries via phone callback or email.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="font-semibold text-foreground mb-2">How to Get Help (Reply HELP)</h3>
+            <p class="text-sm text-foreground/80">
+              For help with our text message program, reply <strong>HELP</strong> to any text from us, email <a href="mailto:info@alkebulanimages.com" class="text-primary hover:underline">info@alkebulanimages.com</a>, or call <a href="tel:6153214111" class="text-primary hover:underline">(615) 321-4111</a>. We will respond with information about how to opt out and how to reach a person.
             </p>
           </div>
 
           <div>
             <h3 class="font-semibold text-foreground mb-2">What We Do Not Do</h3>
             <ul class="list-disc list-inside space-y-1 text-sm text-foreground/80 pl-2">
-              <li>We do <strong>not</strong> send unsolicited marketing text messages</li>
-              <li>We do <strong>not</strong> add your phone number to marketing lists based on a phone call</li>
-              <li>We do <strong>not</strong> share your phone number with third parties for marketing purposes</li>
-              <li>We do <strong>not</strong> send automated bulk text messages or use auto-dialers for marketing</li>
+              <li>We do <strong>not</strong> send unsolicited marketing or promotional text messages</li>
+              <li>We do <strong>not</strong> use auto-dialers, bulk texting tools, or marketing campaigns over SMS</li>
+              <li>We do <strong>not</strong> share your mobile number with third parties for marketing purposes; mobile information is never shared with third parties or affiliates for marketing or promotional purposes under any circumstances</li>
+              <li>We do <strong>not</strong> require text-message consent as a condition of buying anything from us</li>
             </ul>
-          </div>
-
-          <div>
-            <h3 class="font-semibold text-foreground mb-2">Opting Out of Text Responses</h3>
-            <p class="text-sm text-foreground/80">
-              You may opt out of receiving text message responses at any time by replying <strong>STOP</strong> to any text message from us, or by contacting us at <a href="mailto:info@alkebulanimages.com" class="text-primary hover:underline">info@alkebulanimages.com</a>. After opting out, we will only respond to your calls via phone callback or email. Standard message and data rates may apply to text messages based on your mobile carrier plan.
-            </p>
           </div>
         </div>
       </div>
@@ -203,44 +217,58 @@
       <div>
         <h2 class="text-2xl font-bold text-foreground mb-4">8. Third-Party Services</h2>
         <p class="text-foreground/80 mb-3">
-          We use the following categories of third-party services to operate our business. Each provider only receives the information necessary to perform their function:
+          We use third-party service providers to operate our business. Each provider only receives the information necessary to perform their function. The categories of providers we rely on include:
         </p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div class="bg-muted rounded-lg p-4">
             <p class="font-semibold text-foreground text-sm">Payment Processing</p>
-            <p class="text-xs text-foreground/60">Stripe</p>
+            <p class="text-xs text-foreground/60">PCI-compliant payment processor (Stripe)</p>
           </div>
           <div class="bg-muted rounded-lg p-4">
             <p class="font-semibold text-foreground text-sm">Shipping & Fulfillment</p>
-            <p class="text-xs text-foreground/60">Pirate Ship (USPS/UPS)</p>
+            <p class="text-xs text-foreground/60">USPS, UPS, and partnered shipping platforms</p>
           </div>
           <div class="bg-muted rounded-lg p-4">
-            <p class="font-semibold text-foreground text-sm">Inventory Management</p>
-            <p class="text-xs text-foreground/60">Square POS</p>
+            <p class="font-semibold text-foreground text-sm">Point-of-Sale & Inventory</p>
+            <p class="text-xs text-foreground/60">Retail point-of-sale provider</p>
           </div>
           <div class="bg-muted rounded-lg p-4">
-            <p class="font-semibold text-foreground text-sm">Business Phone & Text</p>
-            <p class="text-xs text-foreground/60">Grasshopper</p>
+            <p class="font-semibold text-foreground text-sm">Business Phone & SMS</p>
+            <p class="text-xs text-foreground/60">Business phone and conversational SMS provider</p>
+          </div>
+          <div class="bg-muted rounded-lg p-4">
+            <p class="font-semibold text-foreground text-sm">Email Delivery</p>
+            <p class="text-xs text-foreground/60">Transactional email service for order and contact replies</p>
+          </div>
+          <div class="bg-muted rounded-lg p-4">
+            <p class="font-semibold text-foreground text-sm">Hosting & Security</p>
+            <p class="text-xs text-foreground/60">Web hosting, content delivery, and bot protection</p>
+          </div>
+          <div class="bg-muted rounded-lg p-4">
+            <p class="font-semibold text-foreground text-sm">Web Analytics</p>
+            <p class="text-xs text-foreground/60">Self-hosted, privacy-focused analytics (no cookies, no third-party data sharing)</p>
           </div>
         </div>
         <p class="text-foreground/80 mt-4 text-sm">
-          Each of these providers maintains their own privacy policies. Once you leave our website or interact with a third-party service, you are subject to that provider's privacy practices. We encourage you to review their policies.
+          We name the payment processor (Stripe) explicitly because customers interact with their payment interface directly during checkout. Other providers operate behind the scenes and are listed by category. Each provider maintains their own privacy practices. Once you leave our website or interact with a third-party service, you are subject to that provider's policies.
         </p>
       </div>
 
       <!-- Cookies -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">9. Cookies & Tracking Technologies</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">9. Cookies, Tracking, and Analytics</h2>
         <p class="text-foreground/80 mb-3">
-          Our website uses cookies and similar technologies to provide core functionality and improve your experience:
+          Our website uses cookies and similar technologies only where necessary to deliver the site:
         </p>
         <ul class="list-disc list-inside space-y-2 text-foreground/80 pl-2">
-          <li><strong>Essential cookies</strong> - required for shopping cart functionality, login sessions, and checkout</li>
-          <li><strong>Analytics cookies</strong> - help us understand how visitors use our site so we can improve it (we use anonymized analytics where possible)</li>
-          <li><strong>Preference cookies</strong> - remember your settings and preferences for future visits</li>
+          <li><strong>Essential cookies</strong> — required for shopping cart functionality, login sessions, and checkout to work</li>
+          <li><strong>Preference cookies</strong> — remember your settings (such as theme or saved address fields) for future visits</li>
         </ul>
+        <p class="text-foreground/80 mt-4 mb-3">
+          For web analytics we use a <strong>self-hosted, privacy-focused analytics service</strong>. This service measures aggregate page views and basic engagement metrics (such as which pages are popular and roughly where visitors come from) without using cookies, without assigning persistent identifiers to you, and without sharing data with any third-party advertising or marketing service. We do not use Google Analytics, Meta Pixel, TikTok Pixel, or other cross-site tracking pixels.
+        </p>
         <p class="text-foreground/80 mt-3">
-          You can control cookies through your browser settings. Disabling cookies may limit certain website functionality, including the ability to add items to your cart or complete checkout.
+          You can control cookies through your browser settings. To opt out of analytics, you can enable your browser's <em>Do Not Track</em> setting, use a privacy-focused browser, or block the analytics script with a content blocker. Disabling essential cookies may limit certain website functionality, including the ability to add items to your cart or complete checkout.
         </p>
       </div>
 
