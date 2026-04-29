@@ -149,7 +149,10 @@
           <div>
             <h3 class="font-semibold text-foreground mb-2">How We Handle Your SMS Information</h3>
             <p class="text-sm text-foreground/80 mb-3">
-              <strong>We do not transfer, share, sell, rent, or disclose consumer SMS opt-in data, consent records, or mobile numbers to any external organizations except service providers strictly necessary to deliver the messaging service, and never for marketing purposes.</strong> Consumer SMS and mobile data is not transferred, shared, sold, rented, or disclosed to outside organizations except when needed to deliver the messaging service. SMS opt-in data, consent records, and mobile numbers are not shared with third parties for marketing or other non-essential purposes.
+              <strong>Customer data is not shared with 3rd parties for promotional or marketing purposes.</strong> <strong>Mobile opt-in and consent are never shared with anyone for any purpose.</strong> Any information sharing that may be mentioned elsewhere in this policy excludes mobile opt-in data.
+            </p>
+            <p class="text-sm text-foreground/80 mb-3">
+              We do not transfer, share, sell, rent, or disclose consumer SMS opt-in data, consent records, or mobile numbers to any external organizations except service providers strictly necessary to deliver the messaging service, and never for marketing purposes. Consumer SMS and mobile data is not transferred, shared, sold, rented, or disclosed to outside organizations except when needed to deliver the messaging service. SMS opt-in data, consent records, and mobile numbers are not shared with third parties for marketing or other non-essential purposes.
             </p>
             <p class="text-sm text-foreground/80 mb-2">In addition:</p>
             <ul class="list-disc list-inside space-y-1 text-sm text-foreground/80 pl-2">
