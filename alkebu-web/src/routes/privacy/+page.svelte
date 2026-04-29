@@ -93,7 +93,7 @@
       <div class="bg-card rounded-xl p-6 lg:p-8 border-2 border-primary/20">
         <h2 class="text-2xl font-bold text-foreground mb-4">3. Text Messaging & Phone Communications</h2>
         <p class="text-foreground/80 mb-4">
-          Alkebu-Lan Images uses a business phone system to manage calls and conversational text messages with our customers. Our SMS program is designed for <strong>one-to-one conversational messaging</strong> in response to customer-initiated contact — for example, replying to a question you asked, confirming the status of an order or special request, or following up on an in-store conversation. We do not send marketing or promotional text blasts.
+          <strong>You will receive SMS messages only about your specific inquiry, order, or request, including order updates and special-request confirmations.</strong> Alkebu-Lan Images uses a business phone system to manage calls and conversational text messages with our customers. Our SMS program is designed for <strong>one-to-one conversational messaging</strong> in response to customer-initiated contact. We do not send marketing or promotional text blasts.
         </p>
 
         <div class="space-y-4">
