@@ -112,9 +112,9 @@
           </div>
 
           <div>
-            <h3 class="font-semibold text-foreground mb-2">How to Opt Out (Reply STOP)</h3>
+            <h3 class="font-semibold text-foreground mb-2">How to Opt Out (Reply STOP or UNSUBSCRIBE)</h3>
             <p class="text-sm text-foreground/80">
-              You may opt out of text messages at any time by replying <strong>STOP</strong> to any text message from us. After you reply STOP, we will send a single confirmation message and will not text you again unless you opt back in. You may opt back in by replying <strong>START</strong> or by contacting us. After opting out, we will only respond to your inquiries via phone callback or email.
+              You may opt out of text messages at any time by replying <strong>STOP</strong> or <strong>UNSUBSCRIBE</strong> to any text message from us. We also honor <strong>END</strong>, <strong>CANCEL</strong>, and <strong>QUIT</strong> as opt-out commands. After you reply with any of these keywords, we will send a single confirmation message and will not text you again unless you opt back in. You may opt back in by replying <strong>START</strong> or by contacting us. After opting out, we will only respond to your inquiries via phone callback or email.
             </p>
           </div>
 
@@ -126,11 +126,14 @@
           </div>
 
           <div>
-            <h3 class="font-semibold text-foreground mb-2">What We Do Not Do</h3>
+            <h3 class="font-semibold text-foreground mb-2">How We Handle Your SMS Information</h3>
+            <p class="text-sm text-foreground/80 mb-3">
+              <strong>We do not transfer, share, sell, rent, or disclose consumer SMS opt-in data, consent records, or mobile numbers to any external organizations except service providers strictly necessary to deliver the messaging service, and never for marketing purposes.</strong> Consumer SMS and mobile data is not transferred, shared, sold, rented, or disclosed to outside organizations except when needed to deliver the messaging service. SMS opt-in data, consent records, and mobile numbers are not shared with third parties for marketing or other non-essential purposes.
+            </p>
+            <p class="text-sm text-foreground/80 mb-2">In addition:</p>
             <ul class="list-disc list-inside space-y-1 text-sm text-foreground/80 pl-2">
               <li>We do <strong>not</strong> send unsolicited marketing or promotional text messages</li>
               <li>We do <strong>not</strong> use auto-dialers, bulk texting tools, or marketing campaigns over SMS</li>
-              <li>We do <strong>not</strong> share your mobile number with third parties for marketing purposes; mobile information is never shared with third parties or affiliates for marketing or promotional purposes under any circumstances</li>
               <li>We do <strong>not</strong> require text-message consent as a condition of buying anything from us</li>
             </ul>
           </div>
