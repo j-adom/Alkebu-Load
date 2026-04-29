@@ -55,11 +55,22 @@ export const actions: Actions = {
       website: String(formData.get('website') || '').trim(),
     };
 
+    // Cloudflare Turnstile injects this hidden field on widget success
+    const turnstileToken = String(formData.get('cf-turnstile-response') || '').trim();
+
     if (!values.name || !values.email || !values.subject || !values.message) {
       return fail(400, {
         success: false,
         values,
         error: 'Please complete the required fields before sending your message.',
+      });
+    }
+
+    if (!turnstileToken) {
+      return fail(400, {
+        success: false,
+        values,
+        error: 'Please complete the bot check before sending your message.',
       });
     }
 
@@ -70,7 +81,7 @@ export const actions: Actions = {
           'Content-Type': 'application/json',
           ...getPayloadAuthHeader(),
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, turnstileToken }),
       });
 
       const data = await response.json().catch(() => ({}));

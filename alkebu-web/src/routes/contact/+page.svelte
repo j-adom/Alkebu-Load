@@ -3,6 +3,7 @@
   import { urlFor } from '$lib/payload';
   import Meta from '$lib/components/Meta.svelte'
   import { MapPin, Mail, Phone, ChevronRight, Send, ArrowRight } from 'lucide-svelte';
+  import { PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
 
   const metadata = {
     title: 'Contact Us | Alkebu-Lan Images',
@@ -18,6 +19,10 @@
   const section2 = $derived(contact.section2 ?? {});
   const formValues = $derived(form?.values ?? {});
 </script>
+
+<svelte:head>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</svelte:head>
 
 <Meta {metadata} />
 
@@ -128,6 +133,9 @@
               <div class="md:col-span-2">
                 <label for="message" class="block text-sm font-medium mb-2">Message</label>
                 <textarea id="message" name="message" placeholder="Write your message..." class="textarea-modern" rows="5" required>{formValues.message || $page.url.searchParams.get('message') || ''}</textarea>
+              </div>
+              <div class="md:col-span-2">
+                <div class="cf-turnstile" data-sitekey={PUBLIC_TURNSTILE_SITE_KEY} data-theme="light"></div>
               </div>
               <div class="md:col-span-2">
                 <button type="submit" class="btn-primary">
