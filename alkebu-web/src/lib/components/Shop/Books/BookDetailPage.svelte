@@ -43,6 +43,10 @@
   );
   const binding = $derived((primaryEdition?.binding || "Book").toString());
   const isbn = $derived(primaryEdition?.isbn || primaryEdition?.isbn10 || "");
+  const purchaseCustomization = $derived.by(() => ({
+    ...(binding ? { binding } : {}),
+    ...(isbn ? { isbn } : {}),
+  }));
   const published = $derived.by(() => {
     const raw = primaryEdition?.datePublished;
     if (!raw) return "";
@@ -200,12 +204,26 @@
             </div>
             <BookPurchaseAction
               {book}
+              customization={purchaseCustomization}
               className="btn-primary btn-lg"
             />
           </div>
           <p class="text-sm text-muted-foreground">
             {availabilityMessage}
           </p>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <a href="/shop/books" class="btn-outline btn-sm">Browse books</a>
+            {#if categories?.[0]}
+              <a href="/shop/books/genres/{categories[0]}" class="btn-outline btn-sm">
+                More {categories[0].replace(/-/g, " ")}
+              </a>
+            {/if}
+            {#if subjects?.[0]}
+              <a href="/search?q={encodeURIComponent(subjects[0])}&type=books" class="btn-outline btn-sm">
+                Related topic
+              </a>
+            {/if}
+          </div>
         </div>
 
         <!-- Book Details Grid -->

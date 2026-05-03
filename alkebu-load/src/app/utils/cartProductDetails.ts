@@ -48,6 +48,19 @@ const resolveBookEdition = (product: any, customization?: Customization) => {
     return null;
   }
 
+  const requestedIsbn = customization?.isbn;
+
+  if (requestedIsbn) {
+    const matchedEdition = product.editions.find((edition: any) =>
+      matchesText(edition?.isbn, requestedIsbn) ||
+      matchesText(edition?.isbn10, requestedIsbn),
+    );
+
+    if (matchedEdition) {
+      return matchedEdition;
+    }
+  }
+
   const requestedBinding = customization?.binding;
 
   if (requestedBinding) {
@@ -144,4 +157,41 @@ export const resolveCartStripePriceId = (
     asNonEmptyString(fashionVariation?.stripePriceId) ??
     undefined
   );
+};
+
+export const resolveCartProductIdentifiers = (
+  product: any,
+  productType: string,
+  customization?: Customization,
+) => {
+  const bookEdition = productType === 'books'
+    ? resolveBookEdition(product, customization)
+    : null;
+  const fashionVariation = resolveFashionVariation(product, customization);
+
+  const productSku =
+    asNonEmptyString(fashionVariation?.sku) ??
+    asNonEmptyString(product?.sku) ??
+    asNonEmptyString(product?.inventory?.sku);
+
+  return {
+    isbn: asNonEmptyString(bookEdition?.isbn) ?? undefined,
+    isbn10: asNonEmptyString(bookEdition?.isbn10) ?? undefined,
+    gtin: asNonEmptyString(bookEdition?.isbn) ?? asNonEmptyString(product?.gtin) ?? undefined,
+    sku: productSku ?? undefined,
+    squareVariationId:
+      asNonEmptyString(bookEdition?.squareVariationId) ??
+      asNonEmptyString(fashionVariation?.squareVariationId) ??
+      undefined,
+    stripePriceId: resolveCartStripePriceId(product, customization),
+    edition:
+      asNonEmptyString(bookEdition?.edition) ??
+      asNonEmptyString(bookEdition?.binding) ??
+      undefined,
+    publisher:
+      asNonEmptyString(bookEdition?.publisherText) ??
+      asNonEmptyString(product?.publisherText) ??
+      undefined,
+    publishedDate: asNonEmptyString(bookEdition?.datePublished) ?? undefined,
+  };
 };

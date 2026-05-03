@@ -444,6 +444,20 @@ export interface Order {
         };
     productType: string;
     productTitle: string;
+    /**
+     * Product identifiers captured from the cart at purchase time
+     */
+    identifiers?: {
+      isbn?: string | null;
+      isbn10?: string | null;
+      gtin?: string | null;
+      sku?: string | null;
+      squareVariationId?: string | null;
+      stripePriceId?: string | null;
+      edition?: string | null;
+      publisher?: string | null;
+      publishedDate?: string | null;
+    };
     quantity: number;
     /**
      * Price per unit in cents
@@ -4055,6 +4069,20 @@ export interface CartItem {
    * Product title at time of adding to cart
    */
   productTitle: string;
+  /**
+   * Product identifiers captured at the time the item was added
+   */
+  identifiers?: {
+    isbn?: string | null;
+    isbn10?: string | null;
+    gtin?: string | null;
+    sku?: string | null;
+    squareVariationId?: string | null;
+    stripePriceId?: string | null;
+    edition?: string | null;
+    publisher?: string | null;
+    publishedDate?: string | null;
+  };
   quantity: number;
   /**
    * Price per unit in cents
@@ -5383,6 +5411,19 @@ export interface CartItemsSelect<T extends boolean = true> {
   product?: T;
   productType?: T;
   productTitle?: T;
+  identifiers?:
+    | T
+    | {
+        isbn?: T;
+        isbn10?: T;
+        gtin?: T;
+        sku?: T;
+        squareVariationId?: T;
+        stripePriceId?: T;
+        edition?: T;
+        publisher?: T;
+        publishedDate?: T;
+      };
   quantity?: T;
   unitPrice?: T;
   totalPrice?: T;
@@ -5420,6 +5461,19 @@ export interface OrdersSelect<T extends boolean = true> {
         product?: T;
         productType?: T;
         productTitle?: T;
+        identifiers?:
+          | T
+          | {
+              isbn?: T;
+              isbn10?: T;
+              gtin?: T;
+              sku?: T;
+              squareVariationId?: T;
+              stripePriceId?: T;
+              edition?: T;
+              publisher?: T;
+              publishedDate?: T;
+            };
         quantity?: T;
         unitPrice?: T;
         totalPrice?: T;

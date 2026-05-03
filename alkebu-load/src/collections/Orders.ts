@@ -82,6 +82,24 @@ export const Orders: CollectionConfig = {
           required: true,
         },
         {
+          name: 'identifiers',
+          type: 'group',
+          admin: {
+            description: 'Product identifiers captured from the cart at purchase time',
+          },
+          fields: [
+            { name: 'isbn', type: 'text' },
+            { name: 'isbn10', type: 'text' },
+            { name: 'gtin', type: 'text' },
+            { name: 'sku', type: 'text' },
+            { name: 'squareVariationId', type: 'text' },
+            { name: 'stripePriceId', type: 'text' },
+            { name: 'edition', type: 'text' },
+            { name: 'publisher', type: 'text' },
+            { name: 'publishedDate', type: 'date' },
+          ],
+        },
+        {
           name: 'quantity',
           type: 'number',
           required: true,

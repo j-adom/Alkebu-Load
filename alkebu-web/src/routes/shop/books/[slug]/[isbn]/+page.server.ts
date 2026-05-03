@@ -1,4 +1,4 @@
-import { appendBookStorefrontFilters, getProductBySlug, payloadGet } from '$lib/server/payload';
+import { appendBookStorefrontFilters, getProductBySlug, getRelatedBooks, payloadGet } from '$lib/server/payload';
 import { buildProductJsonLd, buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -24,6 +24,13 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     if (!matchingEdition) {
       throw error(404, 'ISBN not found for this book');
     }
+
+    product.editions = [
+      { ...matchingEdition, isPrimary: true },
+      ...(product.editions || []).filter(
+        (edition: any) => edition.isbn !== matchingEdition.isbn && edition.isbn10 !== matchingEdition.isbn10
+      ),
+    ];
 
     // Build breadcrumbs
     const breadcrumbs = [
@@ -93,12 +100,21 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       }
     }
 
+    const booksByAuthorIds = booksByAuthor.map((book) => book.id);
+    const relatedBooks = await getRelatedBooks(
+      product.id,
+      product.categories || [],
+      product.collections || [],
+      booksByAuthorIds,
+      6
+    );
+
     return {
       book: product,
       settings: settings || {},
       seo: seoData,
       booksByAuthor,
-      relatedBooks: [],
+      relatedBooks,
     };
   } catch (err: unknown) {
     if (is404Error(err)) {

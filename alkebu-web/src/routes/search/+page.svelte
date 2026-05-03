@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import PayloadImage from '$lib/components/PayloadImage.svelte';
+  import { trackEvent } from '$lib/analytics';
   import { formatCurrency } from '$lib/utils/currency';
   import { Search, BookOpen, ShoppingBag, Sparkles, Home, ArrowRight } from 'lucide-svelte';
 
@@ -25,13 +26,18 @@
 
   const handleSearch = () => {
     if (browser) {
+      const trimmedQuery = searchQuery.trim();
+      if (!trimmedQuery) return;
+
       const params = new URLSearchParams();
-      if (searchQuery.trim()) {
-        params.set('q', searchQuery.trim());
-      }
+      params.set('q', trimmedQuery);
       if (typeFilter && typeFilter !== 'all') {
         params.set('type', typeFilter);
       }
+      trackEvent('search_submit', {
+        query: trimmedQuery,
+        type: typeFilter,
+      });
       goto(`/search${params.toString() ? `?${params}` : ''}`, {
         replaceState: false
       });
@@ -129,7 +135,16 @@
         {#if results.length > 0}
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {#each results as result}
-              <a href={result.url} class="group card-modern">
+              <a
+                href={result.url}
+                class="group card-modern"
+                onclick={() => trackEvent('search_result_click', {
+                  query: searchQuery,
+                  result_type: result.type,
+                  result_title: result.title,
+                  result_url: result.url,
+                })}
+              >
                 <div class="relative aspect-[4/3] bg-muted overflow-hidden">
                   {#if isString(result.image)}
                     <img src={result.image} alt={result.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />

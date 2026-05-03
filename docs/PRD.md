@@ -1,6 +1,6 @@
 # Alkebulanimages 2.0 - Product Requirements Document
 
-**Last Updated:** April 28, 2026
+**Last Updated:** April 30, 2026
 
 ## Executive Summary
 
@@ -42,12 +42,12 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Email System** - Afrocentric branded templates, customer confirmations, staff notifications, daily digest
 
 ### In Progress
-- **Checkout Hardening** - Quote-locked Stripe checkout is implemented; stale quotes are now suppressed in cart summaries and refreshed before payment, but end-to-end browser QA and production smoke testing still remain
+- **Checkout Hardening** - Quote-locked Stripe checkout is implemented; stale quotes are suppressed in cart summaries and refreshed before payment; production checkout and customer email confirmations are functioning as of April 30, 2026
 - **Shippo Shipping Integration** - Checkout preview now supports normalized shipping options, Media Mail defaults for book-only orders, and fallback rates when Shippo is unavailable; live production credential validation is still pending
 - **Square Hosted Checkout Validation** - The adapter now persists Square order IDs for reconciliation, but hosted checkout still needs sandbox/production verification before it should be treated as launch-ready
 - **Data Import** - Product catalog export from Square and import to Payload
 - **Content/Community Frontend Alignment** - Blog, reviews/comments, and advanced search UI still need polish to match backend schema/capabilities
-- **Transactional Email Verification** - SES-aligned transport is wired in code, but deployed verification still needs a protected test endpoint or controlled production test
+- **Transactional Email Verification** - SES-aligned transport is wired in code and production checkout email confirmations are functioning; contact, staff notification, shipping update, and daily digest can still be spot-checked separately
 
 ### Planned (Post-Launch)
 - **Phase 2**: Blog content, advanced search features, deeper fulfillment automation

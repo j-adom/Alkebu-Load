@@ -6,6 +6,7 @@ import {
 import { isShippingQuoteExpired } from './shippingQuotes';
 import { sendAbandonedCartEmail, type AbandonedCartData } from './emailService';
 import {
+  resolveCartProductIdentifiers,
   resolveCartProductTitle,
   resolveCartProductUnitPrice,
   resolveCartStripePriceId,
@@ -352,6 +353,11 @@ export async function addToCart(
     } else {
       const productTitle = resolveCartProductTitle(product, item.customization);
       const unitPrice = resolveCartProductUnitPrice(product, item.customization);
+      const identifiers = resolveCartProductIdentifiers(
+        product,
+        item.productType,
+        item.customization,
+      );
 
       // Create new cart item
       cartItem = await (payload as any).create({
@@ -364,9 +370,10 @@ export async function addToCart(
           },
           productType: (item as any).productType,
           productTitle,
+          identifiers,
           quantity: (item as any).quantity,
           unitPrice,
-          stripePriceId: resolveCartStripePriceId(product, item.customization),
+          stripePriceId: identifiers.stripePriceId || resolveCartStripePriceId(product, item.customization),
           customization: item.customization,
           availability: {
             inStock: !trackQuantity || stockLevel > 0,

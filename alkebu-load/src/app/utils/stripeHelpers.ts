@@ -401,6 +401,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
           : getCartItemProductId(item),
         productType: item.productType,
         productTitle: item.productTitle,
+        identifiers: item.identifiers,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.quantity * item.unitPrice,

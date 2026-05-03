@@ -1,5 +1,6 @@
 <script lang="ts">
   import { paymentProvider } from "$lib/paymentProvider";
+  import { trackEvent } from "$lib/analytics";
   import { cart } from "$lib/stores/cart";
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
@@ -11,6 +12,11 @@
   // Clear cart after successful checkout
   onMount(() => {
     if (browser && sessionId && status?.orderCreated) {
+      trackEvent('purchase', {
+        session_id: sessionId,
+        order_number: status.orderNumber,
+        provider: paymentProvider.slug,
+      });
       cart.resetLocal();
     }
   });

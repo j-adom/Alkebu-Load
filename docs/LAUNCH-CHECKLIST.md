@@ -1,10 +1,10 @@
 # Launch Checklist - Alkebulanimages 2.0
 
 **Target:** Go live with online ordering  
-**Updated:** April 28, 2026  
+**Updated:** April 30, 2026  
 **Current backend:** `https://payload.alkebulanimages.com`  
 **Current storefront:** `https://alkebulanimages.com`  
-**Status:** Core commerce build is close; remaining work is production verification, data quality, email/webhook confidence, and final speed/security checks.
+**Status:** Online ordering is live and checkout/email confirmations are functioning. Remaining launch work is staff workflow verification, catalog data quality, Square inventory webhook confidence, and final speed/security checks.
 
 ---
 
@@ -22,24 +22,22 @@
   - SES SMTP credentials are valid.
   - Shippo/live shipping credentials are present if live carrier rates are expected.
 
-- [ ] **Fix/verify email credentials**
-  - Local backend build currently logs `535 Authentication Credentials Invalid` while verifying Nodemailer.
-  - Confirm production SES SMTP username/password work.
-  - Verify SPF, DKIM, and DMARC records for `alkebulanimages.com`.
-  - Send controlled production test emails for contact, customer order confirmation, staff notification, shipping update, and daily digest.
+- [x] **Fix/verify email credentials**
+  - Production checkout email confirmations are functioning as of April 30, 2026.
+  - Remaining optional verification: SPF, DKIM, DMARC, contact form delivery, staff notification, shipping update, and daily digest.
 
-- [ ] **Register and verify Stripe production webhook**
+- [x] **Register and verify Stripe production webhook**
   - Endpoint: `https://payload.alkebulanimages.com/api/stripe-webhook`
   - Events: `checkout.session.completed`, `payment_intent.succeeded`, `payment_intent.payment_failed`
-  - Confirm webhook signature validation succeeds.
-  - Confirm paid orders are created once and carts are cleared after success.
+  - Production checkout is functioning with email confirmations as of April 30, 2026.
+  - Remaining optional audit: confirm paid orders are created once and carts are cleared after success in a controlled test order.
 
-- [ ] **Run end-to-end production checkout smoke test**
+- [x] **Run end-to-end production checkout smoke test**
   - Add book to cart.
   - Preview shipping/tax.
   - Complete Stripe checkout with a real controlled payment path.
-  - Confirm success page, order record, inventory adjustment, customer email, staff email, and dashboard visibility.
-  - Refund the test order in Stripe and confirm order/refund state.
+  - Production checkouts and email confirmations are functioning as of April 30, 2026.
+  - Remaining optional audit: confirm success page, order record, inventory adjustment, staff email, dashboard visibility, and refund state against one known test order.
 
 - [ ] **Verify production catalog data**
   - Books have cover images, authors, descriptions, prices, ISBNs, weights, and stock.
@@ -57,6 +55,9 @@
   - Endpoint: `https://payload.alkebulanimages.com/api/webhooks/square-catalog`
   - Events: `inventory.count.updated`, `catalog.item.updated`
   - Change a test item in Square and confirm Payload stock/catalog updates.
+  - April 30, 2026 dry run: `scripts/update-square-inventory.ts` successfully authenticated to Square, resolved location `LC2AKZX32H2ZA`, indexed 9,070 variations, and prepared 49 inventory changes from `data/square-test.csv` without applying changes.
+  - Cleanup before apply: the dry run reported 6 unresolved identifiers and 27 invalid quantity rows in the test CSV.
+  - Logs to check during webhook verification: Coolify app logs / container stdout for `Square webhook endpoint hit`, `Square catalog webhook received`, and `Webhook processing complete`; Square Developer Dashboard webhook delivery logs for request status/retries.
 
 ### P1 - Speed, Security, and Reliability
 
@@ -92,9 +93,9 @@
   - Catalog/blog/events/shop routes already emit appropriate `s-maxage`+`stale-while-revalidate` directives.
   - Cart and checkout pages now explicitly set `Cache-Control: private, no-store` via `setHeaders` so no upstream proxy can ever cache them.
 
-- [ ] **Add stronger contact abuse protection**
-  - Simple in-memory rate limiting is useful but not enough for multi-instance production.
-  - Add Cloudflare Turnstile or Cloudflare WAF/rate limiting for `/contact` and `/api/contact`.
+- [x] **Add stronger contact abuse protection**
+  - Cloudflare Turnstile is wired for `/contact` and `/api/contact`.
+  - Optional follow-up: verify production Turnstile environment values and add Cloudflare WAF/rate limiting if abuse appears.
 
 - [x] **Make production build fail on backend type/lint errors**
   - Removed `ignoreDuringBuilds` and `ignoreBuildErrors` in `next.config.mjs`. Type and lint errors now block production deploys.

@@ -8,6 +8,17 @@ interface OrderItem {
   unitPrice: number
   totalPrice: number
   productType: string
+  identifiers?: {
+    isbn?: string
+    isbn10?: string
+    gtin?: string
+    sku?: string
+    squareVariationId?: string
+    stripePriceId?: string
+    edition?: string
+    publisher?: string
+    publishedDate?: string
+  }
 }
 
 interface Order {
@@ -165,6 +176,316 @@ function getAddressPreview(order: Order): string {
   if (!order.shippingAddress) return 'No shipping address'
   const cityState = [order.shippingAddress.city, order.shippingAddress.state].filter(Boolean).join(', ')
   return [order.shippingAddress.street, cityState, order.shippingAddress.zip].filter(Boolean).join(' ')
+}
+
+function formatPublishedDate(dateStr?: string): string {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return dateStr
+  return date.getFullYear().toString()
+}
+
+function getItemIdentifierSummary(item: OrderItem): string {
+  const identifiers = item.identifiers || {}
+  const primary =
+    identifiers.isbn
+      ? `ISBN ${identifiers.isbn}`
+      : identifiers.gtin
+        ? `GTIN ${identifiers.gtin}`
+        : identifiers.sku
+          ? `SKU ${identifiers.sku}`
+          : ''
+  const detail = [
+    identifiers.edition,
+    formatPublishedDate(identifiers.publishedDate),
+    identifiers.publisher,
+  ].filter(Boolean).join(' • ')
+
+  return [primary, detail].filter(Boolean).join(' · ')
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function formatOrderDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function getPackingSlipHtml(order: Order): string {
+  const shipTo = [
+    `${order.shippingAddress?.firstName || ''} ${order.shippingAddress?.lastName || ''}`.trim(),
+    order.shippingAddress?.street,
+    order.shippingAddress?.street2,
+    [
+      order.shippingAddress?.city,
+      order.shippingAddress?.state,
+      order.shippingAddress?.zip,
+    ].filter(Boolean).join(', ').replace(', ', ', '),
+  ].filter(Boolean)
+
+  const rows = (order.items || []).map((item) => {
+    const identifiers = getItemIdentifierSummary(item)
+    const secondary = [
+      identifiers,
+      item.identifiers?.isbn10 ? `ISBN-10 ${item.identifiers.isbn10}` : '',
+      item.identifiers?.sku ? `SKU ${item.identifiers.sku}` : '',
+    ].filter(Boolean).join(' | ')
+
+    return `
+      <tr>
+        <td class="qty">${escapeHtml(item.quantity)}</td>
+        <td>
+          <div class="title">${escapeHtml(item.productTitle)}</div>
+          ${secondary ? `<div class="meta">${escapeHtml(secondary)}</div>` : ''}
+        </td>
+        <td class="price">${escapeHtml(formatCents(item.totalPrice))}</td>
+      </tr>
+    `
+  }).join('')
+
+  return `<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Packing Slip ${escapeHtml(order.orderNumber)}</title>
+        <style>
+          @page {
+            size: 4in 6in;
+            margin: 0.14in;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            margin: 0;
+            color: #111;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9px;
+            line-height: 1.25;
+          }
+
+          .slip {
+            width: 3.72in;
+            min-height: 5.72in;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid #111;
+            padding-bottom: 6px;
+          }
+
+          .brand {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+          }
+
+          .store {
+            margin-top: 2px;
+            color: #333;
+          }
+
+          .order {
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          .order-number {
+            font-size: 12px;
+            font-weight: 800;
+          }
+
+          .section-title {
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #333;
+            margin-bottom: 2px;
+          }
+
+          .ship-to {
+            border-bottom: 1px solid #bbb;
+            padding-bottom: 6px;
+          }
+
+          .ship-name {
+            font-size: 11px;
+            font-weight: 800;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          th {
+            border-bottom: 1px solid #111;
+            padding: 0 0 3px;
+            text-align: left;
+            font-size: 8px;
+            text-transform: uppercase;
+          }
+
+          td {
+            border-bottom: 1px solid #ddd;
+            padding: 4px 0;
+            vertical-align: top;
+          }
+
+          .qty {
+            width: 0.28in;
+            font-weight: 800;
+            text-align: center;
+          }
+
+          .price {
+            width: 0.55in;
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          .title {
+            font-weight: 800;
+          }
+
+          .meta {
+            color: #444;
+            font-size: 7.5px;
+            margin-top: 1px;
+          }
+
+          .totals {
+            margin-left: auto;
+            width: 1.55in;
+            display: grid;
+            gap: 2px;
+          }
+
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+          }
+
+          .grand {
+            border-top: 1px solid #111;
+            padding-top: 3px;
+            font-weight: 800;
+            font-size: 11px;
+          }
+
+          .footer {
+            margin-top: auto;
+            border-top: 1px solid #111;
+            padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            color: #333;
+            font-size: 8px;
+          }
+
+          @media screen {
+            body {
+              background: #ececec;
+              padding: 20px;
+            }
+
+            .slip {
+              background: #fff;
+              min-height: 6in;
+              padding: 0.14in;
+              box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="slip">
+          <header class="top">
+            <div>
+              <div class="brand">Alkebu-Lan Images</div>
+              <div class="store">2721 Jefferson St<br />Nashville, TN 37208</div>
+            </div>
+            <div class="order">
+              <div class="section-title">Packing Slip</div>
+              <div class="order-number">${escapeHtml(order.orderNumber)}</div>
+              <div>${escapeHtml(formatOrderDate(order.createdAt))}</div>
+            </div>
+          </header>
+
+          <section class="ship-to">
+            <div class="section-title">Ship To</div>
+            <div class="ship-name">${escapeHtml(shipTo[0] || getCustomerName(order))}</div>
+            ${shipTo.slice(1).map((line) => `<div>${escapeHtml(line)}</div>`).join('')}
+            ${order.guestEmail || getCustomerEmail(order) ? `<div>${escapeHtml(order.guestEmail || getCustomerEmail(order))}</div>` : ''}
+          </section>
+
+          <section>
+            <table>
+              <thead>
+                <tr>
+                  <th class="qty">Qty</th>
+                  <th>Item</th>
+                  <th class="price">Total</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </section>
+
+          <section class="totals">
+            <div class="total-row"><span>Subtotal</span><strong>${escapeHtml(formatCents(order.subtotalAmount))}</strong></div>
+            <div class="total-row"><span>Tax</span><strong>${escapeHtml(formatCents(order.taxAmount))}</strong></div>
+            <div class="total-row"><span>Shipping</span><strong>${order.shippingAmount === 0 ? 'FREE' : escapeHtml(formatCents(order.shippingAmount))}</strong></div>
+            <div class="total-row grand"><span>Total</span><strong>${escapeHtml(formatCents(order.totalAmount))}</strong></div>
+          </section>
+
+          <footer class="footer">
+            <div>Thank you for supporting Alkebu-Lan Images.</div>
+            <div>${escapeHtml(order.fulfillment?.shippingService || order.fulfillment?.shippingMethod || '')}</div>
+          </footer>
+        </main>
+        <script>
+          window.addEventListener('load', () => {
+            window.focus();
+            setTimeout(() => window.print(), 150);
+          });
+        </script>
+      </body>
+    </html>`
+}
+
+function printPackingSlip(order: Order): void {
+  const printWindow = window.open('', `packing-slip-${order.orderNumber}`, 'width=480,height=720')
+
+  if (!printWindow) {
+    window.alert('Allow popups for Payload admin to print packing slips.')
+    return
+  }
+
+  printWindow.document.open()
+  printWindow.document.write(getPackingSlipHtml(order))
+  printWindow.document.close()
 }
 
 function getToken(): string {
@@ -418,6 +739,16 @@ export const OrderDashboardV2: React.FC = () => {
         order.shippingAddress?.state,
         order.fulfillment?.trackingNumber,
         order.internalNotes,
+        ...(order.items || []).flatMap((item) => [
+          item.productTitle,
+          item.identifiers?.isbn,
+          item.identifiers?.isbn10,
+          item.identifiers?.gtin,
+          item.identifiers?.sku,
+          item.identifiers?.edition,
+          item.identifiers?.publisher,
+          item.identifiers?.squareVariationId,
+        ]),
       ]
         .filter(Boolean)
         .join(' ')
@@ -533,7 +864,7 @@ export const OrderDashboardV2: React.FC = () => {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search order #, customer, city, tracking, note"
+          placeholder="Search order #, customer, ISBN, SKU, city, tracking, note"
           style={{
             flex: '1 1 260px',
             minWidth: 240,
@@ -847,6 +1178,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                 <thead>
                   <tr style={{ textAlign: 'left', color: '#665951' }}>
                     <th style={{ padding: '0 0 10px' }}>Item</th>
+                    <th style={{ padding: '0 0 10px' }}>Identifiers</th>
                     <th style={{ padding: '0 0 10px' }}>Type</th>
                     <th style={{ padding: '0 0 10px', textAlign: 'center' }}>Qty</th>
                     <th style={{ padding: '0 0 10px', textAlign: 'right' }}>Unit</th>
@@ -856,7 +1188,24 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                 <tbody>
                   {order.items?.map((item, index) => (
                     <tr key={`${order.id}-${index}`} style={{ borderTop: '1px solid #efe5d8' }}>
-                      <td style={{ padding: '12px 0', fontWeight: 700 }}>{item.productTitle}</td>
+                      <td style={{ padding: '12px 0', fontWeight: 700 }}>
+                        {item.productTitle}
+                        {item.identifiers?.isbn10 && (
+                          <div style={{ marginTop: 4, color: '#6e6259', fontSize: 12, fontWeight: 600 }}>
+                            ISBN-10 {item.identifiers.isbn10}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 12px 12px 0', color: '#3d342f', minWidth: 220 }}>
+                        {getItemIdentifierSummary(item) || 'Not captured'}
+                        {(item.identifiers?.sku || item.identifiers?.squareVariationId || item.identifiers?.stripePriceId) && (
+                          <div style={{ marginTop: 4, color: '#6e6259', fontSize: 12, lineHeight: 1.5 }}>
+                            {item.identifiers?.sku ? <>SKU {item.identifiers.sku}<br /></> : null}
+                            {item.identifiers?.squareVariationId ? <>Square {item.identifiers.squareVariationId}<br /></> : null}
+                            {item.identifiers?.stripePriceId ? <>Stripe price {item.identifiers.stripePriceId}</> : null}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: '12px 0', color: '#6e6259' }}>{item.productType}</td>
                       <td style={{ padding: '12px 0', textAlign: 'center' }}>{item.quantity}</td>
                       <td style={{ padding: '12px 0', textAlign: 'right' }}>{formatCents(item.unitPrice)}</td>
@@ -923,6 +1272,21 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
 
             <SectionCard title="Actions">
               <div style={{ display: 'grid', gap: 12 }}>
+                <button
+                  onClick={() => printPackingSlip(order)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #1d5843',
+                    backgroundColor: '#fff',
+                    color: '#1d5843',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Print 4x6 packing slip
+                </button>
+
                 {order.status === 'paid' && (
                   <button
                     onClick={() => onStatusChange(order.id, 'processing')}

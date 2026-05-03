@@ -11,7 +11,11 @@
   const binding = $derived(
     book?.binding || book?.defaultBookVariant?.binding || book?.editions?.[0]?.binding || 'paperback',
   );
-  const customization = $derived.by(() => (binding ? { binding } : undefined));
+  const isbn = $derived(book?.defaultBookVariant?.isbn || book?.editions?.[0]?.isbn || book?.editions?.[0]?.isbn10 || '');
+  const customization = $derived.by(() => ({
+    ...(binding ? { binding } : {}),
+    ...(isbn ? { isbn } : {}),
+  }));
 </script>
 
 <BookPurchaseAction

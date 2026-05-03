@@ -1,6 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { PUBLIC_SITE_URL } from '$env/static/public';
+import { trackEvent } from '$lib/analytics';
 import { paymentProvider } from '$lib/paymentProvider';
 
 export interface CartItem {
@@ -163,14 +164,23 @@ function createCartStore() {
 
         if (response.ok) {
           const result = await response.json();
+          const cartData = result.cart ?? result;
           // Update store with new cart data
           update(cart => ({
             ...cart,
-            ...(result.cart ?? result)
+            ...cartData
           }));
 
           // Store cart ID for guest users
-          persistCart(result.cart ?? result);
+          persistCart(cartData);
+
+          trackEvent('add_to_cart', {
+            product_id: productId,
+            product_type: productType,
+            quantity,
+            cart_id: cartData.id,
+            value: Number(cartData.subtotal || 0) / 100,
+          });
 
           return { success: true };
         } else {
@@ -310,6 +320,15 @@ function createCartStore() {
     }) {
       try {
         const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
+        const currentCart = get(store);
+
+        trackEvent('begin_checkout', {
+          cart_id: guestCartId || currentCart.id,
+          item_count: currentCart.itemCount,
+          value: Number(currentCart.total || currentCart.subtotal || 0) / 100,
+          provider: paymentProvider.slug,
+          shipping_rate_id: options?.selectedShippingRateId,
+        });
 
         const response = await fetch('/api/checkout', {
           method: 'POST',
@@ -317,7 +336,7 @@ function createCartStore() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            cartId: guestCartId || get(store).id,
+            cartId: guestCartId || currentCart.id,
             successUrl: `${PUBLIC_SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${PUBLIC_SITE_URL}/checkout/cancel`,
             shippingAddress: options?.shippingAddress,
