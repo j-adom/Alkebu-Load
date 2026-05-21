@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 
+import { getCustomerEmail, getCustomerName } from './orderDashboard/customerDisplay'
+
 interface OrderItem {
   productTitle: string
   quantity: number
@@ -153,23 +155,6 @@ function timeAgo(dateStr: string): string {
 
 function getOrderAgeHours(order: Order): number {
   return Math.round((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60))
-}
-
-function getCustomerName(order: Order): string {
-  if (order.customer && typeof order.customer === 'object') {
-    return order.customer.displayName
-      || `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim()
-      || order.customer.email
-      || 'Customer'
-  }
-  return order.guestEmail || 'Guest'
-}
-
-function getCustomerEmail(order: Order): string {
-  if (order.customer && typeof order.customer === 'object') {
-    return order.customer.email || ''
-  }
-  return order.guestEmail || ''
 }
 
 function getAddressPreview(order: Order): string {
