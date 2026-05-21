@@ -9,7 +9,7 @@ export const CartItems: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if ((user as any)?.role === 'admin') return true;
+      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') return true;
       return false; // Cart items are accessed through cart operations
     },
     create: () => true,

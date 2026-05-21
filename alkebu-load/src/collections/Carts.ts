@@ -9,7 +9,7 @@ export const Carts: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if ((user as any)?.role === 'admin') return true;
+      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') return true;
       if (user) return { user: { equals: user.id } }; // Only owner can read their cart
       return false;
     },
