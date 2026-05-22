@@ -22,8 +22,16 @@ const identifierColumns = [
 ]
 
 const postgresUpStatements = [
-  ...identifierColumns.map((column) => `ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "${column}" text;`),
-  ...identifierColumns.map((column) => `ALTER TABLE "orders_items" ADD COLUMN IF NOT EXISTS "${column}" text;`),
+  ...identifierColumns.map((column) => (
+    column === 'identifiers_published_date'
+      ? `ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "${column}" timestamp(3) with time zone;`
+      : `ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "${column}" text;`
+  )),
+  ...identifierColumns.map((column) => (
+    column === 'identifiers_published_date'
+      ? `ALTER TABLE "orders_items" ADD COLUMN IF NOT EXISTS "${column}" timestamp(3) with time zone;`
+      : `ALTER TABLE "orders_items" ADD COLUMN IF NOT EXISTS "${column}" text;`
+  )),
 ]
 
 const postgresDownStatements = [

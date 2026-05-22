@@ -4,6 +4,7 @@
   "description": "Alkebu-Lan Images backend CMS",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
     "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev -p 3000",
