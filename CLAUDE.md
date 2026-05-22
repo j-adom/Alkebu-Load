@@ -4,189 +4,193 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Claude Code Configuration
 
-### MCP (Model Context Protocol) Setup
-This project uses the Filesystem MCP server for enhanced file system access. Configuration:
-- **Config location**: `.claude/mcp.json`
-- **Allowed directory**: `/home/jadom/Coding/alkebulanimages2.0` (entire project)
-- **Documentation**: See [docs/mcp-setup.md](docs/mcp-setup.md) for details
-
-### Permissions
-Additional Claude Code permissions are configured in `.claude/settings.local.json`.
+- **MCP config**: `.claude/mcp.json` (Filesystem MCP for project-wide file access). See [docs/mcp-setup.md](docs/mcp-setup.md).
+- **Permissions**: `.claude/settings.local.json`.
+- **Note**: The root `.env.example` is intentionally empty. Real env files live in `alkebu-load/.env` and `alkebu-web/.env.local`.
 
 ## Project Overview
 
-Alkebulanimages 2.0 is a multi-repository platform for a Nashville-based Black-owned bookstore. The architecture uses a Payload-only approach with integrated e-commerce:
+Alkebulanimages 2.0 is the digital platform for a Nashville-based Black-owned bookstore. **The site is live in production** at [alkebulanimages.com](https://alkebulanimages.com) (storefront, Cloudflare) and [payload.alkebulanimages.com](https://payload.alkebulanimages.com) (Payload backend). Online ordering, Stripe checkout, and email confirmations are functioning as of April 30, 2026.
 
-- **alkebu-load/**: Payload CMS backend with integrated e-commerce, inventory management, and Square POS integration
-- **alkebu-web/**: SvelteKit frontend consuming Payload APIs for customer-facing website  
-- **alkebu-shared/**: Shared TypeScript types and utilities (planned)
+The architecture is **Payload-only**: a single Payload CMS backend handles content, e-commerce, inventory, orders, and operations. Stripe is the primary payment processor; Square POS is used for inventory sync (and a Square hosted-checkout adapter exists but is still being validated). Shippo provides live shipping rates with USPS Media Mail defaults for book-only carts.
 
-The platform combines e-commerce, content management, community directory, and events into a unified Payload CMS system. Stripe handles payment processing directly, while Square POS provides inventory synchronization only.
+### Repositories
+- **alkebu-load/**: Payload CMS 3.x backend (Next.js 15) with integrated e-commerce, search, order management, email, and POS sync.
+- **alkebu-web/**: SvelteKit (Svelte 5) storefront, deployed to Cloudflare.
+- **alkebu-shared/**: Empty placeholder. Shared TypeScript types are *planned* but not implemented — do not assume this exists.
 
 ## Development Commands
 
-### Repository-Level Commands
-- `docker-compose up` - Start all services (currently only payload service is functional)
+### Backend (`alkebu-load/`) — `pnpm` required
+- `pnpm dev` — dev server on `:3000`
+- `pnpm devsafe` — clean restart (removes `.next`)
+- `pnpm build` / `pnpm start` — production build / serve
+- `pnpm lint` — ESLint
+- `pnpm test` — Node test runner against `tests/**/*.test.ts`. **Always run with a dummy Stripe key**; the `test` script already prefixes `STRIPE_SECRET_KEY=sk_test_dummy`.
+- `pnpm check:scripts` — type-check the standalone `scripts/` directory via `tsconfig.scripts.json` (separate from the Next build).
+- `pnpm generate:types` — regenerate Payload TypeScript types from collections (run after schema changes).
+- `pnpm generate:importmap` — regenerate admin UI import map.
 
-### Payload CMS Backend (alkebu-load/)
-**Package Manager**: Use `pnpm` (required by engines config)
+### Frontend (`alkebu-web/`) — `npm`
+- `npm run dev` — dev server on `:5173`
+- `npm run build` / `npm run preview`
+- `npm run check` — `svelte-kit sync` + `tsc --noEmit` (type check via `jsconfig.json`)
+- `npm run check:svelte` — `svelte-check`
+- `npm run lint` — ESLint
+- `npm run sync:payment-provider` — fetch payment provider config from backend
 
-- `pnpm dev` - Start development server on localhost:3000
-- `pnpm devsafe` - Clean restart (removes .next directory first)
-- `pnpm build` - Build production bundle
-- `pnpm lint` - Run ESLint
-- `pnpm generate:types` - Generate TypeScript types from collections
-- `pnpm generate:importmap` - Generate import map for admin UI
+### Operational scripts (`alkebu-load/scripts/`, run with `tsx`)
+Grouped by purpose; the directory has ~25 scripts in total.
 
-### SvelteKit Frontend (alkebu-web/)
-- `npm run dev` - Start development server on localhost:5173
-- `npm run build` - Build production bundle
-- `npm run preview` - Preview production build
-- `npm run check` - Run Svelte type checking
-- `npm run lint` - Run ESLint
-
-### Script Execution (alkebu-load/)
-TypeScript scripts in `/scripts/` directory:
-- `tsx scripts/square-integration.ts` - Square API integration testing
-- `tsx scripts/import-books.ts` - Book import functionality 
-- `tsx scripts/square-payload-sync.ts` - Sync between Square and Payload
-- `tsx scripts/initialize-search.ts` - Initialize search indices
-- `tsx scripts/initialize-search.ts --sample-data` - Initialize with sample content
+- **Catalog import**: `import-books.ts`, `import-square-csv.ts`, `import-square-to-payload.ts`, `import-reconciled-books.ts`, `bulk-isbn-import.ts`, `reconcile-book-data.ts`
+- **Enrichment**: `enrich-books-isbndb.ts`, `enrich-books-batch-fast.ts`, `enrich-books-metadata.ts`, `backfill-book-images.ts`, `backfill-book-shipping-weights.ts`, `set-books-stock-by-isbn.ts`
+- **Square sync**: `square-integration.ts`, `square-payload-sync.ts`, `update-square-inventory.ts`
+- **Search**: `initialize-search.ts` (add `--sample-data` for seeded content)
+- **Ops/QA**: `test-checkout-flow.ts`, `send-manual-order-notifications.ts`, `check-image-stats.ts`, `check-import-stats.ts`, `check-apparel-variants.ts`
 
 ## Architecture
 
 ### Data Flow
 ```
-Square POS → Payload CMS (inventory sync only via webhooks)
-                ↓
-    Products, Carts, Orders, Customers (all in Payload)
-                ↓
-    Stripe (payment processing via embedded checkout)
-                ↓
-    SvelteKit Frontend (consumes Payload APIs)
+Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / Orders / Customers
+                                │
+                                ├──> Stripe (hosted Checkout, primary)
+                                ├──> Square (hosted checkout adapter, under validation)
+                                ├──> Shippo (live shipping rates)
+                                └──> SES SMTP (transactional email)
+                                          │
+                              SvelteKit Storefront (Cloudflare) consumes Payload REST/GraphQL
 ```
 
-### Key Collections (alkebu-load/)
-#### Product Collections
-- **Books** - Main inventory with edition management and auto-categorization
-- **WellnessLifestyle**, **FashionJewelry**, **OilsIncense** - Non-book inventory
-- **ExternalBooks** - Cached external book data from APIs
+### Payment & Checkout
+- **Adapter pattern**: Pluggable Stripe + Square adapters with shared webhook handling. Stripe is the verified launch path; Square hosted checkout still needs sandbox/production verification.
+- **Quote-locked checkout**: `POST /api/checkout/preview` calculates and persists tax + shipping. Stripe session creation reuses the persisted quote rather than recalculating, so the price the customer saw is the price they pay.
+- **Tennessee tax**: Destination-based — TN shipments are taxed (default rate via `TENNESSEE_STATE_TAX_RATE`), out-of-state shipments are not.
+- **Shipping**: Shippo for live rates (USPS, UPS, FedEx). Book-only carts default to USPS Media Mail. Free shipping above `FREE_SHIPPING_THRESHOLD` (cents). Falls back to internal rates if Shippo is unavailable.
 
-#### E-Commerce Collections
-- **Carts** - Shopping cart management with Local API optimization
-- **CartItems** - Individual cart line items with product relationships
-- **Orders** - Order management with Stripe integration and fulfillment tracking
-- **Customers** - Extended user profiles with shipping addresses and tax status
+### Collections (alkebu-load)
+**Commerce**: `Carts`, `CartItems`, `Orders`, `Customers`, `InstitutionalAccounts` (B2B / tax-exempt, Phase 2).
+**Products**: `Books` (with edition management + auto-categorization), `WellnessLifestyle`, `FashionJewelry`, `OilsIncense`, `ExternalBooks` (cached external API results).
+**Content**: `BlogPosts`, `Events`, `Businesses` (directory with `businessType` and `directoryCategory` distinctions), `Comments`, `Reviews`.
+**System**: `Authors`, `Publishers`, `Vendors`, `Media`, `Users` (roles: admin / staff / editor / customer), `BookQuotes`, `SearchAnalytics`.
 
-#### Content Collections  
-- **BlogPosts** - Articles with SEO and product relationships
-- **Events** - Event management with registration and recurring events
-- **Businesses** - Local business directory with reviews
-- **Comments** - Universal commenting system with moderation
+### Search (three tiers)
+1. **Client-side** — FlexSearch pre-indexed catalog (0–50 ms)
+2. **Server-side** — PostgreSQL FTS via `/api/search` (50–200 ms)
+3. **External** — ISBNdb → Google Books → Open Library (500 ms–3 s), with quote-request fallback
 
-#### System Collections
-- **Authors**, **Publishers**, **Vendors** - Relationship management
-- **SearchAnalytics** - Search behavior tracking
-- **BookQuotes** - External book quote request management
+Search bootstrap is fragile — see "Gotchas" below before touching it.
 
-### Search Implementation
-Three-tier search system:
-1. **Client-side**: FlexSearch with pre-indexed catalog (0-50ms)
-2. **Server-side**: PostgreSQL Full-Text Search (50-200ms)  
-3. **External APIs**: ISBNdb, Google Books, Open Library (500ms-3s)
+### Order Operations
+- **Order Dashboard**: tablet-friendly UI at `/admin/order-dashboard` (tabs: "Needs Attention" / "Shipped" / "All Orders").
+- **Email**: SES SMTP (Nodemailer). Afrocentric branded templates for order confirmation, staff notification, status updates, daily digest, abandoned cart.
+- **Scheduled jobs** (Payload cron):
+  - `cleanup-abandoned-carts` — every 2 hours
+  - `daily-order-digest` — 12:00 UTC (7 AM CT)
+- **Refund API**: admin-only POST, admin+staff GET. Phase 1 staff use the Stripe Dashboard for actual refunds.
 
-## Important File Locations
+## Key Files
 
-### Core Configuration
-- `alkebu-load/src/payload.config.ts` - Main Payload configuration
-- `alkebu-load/.env` - Environment variables (copy from .env.example)
+### Configuration
+- `alkebu-load/src/payload.config.ts` — main Payload config, all collections, jobs, plugins
+- `alkebu-load/.env` — backend env (see "Environment Variables" below)
+- `alkebu-web/.env.local` — frontend env (`PAYLOAD_API_URL`, `PUBLIC_SITE_URL`)
 
-### Search & External APIs
-- `alkebu-load/src/app/utils/searchEngine.ts` - FlexSearch implementation
-- `alkebu-load/src/app/utils/externalBookAPI.ts` - External book API integration
-- `alkebu-load/src/app/utils/quoteRequestSystem.ts` - Quote request workflow
-- `alkebu-load/src/app/api/search/route.ts` - Search API endpoint
-- `alkebu-load/src/app/api/external-books/route.ts` - External book search
+### Checkout / Payments / Shipping
+- `alkebu-load/src/app/utils/cartOperations.ts` — cart CRUD via Local API (<50 ms)
+- `alkebu-load/src/app/utils/stripeHelpers.ts` — Stripe session + webhook
+- `alkebu-load/src/app/utils/taxShippingCalculations.ts` — TN tax + shipping math
+- `alkebu-load/src/app/utils/shippingQuotes.ts` — Shippo normalization + quote locking
+- `alkebu-load/src/app/utils/taxExemptValidation.ts` — institutional / tax-exempt logic
+- `alkebu-load/src/app/api/checkout/route.ts` — Stripe session creation
+- `alkebu-load/src/app/api/checkout/preview/route.ts` — quote preview + persistence
+- `alkebu-load/src/app/api/stripe-webhook/route.ts` — Stripe webhooks
+- `alkebu-load/src/app/api/payment-webhook/route.ts` — adapter-routed webhook
+- `alkebu-load/src/app/api/refund/route.ts` — refund API
 
-### E-Commerce & Payments
-- `alkebu-load/src/app/utils/cartOperations.ts` - Cart CRUD operations via Local API
-- `alkebu-load/src/app/utils/stripeHelpers.ts` - Stripe integration utilities
-- `alkebu-load/src/app/api/checkout/route.ts` - Stripe checkout session creation
-- `alkebu-load/src/app/api/stripe-webhook/route.ts` - Stripe payment webhooks
+### Order Management / Email
+- `alkebu-load/src/app/utils/emailService.ts` — Nodemailer/SES wrapper
+- `alkebu-load/src/app/utils/emailTemplates.ts` — branded HTML templates
+- `alkebu-load/src/app/utils/orderDigest.ts` — daily digest builder
+- `alkebu-load/src/app/components/OrderDashboard.tsx` — staff dashboard
 
-### Square Integration (Inventory Only)
-- `alkebu-load/src/app/utils/squareSync.ts` - Square POS integration
-- `alkebu-load/src/app/api/webhooks/square-catalog/route.ts` - Square webhooks
-- `alkebu-load/scripts/square-integration.ts` - Testing utilities
+### Search & Enrichment
+- `alkebu-load/src/app/utils/searchEngine.ts` — FlexSearch + bootstrap
+- `alkebu-load/src/app/utils/externalBookAPI.ts` — ISBNdb / Google Books / Open Library
+- `alkebu-load/src/app/utils/quoteRequestSystem.ts` — quote-request workflow
+- `alkebu-load/src/app/utils/productEnrichment.ts`, `autoEnrichBook.ts`, `imageManager.ts`
+- `alkebu-load/src/app/api/search/route.ts`, `alkebu-load/src/app/api/external-books/route.ts`
 
-## Development Setup
+### Square Integration (inventory)
+- `alkebu-load/src/app/utils/squareSync.ts`, `squareVendorExtractor.ts`
+- `alkebu-load/src/app/api/webhooks/square-catalog/route.ts`
 
-### First-Time Setup (alkebu-load/)
-1. `cd alkebu-load && pnpm install`
-2. Copy `.env.example` to `.env` and configure:
-   - `DATABASE_URI` - SQLite file path or PostgreSQL connection
-   - `PAYLOAD_SECRET` - Encryption secret
-   - `SQUARE_ACCESS_TOKEN` - Square POS API token
-   - Optional: `ISBNDB_API_KEY`, `GOOGLE_BOOKS_API_KEY`
-3. `pnpm dev` - Starts server on localhost:3000
-4. Create first admin user at `/admin`
-5. `tsx scripts/initialize-search.ts` - Initialize search indices
+## API Endpoints
 
-### Frontend Setup (alkebu-web/)
-1. `cd alkebu-web && npm install`
-2. `npm run dev` - Starts on localhost:5173
-3. Configure API endpoints to connect to Payload backend
+- **Checkout**: `POST /api/checkout`, `POST /api/checkout/preview`, `POST /api/refund`, `POST /api/payment-webhook`, `POST /api/stripe-webhook`
+- **Cart**: `POST /api/cart`, `POST /api/cart-recovery`
+- **Search**: `GET|POST /api/search`, `GET /api/external-books`, `POST /api/quote-request`
+- **Health & contact**: `GET /api/health`, `POST /api/contact`
+- **Webhooks**: `POST /api/webhooks/square-catalog`, others under `/api/webhooks/*`
+- **Payload**: `/api/graphql`, REST under `/api/<collection-slug>` (note: collection slug for `BlogPosts` is `blogPosts`, not `blog-posts`)
+- **Admin**: `/admin`, `/admin/order-dashboard`
 
-## API Structure
+## Infrastructure & Environment
 
-### E-Commerce Endpoints
-- `POST /api/checkout` - Create Stripe checkout session
-- `POST /api/stripe-webhook` - Handle Stripe payment webhooks
-- Cart operations via Payload Local API (no HTTP endpoints needed)
+### Production
+- **Backend**: Payload-hosted on `payload.alkebulanimages.com` (PostgreSQL, Coolify-deployed via auto-deploy webhook)
+- **Frontend**: Cloudflare Pages on `alkebulanimages.com`, `@sveltejs/adapter-cloudflare`
+- **Image storage**: Cloudflare R2 via `@payloadcms/storage-s3` (older docs may say Cloudinary — code and recent commits use R2)
+- **Email**: Amazon SES SMTP via Nodemailer
+- **Analytics**: self-hosted Rybbit
+- **Bot protection**: Cloudflare Turnstile on contact form
 
-### Search Endpoints
-- `GET /api/search?q={query}` - General search across all content
-- `GET /api/external-books?q={query}` - External book search
-- `POST /api/quote-request` - Request quote for external books
+### Local Development
+- **Database**: SQLite by default (`alkebu-load/alkebulanimages.db`). PostgreSQL for production via `DATABASE_URI`.
+- **Setup**: `cd alkebu-load && pnpm install && cp .env.example .env && pnpm dev` → create admin at `/admin` → `tsx scripts/initialize-search.ts`. Then `cd alkebu-web && npm install && cp .env.example .env.local && npm run dev`.
+- See [docs/development-guide.md](docs/development-guide.md) for the full walkthrough.
 
-### Payload APIs
-- `GET /api/graphql` - GraphQL endpoint for all collections
-- REST endpoints: `/api/books`, `/api/events`, `/api/businesses`, `/api/orders`, `/api/carts`
-- Admin interface: `/admin`
+### Environment Variables (alkebu-load/.env)
+**Required**: `DATABASE_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PUBLIC_SERVER_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SQUARE_ACCESS_TOKEN`, `SQUARE_WEBHOOK_SIGNATURE_KEY`, `SES_SMTP_USER`, `SES_SMTP_PASSWORD`, `FROM_EMAIL`, `STAFF_NOTIFICATION_EMAIL`.
+**Optional**: `ISBNDB_API_KEY`, `GOOGLE_BOOKS_API_KEY`, Shippo creds, R2/S3 bucket creds, `TENNESSEE_STATE_TAX_RATE`, `FREE_SHIPPING_THRESHOLD`, `ORDER_ADMIN_BASE_URL`.
 
-You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
+## Gotchas
 
-## Available MCP Tools:
+- **`alkebu-shared/` is empty.** Don't assume shared types exist — duplicate or import directly from `alkebu-load/src/payload-types.ts` if needed.
+- **Search bootstrap is brittle.** Many recent commits fix this surface: use `authorsText.name` (not nested `authors[]`) in PostgreSQL fallbacks, query `synopsis`/`shortDescription` (plain text) not the rich `description`, use the `blogPosts` slug (camelCase, not kebab), and avoid nested-array fields in `OR` queries — they fail silently.
+- **Lexical rich text** must be rendered with the appropriate Lexical renderer; passing the raw object as a string yields garbage. See `fix(web): render event description as Lexical rich text` for the pattern.
+- **Cart/Order schema drift**: when changing those collections, run `pnpm generate:types` and check `scripts/fix-carts-schema.sql` / `fix-orders-schema.sql` for any pending Postgres-side patches.
+- **Tests need `STRIPE_SECRET_KEY`** even for unrelated tests (module-load init). The `pnpm test` script already injects `sk_test_dummy`.
+- **Homepage is SSR, not prerendered** — adding `export const prerender = true` to it will break dynamic content. Cache TTL is intentionally short (~5 min).
+- **`docker-compose.yml` is aspirational.** Only the `payload` service builds against current code; `medusa` and `frontend` services reference paths/builds that don't exist or aren't current. The `postgres` service works for local Postgres if needed.
+- **Backend must be running before frontend** — the SvelteKit build/dev expects Payload at `PAYLOAD_API_URL` (default `http://localhost:3000`).
+- **Production checkout email is verified; other transactional emails are not** (see [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md)). Don't claim end-to-end SES coverage without spot-checking.
 
-### 1. list-sections
+## Reference Docs
 
-Use this FIRST to discover all available documentation sections. Returns a structured list with titles, use_cases, and paths.
-When asked about Svelte or SvelteKit topics, ALWAYS use this tool at the start of the chat to find relevant sections.
+- [docs/PRD.md](docs/PRD.md) — authoritative product spec with current status and phases
+- [docs/architecture.md](docs/architecture.md) — system architecture (note: storage section says Cloudinary; reality is R2)
+- [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md) — current production readiness board
+- [docs/development-guide.md](docs/development-guide.md) — full local setup walkthrough
+- [docs/STAFF-WORKFLOWS.md](docs/STAFF-WORKFLOWS.md) — staff order processing reference
+- [docs/CART-UX.md](docs/CART-UX.md), [docs/BOOK-ENRICHMENT-WORKFLOW.md](docs/BOOK-ENRICHMENT-WORKFLOW.md) — feature-specific
+- [alkebu-load/SYSTEM_GUIDE.md](alkebu-load/SYSTEM_GUIDE.md) — backend deep-dive
 
-### 2. get-documentation
+## Svelte MCP Server
 
-Retrieves full documentation content for specific sections. Accepts single or multiple sections.
-After calling the list-sections tool, you MUST analyze the returned documentation sections (especially the use_cases field) and then use the get-documentation tool to fetch ALL documentation sections that are relevant for the user's task.
+You have access to a Svelte MCP server with comprehensive Svelte 5 / SvelteKit documentation. Use it whenever you touch frontend code in `alkebu-web/`.
 
-### 3. svelte-autofixer
-
-Analyzes Svelte code and returns issues and suggestions.
-You MUST use this tool whenever writing Svelte code before sending it to the user. Keep calling it until no issues or suggestions are returned.
-
-### 4. playground-link
-
-Generates a Svelte Playground link with the provided code.
-After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+**Tools** (use in this order):
+1. **`list-sections`** — call FIRST when working on Svelte topics. Returns titles, use_cases, paths.
+2. **`get-documentation`** — fetch full content for sections identified above. Pull ALL relevant sections based on `use_cases`.
+3. **`svelte-autofixer`** — MUST run on any Svelte code before sending to user. Loop until no issues remain.
+4. **`playground-link`** — only after user confirmation, and NEVER if the code was written to project files.
 
 ## Technical Notes
 
-- **Database**: SQLite for development, PostgreSQL for production
-- **Search**: Run initialization script after setting up collections
-- **E-Commerce**: Integrated into Payload CMS using Local API for performance
-- **Payment Processing**: Stripe embedded checkout (no redirects)
-- **Square Integration**: Inventory sync only, not payment processing
-- **Cart Performance**: Local API operations <50ms, session-based guest carts
-- **External Books**: Graceful degradation when APIs are unavailable
-- **Voice Search**: Browser-only functionality for ISBN lookup
-- **Multi-location Inventory**: Supports multiple store locations
-- **Auto-categorization**: Books automatically assigned to curated collections
+- **DB**: SQLite locally, PostgreSQL in production
+- **E-commerce performance**: Local API for cart ops (<50 ms), session-based guest carts
+- **External book APIs**: graceful degradation when unavailable; quote-request fallback
+- **Voice search / barcode**: browser-only (Web Speech API + camera)
+- **Multi-location inventory**: supported via Square location sync (Main Store vs Warehouse)
+- **Auto-categorization**: Books are auto-assigned to curated collections (Civil Rights, Pan-Africanism, etc.) based on metadata

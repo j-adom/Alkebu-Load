@@ -1,144 +1,220 @@
-# CLAUDE.md
+# CLAUDE.md — alkebu-load (Payload CMS Backend)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working in `alkebu-load/`. The repo-level [../CLAUDE.md](../CLAUDE.md) covers cross-project context; this file focuses on the Payload backend.
 
 ## Project Overview
 
-This is a PayloadCMS application designed as an inventory management system for Alkebu-Lan Images bookstore, with Square POS integration and book data import capabilities. It focuses on Black/African literature with sophisticated categorization and collection curation. It also manages non-book inventory such as clothing, incense, natural health and wellness products, and imported jewelry and home goods. The overall project is for version 2.0 of alkebulanimages.com with the tech stack being PayloadCMS for the backend CMS for products, articles, and events calendar database to promote business and community events, and a directory of local businesses in our community. The Payload instance will also serve to manage a commenting system used throught the website for customers and other users to discuss products, articles, and events. There will also be a MedusaJS instance developed in a separate repository to handle checkout and customer service, a sveltekit frontend, and integration with the existing in-store Square POS system to link product information, inventory levels and pricing between the website and in the store.
+Payload CMS 3.x (on Next.js 15) backend for Alkebu-Lan Images, the Nashville-based Black-owned bookstore. **The site is in production** at [payload.alkebulanimages.com](https://payload.alkebulanimages.com), serving the SvelteKit storefront at [alkebulanimages.com](https://alkebulanimages.com).
+
+This single Payload instance handles:
+- **E-commerce** — cart, checkout (Stripe primary, Square adapter under validation), tax/shipping, refunds, abandoned-cart recovery
+- **Inventory** — Square POS sync via webhooks, multi-location stock, edition management
+- **Catalog** — Books with auto-categorization + auto-enrichment (ISBNdb / Google Books / Open Library)
+- **Content** — blog posts, events, business directory, comments, reviews
+- **Order operations** — staff dashboard, branded emails (SES SMTP), daily digest, refund API
+- **Search** — three-tier: FlexSearch client-side, PostgreSQL FTS server-side, external book APIs
+
+> **Note**: Older docs may mention "MedusaJS in a separate repository" — that plan was dropped. All commerce lives in this Payload instance.
 
 ## Development Commands
 
-**Package Manager**: Use `pnpm` (required by engines config)
+**Package manager**: `pnpm` (required; `engines: pnpm ^9 || ^10`)
 
-### Core Commands
-- `pnpm dev` - Start development server on localhost:3000
-- `pnpm devsafe` - Clean restart (removes .next directory first)
-- `pnpm build` - Build production bundle
-- `pnpm start` - Start production server
-- `pnpm lint` - Run ESLint
+### Core
+- `pnpm dev` — dev server on `:3000`
+- `pnpm devsafe` — clean restart (removes `.next`)
+- `pnpm build` / `pnpm start` — production build / serve
+- `pnpm lint` — ESLint (strict types/lint enforced in build per `985dbcb`)
+- `pnpm test` — Node test runner against `tests/**/*.test.ts`. Script auto-injects `STRIPE_SECRET_KEY=sk_test_dummy` because Stripe SDK init runs at module load.
+- `pnpm check:scripts` — type-check `scripts/*.ts` against `tsconfig.scripts.json` (separate from the Next build).
 
-### PayloadCMS Commands
-- `pnpm payload` - Access Payload CLI tools
-- `pnpm generate:types` - Generate TypeScript types from collections
-- `pnpm generate:importmap` - Generate import map for admin UI
+### Payload
+- `pnpm payload` — Payload CLI passthrough
+- `pnpm generate:types` — regenerate `src/payload-types.ts` after collection changes
+- `pnpm generate:importmap` — regenerate admin UI import map (needed when admin custom components change)
 
-### Script Execution
-Scripts in `/scripts/` are TypeScript files that can be run with:
-- `tsx scripts/square-integration.ts` - Square API integration testing
-- `tsx scripts/import-books.ts` - Book import functionality
-- `tsx scripts/square-payload-sync.ts` - Sync between Square and Payload
-- `tsx scripts/initialize-search.ts` - Initialize search indices with existing data
-- `tsx scripts/initialize-search.ts --sample-data` - Initialize search with sample content
+### Operational scripts (`tsx scripts/<name>.ts`)
+~25 scripts, grouped by purpose:
+
+- **Catalog import**: `import-books.ts`, `import-square-csv.ts`, `import-square-to-payload.ts`, `import-reconciled-books.ts`, `bulk-isbn-import.ts`, `reconcile-book-data.ts`
+- **Enrichment & backfill**: `enrich-books-isbndb.ts`, `enrich-books-batch-fast.ts`, `enrich-books-metadata.ts`, `backfill-book-images.ts`, `backfill-book-shipping-weights.ts`, `set-books-stock-by-isbn.ts`
+- **Square sync**: `square-integration.ts` (test/debug), `square-payload-sync.ts`, `update-square-inventory.ts` (supports dry-run via CSV in `data/`)
+- **Search**: `initialize-search.ts` (add `--sample-data` to seed)
+- **Ops/QA**: `test-checkout-flow.ts`, `send-manual-order-notifications.ts`, `check-image-stats.ts`, `check-import-stats.ts`, `check-apparel-variants.ts`
+- **Schema patches** (SQL, not TS): `scripts/fix-carts-schema.sql`, `scripts/fix-orders-schema.sql`
 
 ## Architecture
 
-### Database Configuration
-- **Default**: SQLite (`alkebulanimages.db` file) for local development
-- **Alternative**: PostgreSQL (commented out in config)
-- MongoDB support available via docker-compose for traditional Payload setups
+### Database
+- **Local dev**: SQLite (`alkebulanimages.db` in this directory; `better-sqlite3` + `libsql`)
+- **Production**: PostgreSQL via `DATABASE_URI`; Drizzle ORM under the hood (`drizzle-orm` is a direct dep — added in `a2cada5` for migrations)
 
-### Collections Structure
-#### Inventory Collections
-- **Books** (`src/collections/Books.ts`) - Main inventory with sophisticated edition management, auto-categorization, and collection assignment
-- **WellnessLifestyle** - Wellness and lifestyle products
-- **FashionJewelry** - Fashion and jewelry items
-- **OilsIncense** - Essential oils, fragrance oils, and incense products
-- **ExternalBooks** - Cached external book data from APIs
+### Collections (`src/collections/`)
 
-#### Content Collections
-- **BlogPosts** - Blog articles with rich content, SEO, and product relationships
-- **Events** - Event management with registration, recurring events, and venue details
-- **Businesses** - Local business directory with reviews and ratings
-- **Comments** - Universal commenting system across all content types
+#### Commerce
+- **Carts** + **CartItems** — Local API optimized (<50 ms ops), session-based guest carts, abandoned-cart cleanup every 2h
+- **Orders** — Stripe + Square integration, fulfillment tracking, internal notes, refunds, manual notification re-send
+- **Customers** — extended user profiles with shipping addresses + tax status
+- **InstitutionalAccounts** — B2B / tax-exempt accounts (Phase 2)
 
-#### System Collections
-- **Media** - File uploads and image management
-- **Users** - Admin authentication and user management
-- **Authors** - Book author relationships
-- **Publishers** - Publisher information
-- **Vendors** - Supplier/vendor management
-- **SearchAnalytics** - Search behavior tracking and analytics
-- **BookQuotes** - External book quote request management
+#### Products
+- **Books** (`Books.tsx` — uses JSX for admin UI custom field) — main inventory with edition management, auto-categorization to curated collections, auto-enrichment, request-only availability flag
+- **WellnessLifestyle**, **FashionJewelry**, **OilsIncense** — non-book inventory with variants
+- **ExternalBooks** — cached external API results (separate from sellable inventory)
 
-### Key Features
-#### E-Commerce & Inventory
-- **Square POS Integration**: Sync inventory and orders via Square API
-- **Book Import System**: Transform data from ISBNDB API and CSV sources
-- **Auto-categorization**: Maps scraped categories to curated taxonomy
-- **Collection Curation**: Automatic assignment to themed collections (Civil Rights, Pan-Africanism, etc.)
-- **Edition Management**: Multiple ISBN/binding support per book title
+#### Content
+- **BlogPosts** (slug: `blogPosts`, NOT `blog-posts`), **Events**, **Businesses** (with `businessType` + `directoryCategory` distinctions), **Comments** (with Perspective API moderation), **Reviews**
 
-#### Enhanced Search System
-- **Hybrid Search**: FlexSearch for client-side + PostgreSQL Full-Text Search for server-side
-- **External Book APIs**: ISBNdb, Google Books, Open Library integration
-- **Voice Search**: Web Speech API support for mobile and desktop
-- **Barcode Scanner**: ISBN lookup via camera for in-store use
-- **Quote Request System**: Automated workflow for books not in stock
-- **Search Analytics**: Track search behavior and popular queries
+#### System
+- **Users** (roles: admin, staff, editor, customer), **Authors**, **Publishers**, **Vendors**, **Media**, **BookQuotes**, **SearchAnalytics**
 
-#### Content Management
-- **Blog System**: Rich text articles with SEO optimization and product relationships
-- **Event Management**: Registration system, recurring events, calendar integration
-- **Business Directory**: Local business listings with reviews and ratings
-- **Universal Comments**: Comment system across all content types with moderation
+### E-Commerce Flow
+1. **Browse** → SvelteKit storefront fetches from Payload REST/GraphQL
+2. **Add to cart** → `/api/cart` creates/updates cart via Local API
+3. **Checkout preview** → `POST /api/checkout/preview` calculates and **persists** tax + shipping quote (this is the key insight: the preview is the authoritative price source, not the Stripe session)
+4. **Pay** → `POST /api/checkout` reuses persisted quote to create the Stripe hosted Checkout session — no recalculation
+5. **Webhook** → `/api/stripe-webhook` (or `/api/payment-webhook` for adapter-routed events) creates the Order, clears the cart, sends confirmation + staff notification
+6. **Fulfill** → staff use `/admin/order-dashboard` (tablet-friendly tabs: Needs Attention / Shipped / All Orders)
 
-### Important Files
-#### Core Configuration
-- `src/payload.config.ts` - Main Payload configuration with all collections
-- `.env` - Environment variables (DATABASE_URI, PAYLOAD_SECRET, SQUARE_ACCESS_TOKEN, ISBNDB_API_KEY, GOOGLE_BOOKS_API_KEY)
+### Tax & Shipping
+- **TN destination tax**: rate from `TENNESSEE_STATE_TAX_RATE`. TN ship-to is taxed; out-of-state is not.
+- **Shipping**: Shippo for live carrier rates (USPS, UPS, FedEx). Book-only carts default to USPS Media Mail. Orders ≥ `FREE_SHIPPING_THRESHOLD` (cents) ship free. Falls back to internal flat rates when Shippo is unavailable.
+- **Quote locking**: shipping quotes carry expiry + fingerprint; stale quotes are suppressed in cart summaries and refreshed before payment.
 
-#### Search & External APIs
-- `src/app/utils/searchEngine.ts` - FlexSearch implementation with external book integration
-- `src/app/utils/externalBookAPI.ts` - ISBNdb, Google Books, Open Library API integration
-- `src/app/utils/quoteRequestSystem.ts` - Quote request workflow and email automation
-- `src/app/utils/voiceAndScanSearch.ts` - Voice search and barcode scanner utilities
-- `src/app/api/search/route.ts` - Search API endpoint
-- `src/app/api/external-books/route.ts` - External book search API
-- `src/app/api/quote-request/route.ts` - Quote request API
+### Email (SES SMTP)
+- Transport: `@payloadcms/email-nodemailer` → Amazon SES SMTP, with generic SMTP fallback
+- Templates (`src/app/utils/emailTemplates.ts`) — Afrocentric branded (Kente Gold, Forest Green): order confirmation, staff notification, status updates, daily digest, abandoned cart
+- Daily order digest cron: `daily-order-digest` at 12:00 UTC (7 AM CT)
 
-#### Legacy & Square Integration
-- `src/app/utils/bookImport.ts` - Book data transformation utilities
-- `scripts/square-integration.ts` - Square API debugging and testing
-- `scripts/initialize-search.ts` - Search index initialization script
+### Search (three tiers)
+1. **FlexSearch** (client-side, 0–50 ms) — pre-indexed; bootstrap is fragile, see Gotchas
+2. **PostgreSQL FTS** (server-side, 50–200 ms) — `src/app/api/search/route.ts`
+3. **External book APIs** (500 ms–3 s) — ISBNdb → Google Books → Open Library; quote-request workflow when no purchasable record exists
 
-### Docker Setup
-Use `docker-compose up` for containerized development with MongoDB. Requires updating MONGODB_URI in .env to use the container hostname.
+### Storage
+- **Cloudflare R2** via `@payloadcms/storage-s3` (S3-compatible). Recent enrichment scripts upload covers directly to R2.
+- Older docs mention Cloudinary — code currently uses R2.
+
+## Key Files
+
+### Configuration
+- `src/payload.config.ts` — main config: collections, jobs, plugins, email, storage, admin
+- `.env` — environment (see below)
+- `tsconfig.json` (Next/Payload), `tsconfig.scripts.json` (standalone tsx scripts)
+- `next.config.mjs`, `eslint.config.mjs`
+
+### Checkout / Payments / Shipping
+- `src/app/utils/cartOperations.ts` — Local API cart CRUD
+- `src/app/utils/stripeHelpers.ts` — Stripe session + webhook handling
+- `src/app/utils/taxShippingCalculations.ts` — TN tax + shipping math
+- `src/app/utils/shippingQuotes.ts` — Shippo normalization + quote lock/expiry
+- `src/app/utils/taxExemptValidation.ts` — institutional/tax-exempt logic
+- `src/app/utils/cartProductDetails.ts`, `getTotal.ts`, `getTotalWeight.ts`
+- `src/app/api/checkout/route.ts`, `src/app/api/checkout/preview/route.ts`
+- `src/app/api/stripe-webhook/route.ts`, `src/app/api/payment-webhook/route.ts`
+- `src/app/api/refund/route.ts`
+
+### Order Management
+- `src/app/components/OrderDashboard.tsx` — staff dashboard (tablet-friendly)
+- `src/app/utils/emailService.ts`, `emailTemplates.ts`, `emailConfig.ts`
+- `src/app/utils/orderDigest.ts` — daily digest builder
+
+### Search & Enrichment
+- `src/app/utils/searchEngine.ts` — FlexSearch + bootstrap
+- `src/app/utils/externalBookAPI.ts`
+- `src/app/utils/quoteRequestSystem.ts`
+- `src/app/utils/productEnrichment.ts`, `autoEnrichBook.ts`, `imageManager.ts`
+- `src/app/utils/authorManager.ts`, `authorMatching.ts`, `publisherManager.ts`, `vendorManager.ts`
+- `src/app/utils/bookAvailabilityExceptions.ts` — request-only book availability
+- `src/app/components/EnrichBookButton.tsx` — admin UI refresh
+- `src/app/api/search/route.ts`, `src/app/api/external-books/route.ts`, `src/app/api/quote-request/route.ts`, `src/app/api/books/route.ts`
+
+### Square (inventory only)
+- `src/app/utils/squareSync.ts`, `squareVendorExtractor.ts`
+- `src/app/api/webhooks/square-catalog/route.ts`
+
+### Content moderation
+- `src/app/utils/toxicityCheck.ts` (Perspective API for Comments)
 
 ## API Endpoints
 
-### Search & Discovery
-- `GET /api/search?q={query}` - General search across all content types
-- `POST /api/search` - Advanced search with filters and analytics
-- `GET /api/external-books?q={query}` - Search external book sources
-- `GET /api/external-books?isbn={isbn}` - Lookup book by ISBN
-
-### Quote Requests
-- `POST /api/quote-request` - Request quote for external book
-- `GET /api/quote-request?id={id}&email={email}` - Check quote status
-
-### Content APIs (Payload GraphQL)
-- `GET /api/graphql` - GraphQL endpoint for all collections
-- `GET /api/books`, `GET /api/events`, `GET /api/businesses` - REST endpoints
-
-## Development Notes
-
-- PayloadCMS admin panel available at `/admin` after first user creation
-- **Search System**: Run `tsx scripts/initialize-search.ts` after setting up collections
-- Book imports support both ISBNDB API responses and CSV formats
-- Square integration requires proper API permissions for catalog and inventory access
-- Auto-categorization logic is in Books collection and bookImport utility
-- External book APIs require API keys: ISBNDB_API_KEY, GOOGLE_BOOKS_API_KEY
-- Voice search and barcode scanning work in browser environments only
-- All TypeScript files use ES modules (type: "module" in package.json)
+- **Checkout**: `POST /api/checkout`, `POST /api/checkout/preview`, `POST /api/refund`, `POST /api/stripe-webhook`, `POST /api/payment-webhook`
+- **Cart**: `POST /api/cart`, `POST /api/cart-recovery`
+- **Search**: `GET|POST /api/search`, `GET /api/external-books?q=…|isbn=…`, `POST /api/quote-request`, `GET /api/quote-request?id=…&email=…`
+- **Orders**: `GET /api/stripe-orders`, `GET /api/payment-methods`
+- **Webhooks**: `POST /api/webhooks/square-catalog`, others under `/api/webhooks/*`
+- **Health & contact**: `GET /api/health`, `POST /api/contact` (Cloudflare Turnstile-protected)
+- **Payload built-ins**: `/api/graphql`, REST under `/api/<collection-slug>` (use camelCase: `/api/blogPosts` not `/api/blog-posts`)
+- **Admin**: `/admin`, `/admin/order-dashboard`
 
 ## Environment Variables
 
-Required:
-- `DATABASE_URI` - Database connection string
-- `PAYLOAD_SECRET` - Payload CMS encryption secret
-- `SQUARE_ACCESS_TOKEN` - Square POS API access token
+### Required
+- `DATABASE_URI` — `file:./alkebulanimages.db` for dev, `postgresql://…` for prod
+- `PAYLOAD_SECRET` — 32+ char encryption secret
+- `PAYLOAD_PUBLIC_SERVER_URL` — `http://localhost:3000` dev, `https://payload.alkebulanimages.com` prod
 
-Optional (External Features):
-- `ISBNDB_API_KEY` - ISBNdb API key for enhanced book search
-- `GOOGLE_BOOKS_API_KEY` - Google Books API key
-- `PAYLOAD_PUBLIC_SERVER_URL` - Public URL for email links (default: http://localhost:3000)
+### Stripe (required for checkout)
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- For tests, the `pnpm test` script injects `sk_test_dummy`
+
+### Square (required for inventory sync)
+- `SQUARE_ACCESS_TOKEN`, `SQUARE_WEBHOOK_SIGNATURE_KEY`, `SQUARE_APPLICATION_ID`, `SQUARE_ENVIRONMENT` (`sandbox` | `production`)
+
+### Email (SES SMTP)
+- `FROM_EMAIL`, `FROM_NAME`, `SES_SMTP_USER`, `SES_SMTP_PASSWORD`, `SMTP_HOST` (e.g. `email-smtp.us-east-2.amazonaws.com`), `SMTP_PORT`
+- `STAFF_NOTIFICATION_EMAIL`, `ORDER_ADMIN_BASE_URL`
+
+### Storage (Cloudflare R2 via S3 SDK)
+- R2/S3 access key + secret + bucket + endpoint URL
+
+### Tax / Shipping
+- `TENNESSEE_STATE_TAX_RATE` (decimal, e.g. `0.07`)
+- `FREE_SHIPPING_THRESHOLD` (cents, e.g. `7500` = $75)
+- Shippo API token (when live carrier rates are needed)
+
+### Optional
+- `ISBNDB_API_KEY`, `GOOGLE_BOOKS_API_KEY` — book enrichment & external search
+- Perspective API key — comment moderation
+
+## Gotchas
+
+- **Search is brittle.** When touching search code:
+  - Use `authorsText.name` in PostgreSQL fallbacks, not the nested `authors[]` relationship array (silently fails in `OR` queries — see `381e6db`)
+  - Query plain-text fields like `synopsis` and `shortDescription`, NOT the rich `description` (which is Lexical JSON, not text — see `f8b8803`)
+  - The collection slug is `blogPosts` (camelCase), not `blog-posts` (see `9890d0a`)
+  - Use `scrapedImageUrls` for book card images and strip HTML from excerpts (`f017907`)
+  - Run `tsx scripts/initialize-search.ts` after any schema change that affects searchable fields
+
+- **Lexical rich text**: rendered correctly only via Lexical-aware renderers. Treating it as a string yields garbage — see `4cd7e3f` (`render event description as Lexical rich text`).
+
+- **Schema sync**: when changing `Carts` or `Orders`, run `pnpm generate:types` AND check `scripts/fix-carts-schema.sql` / `fix-orders-schema.sql` — there have been cases where Drizzle-generated migrations didn't fully match the collection (commits `4cab2ac`, `effa8cf`).
+
+- **Strict build mode**: type and lint errors are enforced in production builds (`985dbcb`). `pnpm build` will fail on warnings — fix locally before pushing.
+
+- **Books collection is `Books.tsx`**, not `Books.ts` — it has admin UI custom JSX. Don't rename without updating Payload registration.
+
+- **`InstitutionalAccounts`, `Reviews`** exist as collections but are Phase 2 and may not be wired into all storefront flows yet.
+
+- **Quote-locked checkout**: the `/api/checkout/preview` route persists a quote on the cart. Don't recalculate tax/shipping in `/api/checkout` — reuse the persisted quote, otherwise the customer can be charged a different total than what they confirmed.
+
+- **Stripe SDK init runs at module load**, so almost any test that imports a util touching Stripe needs an env var present. The test script handles this; standalone `tsx` invocations may not.
+
+- **`add_access.sh`, `drop-users.sh`, `drop-users-table.sql`** are operational/dangerous scripts in the root of this directory — don't run without understanding what they do (they reset auth state).
+
+- **Backup `.db` files** (`alkebulanimages.db.backup-*`) sit in the repo root for convenience; treat them as throwaway local snapshots, not source of truth.
+
+## Production Deployment
+
+- **Host**: Coolify-managed deployment to `payload.alkebulanimages.com`
+- **Auto-deploy**: webhook-triggered on `main` push (verified `d2b6387`)
+- **Health check**: `GET /api/health` → `https://payload.alkebulanimages.com/api/health`
+- See [./DEPLOYMENT.md](DEPLOYMENT.md) and [../docs/Deployment-Guide.md](../docs/Deployment-Guide.md)
+
+## Reference Docs
+
+- [./SYSTEM_GUIDE.md](SYSTEM_GUIDE.md) — backend deep-dive
+- [./DEPLOYMENT.md](DEPLOYMENT.md) — deployment specifics
+- [../docs/PRD.md](../docs/PRD.md) — authoritative product spec
+- [../docs/LAUNCH-CHECKLIST.md](../docs/LAUNCH-CHECKLIST.md) — production readiness board
+- [../docs/STAFF-WORKFLOWS.md](../docs/STAFF-WORKFLOWS.md), [../docs/CART-UX.md](../docs/CART-UX.md), [../docs/BOOK-ENRICHMENT-WORKFLOW.md](../docs/BOOK-ENRICHMENT-WORKFLOW.md)
