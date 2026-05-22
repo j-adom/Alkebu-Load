@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload';
 import { autoEnrichBookFromISBN, autoLinkAuthors } from '@/app/utils/autoEnrichBook';
+import { autoLinkPublisher } from '@/app/utils/autoLinkPublisher';
 import { EnrichBookButton } from '@/app/components/EnrichBookButton';
 
 // Auto-categorization mapping helper
@@ -829,12 +830,14 @@ const Books: CollectionConfig = {
 
     afterChange: [
       async ({ doc, req, operation }) => {
-        // AUTO-LINK: Link authors after book is created/updated
-        // This runs after the book is saved so we have a valid book ID
-        // ⚠️ TEMPORARILY DISABLED FOR BATCH ENRICHMENT SCRIPT
-        // if (operation === 'create' || operation === 'update') {
-        //   await autoLinkAuthors(doc, req);
-        // }
+        // AUTO-LINK: Link authors + publisher after book is created/updated.
+        // Runs after save so the book has a valid ID. Both helpers are
+        // idempotent (no-op when already linked) so they won't loop on
+        // the internal payload.update they trigger.
+        if (operation === 'create' || operation === 'update') {
+          await autoLinkAuthors(doc, req);
+          await autoLinkPublisher(doc, req);
+        }
       }
     ]
   }
