@@ -14,6 +14,7 @@
 	import BookCover from "$lib/components/Shop/Books/BookCover.svelte";
 	import BookPurchaseAction from "$lib/components/Shop/Books/BookPurchaseAction.svelte";
 	import { formatCurrency } from "$lib/utils/currency";
+	import { PUBLIC_SITE_URL } from "$env/static/public";
 
 	import Meta from "$lib/components/Meta.svelte";
 
@@ -25,12 +26,23 @@
 	const featured = $derived(data.featured);
 	const newBooks = $derived(data.newBooks);
 
+	// Hero image URLs at responsive widths (LCP element)
+	const heroImageMobile = $derived(
+		urlFor(banner?.bannerImages?.[0]).width(768).auto("format").url(),
+	);
+	const heroImageDesktop = $derived(
+		urlFor(banner?.bannerImages?.[0]).width(1920).auto("format").url(),
+	);
+	const heroAlt = $derived(
+		banner?.bannerImages?.[0]?.alt || "Alkebu-Lan Images storefront",
+	);
+
 	const metadata = {
 		title: `Alkebu-Lan Images, Nashville's only Black-owned bookstore`,
 		description: `Alkebu-Lan Images is a Black-Owned bookstore that has been Nashville's center for promoting positivity in Black culture and empowering diverse Black lifestyles since 1986`,
 		image: "/assets/images/resources/logo.png",
 		imageAlt: "Alkebu-Lan Images Logo",
-		url: "/",
+		url: `${PUBLIC_SITE_URL}/`,
 	};
 
 	const categoryIcons = [BookOpen, Shirt, Sparkles, HomeIcon];
@@ -92,19 +104,36 @@
 
 <Meta {metadata} />
 
+<svelte:head>
+	{#if heroImageMobile}
+		<link
+			rel="preload"
+			as="image"
+			href={heroImageMobile}
+			imagesrcset="{heroImageMobile} 768w, {heroImageDesktop} 1920w"
+			imagesizes="100vw"
+			fetchpriority="high"
+		/>
+	{/if}
+</svelte:head>
+
 <!-- Banner Section -->
 <section class="banner-section banner-one">
 	<div class="banner-carousel">
 		<!-- Slide Item -->
 		<div class="slide-item">
-			<div
+			<img
 				class="image-layer"
-				style="background-image: url({urlFor(banner?.bannerImages?.[0])
-					.width(1920)
-					.height(780)
-					.auto('format')
-					.url()});"
-			></div>
+				style="object-fit: cover;"
+				src={heroImageMobile}
+				srcset="{heroImageMobile} 768w, {heroImageDesktop} 1920w"
+				sizes="100vw"
+				alt={heroAlt}
+				width="1920"
+				height="780"
+				fetchpriority="high"
+				decoding="async"
+			/>
 			<div class="container mx-auto">
 				<div class="content-box">
 					<div class="content">
@@ -159,6 +188,8 @@
 						class="w-full rounded-2xl shadow-medium object-cover"
 						style="height: 520px;"
 						loading="lazy"
+						width="480"
+						height="640"
 						src={urlFor(section2?.images?.[0])
 							.width(480)
 							.height(640)
@@ -174,6 +205,8 @@
 						class="w-full rounded-2xl shadow-strong border-4 border-background object-cover"
 						style="height: 220px;"
 						loading="lazy"
+						width="380"
+						height="260"
 						src={urlFor(section2?.images?.[1])
 							.width(380)
 							.height(260)
@@ -190,6 +223,8 @@
 					<img
 						loading="lazy"
 						class="w-24 h-24"
+						width="96"
+						height="96"
 						src="/assets/images/alkebulan/sankofa.svg"
 						alt="Sankofa"
 					/>
@@ -199,7 +234,7 @@
 			<!-- Content -->
 			<div class="lg:pl-8">
 				<p
-					class="text-primary font-semibold uppercase tracking-wide mb-2"
+					class="text-primary-strong font-semibold uppercase tracking-wide mb-2"
 				>
 					About Alkebu-lan
 				</p>
@@ -227,6 +262,8 @@
 							<img
 								loading="lazy"
 								class="w-10 h-10"
+								width="40"
+								height="40"
 								src="/assets/images/alkebulan/sankofa.svg"
 								alt="SANKOFA"
 							/>
@@ -242,6 +279,8 @@
 							<img
 								loading="lazy"
 								class="w-10 h-10"
+								width="40"
+								height="40"
 								src="/assets/images/alkebulan/crocs.svg"
 								alt="FUNTUNFUNEFU-DENKYEMFUNEFU"
 							/>
@@ -276,7 +315,7 @@
 <section class="py-20 bg-muted/30">
 	<div class="container mx-auto px-4">
 		<div class="text-center mb-12">
-			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
 				Shop Our Store Online
 			</p>
 			<h2
@@ -295,6 +334,8 @@
 							{#if section3.images?.[cat.imageIndex]}
 								<img
 									loading="lazy"
+									width="400"
+									height="300"
 									src={urlFor(section3.images[cat.imageIndex])
 										.width(400)
 										.height(300)
@@ -307,6 +348,8 @@
 							{:else}
 								<img
 									loading="lazy"
+									width="400"
+									height="300"
 									src="/assets/images/resources/placeholder.jpg"
 									alt={cat.title}
 									class="w-full h-full object-cover"
@@ -328,7 +371,7 @@
 								{cat.desc}
 							</p>
 							<span
-								class="inline-flex items-center gap-2 text-primary font-semibold text-sm group-hover:gap-3 transition-all"
+								class="inline-flex items-center gap-2 text-primary-strong font-semibold text-sm group-hover:gap-3 transition-all"
 							>
 								Browse {cat.title}
 								<ArrowRight class="w-4 h-4" />
@@ -345,7 +388,7 @@
 <section class="section bg-background">
 	<div class="container mx-auto px-4">
 		<div class="text-center mb-12">
-			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
 				Keep Shopping
 			</p>
 			<h2
@@ -382,6 +425,8 @@
 								{#if bookImage}
 									<img
 										loading="lazy"
+										width="300"
+										height="400"
 										src={urlFor(bookImage)
 											.fit("fill")
 											.auto("format")
@@ -411,14 +456,14 @@
 								</div>
 							</div>
 							<div class="p-4 text-center">
-								<h4
+								<h3
 									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
 								>
 									{book.title}{bookBinding
 										? ` (${bookBinding})`
 										: ""}
-								</h4>
-								<p class="text-lg font-bold text-primary">
+								</h3>
+								<p class="text-lg font-bold text-primary-strong">
 									{formatCurrency(bookPriceCents / 100)}
 								</p>
 							</div>
@@ -434,7 +479,7 @@
 <section class="section bg-muted/30">
 	<div class="container mx-auto px-4">
 		<div class="text-center mb-12">
-			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
 				Fresh Arrivals
 			</p>
 			<h2
@@ -471,6 +516,8 @@
 								{#if bookImage}
 									<img
 										loading="lazy"
+										width="300"
+										height="400"
 										src={urlFor(bookImage)
 											.fit("fill")
 											.auto("format")
@@ -500,14 +547,14 @@
 								</div>
 							</div>
 							<div class="p-4 text-center">
-								<h4
+								<h3
 									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
 								>
 									{book.title}{bookBinding
 										? ` (${bookBinding})`
 										: ""}
-								</h4>
-								<p class="text-lg font-bold text-primary">
+								</h3>
+								<p class="text-lg font-bold text-primary-strong">
 									{formatCurrency(bookPriceCents / 100)}
 								</p>
 							</div>
@@ -523,7 +570,7 @@
 <section class="section bg-background">
 	<div class="container mx-auto px-4">
 		<div class="text-center mb-12">
-			<p class="text-primary font-semibold uppercase tracking-wide mb-2">
+			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
 				Let's Work Together
 			</p>
 			<h2
@@ -540,6 +587,8 @@
 						<div class="relative aspect-[3/4] overflow-hidden">
 							<img
 								loading="lazy"
+								width="370"
+								height="484"
 								src={urlFor(service.image)
 									.width(370)
 									.height(484)

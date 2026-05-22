@@ -101,10 +101,10 @@
 			</button>
 			
 			<!-- Logo -->
-			<a href="/" class="flex-shrink-0">
-				<img 
-					src="/assets/images/resources/logo.png" 
-					alt="Alkebu-Lan Images" 
+			<a href="/" class="flex-shrink-0" aria-label="Alkebu-Lan Images home">
+				<img
+					src="/assets/images/resources/logo.png"
+					alt="Alkebu-Lan Images"
 					class="h-12 lg:h-16 w-auto transition-all duration-300 {scrolled ? 'h-10 lg:h-12' : ''}"
 				/>
 			</a>
