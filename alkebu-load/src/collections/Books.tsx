@@ -129,7 +129,10 @@ const Books: CollectionConfig = {
       relationTo: 'authors',
       hasMany: true,
       admin: {
-        description: 'Book authors (linked to Authors collection)'
+        description: 'Book authors (linked to Authors collection)',
+        components: {
+          Cell: '@/app/components/admin/cells/AuthorsCell',
+        },
       }
     },
     {
@@ -151,7 +154,10 @@ const Books: CollectionConfig = {
       type: 'relationship',
       relationTo: 'publishers',
       admin: {
-        description: 'Publisher (linked to Publishers collection)'
+        description: 'Publisher (linked to Publishers collection)',
+        components: {
+          Cell: '@/app/components/admin/cells/PublisherCell',
+        },
       }
     },
     {
