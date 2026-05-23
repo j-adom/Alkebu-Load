@@ -9,7 +9,9 @@ export const Customers: CollectionConfig = {
   },
   auth: {
     tokenExpiration: 7200, // 2 hours
-    verify: true,
+    // Verification is gated by the self-registration flow (planned); ghost rows
+    // auto-created from checkout must not trigger verification emails.
+    verify: false,
     maxLoginAttempts: 5,
     lockTime: 600000, // 10 minutes
   },
@@ -58,6 +60,35 @@ export const Customers: CollectionConfig = {
             return data?.displayName;
           },
         ],
+      },
+    },
+    {
+      name: 'source',
+      type: 'select',
+      required: true,
+      defaultValue: 'manual',
+      options: [
+        { label: 'E-Commerce', value: 'ecom' },
+        { label: 'Point of Sale', value: 'pos' },
+        { label: 'Imported', value: 'imported' },
+        { label: 'Manual', value: 'manual' },
+      ],
+      admin: {
+        description: 'Origin channel for this customer record',
+      },
+    },
+    {
+      name: 'lifecycleStatus',
+      type: 'select',
+      required: true,
+      defaultValue: 'ghost',
+      options: [
+        { label: 'Ghost (system-created)', value: 'ghost' },
+        { label: 'Invited', value: 'invited' },
+        { label: 'Active', value: 'active' },
+      ],
+      admin: {
+        description: 'Login eligibility. Ghost rows are auto-created from orders and cannot log in until they claim the account.',
       },
     },
     {

@@ -4144,6 +4144,14 @@ export interface Customer {
    */
   displayName?: string | null;
   /**
+   * Origin channel for this customer record
+   */
+  source: 'ecom' | 'pos' | 'imported' | 'manual';
+  /**
+   * Login eligibility. Ghost rows are auto-created from orders and cannot log in until they claim the account.
+   */
+  lifecycleStatus: 'ghost' | 'invited' | 'active';
+  /**
    * Primary phone number
    */
   phone?: string | null;
@@ -4281,8 +4289,6 @@ export interface Customer {
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
-  _verified?: boolean | null;
-  _verificationToken?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -5599,6 +5605,8 @@ export interface CustomersSelect<T extends boolean = true> {
   firstName?: T;
   lastName?: T;
   displayName?: T;
+  source?: T;
+  lifecycleStatus?: T;
   phone?: T;
   dateOfBirth?: T;
   shippingAddresses?:
@@ -5668,8 +5676,6 @@ export interface CustomersSelect<T extends boolean = true> {
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
-  _verified?: T;
-  _verificationToken?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:
