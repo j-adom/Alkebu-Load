@@ -89,9 +89,17 @@ export async function POST(request: NextRequest) {
       // depth: 0 — we only need raw FK columns and text fields; populating
       // relationship objects on every book is expensive on remote Postgres
       // and isn't needed for the needsAuthors / needsPublisher predicates.
+      //
+      // sort: 'id' — stable monotonic key. Without this, Payload's default
+      // sort (effectively by updatedAt under load) caused pagination drift:
+      // every payload.update we issued during apply pushed the linked book
+      // to the top, shifting the iteration window and leaving books in the
+      // deep end of the catalog unreachable. id is immutable so pagination
+      // advances strictly through the catalog and the loop converges.
       const result = await payload.find({
         collection: 'books',
         depth: 0,
+        sort: 'id',
         limit: PAGE_SIZE,
         page,
       })
