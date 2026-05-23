@@ -14,10 +14,14 @@ export async function autoLinkPublisher(doc: any, req: any) {
     // createOrFindPublisher(payload, req, name) -> publisher id string | null
     const publisherId = await createOrFindPublisher(req.payload, req, name)
     if (publisherId) {
+      // Pass `req` through so context flags (e.g. skipEnrichment from the
+      // admin backfill route) reach the Books hooks and skip the slow
+      // external-API enrichment path.
       await req.payload.update({
         collection: 'books',
         id: doc.id,
         data: { publisher: publisherId },
+        req,
       })
       console.log(`  🔗 Linked publisher "${name}" → id ${publisherId} for book: ${doc.title}`)
     }
