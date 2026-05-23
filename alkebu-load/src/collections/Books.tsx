@@ -787,14 +787,18 @@ const Books: CollectionConfig = {
 
   hooks: {
     beforeValidate: [
-      async ({ data, operation }) => {
+      async ({ data, operation, req }) => {
         if (!data || (operation !== 'create' && operation !== 'update')) {
           return;
         }
 
         // AUTO-ENRICH: Fetch book data from ISBNdb/Google Books if ISBN is provided.
-        // Disable only when a bulk script explicitly sets the env flag.
-        if (process.env.DISABLE_AUTO_BOOK_ENRICHMENT !== 'true') {
+        // Skip when:
+        //   - a bulk script sets DISABLE_AUTO_BOOK_ENRICHMENT=true (global), OR
+        //   - the caller passes context: { skipEnrichment: true } (per-request,
+        //     e.g. the admin backfill route — avoids the slow external-API path).
+        const skipEnrichment = (req as any)?.context?.skipEnrichment === true;
+        if (!skipEnrichment && process.env.DISABLE_AUTO_BOOK_ENRICHMENT !== 'true') {
           await autoEnrichBookFromISBN(data, operation);
         }
 

@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
   const wallTimeoutMs = Math.max(5_000, parseInt(params.get('timeoutMs') || `${DEFAULT_WALL_TIMEOUT_MS}`, 10))
   const deadline = startedAt + wallTimeoutMs
 
-  const req: any = { payload, user }
+  // context.skipEnrichment tells Books.beforeValidate to bypass the slow
+  // external-API enrichment path (ISBNdb / Google Books). The link helpers
+  // propagate this req — and therefore its context — to their payload.update
+  // calls, so downstream hooks see the flag.
+  const req: any = { payload, user, context: { skipEnrichment: true } }
 
   let scanned = 0
   let authorsLinked = 0

@@ -105,10 +105,14 @@ const toOunces = (value?: number, unit?: string): number | undefined => {
   }
 };
 
-const toCents = (value?: string): number | undefined => {
-  if (!value) return undefined;
+const toCents = (value?: string | number | null): number | undefined => {
+  if (value === undefined || value === null) return undefined;
 
-  const normalized = value.replace(/[^0-9.]/g, '').trim();
+  // Runtime guard: enrichment callers sometimes pass numbers despite the type.
+  // Without coercion, `value.replace(...)` throws "e.replace is not a function"
+  // mid-enrichment — caught by the surrounding try/catch but noisy in prod logs.
+  const asString = typeof value === 'string' ? value : String(value);
+  const normalized = asString.replace(/[^0-9.]/g, '').trim();
   if (!normalized) return undefined;
 
   const parsed = Number.parseFloat(normalized);

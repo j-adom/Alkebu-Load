@@ -140,14 +140,24 @@ export async function autoLinkAuthors(doc: any, req: any) {
       authorIds.push(author.id);
     }
 
-    // Update book with linked authors (avoid infinite loop by checking first)
+    // Update book with linked authors. Also clean any malformed authorsText
+    // rows (empty/whitespace name) so Payload's array re-validation on save
+    // doesn't reject the update with `field is invalid: name`. Propagate `req`
+    // so context flags (e.g. skipEnrichment from the backfill route) reach
+    // downstream hooks.
     if (authorIds.length > 0) {
+      const cleanedAuthorsText = (doc.authorsText as Array<{ name?: string }>)
+        .filter((a) => typeof a?.name === 'string' && a.name.trim().length > 0)
+        .map((a) => ({ name: a.name!.trim() }));
+
       await req.payload.update({
         collection: 'books',
         id: doc.id,
         data: {
-          authors: authorIds
-        }
+          authors: authorIds,
+          authorsText: cleanedAuthorsText,
+        },
+        req,
       });
       console.log(`  ✅ Linked ${authorIds.length} author(s)`);
     }
