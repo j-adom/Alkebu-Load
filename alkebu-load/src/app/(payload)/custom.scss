@@ -1,0 +1,119 @@
+/**
+ * Admin UI density overrides — applied globally to every Payload admin list view.
+ *
+ * Why: Payload's default list view uses generous spacing (cell padding ~12px,
+ * row min-width 150px, line-height ~1.5). That works for low-volume editing
+ * but is brutal when scanning catalogs of thousands (Books has ~5k rows). This
+ * file tightens spacing across all collections so more rows fit on screen.
+ *
+ * How: unlayered CSS beats Payload's `@layer payload-default` styles in the
+ * cascade. We target the same `.table` selectors Payload's source uses
+ * (see node_modules/@payloadcms/ui/dist/elements/Table/index.scss), but with
+ * tighter values. Plus a few list-controls and document-header overrides
+ * for vertical airspace.
+ *
+ * Reversibility: deleting any rule restores the Payload default for that
+ * surface. No specificity hacks, no !important.
+ */
+
+/* =========================================================================
+   Tables — the main density win
+   ========================================================================= */
+
+.table {
+  /* Smaller bottom margin so pagination/controls don't push content down */
+  margin-bottom: calc(var(--base) * 0.5);
+
+  th,
+  td {
+    /* Default is calc(var(--base) * 0.6) ≈ 12px. Drop to ~6px vertical, 8px horizontal. */
+    padding: calc(var(--base) * 0.3) calc(var(--base) * 0.4);
+    /* Default min-width: 150px is generous; 110 lets ~30% more columns fit before scroll */
+    min-width: 110px;
+    line-height: 1.35;
+    font-size: 0.875rem;
+
+    /* Preserve the first/last cell breathing room. Just less of it. */
+    &:first-child {
+      padding-inline-start: calc(var(--base) * 0.5);
+    }
+    &:last-child {
+      padding-inline-end: calc(var(--base) * 0.5);
+    }
+  }
+
+  /* Headers: slightly smaller + tighter vertical so data starts higher */
+  thead th {
+    font-size: 0.78rem;
+    padding-top: calc(var(--base) * 0.25);
+    padding-bottom: calc(var(--base) * 0.25);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* Keep cells from growing tall on long unstructured text (book synopses,
+     URLs, etc.). Lets the author/publisher fallbacks ellipsize cleanly. */
+  tbody td {
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* =========================================================================
+   List controls (filters/columns/search bar above the table)
+   ========================================================================= */
+
+.list-controls {
+  margin-bottom: calc(var(--base) * 0.5);
+}
+
+/* The "Showing X-Y of Z" pagination info — tighten its vertical footprint */
+.list-pagination,
+.collection-list__page-info {
+  margin-top: calc(var(--base) * 0.4);
+  margin-bottom: calc(var(--base) * 0.4);
+  font-size: 0.85rem;
+}
+
+/* =========================================================================
+   Collection list page chrome (title, "Create New" row)
+   ========================================================================= */
+
+.collection-list .gutter--left,
+.collection-list .gutter--right {
+  /* Default outer gutters are wide; trim ~25% to give the table more horizontal room */
+  padding-inline: calc(var(--base) * 1);
+}
+
+/* The big H1 above the list takes a lot of vertical space.
+   Knock it down a notch without making it dinky. */
+.collection-list h1,
+.list-header h1 {
+  font-size: 1.4rem;
+  margin-block: calc(var(--base) * 0.5);
+}
+
+/* =========================================================================
+   Document edit views — same treatment for field labels + spacing
+   (lighter touch; people are typing here so don't go too tight)
+   ========================================================================= */
+
+.document-fields .field-type {
+  margin-bottom: calc(var(--base) * 0.6);
+}
+
+.field-label {
+  font-size: 0.85rem;
+}
+
+/* =========================================================================
+   Sidebar nav — tighten the per-collection link rows
+   ========================================================================= */
+
+.nav-group__content a,
+.nav__link {
+  padding-block: calc(var(--base) * 0.25);
+  font-size: 0.9rem;
+}
