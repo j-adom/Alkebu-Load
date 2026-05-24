@@ -1,5 +1,7 @@
 import type { CollectionConfig } from 'payload';
 import { sendOrderStatusUpdate } from '../app/utils/emailService';
+import { upsertCustomerForOrder } from '../app/utils/customerUpsert';
+import { computeCustomerRollups } from '../app/utils/customerRollups';
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -573,6 +575,57 @@ export const Orders: CollectionConfig = {
             }
           } catch (emailError) {
             console.error('Error sending order status update email:', emailError);
+          }
+        }
+      },
+      async ({ doc, previousDoc, operation, req, context }) => {
+        // Backfills and the rollup's own write pass context.disableHooks
+        // to opt out of this chain.
+        if (context?.disableHooks) return;
+
+        const payload = req.payload;
+
+        // Step 1 — link a Customer row if the order doesn't have one yet.
+        let customerId: number | string | null =
+          typeof doc.customer === 'object' && doc.customer
+            ? (doc.customer as any).id
+            : (doc.customer as number | string | null);
+
+        if (!customerId) {
+          try {
+            const upsertedId = await upsertCustomerForOrder(payload as any, doc as any);
+            if (upsertedId) {
+              await payload.update({
+                collection: 'orders',
+                id: doc.id,
+                data: { customer: upsertedId } as any,
+                context: { disableHooks: true } as any,
+              });
+              customerId = upsertedId;
+            }
+          } catch (err) {
+            console.error('Order customer upsert failed:', err);
+          }
+        }
+
+        // Step 2 — recompute rollups only when something rollup-relevant changed.
+        // Skipping when only fulfillment fields move keeps this hook cheap; Phase 4
+        // taught us that always-on heavy work in afterChange brings the container down.
+        if (!customerId) return;
+
+        const statusChanged = doc.status !== previousDoc?.status;
+        const amountChanged = doc.totalAmount !== previousDoc?.totalAmount;
+        const previousCustomerId =
+          typeof previousDoc?.customer === 'object' && previousDoc?.customer
+            ? (previousDoc.customer as any).id
+            : (previousDoc?.customer as number | string | null | undefined);
+        const newlyLinked = previousCustomerId == null && customerId != null;
+
+        if (operation === 'create' || statusChanged || amountChanged || newlyLinked) {
+          try {
+            await computeCustomerRollups(payload as any, customerId);
+          } catch (err) {
+            console.error('Customer rollup recompute failed:', err);
           }
         }
       },
