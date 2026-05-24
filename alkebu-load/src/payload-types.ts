@@ -416,9 +416,9 @@ export interface Order {
    */
   orderNumber: string;
   /**
-   * Customer who placed the order
+   * Customer who placed the order (auto-linked from email)
    */
-  customer?: (number | null) | User;
+  customer?: (number | null) | Customer;
   /**
    * Email for guest checkout orders
    */
@@ -631,6 +631,176 @@ export interface Order {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers".
+ */
+export interface Customer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  /**
+   * Auto-generated from first + last name
+   */
+  displayName?: string | null;
+  /**
+   * Origin channel for this customer record
+   */
+  source: 'ecom' | 'pos' | 'imported' | 'manual';
+  /**
+   * Login eligibility. Ghost rows are auto-created from orders and cannot log in until they claim the account.
+   */
+  lifecycleStatus: 'ghost' | 'invited' | 'active';
+  /**
+   * Primary phone number
+   */
+  phone?: string | null;
+  /**
+   * For age verification and marketing
+   */
+  dateOfBirth?: string | null;
+  shippingAddresses?:
+    | {
+        /**
+         * Address label (Home, Work, etc.)
+         */
+        label: string;
+        isDefault?: boolean | null;
+        firstName: string;
+        lastName: string;
+        company?: string | null;
+        street: string;
+        street2?: string | null;
+        city: string;
+        state: string;
+        zip: string;
+        country?: string | null;
+        phone?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  preferences?: {
+    /**
+     * Opt-in for marketing emails
+     */
+    marketingEmails?: boolean | null;
+    newsletterSubscribed?: boolean | null;
+    smsNotifications?: boolean | null;
+    /**
+     * Preferred book genres for recommendations
+     */
+    favoriteGenres?: (number | Book)[] | null;
+    language?: ('en' | 'es' | 'fr') | null;
+  };
+  loyaltyStatus?: {
+    /**
+     * Loyalty points balance
+     */
+    points?: number | null;
+    tier?: ('bronze' | 'silver' | 'gold' | 'vip') | null;
+    /**
+     * Square customer ID for loyalty sync
+     */
+    squareCustomerId?: string | null;
+  };
+  accountStatus?: {
+    isActive?: boolean | null;
+    /**
+     * Tax-exempt status for institutions
+     */
+    taxExempt?: boolean | null;
+    /**
+     * Tax exemption certificate number
+     */
+    taxExemptNumber?: string | null;
+    /**
+     * Associated institutional account
+     */
+    institution?: (number | null) | InstitutionalAccount;
+  };
+  orderHistory?: {
+    /**
+     * Total number of orders placed
+     */
+    totalOrders?: number | null;
+    /**
+     * Total amount spent (cents)
+     */
+    totalSpent?: number | null;
+    /**
+     * Date of first order
+     */
+    firstOrderDate?: string | null;
+    /**
+     * Date of most recent order
+     */
+    lastOrderDate?: string | null;
+    /**
+     * Average order value (cents)
+     */
+    averageOrderValue?: number | null;
+  };
+  socialAuth?: {
+    /**
+     * Google OAuth ID
+     */
+    googleId?: string | null;
+    /**
+     * Facebook OAuth ID
+     */
+    facebookId?: string | null;
+    /**
+     * Profile picture
+     */
+    profileImage?: (number | null) | Media;
+  };
+  /**
+   * Current shopping cart (stored as JSON for performance)
+   */
+  cart?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Customer wishlist (stored as JSON)
+   */
+  wishlist?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Internal staff notes about this customer
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'customers';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1432,6 +1602,136 @@ export interface Vendor {
    * Number of products from this vendor (automatically calculated)
    */
   productCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Phase 2: Institutional accounts for schools, nonprofits, churches
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "institutional-accounts".
+ */
+export interface InstitutionalAccount {
+  id: number;
+  /**
+   * Official organization name
+   */
+  organizationName: string;
+  type:
+    | 'public_school'
+    | 'private_school'
+    | 'university'
+    | 'library'
+    | 'church'
+    | 'nonprofit'
+    | 'community_center'
+    | 'government';
+  status: 'pending' | 'active' | 'suspended' | 'closed';
+  contactInfo: {
+    primaryContact: {
+      firstName: string;
+      lastName: string;
+      title?: string | null;
+      email: string;
+      phone: string;
+    };
+    billingContact?: {
+      sameAsPrimary?: boolean | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      title?: string | null;
+      email?: string | null;
+      phone?: string | null;
+    };
+  };
+  addresses: {
+    billing: {
+      street: string;
+      street2?: string | null;
+      city: string;
+      state: string;
+      zip: string;
+      country?: string | null;
+    };
+    shipping?: {
+      sameAsBilling?: boolean | null;
+      street?: string | null;
+      street2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zip?: string | null;
+      country?: string | null;
+    };
+  };
+  taxInfo?: {
+    taxExempt?: boolean | null;
+    /**
+     * Tax exemption certificate number
+     */
+    taxExemptNumber?: string | null;
+    /**
+     * Upload tax exemption certificate
+     */
+    exemptCertificateFile?: (number | null) | Media;
+    /**
+     * Tax exemption expiration date
+     */
+    exemptionValidUntil?: string | null;
+  };
+  paymentTerms?: {
+    preferredMethod?: ('card' | 'net_terms' | 'check' | 'wire') | null;
+    netTerms?: ('15' | '30' | '45' | '60') | null;
+    /**
+     * Credit limit in dollars
+     */
+    creditLimit?: number | null;
+    /**
+     * Current outstanding balance in cents
+     */
+    currentBalance?: number | null;
+  };
+  discounting?: {
+    discountTier?:
+      | ('none' | 'educational_10' | 'educational_15' | 'nonprofit_10' | 'religious_10' | 'bulk_20' | 'custom')
+      | null;
+    /**
+     * Custom discount percentage (e.g., 0.15 for 15%)
+     */
+    customDiscountRate?: number | null;
+    /**
+     * Minimum order amount for discount (dollars)
+     */
+    minimumOrderForDiscount?: number | null;
+  };
+  orderHistory?: {
+    totalOrders?: number | null;
+    /**
+     * Total amount spent (cents)
+     */
+    totalSpent?: number | null;
+    firstOrderDate?: string | null;
+    lastOrderDate?: string | null;
+    /**
+     * Average order value (cents)
+     */
+    averageOrderValue?: number | null;
+  };
+  verification?: {
+    /**
+     * Business license or 501(c)(3) documentation
+     */
+    businessLicense?: (number | null) | Media;
+    verificationStatus?: ('pending' | 'verified' | 'needs_docs' | 'rejected') | null;
+    /**
+     * Staff member who verified the account
+     */
+    verifiedBy?: (number | null) | User;
+    verifiedAt?: string | null;
+  };
+  /**
+   * Internal notes about this institutional account
+   */
+  notes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2781,136 +3081,6 @@ export interface OilsIncense {
   createdAt: string;
 }
 /**
- * Phase 2: Institutional accounts for schools, nonprofits, churches
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "institutional-accounts".
- */
-export interface InstitutionalAccount {
-  id: number;
-  /**
-   * Official organization name
-   */
-  organizationName: string;
-  type:
-    | 'public_school'
-    | 'private_school'
-    | 'university'
-    | 'library'
-    | 'church'
-    | 'nonprofit'
-    | 'community_center'
-    | 'government';
-  status: 'pending' | 'active' | 'suspended' | 'closed';
-  contactInfo: {
-    primaryContact: {
-      firstName: string;
-      lastName: string;
-      title?: string | null;
-      email: string;
-      phone: string;
-    };
-    billingContact?: {
-      sameAsPrimary?: boolean | null;
-      firstName?: string | null;
-      lastName?: string | null;
-      title?: string | null;
-      email?: string | null;
-      phone?: string | null;
-    };
-  };
-  addresses: {
-    billing: {
-      street: string;
-      street2?: string | null;
-      city: string;
-      state: string;
-      zip: string;
-      country?: string | null;
-    };
-    shipping?: {
-      sameAsBilling?: boolean | null;
-      street?: string | null;
-      street2?: string | null;
-      city?: string | null;
-      state?: string | null;
-      zip?: string | null;
-      country?: string | null;
-    };
-  };
-  taxInfo?: {
-    taxExempt?: boolean | null;
-    /**
-     * Tax exemption certificate number
-     */
-    taxExemptNumber?: string | null;
-    /**
-     * Upload tax exemption certificate
-     */
-    exemptCertificateFile?: (number | null) | Media;
-    /**
-     * Tax exemption expiration date
-     */
-    exemptionValidUntil?: string | null;
-  };
-  paymentTerms?: {
-    preferredMethod?: ('card' | 'net_terms' | 'check' | 'wire') | null;
-    netTerms?: ('15' | '30' | '45' | '60') | null;
-    /**
-     * Credit limit in dollars
-     */
-    creditLimit?: number | null;
-    /**
-     * Current outstanding balance in cents
-     */
-    currentBalance?: number | null;
-  };
-  discounting?: {
-    discountTier?:
-      | ('none' | 'educational_10' | 'educational_15' | 'nonprofit_10' | 'religious_10' | 'bulk_20' | 'custom')
-      | null;
-    /**
-     * Custom discount percentage (e.g., 0.15 for 15%)
-     */
-    customDiscountRate?: number | null;
-    /**
-     * Minimum order amount for discount (dollars)
-     */
-    minimumOrderForDiscount?: number | null;
-  };
-  orderHistory?: {
-    totalOrders?: number | null;
-    /**
-     * Total amount spent (cents)
-     */
-    totalSpent?: number | null;
-    firstOrderDate?: string | null;
-    lastOrderDate?: string | null;
-    /**
-     * Average order value (cents)
-     */
-    averageOrderValue?: number | null;
-  };
-  verification?: {
-    /**
-     * Business license or 501(c)(3) documentation
-     */
-    businessLicense?: (number | null) | Media;
-    verificationStatus?: ('pending' | 'verified' | 'needs_docs' | 'rejected') | null;
-    /**
-     * Staff member who verified the account
-     */
-    verifiedBy?: (number | null) | User;
-    verifiedAt?: string | null;
-  };
-  /**
-   * Internal notes about this institutional account
-   */
-  notes?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "comments".
  */
@@ -4130,176 +4300,6 @@ export interface CartItem {
   };
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "customers".
- */
-export interface Customer {
-  id: number;
-  firstName: string;
-  lastName: string;
-  /**
-   * Auto-generated from first + last name
-   */
-  displayName?: string | null;
-  /**
-   * Origin channel for this customer record
-   */
-  source: 'ecom' | 'pos' | 'imported' | 'manual';
-  /**
-   * Login eligibility. Ghost rows are auto-created from orders and cannot log in until they claim the account.
-   */
-  lifecycleStatus: 'ghost' | 'invited' | 'active';
-  /**
-   * Primary phone number
-   */
-  phone?: string | null;
-  /**
-   * For age verification and marketing
-   */
-  dateOfBirth?: string | null;
-  shippingAddresses?:
-    | {
-        /**
-         * Address label (Home, Work, etc.)
-         */
-        label: string;
-        isDefault?: boolean | null;
-        firstName: string;
-        lastName: string;
-        company?: string | null;
-        street: string;
-        street2?: string | null;
-        city: string;
-        state: string;
-        zip: string;
-        country?: string | null;
-        phone?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  preferences?: {
-    /**
-     * Opt-in for marketing emails
-     */
-    marketingEmails?: boolean | null;
-    newsletterSubscribed?: boolean | null;
-    smsNotifications?: boolean | null;
-    /**
-     * Preferred book genres for recommendations
-     */
-    favoriteGenres?: (number | Book)[] | null;
-    language?: ('en' | 'es' | 'fr') | null;
-  };
-  loyaltyStatus?: {
-    /**
-     * Loyalty points balance
-     */
-    points?: number | null;
-    tier?: ('bronze' | 'silver' | 'gold' | 'vip') | null;
-    /**
-     * Square customer ID for loyalty sync
-     */
-    squareCustomerId?: string | null;
-  };
-  accountStatus?: {
-    isActive?: boolean | null;
-    /**
-     * Tax-exempt status for institutions
-     */
-    taxExempt?: boolean | null;
-    /**
-     * Tax exemption certificate number
-     */
-    taxExemptNumber?: string | null;
-    /**
-     * Associated institutional account
-     */
-    institution?: (number | null) | InstitutionalAccount;
-  };
-  orderHistory?: {
-    /**
-     * Total number of orders placed
-     */
-    totalOrders?: number | null;
-    /**
-     * Total amount spent (cents)
-     */
-    totalSpent?: number | null;
-    /**
-     * Date of first order
-     */
-    firstOrderDate?: string | null;
-    /**
-     * Date of most recent order
-     */
-    lastOrderDate?: string | null;
-    /**
-     * Average order value (cents)
-     */
-    averageOrderValue?: number | null;
-  };
-  socialAuth?: {
-    /**
-     * Google OAuth ID
-     */
-    googleId?: string | null;
-    /**
-     * Facebook OAuth ID
-     */
-    facebookId?: string | null;
-    /**
-     * Profile picture
-     */
-    profileImage?: (number | null) | Media;
-  };
-  /**
-   * Current shopping cart (stored as JSON for performance)
-   */
-  cart?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Customer wishlist (stored as JSON)
-   */
-  wishlist?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Internal staff notes about this customer
-   */
-  notes?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-  collection: 'customers';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

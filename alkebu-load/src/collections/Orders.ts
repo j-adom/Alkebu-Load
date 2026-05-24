@@ -31,9 +31,9 @@ export const Orders: CollectionConfig = {
     {
       name: 'customer',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: 'customers',
       admin: {
-        description: 'Customer who placed the order',
+        description: 'Customer who placed the order (auto-linked from email)',
       },
     },
     {
