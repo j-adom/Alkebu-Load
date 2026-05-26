@@ -36,6 +36,9 @@ export const Orders: CollectionConfig = {
       relationTo: 'customers',
       admin: {
         description: 'Customer who placed the order (auto-linked from email)',
+        components: {
+          Cell: '@/app/components/admin/cells/OrderCustomerCell',
+        },
       },
     },
     {
