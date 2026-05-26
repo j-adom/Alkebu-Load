@@ -37,9 +37,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const db = payload.db as unknown as {
-      execute: (q: unknown) => Promise<SqlResult>
+    const adapter = payload.db as unknown as {
+      drizzle: { execute: (q: unknown) => Promise<SqlResult> }
     }
+    const db = adapter.drizzle
 
     const customersColumns = await db.execute(sql`
       SELECT column_name, data_type, is_nullable, column_default
