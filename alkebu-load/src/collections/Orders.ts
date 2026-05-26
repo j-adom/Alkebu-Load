@@ -596,13 +596,20 @@ export const Orders: CollectionConfig = {
 
         if (!customerId) {
           try {
-            const upsertedId = await upsertCustomerForOrder(payload as any, doc as any);
+            // Passing `req` is load-bearing: without it, the helper's payload
+            // calls (and the back-link update below) spawn a fresh transaction
+            // that can't see the row just inserted by the parent create. The
+            // update then 404s and the catch block swallows it silently, leaving
+            // the order unlinked until the next backfill rescue. See the
+            // autoLinkPublisher pattern in src/app/utils/autoLinkPublisher.ts.
+            const upsertedId = await upsertCustomerForOrder(payload as any, doc as any, req);
             if (upsertedId) {
               await payload.update({
                 collection: 'orders',
                 id: doc.id,
                 data: { customer: upsertedId } as any,
                 context: { disableHooks: true } as any,
+                req,
               });
               customerId = upsertedId;
             }
@@ -626,7 +633,7 @@ export const Orders: CollectionConfig = {
 
         if (operation === 'create' || statusChanged || amountChanged || newlyLinked) {
           try {
-            await computeCustomerRollups(payload as any, customerId);
+            await computeCustomerRollups(payload as any, customerId, req);
           } catch (err) {
             console.error('Customer rollup recompute failed:', err);
           }

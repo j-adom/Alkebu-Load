@@ -11,12 +11,14 @@ type PayloadLike = {
     where: unknown
     limit?: number
     depth?: number
+    req?: unknown
   }) => Promise<{ docs: OrderRow[]; totalDocs: number }>
   update: (args: {
     collection: string
     id: number | string
     data: Record<string, unknown>
     context?: Record<string, unknown>
+    req?: unknown
   }) => Promise<unknown>
 }
 
@@ -30,12 +32,14 @@ const ORDER_FETCH_LIMIT = 1000
 export async function computeCustomerRollups(
   payload: PayloadLike,
   customerId: number | string,
+  req?: unknown,
 ): Promise<void> {
   const result = await payload.find({
     collection: 'orders',
     where: { customer: { equals: customerId } },
     limit: ORDER_FETCH_LIMIT,
     depth: 0,
+    req,
   })
 
   const eligible = result.docs.filter((o) => !EXCLUDED_STATUSES.has(o.status ?? ''))
@@ -67,5 +71,6 @@ export async function computeCustomerRollups(
     // Break recursion: this update would otherwise re-trigger the Customers
     // hooks chain. context.disableHooks is the per-request bypass flag.
     context: { disableHooks: true },
+    req,
   })
 }

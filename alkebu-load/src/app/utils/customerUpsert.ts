@@ -18,7 +18,12 @@ type OrderShape = {
 }
 
 type PayloadLike = {
-  find: (args: { collection: string; where: unknown; limit?: number }) => Promise<{
+  find: (args: {
+    collection: string
+    where: unknown
+    limit?: number
+    req?: unknown
+  }) => Promise<{
     docs: Array<{ id: number | string }>
     totalDocs: number
   }>
@@ -26,6 +31,7 @@ type PayloadLike = {
     collection: string
     data: Record<string, unknown>
     disableVerificationEmail?: boolean
+    req?: unknown
   }) => Promise<{ id: number | string }>
 }
 
@@ -38,15 +44,22 @@ function pickEmail(order: OrderShape): string | null {
 export async function upsertCustomerForOrder(
   payload: PayloadLike,
   order: OrderShape,
+  req?: unknown,
 ): Promise<number | string | null> {
   const emailRaw = pickEmail(order)
   if (!emailRaw) return null
   const email = emailRaw.trim().toLowerCase()
 
+  // Threading `req` keeps all reads/writes inside the parent operation's
+  // transaction. Without it, an afterChange-triggered create can run in a
+  // separate transaction that hasn't yet seen the just-created Order — the
+  // back-link `payload.update` then 404s and gets caught + lost. See
+  // commit history for the multi-day debugging that led here.
   const found = await payload.find({
     collection: 'customers',
     where: { email: { equals: email } },
     limit: 1,
+    req,
   })
   if (found.docs.length > 0) {
     return found.docs[0].id
@@ -61,6 +74,7 @@ export async function upsertCustomerForOrder(
   const created = await payload.create({
     collection: 'customers',
     disableVerificationEmail: true,
+    req,
     data: {
       email,
       password,
