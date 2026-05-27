@@ -324,6 +324,7 @@ export const Orders: CollectionConfig = {
             { label: 'UPS', value: 'ups' },
             { label: 'FedEx', value: 'fedex' },
             { label: 'Local Delivery', value: 'local' },
+            { label: 'Direct to Home', value: 'direct_to_home' },
           ],
         },
         {

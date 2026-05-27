@@ -564,7 +564,7 @@ export interface Order {
      * Shipping tracking number
      */
     trackingNumber?: string | null;
-    carrier?: ('usps' | 'ups' | 'fedex' | 'local') | null;
+    carrier?: ('usps' | 'ups' | 'fedex' | 'local' | 'direct_to_home') | null;
     /**
      * Estimated delivery date
      */

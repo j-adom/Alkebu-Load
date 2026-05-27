@@ -127,6 +127,7 @@ const CARRIERS = [
   { value: 'ups', label: 'UPS' },
   { value: 'fedex', label: 'FedEx' },
   { value: 'local', label: 'Local Delivery' },
+  { value: 'direct_to_home', label: 'Direct to Home' },
 ]
 
 function formatCents(cents: number): string {
@@ -1357,6 +1358,25 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                     }}
                   >
                     Mark delivered
+                  </button>
+                )}
+
+                {(order.status === 'shipped' || order.status === 'delivered') && (
+                  <button
+                    onClick={() => onStatusChange(order.id, 'completed')}
+                    disabled={isLoading}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      border: '1px solid #45444c',
+                      backgroundColor: '#fff',
+                      color: '#45444c',
+                      fontWeight: 800,
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      opacity: isLoading ? 0.7 : 1,
+                    }}
+                  >
+                    Mark complete
                   </button>
                 )}
 
