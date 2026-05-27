@@ -765,6 +765,7 @@ export const OrderDashboardV2: React.FC = () => {
       padding: '32px 18px 56px',
       fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       color: '#332b27',
+      colorScheme: 'light',
     }}>
       <div style={{
         background: 'linear-gradient(135deg, #214f3f 0%, #35644f 48%, #c97c44 100%)',
@@ -858,6 +859,7 @@ export const OrderDashboardV2: React.FC = () => {
             borderRadius: 12,
             border: '1px solid #d9ccb9',
             backgroundColor: '#fff',
+            color: '#332b27',
             fontSize: 14,
           }}
         />
@@ -1235,6 +1237,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                     padding: 12,
                     fontSize: 14,
                     resize: 'vertical',
+                    backgroundColor: '#fff',
+                    color: '#332b27',
                   }}
                 />
                 <button
@@ -1305,6 +1309,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                         border: '1px solid #d9ccb9',
                         padding: 12,
                         fontSize: 14,
+                        backgroundColor: '#fff',
+                        color: '#332b27',
                       }}
                     />
                     <select
@@ -1317,6 +1323,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                         padding: 12,
                         fontSize: 14,
                         backgroundColor: '#fff',
+                        color: '#332b27',
                       }}
                     >
                       {CARRIERS.map((item) => (
