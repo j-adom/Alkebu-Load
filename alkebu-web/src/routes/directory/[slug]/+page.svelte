@@ -7,16 +7,38 @@
   const relatedBusinesses = $derived(data.relatedBusinesses || []);
   const reviews = $derived(data.reviews || []);
   const seo = $derived(data.seo);
+  const contact = $derived(business.contact || {});
+  const address = $derived(business.address || {});
+  const socialMedia = $derived(contact.socialMedia || {});
+  const hasSocialMedia = $derived(Boolean(socialMedia.facebook || socialMedia.instagram || socialMedia.twitter));
+  const addressText = $derived(
+    [
+      address.street,
+      address.city,
+      [address.state, address.zipCode].filter(Boolean).join(' '),
+    ]
+      .filter(Boolean)
+      .join(', ') || business.location || ''
+  );
 
   // Format business hours
   function formatHours(hours: any) {
     if (!hours) return null;
 
     const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    return daysOrder.map(day => ({
-      day: day.charAt(0).toUpperCase() + day.slice(1),
-      ...hours[day]
-    }));
+    return daysOrder.map(day => {
+      const value = hours[day];
+      const display = typeof value === 'string'
+        ? value
+        : value?.closed
+          ? 'Closed'
+          : [value?.open, value?.close].filter(Boolean).join(' - ') || 'Closed';
+
+      return {
+        day: day.charAt(0).toUpperCase() + day.slice(1),
+        display,
+      };
+    });
   }
 
   const formattedHours = $derived(formatHours(business.hours));
@@ -189,50 +211,50 @@
 
             <div class="space-y-4">
               <!-- Address -->
-              {#if business.address}
+              {#if addressText}
                 <div class="flex items-start">
                   <i class="far fa-map-marker-alt text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Address</p>
-                    <p class="text-gray-700 text-sm">{business.address}</p>
+                    <p class="text-gray-700 text-sm">{addressText}</p>
                   </div>
                 </div>
               {/if}
 
               <!-- Phone -->
-              {#if business.phone}
+              {#if contact.phone}
                 <div class="flex items-start">
                   <i class="far fa-phone text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Phone</p>
-                    <a href="tel:{business.phone}" class="text-gray-700 hover:text-primary text-sm">
-                      {business.phone}
+                    <a href="tel:{contact.phone}" class="text-gray-700 hover:text-primary text-sm">
+                      {contact.phone}
                     </a>
                   </div>
                 </div>
               {/if}
 
               <!-- Email -->
-              {#if business.email}
+              {#if contact.email}
                 <div class="flex items-start">
                   <i class="far fa-envelope text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Email</p>
-                    <a href="mailto:{business.email}" class="text-gray-700 hover:text-primary text-sm break-all">
-                      {business.email}
+                    <a href="mailto:{contact.email}" class="text-gray-700 hover:text-primary text-sm break-all">
+                      {contact.email}
                     </a>
                   </div>
                 </div>
               {/if}
 
               <!-- Website -->
-              {#if business.website}
+              {#if contact.website}
                 <div class="flex items-start">
                   <i class="far fa-globe text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Website</p>
                     <a
-                      href={business.website}
+                      href={contact.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       class="text-gray-700 hover:text-primary text-sm break-all"
@@ -245,13 +267,13 @@
               {/if}
 
               <!-- Social Media -->
-              {#if business.socialMedia}
+              {#if hasSocialMedia}
                 <div class="pt-4 border-t border-gray-200">
                   <p class="font-semibold text-foreground mb-3">Social Media</p>
                   <div class="flex gap-3">
-                    {#if business.socialMedia.facebook}
+                    {#if socialMedia.facebook}
                       <a
-                        href={business.socialMedia.facebook}
+                        href={socialMedia.facebook}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-xl text-gray-600 hover:text-primary"
@@ -260,9 +282,9 @@
                         <i class="fab fa-facebook"></i>
                       </a>
                     {/if}
-                    {#if business.socialMedia.instagram}
+                    {#if socialMedia.instagram}
                       <a
-                        href={business.socialMedia.instagram}
+                        href={socialMedia.instagram}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-xl text-gray-600 hover:text-primary"
@@ -271,9 +293,9 @@
                         <i class="fab fa-instagram"></i>
                       </a>
                     {/if}
-                    {#if business.socialMedia.twitter}
+                    {#if socialMedia.twitter}
                       <a
-                        href={business.socialMedia.twitter}
+                        href={socialMedia.twitter}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-xl text-gray-600 hover:text-primary"
@@ -293,12 +315,10 @@
             <div class="bg-white rounded-lg shadow-lg p-6">
               <h3 class="text-xl font-bold mb-4 text-foreground">Business Hours</h3>
               <div class="space-y-2">
-                {#each formattedHours as { day, open, close, closed }}
+                {#each formattedHours as { day, display }}
                   <div class="flex justify-between text-sm">
                     <span class="font-medium text-foreground">{day}</span>
-                    <span class="text-gray-700">
-                      {closed ? 'Closed' : `${open} - ${close}`}
-                    </span>
+                    <span class="text-gray-700">{display}</span>
                   </div>
                 {/each}
               </div>
@@ -307,13 +327,15 @@
 
           <!-- Action Buttons -->
           <div class="bg-muted rounded-lg p-6 space-y-3">
-            <a href="tel:{business.phone}" class="btn-primary w-full text-center block">
-              <i class="far fa-phone mr-2"></i>
-              Call Now
-            </a>
-            {#if business.website}
+            {#if contact.phone}
+              <a href="tel:{contact.phone}" class="btn-primary w-full text-center block">
+                <i class="far fa-phone mr-2"></i>
+                Call Now
+              </a>
+            {/if}
+            {#if contact.website}
               <a
-                href={business.website}
+                href={contact.website}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="bg-white text-foreground hover:bg-primary hover:text-white transition-colors rounded px-6 py-3 font-semibold w-full text-center block"

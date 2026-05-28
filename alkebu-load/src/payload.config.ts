@@ -39,7 +39,7 @@ import { CartItems } from './collections/CartItems'
 import { Orders } from './collections/Orders'
 import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
-import { getEmailRuntimeConfig, getEmailTransportOptions } from './app/utils/emailConfig'
+import { getEmailRuntimeConfig, getEmailTransportOptions, shouldSkipEmailTransportVerify } from './app/utils/emailConfig'
 
 
 const filename = fileURLToPath(import.meta.url)
@@ -193,6 +193,7 @@ export default buildConfig({
     defaultFromAddress: emailRuntime.fromEmail,
     defaultFromName: emailRuntime.fromName,
     transportOptions: getEmailTransportOptions(),
+    skipVerify: shouldSkipEmailTransportVerify(),
   }),
   jobs: {
     tasks: [

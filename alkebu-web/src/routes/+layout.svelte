@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { Snippet } from 'svelte';
 
   import Nav from "$lib/components/Nav.svelte";
   import Footer from "$lib/components/Footer.svelte";
@@ -9,13 +10,21 @@
   import "../app.postcss";
   import { cart } from '$lib/stores/cart';
   import CartDrawer from '$lib/components/cart/CartDrawer.svelte';
+  import type { LayoutData } from './$types';
 
-  let { settings, children, user } = $props();
+  type Props = {
+    data: LayoutData;
+    children?: Snippet;
+  };
+
+  let { data, children }: Props = $props();
+  const settings = $derived(data.settings);
+  const user = $derived(data.user);
   const settings$ = writable<any>(undefined);
 
   // Keep the writable store in sync with the settings prop
   $effect(() => {
-    $settings$ = settings;
+    settings$.set(settings);
   });
 
   setContext("settings", settings$);
@@ -40,7 +49,7 @@
 
   <Footer />
 
-  <CartDrawer {user} />
+  <CartDrawer />
 </div>
 
 <style>

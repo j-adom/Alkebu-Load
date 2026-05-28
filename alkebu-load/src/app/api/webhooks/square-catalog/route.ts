@@ -7,6 +7,7 @@ import { createOrFindAuthors, updateAuthorMetadata, extractAuthorNames } from '.
 import { createOrFindPublisher, updatePublisherMetadata } from '../../../utils/publisherManager'
 import { createOrFindVendor, updateVendorMetadata } from '../../../utils/vendorManager'
 import { extractAndCreateVendor } from '../../../utils/squareVendorExtractor'
+import { getSquareWebhookUrl, isValidSquareWebhookSignature } from '../../../utils/squareWebhookSignature'
 
 // Wrapper function to match expected interface
 async function enrichProduct(isbn: string) {
@@ -75,17 +76,30 @@ export async function POST(request: NextRequest) {
   console.log('📦 Square webhook endpoint hit')
 
   try {
+    const rawBody = await request.text()
+    const signature = request.headers.get('x-square-hmacsha256-signature')
+    const notificationUrl = getSquareWebhookUrl()
+
+    if (!isValidSquareWebhookSignature({
+      notificationUrl,
+      rawBody,
+      signature,
+      signatureKey: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY,
+    })) {
+      console.warn('⚠️ Rejected Square catalog webhook with invalid signature')
+      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 })
+    }
+
     const payload = await getPayload({ config })
 
-    // Handle empty body
+    // Handle empty or invalid body after verifying the signed payload
     let webhookEvent: SquareWebhookEvent
     try {
-      const text = await request.text()
-      if (!text) {
+      if (!rawBody) {
         console.log('⚠️ Empty webhook body received')
-        return NextResponse.json({ received: true })
+        return NextResponse.json({ error: 'Empty body' }, { status: 400 })
       }
-      webhookEvent = JSON.parse(text)
+      webhookEvent = JSON.parse(rawBody)
     } catch (parseError) {
       console.error('❌ Failed to parse webhook body:', parseError)
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
@@ -112,11 +126,6 @@ export async function POST(request: NextRequest) {
 
     // Use catalog.list to get items (matching your working script)
     console.log('🔍 Making Square catalog API call...')
-    console.log('🔧 Environment check:', {
-      hasToken: !!process.env.SQUARE_ACCESS_TOKEN,
-      tokenPrefix: process.env.SQUARE_ACCESS_TOKEN?.substring(0, 10) + '...',
-      squareEnv: process.env.SQUARE_ENVIRONMENT
-    })
 
     const allItems: any[] = []
     const imageObjectsMap = new Map<string, any>()

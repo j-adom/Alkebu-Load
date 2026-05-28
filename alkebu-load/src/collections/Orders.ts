@@ -3,6 +3,11 @@ import { sendOrderStatusUpdate } from '../app/utils/emailService';
 import { upsertCustomerForOrder } from '../app/utils/customerUpsert';
 import { computeCustomerRollups } from '../app/utils/customerRollups';
 
+const isCommerceStaff = (user: unknown): boolean => {
+  const role = (user as { role?: string } | undefined)?.role;
+  return role === 'admin' || role === 'staff';
+};
+
 export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
@@ -12,12 +17,12 @@ export const Orders: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') return true;
+      if (isCommerceStaff(user)) return true;
       if (user) return { customer: { equals: user.id } };
       return false;
     },
-    create: () => true,
-    update: ({ req: { user } }) => (user as any)?.role === 'admin' || (user as any)?.role === 'staff',
+    create: ({ req: { user } }) => isCommerceStaff(user),
+    update: ({ req: { user } }) => isCommerceStaff(user),
     delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },
   fields: [

@@ -1,5 +1,10 @@
 import type { CollectionConfig } from 'payload';
 
+const isCommerceStaff = (user: unknown): boolean => {
+  const role = (user as { role?: string } | undefined)?.role;
+  return role === 'admin' || role === 'staff';
+};
+
 export const Customers: CollectionConfig = {
   slug: 'customers',
   admin: {
@@ -17,13 +22,13 @@ export const Customers: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') return true;
+      if (isCommerceStaff(user)) return true;
       if (user) return { id: { equals: user.id } };
       return false;
     },
-    create: () => true,
+    create: ({ req: { user } }) => isCommerceStaff(user),
     update: ({ req: { user }, id }) => {
-      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') return true;
+      if (isCommerceStaff(user)) return true;
       return user?.id === id;
     },
     delete: ({ req: { user } }) => (user as any)?.role === 'admin',

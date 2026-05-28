@@ -35,7 +35,7 @@
   let lastName = $state("");
   let street = $state("");
   let city = $state("");
-  let state = $state("TN");
+  let stateCode = $state("TN");
   let zip = $state("");
   let country = $state("US");
   let taxExempt = $state(false);
@@ -48,7 +48,7 @@
       lastName: lastName.trim(),
       street: street.trim(),
       city: city.trim(),
-      state: state.trim().toUpperCase(),
+      state: stateCode.trim().toUpperCase(),
       zip: zip.trim(),
       country: country.trim().toUpperCase() || "US",
     };
@@ -92,7 +92,7 @@
       lastName.trim() &&
       street.trim() &&
       city.trim() &&
-      state.trim() &&
+      stateCode.trim() &&
       zip.trim(),
   );
 
@@ -103,7 +103,7 @@
       lastName,
       street,
       city,
-      state,
+      stateCode,
       zip,
       country,
       taxExempt,
@@ -396,7 +396,7 @@
                 <input
                   type="text"
                   id="state"
-                  bind:value={state}
+                  bind:value={stateCode}
                   required
                   class="input-modern"
                 />

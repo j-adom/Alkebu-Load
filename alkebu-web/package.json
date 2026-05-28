@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "npm run check:svelte && vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && tsc --noEmit -p ./jsconfig.json",
     "check:svelte": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",

@@ -17,8 +17,8 @@
   const dateDisplay = $derived.by(() =>
     startDate
       ? endDate && endDate.toDateString() !== startDate.toDateString()
-        ? `${formatDate(event.startDate)} - ${formatDate(event.endDate)}`
-        : formatDate(event.startDate)
+        ? formatDate(startDate) + ' - ' + formatDate(endDate)
+        : formatDate(startDate)
       : ''
   );
 
@@ -31,6 +31,26 @@
         })
       : ''
   );
+
+  const venue = $derived(typeof event.venue === 'object' && event.venue ? event.venue : {});
+  const venueName = $derived(typeof event.venue === 'string' ? event.venue : venue.name || '');
+  const locationDisplay = $derived.by(() => {
+    if (typeof event.location === 'string') return event.location;
+    return event.location?.name || event.location?.address || venue.address || '';
+  });
+  const registrationDetails = $derived(event.registrationDetails || {});
+  const eventPrice = $derived(registrationDetails.price ?? event.price ?? event.cost);
+  const priceDisplay = $derived(
+    eventPrice === undefined || eventPrice === null || eventPrice === ''
+      ? ''
+      : Number(eventPrice) === 0
+        ? 'Free'
+        : '$' + eventPrice
+  );
+  const registrationUrl = $derived(event.registrationUrl || '');
+  const contactInfo = $derived(event.contactInfo || {});
+  const contactEmail = $derived(contactInfo.email || event.contactEmail || '');
+  const contactPhone = $derived(contactInfo.phone || event.contactPhone || '');
 </script>
 
 <Meta metadata={seo} />
@@ -119,45 +139,45 @@
               </div>
 
               <!-- Location -->
-              {#if event.location}
+              {#if locationDisplay}
                 <div class="flex items-start">
                   <i class="far fa-map-marker-alt text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Location</p>
-                    <p class="text-gray-700">{event.location}</p>
+                    <p class="text-gray-700">{locationDisplay}</p>
                   </div>
                 </div>
               {/if}
 
               <!-- Venue -->
-              {#if event.venue}
+              {#if venueName}
                 <div class="flex items-start">
                   <i class="far fa-building text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Venue</p>
-                    <p class="text-gray-700">{event.venue.name}</p>
+                    <p class="text-gray-700">{venueName}</p>
                   </div>
                 </div>
               {/if}
 
               <!-- Cost -->
-              {#if event.cost !== undefined}
+              {#if priceDisplay}
                 <div class="flex items-start">
                   <i class="far fa-ticket text-primary text-xl mt-1 mr-3"></i>
                   <div>
                     <p class="font-semibold text-foreground">Cost</p>
                     <p class="text-gray-700">
-                      {event.cost === 0 || event.cost === '0' ? 'Free' : `$${event.cost}`}
+                      {priceDisplay}
                     </p>
                   </div>
                 </div>
               {/if}
 
               <!-- Registration Link -->
-              {#if event.registrationUrl && !isPastEvent}
+              {#if registrationUrl && !isPastEvent}
                 <div class="mt-6">
                   <a
-                    href={event.registrationUrl}
+                    href={registrationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="btn-primary w-full text-center block"
@@ -169,22 +189,22 @@
               {/if}
 
               <!-- Contact -->
-              {#if event.contactEmail || event.contactPhone}
+              {#if contactEmail || contactPhone}
                 <div class="pt-4 border-t border-gray-200">
                   <p class="font-semibold text-foreground mb-2">Contact</p>
-                  {#if event.contactEmail}
+                  {#if contactEmail}
                     <p class="text-sm text-gray-700">
                       <i class="far fa-envelope mr-2"></i>
-                      <a href="mailto:{event.contactEmail}" class="hover:text-primary">
-                        {event.contactEmail}
+                      <a href="mailto:{contactEmail}" class="hover:text-primary">
+                        {contactEmail}
                       </a>
                     </p>
                   {/if}
-                  {#if event.contactPhone}
+                  {#if contactPhone}
                     <p class="text-sm text-gray-700">
                       <i class="far fa-phone mr-2"></i>
-                      <a href="tel:{event.contactPhone}" class="hover:text-primary">
-                        {event.contactPhone}
+                      <a href="tel:{contactPhone}" class="hover:text-primary">
+                        {contactPhone}
                       </a>
                     </p>
                   {/if}

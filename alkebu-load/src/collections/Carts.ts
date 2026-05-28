@@ -1,5 +1,10 @@
 import type { CollectionConfig } from 'payload';
 
+const isCommerceStaff = (user: unknown): boolean => {
+  const role = (user as { role?: string } | undefined)?.role;
+  return role === 'admin' || role === 'staff';
+};
+
 export const Carts: CollectionConfig = {
   slug: 'carts',
   admin: {
@@ -9,11 +14,11 @@ export const Carts: CollectionConfig = {
   },
   access: {
     read: ({ req: { user } }) => {
-      if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') return true;
+      if (isCommerceStaff(user)) return true;
       if (user) return { user: { equals: user.id } }; // Only owner can read their cart
       return false;
     },
-    create: () => true,
+    create: ({ req: { user } }) => isCommerceStaff(user),
     update: ({ req: { user } }) => {
       if ((user as any)?.role === 'admin') return true;
       if (user) return { user: { equals: user.id } };

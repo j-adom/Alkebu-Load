@@ -72,3 +72,7 @@ export function getEmailTransportOptions() {
     },
   }
 }
+
+export function shouldSkipEmailTransportVerify(): boolean {
+  return process.env.NEXT_PHASE === 'phase-production-build' || process.env.SKIP_EMAIL_VERIFY === 'true'
+}

@@ -73,5 +73,24 @@ test('Orders.delete and Customers.delete stay admin-only (this fix does not elev
   assert.strictEqual(access(Customers).delete({ req: { user: ADMIN } }), true);
 });
 
-// Carts.delete and CartItems.delete are intentionally permissive (CartItems is open;
-// Carts is owner-self-delete). They are NOT touched by this fix.
+test('public users cannot write lower-level commerce collections directly', () => {
+  for (const collection of [Carts, CartItems, Orders, Customers]) {
+    assert.strictEqual(access(collection).create({ req: { user: null } }), false);
+    assert.strictEqual(access(collection).create({ req: { user: CUSTOMER } }), false);
+  }
+
+  for (const collection of [CartItems, Orders, Customers]) {
+    assert.strictEqual(access(collection).update({ req: { user: null }, id: 'x' }), false);
+    assert.strictEqual(access(collection).delete({ req: { user: null }, id: 'x' }), false);
+  }
+});
+
+test('staff and admins can write commerce collections through Payload admin', () => {
+  for (const collection of [Carts, CartItems, Orders, Customers]) {
+    assert.strictEqual(access(collection).create({ req: { user: STAFF } }), true);
+    assert.strictEqual(access(collection).create({ req: { user: ADMIN } }), true);
+  }
+
+  assert.strictEqual(access(CartItems).update({ req: { user: STAFF }, id: 'item' }), true);
+  assert.strictEqual(access(CartItems).delete({ req: { user: ADMIN }, id: 'item' }), true);
+});

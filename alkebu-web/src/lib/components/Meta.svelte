@@ -1,46 +1,89 @@
-<script>
-  let { metadata = {} } = $props();
+<script lang="ts">
+  type ProductMeta = {
+    price?: string | number | null;
+  };
+
+  type Metadata = {
+    title?: string;
+    description?: string;
+    image?: string;
+    imageAlt?: string;
+    url?: string;
+    canonical?: string;
+    canonicalUrl?: string;
+    twitterCard?: string;
+    product?: ProductMeta | null;
+  };
+
+  type Props = Metadata & {
+    metadata?: Metadata | null;
+  };
+
+  let {
+    metadata = {},
+    title,
+    description,
+    image,
+    imageAlt,
+    url,
+    canonical,
+    canonicalUrl,
+    twitterCard,
+    product,
+  }: Props = $props();
+
+  const resolved = $derived({
+    title: title ?? metadata?.title,
+    description: description ?? metadata?.description,
+    image: image ?? metadata?.image,
+    imageAlt: imageAlt ?? metadata?.imageAlt,
+    url: canonicalUrl ?? canonical ?? url ?? metadata?.canonicalUrl ?? metadata?.canonical ?? metadata?.url,
+    twitterCard: twitterCard ?? metadata?.twitterCard ?? 'summary_large_image',
+    product: product ?? metadata?.product,
+  });
+
+  const productPrice = $derived(
+    resolved.product?.price === undefined || resolved.product?.price === null
+      ? undefined
+      : String(resolved.product.price)
+  );
 </script>
 
 <svelte:head>
-  {#if metadata.title}
-    <title>{metadata.title}</title>
-    <meta name="title" content={metadata.title} />
-    <meta property="og:title" content={metadata.title} />
-    <meta property="twitter:title" content={metadata.title} />
-  {/if}
-  
-  {#if metadata.description}
-    <meta name="description" content={metadata.description}/>
-    <meta property="og:description" content={metadata.description} />
-    <meta property="twitter:description" content={metadata.description} />
-  {/if} 
-  
-  {#if metadata.image}
-    <meta property="og:image" content={metadata.image} />
-    <meta
-      property="twitter:image"
-      content={metadata.image}
-    />
-  {/if} 
-  
-  {#if metadata.imageAlt}
-    <meta property="og:image:alt" content={metadata.imageAlt} />
-    <meta property="twitter:image:alt" content={metadata.imageAlt} />
+  {#if resolved.title}
+    <title>{resolved.title}</title>
+    <meta name="title" content={resolved.title} />
+    <meta property="og:title" content={resolved.title} />
+    <meta property="twitter:title" content={resolved.title} />
   {/if}
 
-  {#if metadata.url}
-    <link rel="canonical" href={metadata.url} />
-    <meta property="og:url" content={metadata.url} />
-    <meta property="twitter:url" content={metadata.url} />
+  {#if resolved.description}
+    <meta name="description" content={resolved.description} />
+    <meta property="og:description" content={resolved.description} />
+    <meta property="twitter:description" content={resolved.description} />
   {/if}
 
-  {#if metadata.product}
-	  <meta property="og:type" content="og:product" />
-	  <meta property="product:price:amount" content={metadata.product.price} />
-	  <meta property="product:price:currency" content="USD" />
-
+  {#if resolved.image}
+    <meta property="og:image" content={resolved.image} />
+    <meta property="twitter:image" content={resolved.image} />
   {/if}
 
-  <meta property="twitter:card" content={metadata.twitterCard || "summary_large_image"} />
+  {#if resolved.imageAlt}
+    <meta property="og:image:alt" content={resolved.imageAlt} />
+    <meta property="twitter:image:alt" content={resolved.imageAlt} />
+  {/if}
+
+  {#if resolved.url}
+    <link rel="canonical" href={resolved.url} />
+    <meta property="og:url" content={resolved.url} />
+    <meta property="twitter:url" content={resolved.url} />
+  {/if}
+
+  {#if productPrice}
+    <meta property="og:type" content="og:product" />
+    <meta property="product:price:amount" content={productPrice} />
+    <meta property="product:price:currency" content="USD" />
+  {/if}
+
+  <meta property="twitter:card" content={resolved.twitterCard} />
 </svelte:head>

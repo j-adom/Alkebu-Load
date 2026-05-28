@@ -92,7 +92,7 @@
                         class="form-select form-select-sm" 
                         style="width: auto;"
                         value={currentSort}
-                        onchange={(e) => updateSort(e.target.value)}
+                        onchange={(e) => updateSort((e.currentTarget as HTMLSelectElement).value)}
                     >
                         {#each sortOptions as option}
                             <option value={option.value}>{option.label}</option>

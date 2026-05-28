@@ -19,7 +19,7 @@
     icon = false,
   }: Props = $props();
 
-  const colors = $derived(product.colors?.map((c) => c.color) || []);
+  const colors = $derived(product.colors?.map((c: { color?: string }) => c.color) || []);
   const sizes = $derived(product.sizes || []);
 
   const resolvedSize = $derived(size ?? sizes[0]);

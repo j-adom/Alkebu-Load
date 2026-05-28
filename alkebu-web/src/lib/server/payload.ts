@@ -192,11 +192,33 @@ export interface Event extends PayloadDoc {
     zip?: string;
   } | string;
   type?: string;
-  venue?: { id: string } | string;
+  venue?: {
+    id?: string;
+    name?: string;
+    address?: string;
+    isVirtual?: boolean;
+    virtualLink?: string;
+    accessInstructions?: string;
+  } | string;
   featuredImage?: Media;
   capacity?: number;
   registrationRequired?: boolean;
+  registrationUrl?: string;
+  registrationDetails?: {
+    maxAttendees?: number;
+    registrationDeadline?: string;
+    price?: number;
+    paymentRequired?: boolean;
+    registrationInstructions?: any;
+  };
   price?: number;
+  cost?: number | string;
+  contactInfo?: {
+    email?: string;
+    phone?: string;
+  };
+  contactEmail?: string;
+  contactPhone?: string;
   status: 'draft' | 'published' | 'cancelled';
   recurring?: {
     frequency: 'daily' | 'weekly' | 'monthly';
@@ -224,6 +246,20 @@ export interface Business extends PayloadDoc {
     city?: string;
     state?: string;
     zip?: string;
+    socialMedia?: {
+      facebook?: string;
+      instagram?: string;
+      twitter?: string;
+      linkedin?: string;
+      tiktok?: string;
+    };
+  };
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    neighborhood?: string;
   };
   hours?: {
     [key: string]: {

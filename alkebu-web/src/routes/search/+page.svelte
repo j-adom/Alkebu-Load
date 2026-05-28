@@ -9,7 +9,7 @@
 
   let { data } = $props();
 
-  let searchInput: HTMLInputElement = $state();
+  let searchInput = $state<HTMLInputElement | undefined>();
   let searchQuery = $state('');
   let typeFilter = $state('all');
   const initialSearchQuery = $derived($page.url.searchParams.get('q') || '');
