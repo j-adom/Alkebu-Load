@@ -48,7 +48,7 @@
 | `alkebu-load/src/payload-types.ts` | Regenerate via `pnpm generate:types` |
 | `docs/PRD.md` | Customer role removal, data-flow clarification |
 | `docs/architecture.md` | Customers standalone shape (replace `user` relationship tree) |
-| `docs/STAFF-WORKFLOWS.md` | Remove `customer` role from Users table |
+| `docs/staff-workflows.md` | Remove `customer` role from Users table |
 
 ---
 
@@ -2138,7 +2138,7 @@ git commit -m "feat(admin): dense list view with inline editor for Orders"
 **Files:**
 - Modify: `docs/architecture.md` (lines 98-103)
 - Modify: `docs/PRD.md` (line 182 area; line 202)
-- Modify: `docs/STAFF-WORKFLOWS.md` (lines 295-302)
+- Modify: `docs/staff-workflows.md` (lines 295-302)
 
 - [ ] **Step 1: Update `docs/architecture.md`**
 
@@ -2175,13 +2175,13 @@ in one collection without polluting the staff directory.
 
 - [ ] **Step 2: Update `docs/PRD.md`**
 
-At [line 182](../../docs/PRD.md), replace the bullet "Customers - Extended user profiles with addresses, tax status" with:
+At [line 182](../../PRD.md), replace the bullet "Customers - Extended user profiles with addresses, tax status" with:
 
 ```
 - **Customers** - Canonical shopper entity across all channels (ecom, POS, imported, manual). Auth-enabled with source, account status, and rollup fields (totalOrders, totalSpent, lastOrderDate). Designed to consolidate Square loyalty/marketing data over time.
 ```
 
-At [line 202](../../docs/PRD.md), update the Users row:
+At [line 202](../../PRD.md), update the Users row:
 
 **Before:**
 ```
@@ -2193,7 +2193,7 @@ At [line 202](../../docs/PRD.md), update the Users row:
 - **Users** - Staff and editor accounts only. Roles: admin, staff, editor. Shoppers live in the Customers collection.
 ```
 
-- [ ] **Step 3: Update `docs/STAFF-WORKFLOWS.md`**
+- [ ] **Step 3: Update `docs/staff-workflows.md`**
 
 In the User Roles table (around lines 295-302), remove the `customer` row entirely. Replace it with a note immediately after the table:
 
@@ -2211,7 +2211,7 @@ Read the diff to confirm no unintended changes.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/architecture.md docs/PRD.md docs/STAFF-WORKFLOWS.md
+git add docs/architecture.md docs/PRD.md docs/staff-workflows.md
 git commit -m "docs: reconcile customer/user model in PRD, architecture, and staff workflows"
 ```
 

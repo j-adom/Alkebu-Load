@@ -3,7 +3,7 @@
 **Date:** 2026-05-10
 **Status:** Approved (design phase); awaiting implementation plan
 **Owners:** Backend (alkebu-load)
-**Related docs:** [PRD.md](../../PRD.md), [architecture.md](../../architecture.md), [LAUNCH-CHECKLIST.md](../../LAUNCH-CHECKLIST.md), [STAFF-WORKFLOWS.md](../../STAFF-WORKFLOWS.md)
+**Related docs:** [PRD.md](../../PRD.md), [architecture.md](../../architecture.md), [launch.md](../../launch.md), [staff-workflows.md](../../staff-workflows.md)
 
 ---
 
@@ -28,7 +28,7 @@ The doc set already points in this direction; this spec accelerates work that wa
 - `Customers` exists in the schema as the "extended user profile" entity ([PRD.md:182](../../PRD.md#L182)) — it's defined, never populated.
 - Customer loyalty integration and Listmonk marketing are Phase 2 ([PRD.md:238-239](../../PRD.md#L238-L239)). Both require a real customer table. Centralizing now is the prerequisite; it also reduces dependency on Square's loyalty and marketing add-ons.
 - NocoDB BI is Phase 3 ([PRD.md:243-244](../../PRD.md#L243-L244)) — the rollup fields feed it.
-- Backfilling `authors` from `authorsText` is already on the P3 list ([LAUNCH-CHECKLIST.md:152](../../LAUNCH-CHECKLIST.md#L152)). Author cards / author pages in search are also on P3 ([LAUNCH-CHECKLIST.md:151](../../LAUNCH-CHECKLIST.md#L151)). Both unblock once relational data exists.
+- Backfilling `authors` from `authorsText` is already on the P3 list ([launch.md](../../launch.md)). Author cards / author pages in search are also on P3 ([launch.md](../../launch.md)). Both unblock once relational data exists.
 - Square → Payload data centralization (currently inventory-only) is anticipated in Phase 3 via n8n ([architecture.md:397](../../architecture.md#L397)). Schema fields here (`source`, `squareCustomerId`) prepare for that without building it.
 
 ## 3. Strategic position — entity model
@@ -124,7 +124,7 @@ Each step is independently shippable and verifiable.
 
 ### 4.3 Root URL redirect
 
-Replace [alkebu-load/src/app/(frontend)/page.tsx](../../../alkebu-load/src/app/(frontend)/page.tsx) with a one-line server-side redirect to `/admin`:
+Replace [alkebu-load/src/app/(frontend)/page.tsx](../../../alkebu-load/src/app/%28frontend%29/page.tsx) with a one-line server-side redirect to `/admin`:
 
 ```tsx
 import { redirect } from 'next/navigation'
@@ -138,7 +138,7 @@ Justification: the storefront lives on a separate Cloudflare domain, so this sub
 ### 4.4 Three small fixes
 
 **(a) Order Dashboard nav link visibility**
-The `OrderDashboardNavLink` is wired into [payload.config.ts:111](../../../alkebu-load/src/payload.config.ts#L111) via `afterNavLinks`, but [importMap.js](../../../alkebu-load/src/app/(payload)/admin/importMap.js) was generated before the component was added. Fix: run `pnpm generate:importmap`, commit the regenerated file.
+The `OrderDashboardNavLink` is wired into [payload.config.ts:111](../../../alkebu-load/src/payload.config.ts#L111) via `afterNavLinks`, but [importMap.js](../../../alkebu-load/src/app/%28payload%29/admin/importMap.js) was generated before the component was added. Fix: run `pnpm generate:importmap`, commit the regenerated file.
 
 Optional polish: the current link's purple gradient styling reads as a marketing banner. Tone it down to match Payload sidebar conventions (border, slight elevation, theme variables) — small CSS tweak in the same PR.
 
@@ -210,7 +210,7 @@ Single follow-up commit updating:
 
 - [docs/architecture.md:98-103](../../architecture.md#L98-L103) — replace the "Customers extends Users via `user` relationship" tree with the actual standalone shape (auth-enabled, `source`, `accountStatus`, `squareCustomerId`, rollups).
 - [docs/PRD.md:182](../../PRD.md#L182) — clarify Customers' role (canonical shopper entity, all channels). Update the data-flow diagram if needed.
-- [docs/PRD.md:202](../../PRD.md#L202) and [docs/STAFF-WORKFLOWS.md:295-302](../../STAFF-WORKFLOWS.md#L295-L302) — remove the `customer` role from Users tables; note customers live in Customers.
+- [docs/PRD.md:202](../../PRD.md#L202) and [docs/staff-workflows.md](../../staff-workflows.md) — remove the `customer` role from Users tables; note customers live in Customers.
 
 ## 5. Out of scope (preserved as future work, foundation supports them)
 

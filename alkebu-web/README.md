@@ -49,5 +49,5 @@ npm run sync:payment-provider
 
 - Global legacy JavaScript has been removed from `src/app.html`; avoid reintroducing jQuery/template scripts globally.
 - Shared image rendering should use `src/lib/components/PayloadImage.svelte` where possible so images SSR correctly.
-- Current launch priorities live in [../docs/LAUNCH-CHECKLIST.md](../docs/LAUNCH-CHECKLIST.md).
+- Current launch priorities live in [Launch and Operations Board](../docs/launch.md).
 - Main documentation index: [../docs/README.md](../docs/README.md).

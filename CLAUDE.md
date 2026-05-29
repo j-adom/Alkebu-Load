@@ -164,16 +164,16 @@ Search bootstrap is fragile — see "Gotchas" below before touching it.
 - **Homepage is SSR, not prerendered** — adding `export const prerender = true` to it will break dynamic content. Cache TTL is intentionally short (~5 min).
 - **`docker-compose.yml` is aspirational.** Only the `payload` service builds against current code; `medusa` and `frontend` services reference paths/builds that don't exist or aren't current. The `postgres` service works for local Postgres if needed.
 - **Backend must be running before frontend** — the SvelteKit build/dev expects Payload at `PAYLOAD_API_URL` (default `http://localhost:3000`).
-- **Production checkout email is verified; other transactional emails are not** (see [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md)). Don't claim end-to-end SES coverage without spot-checking.
+- **Production checkout email is verified; other transactional emails are not** (see [docs/launch.md](docs/launch.md)). Don't claim end-to-end SES coverage without spot-checking.
 
 ## Reference Docs
 
 - [docs/PRD.md](docs/PRD.md) — authoritative product spec with current status and phases
 - [docs/architecture.md](docs/architecture.md) — system architecture (note: storage section says Cloudinary; reality is R2)
-- [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md) — current production readiness board
+- [docs/launch.md](docs/launch.md) — current production readiness board
 - [docs/development-guide.md](docs/development-guide.md) — full local setup walkthrough
-- [docs/STAFF-WORKFLOWS.md](docs/STAFF-WORKFLOWS.md) — staff order processing reference
-- [docs/CART-UX.md](docs/CART-UX.md), [docs/BOOK-ENRICHMENT-WORKFLOW.md](docs/BOOK-ENRICHMENT-WORKFLOW.md) — feature-specific
+- [docs/staff-workflows.md](docs/staff-workflows.md) — staff order processing reference
+- [docs/cart-checkout.md](docs/cart-checkout.md), [docs/book-operations.md](docs/book-operations.md) — feature-specific
 - [alkebu-load/SYSTEM_GUIDE.md](alkebu-load/SYSTEM_GUIDE.md) — backend deep-dive
 
 ## Svelte MCP Server

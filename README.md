@@ -4,9 +4,9 @@ A digital platform for a Nashville-based Black-owned bookstore combining e-comme
 
 ## Architecture
 
-- **alkebu-load/** - Payload CMS 3.x backend with integrated e-commerce, Square POS sync, Stripe payments, order management
-- **alkebu-web/** - SvelteKit frontend with Svelte 5, TailwindCSS, Cloudflare deployment
-- **alkebu-shared/** - Shared TypeScript types and utilities (planned)
+- **alkebu-load/** - Payload CMS 3.x backend with integrated e-commerce, Square POS sync, Stripe payments, order management, email, search, and enrichment.
+- **alkebu-web/** - SvelteKit storefront with Svelte 5, TailwindCSS, and Cloudflare deployment.
+- **alkebu-shared/** - Shared TypeScript types and utilities (planned).
 
 ## Live Environments
 
@@ -16,31 +16,37 @@ A digital platform for a Nashville-based Black-owned bookstore combining e-comme
 
 ## Quick Start
 
-```bash
+~~~bash
 # Backend
-cd alkebu-load && pnpm install && pnpm dev    # localhost:3000
+cd alkebu-load && pnpm install && pnpm dev
 
 # Frontend
-cd alkebu-web && npm install && npm run dev    # localhost:5173
-```
+cd alkebu-web && npm install && npm run dev
+~~~
 
-See [docs/development-guide.md](docs/development-guide.md) for local setup and [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md) for the current launch board.
+Default local URLs:
+
+- Backend/API: http://localhost:3000
+- Payload admin: http://localhost:3000/admin
+- Storefront: http://localhost:5173
 
 ## Documentation
 
-- [Documentation Index](docs/README.md) - Start here for the current doc map
-- [Launch Checklist](docs/LAUNCH-CHECKLIST.md) - Current priority board for launch
-- [Product Requirements](docs/PRD.md) - Features, architecture, current status
-- [Architecture Overview](docs/architecture.md) - System design and data flow
-- [Development Guide](docs/development-guide.md) - Local setup and commands
-- [Deployment Guide](docs/Deployment-Guide.md) - Production deployment
-- [Book Enrichment](docs/BOOK-ENRICHMENT-WORKFLOW.md) - ISBN enrichment system
-- [Cart UX](docs/CART-UX.md) - Shopping cart architecture
+Start with [docs/README.md](docs/README.md).
 
-Historical Phase 1 notes are still available in [PHASE1-QUICKSTART.md](PHASE1-QUICKSTART.md) and [docs/PHASE1-SETUP.md](docs/PHASE1-SETUP.md), but the launch checklist above is the source of truth.
+Core docs:
+
+- [Launch and Operations Board](docs/launch.md)
+- [Deployment Guide](docs/deployment.md)
+- [Development Guide](docs/development-guide.md)
+- [Architecture Overview](docs/architecture.md)
+- [Product Requirements](docs/PRD.md)
+- [Cart and Checkout](docs/cart-checkout.md)
+- [Book Operations](docs/book-operations.md)
+- [Staff Workflows](docs/staff-workflows.md)
 
 ## Current Status
 
-- **alkebu-load**: Backend is live; email credentials, webhooks, Square sync, and smoke tests still need production verification.
-- **alkebu-web**: Storefront builds and is deployed; performance/security cleanup is underway.
-- **Launch readiness**: Follow [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md).
+- **Backend:** Live on Payload/Next. Local hardening adds Square catalog webhook signatures, public health redaction, and build-time SMTP verify skipping.
+- **Frontend:** Live on SvelteKit. npm run build now runs svelte-check before vite build.
+- **Launch readiness:** Track current production work in [docs/launch.md](docs/launch.md).

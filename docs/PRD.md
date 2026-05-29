@@ -212,7 +212,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 ## Development Phases
 
 ### Phase 1: MVP & Launch (Current)
-**Status:** Core build is close; follow [Launch Checklist](LAUNCH-CHECKLIST.md) for the current production readiness board.
+**Status:** Core build is close; follow [Launch and Operations Board](launch.md) for the current production readiness board.
 - [x] Payload CMS with all collections
 - [x] Square POS webhook integration
 - [x] Book import & enrichment system

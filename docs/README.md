@@ -1,49 +1,44 @@
 # Documentation Index
 
-This index is the current map for Alkebulanimages 2.0 documentation. If docs conflict, prefer the launch checklist first, then the development/deployment guides, then historical phase notes.
+This is the current map for Alkebulanimages 2.0 documentation. If docs conflict, prefer this order: launch board, deployment guide, development guide, architecture/PRD, feature docs, historical planning artifacts.
 
 ## Current Operating Docs
 
-- [Launch Checklist](LAUNCH-CHECKLIST.md) - Current priority board, production smoke test, and post-launch monitoring.
-- [Development Guide](development-guide.md) - Local development setup, commands, troubleshooting, and environment notes.
-- [Deployment Guide](Deployment-Guide.md) - Current deployment and production validation notes.
-- [Product Requirements](PRD.md) - Product scope, current status, phases, and feature goals.
+- [Launch and Operations Board](launch.md) - Current priority board, smoke tests, and post-deploy verification.
+- [Deployment Guide](deployment.md) - Backend/frontend deploy order, environment variables, webhooks, and validation.
+- [Development Guide](development-guide.md) - Local setup, commands, troubleshooting, and environment notes.
 - [Architecture Overview](architecture.md) - System architecture, data flow, collections, and infrastructure.
+- [Product Requirements](PRD.md) - Product scope, current status, phases, and feature goals.
 
-## Feature Reference
+## Workflow Docs
 
-- [Cart UX](CART-UX.md) - Cart behavior and implementation reference.
-- [Book Enrichment Workflow](BOOK-ENRICHMENT-WORKFLOW.md) - ISBN and metadata enrichment workflow.
-- [Staff Workflows](STAFF-WORKFLOWS.md) - Order dashboard and fulfillment procedures.
-- [Book Availability and Shipping Release Notes](release-2026-03-15-book-availability-and-shipping.md) - Release-specific notes for availability and shipping.
+- [Cart and Checkout](cart-checkout.md) - Cart drawer, checkout APIs, payment, tax, and shipping behavior.
+- [Book Operations](book-operations.md) - Square CSV import, ISBN enrichment, bulk book intake, and troubleshooting.
+- [Staff Workflows](staff-workflows.md) - Order processing, shipping, refunds, book intake, directory updates, and E2E test checklist.
 
-## Backend-Specific Docs
+## Backend-Specific References
 
 - [Backend README](../alkebu-load/README.md)
-- [Backend Deployment Notes](../alkebu-load/DEPLOYMENT.md)
 - [Backend System Guide](../alkebu-load/SYSTEM_GUIDE.md)
-- [Auto Enrichment](../alkebu-load/docs/AUTO_ENRICHMENT.md)
-- [Data Migration Complete](../alkebu-load/docs/data-migration-complete.md)
+- [Archived migrations note](../alkebu-load/migrations.archive/README.md)
 
-## Historical / Reference Docs
+## Tooling / Agent References
 
-These are useful for context but may include older domains, older deployment assumptions, or completed setup steps.
-
-- [Phase 1 Quickstart](../PHASE1-QUICKSTART.md)
-- [Phase 1 Setup](PHASE1-SETUP.md)
 - [MCP Setup](mcp-setup.md)
 - [Claude Instructions](../CLAUDE.md)
 - [Backend Claude Instructions](../alkebu-load/CLAUDE.md)
+- [Superpowers planning artifacts](superpowers/)
 
 ## Current Production URLs
 
-- Storefront: `https://alkebulanimages.com`
-- Backend/Admin: `https://payload.alkebulanimages.com`
-- Health check: `https://payload.alkebulanimages.com/api/health`
+- Storefront: https://alkebulanimages.com
+- Backend/Admin: https://payload.alkebulanimages.com
+- Health check: https://payload.alkebulanimages.com/api/health
 
-## Documentation Maintenance Rules
+## Maintenance Rules
 
-- Keep launch status in [Launch Checklist](LAUNCH-CHECKLIST.md).
-- Keep local commands in [Development Guide](development-guide.md).
-- Keep production domain and webhook updates in [Deployment Guide](Deployment-Guide.md).
-- Mark older implementation notes as historical instead of silently deleting context.
+- Keep launch status and smoke tests in [launch.md](launch.md).
+- Keep production domains, env vars, and webhook deployment notes in [deployment.md](deployment.md).
+- Keep local commands and setup in [development-guide.md](development-guide.md).
+- Keep customer/staff operational procedures in [staff-workflows.md](staff-workflows.md).
+- Prefer updating one canonical doc over adding a new one-off Markdown file.

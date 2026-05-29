@@ -209,12 +209,12 @@ This single Payload instance handles:
 - **Host**: Coolify-managed deployment to `payload.alkebulanimages.com`
 - **Auto-deploy**: webhook-triggered on `main` push (verified `d2b6387`)
 - **Health check**: `GET /api/health` → `https://payload.alkebulanimages.com/api/health`
-- See [./DEPLOYMENT.md](DEPLOYMENT.md) and [../docs/Deployment-Guide.md](../docs/Deployment-Guide.md)
+- See [../docs/deployment.md](../docs/deployment.md)
 
 ## Reference Docs
 
 - [./SYSTEM_GUIDE.md](SYSTEM_GUIDE.md) — backend deep-dive
-- [./DEPLOYMENT.md](DEPLOYMENT.md) — deployment specifics
+- [../docs/deployment.md](../docs/deployment.md) — deployment specifics
 - [../docs/PRD.md](../docs/PRD.md) — authoritative product spec
-- [../docs/LAUNCH-CHECKLIST.md](../docs/LAUNCH-CHECKLIST.md) — production readiness board
-- [../docs/STAFF-WORKFLOWS.md](../docs/STAFF-WORKFLOWS.md), [../docs/CART-UX.md](../docs/CART-UX.md), [../docs/BOOK-ENRICHMENT-WORKFLOW.md](../docs/BOOK-ENRICHMENT-WORKFLOW.md)
+- [../docs/launch.md](../docs/launch.md) — production readiness board
+- [../docs/staff-workflows.md](../docs/staff-workflows.md), [../docs/cart-checkout.md](../docs/cart-checkout.md), [../docs/book-operations.md](../docs/book-operations.md)

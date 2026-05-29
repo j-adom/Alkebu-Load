@@ -10,7 +10,8 @@
     "check:svelte": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
     "lint": "eslint .",
-    "sync:payment-provider": "node ./scripts/fetch-payment-provider.js"
+    "sync:payment-provider": "node ./scripts/fetch-payment-provider.js",
+    "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@ernane/svelte-star-rating": "^1.1.9",
