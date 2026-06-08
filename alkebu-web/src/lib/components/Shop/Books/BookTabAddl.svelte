@@ -7,7 +7,7 @@
         return s.charAt(0).toUpperCase() + s.slice(1)
     }
 
-    const pubDate = book.printDate ? dayjs(book.printDate).format('MMM DD YYYY') : ''
+    const pubDate = $derived(book.printDate ? dayjs(book.printDate).format('MMM DD YYYY') : '')
 </script>
 
     <ul class=" list-unstyled">

@@ -10,6 +10,7 @@
   import "../app.postcss";
   import { cart } from '$lib/stores/cart';
   import CartDrawer from '$lib/components/cart/CartDrawer.svelte';
+  import Toast from '$lib/components/ui/Toast.svelte';
   import type { LayoutData } from './$types';
 
   type Props = {
@@ -50,6 +51,7 @@
   <Footer />
 
   <CartDrawer />
+  <Toast />
 </div>
 
 <style>

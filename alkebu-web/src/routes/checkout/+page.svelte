@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { cart } from "$lib/stores/cart";
+  import { toast } from "$lib/stores/toast";
   import { formatCents } from "$lib/utils/currency";
   import Meta from "$lib/components/Meta.svelte";
   import { browser } from "$app/environment";
@@ -167,7 +168,9 @@
         return true;
       } else {
         const data = await response.json().catch(() => ({}));
-        previewError = data?.error || "Failed to refresh shipping and tax.";
+        const message = data?.error || "Failed to refresh shipping and tax.";
+        previewError = message;
+        toast.error(message);
         hasPreview = false;
         shippingOptions = [];
         selectedShippingRateId = "";
@@ -178,6 +181,7 @@
     } catch (err) {
       console.error("Failed to fetch checkout preview:", err);
       previewError = "Failed to refresh shipping and tax.";
+      toast.error("Failed to refresh shipping and tax.");
       hasPreview = false;
       shippingOptions = [];
       selectedShippingRateId = "";

@@ -128,9 +128,15 @@ h6 {
     line-height: 1em;
 }
 
+@media (max-width: 768px) {
+    .block-title h3 {
+        font-size: 50px;
+        line-height: 1.15;
+    }
+}
 @media (max-width: 425px) {
     .block-title h3 {
-        font-size: 45px;
+        font-size: 38px;
         line-height: 1.2;
     }
 }
@@ -7542,6 +7548,89 @@ h6 {
 }
 .all_products_single:hover h4 {
     color: var(--thm-primary);
+}
+/* Legacy product-card titles are a hard 30px; scale them down on phones so
+   titles don't wrap to 3+ lines (book cards now use the modern ProductCard). */
+@media (max-width: 640px) {
+    .all_products_single h4,
+    .all_products_single h2 {
+        font-size: 18px;
+        line-height: 22px;
+        margin-top: 14px;
+    }
+}
+
+/* --- Book cover: whole cover links to detail page; cart is a separate floating action --- */
+.all_product_item_image .cover-link {
+    display: block;
+    position: relative;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.cover-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(var(--thm-primary-rgb), 0.55);
+    opacity: 0;
+    transition: opacity 400ms ease;
+    pointer-events: none;
+}
+.all_products_single:hover .cover-overlay,
+.single:hover .cover-overlay {
+    opacity: 1;
+}
+.cover-cta {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translate(-50%, 10px);
+    padding: 8px 18px;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--thm-black);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-radius: 999px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 400ms ease, transform 400ms ease;
+    pointer-events: none;
+}
+.all_products_single:hover .cover-cta,
+.single:hover .cover-cta {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+/* Floating quick-add cart button — kente gold, always visible, scales on hover */
+.quick-cart {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
+}
+.quick-cart .cart-fab {
+    height: 48px;
+    width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--thm-base);
+    color: var(--thm-black);
+    border: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition: transform 250ms ease, background 250ms ease, color 250ms ease;
+}
+.quick-cart .cart-fab:hover:not(:disabled) {
+    background: var(--thm-primary);
+    color: #ffffff;
+    transform: scale(1.08);
+}
+.quick-cart .cart-fab:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 /*--------------------------------------------------------------
 # Product Detail

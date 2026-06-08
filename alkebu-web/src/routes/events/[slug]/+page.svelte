@@ -1,12 +1,35 @@
 <script lang="ts">
   import Meta from '$lib/components/Meta.svelte';
   import LexicalRenderer from '$lib/components/LexicalRenderer.svelte';
-  import { urlFor } from '$lib/payload';
+  import ProductCard from '$lib/components/Shop/ProductCard.svelte';
+  import { urlFor, getImageUrl } from '$lib/payload';
   import { formatDate } from '$lib/utils/date';
 
   let { data } = $props();
   const event = $derived(data.event || {});
   const relatedEvents = $derived(data.relatedEvents || []);
+
+  // Products featured at this event. Relationship fields are populated to full docs
+  // at depth>=1; when unpopulated they arrive as bare IDs (strings), so filter to objects.
+  const featuredProducts = $derived.by(() => {
+    const groups = [
+      { items: event.relatedBooks, productType: 'books', basePath: '/shop/books' },
+      { items: event.relatedWellnessProducts, productType: 'wellness-lifestyle', basePath: '/shop/health-and-beauty' },
+      { items: event.relatedFashionJewelry, productType: 'fashion-jewelry', basePath: '/shop/apparel' },
+      { items: event.relatedOilsIncense, productType: 'oils-incense', basePath: '/shop/home-goods' }
+    ] as const;
+    return groups.flatMap((g) =>
+      (Array.isArray(g.items) ? g.items : [])
+        .filter((p: any) => p && typeof p === 'object')
+        .map((p: any) => ({ product: p, productType: g.productType, basePath: g.basePath }))
+    );
+  });
+
+  const partnerBusinesses = $derived(
+    (Array.isArray(event.relatedBusinesses) ? event.relatedBusinesses : []).filter(
+      (b: any) => b && typeof b === 'object'
+    )
+  );
   const isPastEvent = $derived(Boolean(data.isPastEvent));
   const seo = $derived(data.seo);
 
@@ -56,14 +79,15 @@
 <Meta metadata={seo} />
 
 <!-- Page Header -->
-<section class="page-header" style="background-image: url({event.featuredImage?.url || '/assets/images/resources/page-header-bg.jpg'});">
-  <div class="container">
-    <h2>{event.title}</h2>
-    <ul class="flex items-center gap-2 text-sm text-white/80">
+<section class="page-header event-hero" style="background-image: url({event.featuredImage?.url || '/assets/images/resources/page-header-bg.jpg'});">
+  <div class="event-hero__scrim"></div>
+  <div class="container event-hero__content">
+    <ul class="event-hero__crumbs flex items-center gap-2 text-sm">
       <li><a href="/">Home</a></li>
+      <li aria-hidden="true">/</li>
       <li><a href="/events">Events</a></li>
-      <li><span>{event.title}</span></li>
     </ul>
+    <h2 class="event-hero__title">{event.title}</h2>
   </div>
 </section>
 
@@ -248,6 +272,79 @@
       </div>
     </div>
 
+    <!-- Featured Products at this event -->
+    {#if featuredProducts.length > 0}
+      <div class="mt-16">
+        <div class="block-title text-center mb-8">
+          <p>Shop the event</p>
+          <h3>Featured Products</h3>
+          <div class="leaf">
+            <img loading="lazy" src="/assets/images/resources/leaf.png" alt="">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {#each featuredProducts as entry (entry.productType + ':' + (entry.product.id ?? entry.product.slug))}
+            <ProductCard
+              product={entry.product}
+              productType={entry.productType}
+              basePath={entry.basePath}
+            />
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Partner Businesses -->
+    {#if partnerBusinesses.length > 0}
+      <div class="mt-16">
+        <div class="block-title text-center mb-8">
+          <p>In partnership with</p>
+          <h3>Event Partners</h3>
+          <div class="leaf">
+            <img loading="lazy" src="/assets/images/resources/leaf.png" alt="">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {#each partnerBusinesses as business (business.id ?? business.slug)}
+            {@const website = business.contact?.website}
+            <svelte:element
+              this={website ? 'a' : 'div'}
+              href={website || undefined}
+              target={website ? '_blank' : undefined}
+              rel={website ? 'noopener noreferrer' : undefined}
+              class="partner-card flex items-center gap-4 bg-white rounded-lg shadow-md p-4 {website ? 'hover:shadow-xl transition-shadow' : ''}"
+            >
+              {#if business.logo}
+                <img
+                  src={getImageUrl(business.logo, { fallback: '' })}
+                  alt={business.name}
+                  class="w-16 h-16 rounded-full object-cover flex-shrink-0 bg-muted"
+                  loading="lazy"
+                />
+              {:else}
+                <div class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                  {business.name?.charAt(0) || '?'}
+                </div>
+              {/if}
+              <div class="min-w-0">
+                <h4 class="font-bold text-foreground truncate">{business.name}</h4>
+                {#if business.category}
+                  <p class="text-sm text-primary capitalize">{business.category.replace(/-/g, ' ')}</p>
+                {/if}
+                {#if business.location}
+                  <p class="text-sm text-gray-600 truncate">
+                    <i class="far fa-map-marker-alt mr-1"></i>{business.location}
+                  </p>
+                {/if}
+              </div>
+            </svelte:element>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <!-- Related Events -->
     {#if relatedEvents && relatedEvents.length > 0}
       <div class="mt-16">
@@ -298,7 +395,51 @@
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Event hero: keep the flyer as background but guarantee the title is legible
+     by laying a strong bottom-up gradient scrim over the (often busy) artwork. */
+  .event-hero {
+    min-height: 440px;
+    display: flex;
+    align-items: flex-end;
+  }
+  .event-hero__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+      to top,
+      rgba(12, 10, 9, 0.94) 0%,
+      rgba(12, 10, 9, 0.7) 30%,
+      rgba(12, 10, 9, 0.25) 65%,
+      rgba(12, 10, 9, 0.05) 100%
+    );
+  }
+  .event-hero__content {
+    position: relative;
+    z-index: 2;
+    padding-bottom: 2.75rem;
+  }
+  .event-hero__crumbs {
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 0.85rem;
+  }
+  .event-hero__crumbs a:hover {
+    color: var(--thm-base, #ecdc5e);
+  }
+  /* Two classes (0,2,0) outrank the global `.page-header h2` (0,1,1),
+     so these overrides win without !important. */
+  .event-hero .event-hero__title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1.08;
+    padding-bottom: 0;
+    max-width: 60rem;
+    margin: 0 auto;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.65);
   }
 </style>

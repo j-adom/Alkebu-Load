@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BookCard from './BookCard.svelte';
+  import ProductCard from '$lib/components/Shop/ProductCard.svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { Search } from 'lucide-svelte';
@@ -177,6 +177,7 @@
                 <a
                   href={buildHref(pageNum)}
                   class:active={currentPage === pageNum}
+                  aria-label={`Go to page ${pageNum}`}
                   aria-current={currentPage === pageNum ? 'page' : undefined}
                   onclick={(event) => {
                     event.preventDefault();
@@ -201,11 +202,23 @@
         {/if}
 
         <div class="all_products">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {#each books as book}
-              <BookCard {book} />
-            {/each}
-          </div>
+          {#if books.length === 0}
+            <div class="flex flex-col items-center text-center py-16 px-4">
+              <i class="far fa-book-open text-5xl text-primary/40 mb-4" aria-hidden="true"></i>
+              <h3 class="text-xl font-bold text-foreground mb-2">No books found here</h3>
+              <p class="text-muted-foreground max-w-md mb-6">
+                We couldn't find any titles matching this selection. Try a different
+                category or filter, or browse the full catalog.
+              </p>
+              <a href="/shop/books" class="btn-primary">Browse all books</a>
+            </div>
+          {:else}
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {#each books as book}
+                <ProductCard product={book} productType="books" basePath="/shop/books" />
+              {/each}
+            </div>
+          {/if}
         </div>
 
         {#if totalPages > 1}
@@ -229,6 +242,7 @@
                 <a
                   href={buildHref(pageNum)}
                   class:active={currentPage === pageNum}
+                  aria-label={`Go to page ${pageNum}`}
                   aria-current={currentPage === pageNum ? 'page' : undefined}
                   onclick={(event) => {
                     event.preventDefault();

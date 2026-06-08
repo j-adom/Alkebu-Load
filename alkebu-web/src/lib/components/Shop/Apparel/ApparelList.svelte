@@ -53,7 +53,7 @@
     }
 </script>
     
-<div class="container w-full mx-12 px-12">
+<div class="container w-full mx-auto px-4 md:px-8 lg:px-12">
     <div class="flex flex-col md:flex-row gap-3">
         <div class="basis-1 md:basis-1/2 lg:basis-1/4">
             <div class="sidebar-wrapper style2">
@@ -126,11 +126,23 @@
                         </div>
                 </div>
         <div class="all_products">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {#each products as product}
-                    <ApparelCard {product} />
-                {/each}
-            </div>
+            {#if products.length === 0}
+                <div class="flex flex-col items-center text-center py-16 px-4">
+                    <i class="far fa-shirt text-5xl text-primary/40 mb-4" aria-hidden="true"></i>
+                    <h3 class="text-xl font-bold text-foreground mb-2">Nothing here yet</h3>
+                    <p class="text-muted-foreground max-w-md mb-6">
+                        We couldn't find any items matching this selection. Try a
+                        different category or browse the full apparel &amp; jewelry collection.
+                    </p>
+                    <a href="/shop/apparel" class="btn-primary">Browse all apparel</a>
+                </div>
+            {:else}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {#each products as product}
+                        <ApparelCard {product} />
+                    {/each}
+                </div>
+            {/if}
         </div>
         {#if prodCount >= perPage}
             <nav aria-label="Page navigation example">

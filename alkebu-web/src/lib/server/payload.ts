@@ -201,6 +201,12 @@ export interface Event extends PayloadDoc {
     accessInstructions?: string;
   } | string;
   featuredImage?: Media;
+  // Related content (populated with depth>=1). Each is the relevant product/business doc.
+  relatedBooks?: any[];
+  relatedWellnessProducts?: any[];
+  relatedFashionJewelry?: any[];
+  relatedOilsIncense?: any[];
+  relatedBusinesses?: Business[];
   capacity?: number;
   registrationRequired?: boolean;
   registrationUrl?: string;

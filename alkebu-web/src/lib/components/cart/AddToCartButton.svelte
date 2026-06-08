@@ -1,6 +1,7 @@
 <script lang="ts">
   import { cart } from '$lib/stores/cart';
   import { cartDrawer } from '$lib/stores/cartDrawer';
+  import { toast } from '$lib/stores/toast';
   import { ShoppingCart, Check, Loader2 } from 'lucide-svelte';
 
   type Customization = Record<string, unknown> | undefined;
@@ -63,6 +64,7 @@
     if (!result.success) {
       const message = result.error || 'Unable to add item to cart';
       errorMessage = message;
+      toast.error(message);
       onerror?.({ message });
       return;
     }
@@ -116,6 +118,6 @@
   {/if}
 </button>
 
-{#if errorMessage}
+{#if errorMessage && !iconOnly}
   <p class="mt-2 text-sm text-destructive animate-fade-in">{errorMessage}</p>
 {/if}

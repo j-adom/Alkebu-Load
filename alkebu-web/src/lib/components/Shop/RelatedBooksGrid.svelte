@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BookCard from './Books/BookCard.svelte';
+  import ProductCard from './ProductCard.svelte';
   import * as Carousel from '$lib/components/ui/carousel';
 
   interface Props {
@@ -40,7 +40,7 @@
             <Carousel.Content class="-ml-2 md:-ml-4">
               {#each books as book (book.id)}
                 <Carousel.Item class="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-                  <BookCard {book} />
+                  <ProductCard product={book} productType="books" basePath="/shop/books" />
                 </Carousel.Item>
               {/each}
             </Carousel.Content>
@@ -58,7 +58,7 @@
         <!-- Grid for 4 or fewer items -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {#each books as book (book.id)}
-            <BookCard {book} />
+            <ProductCard product={book} productType="books" basePath="/shop/books" />
           {/each}
         </div>
       {/if}

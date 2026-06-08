@@ -179,7 +179,7 @@
 			
 			<!-- Right Side Actions -->
 			<div class="flex items-center gap-2">
-				<form action="/search" method="GET" class="hidden xl:block">
+				<form action="/search" method="GET" class="hidden lg:block">
 					<label class="relative block">
 						<span class="sr-only">Search the store</span>
 						<Search class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -188,7 +188,7 @@
 							name="q"
 							bind:value={desktopSearchQuery}
 							placeholder="Search books and products"
-							class="h-11 w-72 rounded-full border border-border bg-background pl-10 pr-4 text-sm text-foreground outline-none transition-colors focus:border-primary"
+							class="h-11 w-44 xl:w-72 rounded-full border border-border bg-background pl-10 pr-4 text-sm text-foreground outline-none transition-colors focus:border-primary"
 						/>
 					</label>
 				</form>

@@ -1,5 +1,6 @@
 <script>
   import { Facebook, Twitter, Instagram, MapPin, Mail, Phone, Send, ArrowRight } from 'lucide-svelte';
+  import { toast } from '$lib/stores/toast';
 
   let email = $state('');
   let isSubmitting = $state(false);
@@ -7,13 +8,27 @@
 
   async function handleNewsletterSubmit(e) {
     e.preventDefault();
-    if (!email) return;
-    
+    if (!email || isSubmitting) return;
+
     isSubmitting = true;
-    // TODO: Implement actual newsletter signup
-    await new Promise(r => setTimeout(r, 1000));
-    submitted = true;
-    isSubmitting = false;
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data?.success) {
+        submitted = true;
+      } else {
+        toast.error(data?.error || 'Could not complete signup. Please try again later.');
+      }
+    } catch {
+      toast.error('Could not complete signup. Please try again later.');
+    } finally {
+      isSubmitting = false;
+    }
   }
 </script>
 

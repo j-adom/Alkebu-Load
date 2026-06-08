@@ -1,5 +1,5 @@
 <script>
-	import CarouselCard from './CarouselCard.svelte'	
+	import ProductCard from '$lib/components/Shop/ProductCard.svelte'
 	import * as Card from "$lib/components/ui/card/index.js"
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte'
     import * as Carousel from '$lib/components/ui/carousel/carousel.svelte';
@@ -25,7 +25,7 @@
 		return array;
 	}
 	
-	let shuffledBooks = shuffle(books).slice(0,11)
+	let shuffledBooks = $derived(shuffle([...books]).slice(0, 11))
 </script>
 
 <style>
@@ -50,39 +50,11 @@
   <Carousel.Content>
     {#each shuffledBooks as book}
         <Carousel.Item class="md:basis-1/3 lg:basis-1/4">
-            <CarouselCard {book} />
-		</Carousel.Item>	
+            <ProductCard product={book} productType="books" basePath="/shop/books" />
+		</Carousel.Item>
     {/each}
   </Carousel.Content>
   <Carousel.Previous />
   <Carousel.Next />
 </Carousel.Root>
 </client:only>
-<!-- 
-<Carousel perPage={{ 1000: 4, 800: 3, 500: 2 }}>
-    <span class="control" slot="left-control">
-        <ChevronLeft />
-    </span>
-    {#each shuffledBooks as book}
-        <div class="slide-content">
-            <CarouselCard {book} />
-        </div>	
-    {/each}
-    <span class="control" slot="right-control">
-        <ChevronRight />
-    </span>
-</Carousel> -->
-
-<!-- <div class="embla" use:Carousel>
-	<div class="embla__container">
-		<div class="embla__viewport">
-			{#each shuffledBooks as book}
-				<div class="embla__slide">
-					<CarouselCard {book} />
-				</div>	
-			{/each}
-		</div>
-		<button class="embla__prev">Prev</button>
-		<button class="embla__next">Next</button>
-	</div>
-  </div> -->

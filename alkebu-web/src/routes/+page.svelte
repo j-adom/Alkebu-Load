@@ -11,9 +11,7 @@
 		Home as HomeIcon,
 	} from "lucide-svelte";
 
-	import BookCover from "$lib/components/Shop/Books/BookCover.svelte";
-	import BookPurchaseAction from "$lib/components/Shop/Books/BookPurchaseAction.svelte";
-	import { formatCurrency } from "$lib/utils/currency";
+	import ProductCard from "$lib/components/Shop/ProductCard.svelte";
 	import { PUBLIC_SITE_URL } from "$env/static/public";
 
 	import Meta from "$lib/components/Meta.svelte";
@@ -399,77 +397,8 @@
 			<div class="w-20 h-1 bg-primary mx-auto"></div>
 		</div>
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-			{#each featured as book, index}
-				{#if index < 8}
-					{@const primaryEdition =
-						book.editions?.find((e) => e.isPrimary) ||
-						book.editions?.[0] ||
-						{}}
-					{@const bookBinding = primaryEdition?.binding || ""}
-					{@const bookPriceCents =
-						primaryEdition?.pricing?.retailPrice ??
-						book.pricing?.retailPrice ??
-						0}
-					{@const bookImage =
-						book.images?.[0]?.image || book.images?.[0] ||
-						(book.scrapedImageUrls?.[0]?.url ? { url: book.scrapedImageUrls[0].url } : null)}
-					{@const bookIsbn =
-						primaryEdition?.isbn ||
-						primaryEdition?.isbn13 ||
-						book.id}
-					<a href="/shop/books/{book.slug}/{bookIsbn}/" class="group">
-						<div class="card-modern overflow-hidden h-full">
-							<div
-								class="relative aspect-[3/4] overflow-hidden bg-muted"
-							>
-								{#if bookImage}
-									<img
-										loading="lazy"
-										width="300"
-										height="400"
-										src={urlFor(bookImage)
-											.fit("fill")
-											.auto("format")
-											.url()}
-										alt={book.title}
-										class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-									/>
-								{:else}
-									<BookCover
-										title={book.title}
-										subtitle={book.subtitle}
-									/>
-								{/if}
-								<div
-									class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-								>
-									<div
-										class="absolute bottom-4 left-0 right-0 flex justify-center"
-									>
-										<BookPurchaseAction
-											book={book}
-											className="btn-primary btn-sm"
-											iconOnly={true}
-											label={`Add ${book.title} to cart`}
-										/>
-									</div>
-								</div>
-							</div>
-							<div class="p-4 text-center">
-								<h3
-									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
-								>
-									{book.title}{bookBinding
-										? ` (${bookBinding})`
-										: ""}
-								</h3>
-								<p class="text-lg font-bold text-primary-strong">
-									{formatCurrency(bookPriceCents / 100)}
-								</p>
-							</div>
-						</div>
-					</a>
-				{/if}
+			{#each featured.slice(0, 8) as book (book.id)}
+				<ProductCard product={book} productType="books" basePath="/shop/books" />
 			{/each}
 		</div>
 	</div>
@@ -490,77 +419,8 @@
 			<div class="w-20 h-1 bg-primary mx-auto"></div>
 		</div>
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-			{#each newBooks as book, index}
-				{#if index < 8}
-					{@const primaryEdition =
-						book.editions?.find((e) => e.isPrimary) ||
-						book.editions?.[0] ||
-						{}}
-					{@const bookBinding = primaryEdition?.binding || ""}
-					{@const bookPriceCents =
-						primaryEdition?.pricing?.retailPrice ??
-						book.pricing?.retailPrice ??
-						0}
-					{@const bookImage =
-						book.images?.[0]?.image || book.images?.[0] ||
-						(book.scrapedImageUrls?.[0]?.url ? { url: book.scrapedImageUrls[0].url } : null)}
-					{@const bookIsbn =
-						primaryEdition?.isbn ||
-						primaryEdition?.isbn13 ||
-						book.id}
-					<a href="/shop/books/{book.slug}/{bookIsbn}/" class="group">
-						<div class="card-modern overflow-hidden h-full">
-							<div
-								class="relative aspect-[3/4] overflow-hidden bg-muted"
-							>
-								{#if bookImage}
-									<img
-										loading="lazy"
-										width="300"
-										height="400"
-										src={urlFor(bookImage)
-											.fit("fill")
-											.auto("format")
-											.url()}
-										alt={book.title}
-										class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-									/>
-								{:else}
-									<BookCover
-										title={book.title}
-										subtitle={book.subtitle}
-									/>
-								{/if}
-								<div
-									class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-								>
-									<div
-										class="absolute bottom-4 left-0 right-0 flex justify-center"
-									>
-										<BookPurchaseAction
-											book={book}
-											className="btn-primary btn-sm"
-											iconOnly={true}
-											label={`Add ${book.title} to cart`}
-										/>
-									</div>
-								</div>
-							</div>
-							<div class="p-4 text-center">
-								<h3
-									class="font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-2"
-								>
-									{book.title}{bookBinding
-										? ` (${bookBinding})`
-										: ""}
-								</h3>
-								<p class="text-lg font-bold text-primary-strong">
-									{formatCurrency(bookPriceCents / 100)}
-								</p>
-							</div>
-						</div>
-					</a>
-				{/if}
+			{#each newBooks.slice(0, 8) as book (book.id)}
+				<ProductCard product={book} productType="books" basePath="/shop/books" />
 			{/each}
 		</div>
 	</div>

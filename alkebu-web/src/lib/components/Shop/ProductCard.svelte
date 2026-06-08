@@ -1,94 +1,32 @@
 <script lang="ts">
   import AddToCartButton from "$lib/components/cart/AddToCartButton.svelte";
-  import { formatCurrency } from "$lib/utils/currency";
+  import BookPurchaseAction from "$lib/components/Shop/Books/BookPurchaseAction.svelte";
+  import CoverFallback from "$lib/components/Shop/CoverFallback.svelte";
   import { getImageUrl } from "$lib/payload";
-  import { ShoppingCart, Eye } from "lucide-svelte";
+  import { normalizeProduct, type ProductType } from "$lib/utils/productCard";
 
   interface Props {
     product: any;
-    productType:
-      | "books"
-      | "wellness-lifestyle"
-      | "fashion-jewelry"
-      | "oils-incense";
+    productType: ProductType;
     basePath?: string;
     loading?: boolean;
   }
 
   let { product, productType, basePath, loading = false }: Props = $props();
 
-  // Determine the display name based on product type
-  const productName = $derived(
-    product?.name || product?.title || "Unknown Product",
-  );
+  const norm = $derived(normalizeProduct(product, productType, basePath));
+  const coverUrl = $derived(getImageUrl(norm.imageSource, { fallback: "" }));
+  // Clean title (without the "(Paperback)" suffix norm.name carries) for the
+  // branded fallback plate.
+  const plateTitle = $derived(product?.title || product?.name || norm.name);
 
-  // Get price - handle different price structures
-  const priceCents = $derived(
-    product?.pricing?.retailPrice ??
-      product?.editions?.[0]?.pricing?.retailPrice ??
-      product?.price ??
-      0,
-  );
-  const price = $derived((priceCents || 0) / 100);
-
-  // Get compare price for sale display
-  const comparePriceCents = $derived(
-    product?.pricing?.comparePrice ??
-      product?.editions?.[0]?.pricing?.comparePrice ??
-      0,
-  );
-  const comparePrice = $derived((comparePriceCents || 0) / 100);
-  const isOnSale = $derived(comparePrice > price && comparePrice > 0);
-
-  // Get image
-  const imageSource = $derived(
-    product?.images?.[0]?.image ||
-      product?.images?.[0] ||
-      (product?.scrapedImageUrls?.[0]?.url
-        ? { url: product.scrapedImageUrls[0].url }
-        : null),
-  );
-
-  const productId = $derived(product?.id || product?._id);
-
-  // Build the product path
-  const slug = $derived(
-    !product?.slug
-      ? ""
-      : typeof product.slug === "string"
-        ? product.slug
-        : product.slug?.current || "",
-  );
-
-  const productPath = $derived(
-    !slug ? basePath || "/shop" : `${basePath || "/shop"}/${slug}`,
-  );
-
-  const coverUrl = $derived(
-    getImageUrl(imageSource, {
-      fallback: "/assets/images/resources/placeholder-product.jpg",
-    }),
-  );
-
-  // Get subtitle based on product type
-  const subtitle = $derived(
-    productType === "books" && product?.authors?.length
-      ? "by " + product.authors.map((a: any) => a.name || a).join(", ")
-      : productType === "fashion-jewelry" && product?.brand
-        ? product.brand.name || product.brand
-        : product?.category || "",
-  );
-
-  // Check stock status
-  const inStock = $derived(product?.inventory?.inStock !== false);
+  let imageError = $state(false);
+  const showImage = $derived(Boolean(norm.imageSource) && Boolean(coverUrl) && !imageError);
 </script>
 
 {#if loading}
-  <!-- Loading Skeleton -->
-  <div
-    class="bg-card rounded-2xl border border-border/50 overflow-hidden animate-pulse"
-  >
-    <div class="aspect-[3/4] w-full bg-muted"></div>
+  <div class="bg-card rounded-2xl border border-border/50 overflow-hidden animate-pulse">
+    <div class="aspect-[2/3] w-full bg-muted"></div>
     <div class="p-4 space-y-3">
       <div class="h-5 bg-muted rounded w-3/4"></div>
       <div class="h-4 bg-muted rounded w-1/2"></div>
@@ -96,88 +34,97 @@
     </div>
   </div>
 {:else}
-  <!-- Product Card with group class for hover effects -->
   <div
-    class="group bg-card rounded-2xl border border-border/50 overflow-hidden shadow-soft transition-all duration-300 hover:shadow-medium hover:-translate-y-1"
+    class="group bg-card rounded-2xl border border-border/50 overflow-hidden shadow-soft transition-all duration-300 hover:shadow-medium hover:-translate-y-1 h-full flex flex-col"
   >
-    <!-- Image Container -->
-    <div class="relative aspect-[3/4] w-full overflow-hidden bg-muted">
-      <a href={productPath} class="block w-full h-full">
-        <img
-          src={coverUrl}
-          alt={productName}
-          loading="lazy"
-          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+    <!-- Cover: the whole image is a link to the detail page -->
+    <div class="relative {norm.aspectClass} w-full overflow-hidden bg-muted">
+      <a href={norm.href} class="block w-full h-full" aria-label="View {norm.name}">
+        {#if showImage}
+          <img
+            src={coverUrl}
+            alt={norm.name}
+            loading="lazy"
+            onerror={() => (imageError = true)}
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        {:else}
+          <CoverFallback title={plateTitle} subtitle={norm.subtitle} />
+        {/if}
+        <!-- Hover wash + hint reinforce that the cover is clickable -->
+        <span
+          class="absolute inset-0 bg-primary/45 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          aria-hidden="true"
+        ></span>
+        <span
+          class="absolute bottom-4 left-1/2 -translate-x-1/2 translate-y-2 group-hover:translate-y-0
+                 opacity-0 group-hover:opacity-100 transition-all duration-300
+                 bg-white/95 text-foreground text-xs font-bold uppercase tracking-wide
+                 px-4 py-2 rounded-full whitespace-nowrap"
+          aria-hidden="true"
+        >
+          View details
+        </span>
       </a>
 
-      <!-- Sale Badge -->
-      {#if isOnSale}
-        <div
-          class="absolute top-3 left-3 bg-secondary text-secondary-foreground px-3 py-1 text-xs font-medium rounded-full"
-        >
+      <!-- Sale / stock badges -->
+      {#if norm.comparePriceLabel}
+        <div class="absolute top-3 left-3 bg-secondary text-secondary-foreground px-3 py-1 text-xs font-medium rounded-full">
           Sale
         </div>
       {/if}
-
-      <!-- Stock Badge -->
-      {#if !inStock}
-        <div
-          class="absolute top-3 right-3 bg-muted/90 text-muted-foreground px-3 py-1 text-xs font-medium rounded-full"
-        >
-          Out of Stock
+      {#if !norm.inStock}
+        <div class="absolute top-3 left-3 bg-muted/90 text-muted-foreground px-3 py-1 text-xs font-medium rounded-full">
+          Out of stock
         </div>
       {/if}
 
-      <!-- Quick Add Button - Clean floating button design -->
-      {#if inStock}
-        <div
-          class="absolute bottom-0 left-0 right-0 p-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
-        >
-          <div class="flex gap-2">
-            <AddToCartButton
-              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg transition-all hover:shadow-glow"
-              {productId}
-              {productType}
-              iconOnly={false}
-              label="Add to Cart"
+      <!-- Quick action: gold cart FAB (direct add) or "Select options" for variants -->
+      {#if norm.canAddDirectly}
+        <div class="quick-cart">
+          {#if productType === "books"}
+            <BookPurchaseAction
+              book={product}
+              className="cart-fab"
+              iconOnly={true}
+              label={`Add ${norm.name} to cart`}
             />
-            <a
-              href={productPath}
-              class="bg-white/95 hover:bg-white text-foreground p-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center"
-              aria-label="View {productName}"
-            >
-              <Eye size={18} />
-            </a>
-          </div>
+          {:else}
+            <AddToCartButton
+              productId={norm.productId}
+              {productType}
+              className="cart-fab"
+              iconOnly={true}
+              label={`Add ${norm.name} to cart`}
+            />
+          {/if}
         </div>
+      {:else}
+        <a
+          href={norm.href}
+          class="absolute top-3 right-3 z-10 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+        >
+          Select options
+        </a>
       {/if}
     </div>
 
     <!-- Content -->
-    <div class="p-4">
-      <a href={productPath} class="block group/title">
-        <h3
-          class="font-semibold text-foreground line-clamp-2 transition-colors duration-200 group-hover/title:text-primary"
-        >
-          {productName}
+    <div class="p-4 flex flex-col flex-1">
+      <a href={norm.href} class="block group/title">
+        <h3 class="font-semibold text-foreground line-clamp-2 transition-colors duration-200 group-hover/title:text-primary">
+          {norm.name}
         </h3>
       </a>
 
-      {#if subtitle}
-        <p class="text-sm text-muted-foreground line-clamp-1 mt-1">
-          {subtitle}
-        </p>
+      {#if norm.subtitle}
+        <p class="text-sm text-muted-foreground line-clamp-1 mt-1">{norm.subtitle}</p>
       {/if}
 
       <div class="flex items-center gap-2 mt-2">
-        <span class="text-lg font-bold text-primary">
-          {formatCurrency(price)}
-        </span>
-        {#if isOnSale}
-          <span class="text-sm text-muted-foreground line-through">
-            {formatCurrency(comparePrice)}
-          </span>
+        <span class="text-lg font-bold text-primary">{norm.priceLabel}</span>
+        {#if norm.comparePriceLabel}
+          <span class="text-sm text-muted-foreground line-through">{norm.comparePriceLabel}</span>
         {/if}
       </div>
     </div>
