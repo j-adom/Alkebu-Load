@@ -308,7 +308,8 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {#each partnerBusinesses as business (business.id ?? business.slug)}
-            {@const website = business.contact?.website}
+            {@const rawWebsite = business.contact?.website}
+            {@const website = rawWebsite && /^https?:\/\//i.test(rawWebsite.trim()) ? rawWebsite.trim() : null}
             <svelte:element
               this={website ? 'a' : 'div'}
               href={website || undefined}
