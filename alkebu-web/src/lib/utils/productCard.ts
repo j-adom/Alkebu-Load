@@ -67,9 +67,9 @@ export function normalizeProduct(
   let compareCents = 0;
   let href = slug ? `${base}/${slug}` : base;
   let aspectClass = 'aspect-[3/4]';
-  // Variant-bearing types need a detail-page selection before purchase; for now
-  // all migrated types add directly (the variant fork lands with apparel).
-  const canAddDirectly = inStock;
+  // Apparel/jewelry pick a size/variant on the detail page, so the grid card
+  // sends shoppers there ("Select options") rather than quick-adding.
+  const canAddDirectly = inStock && productType !== 'fashion-jewelry';
 
   if (productType === 'books') {
     const primaryEdition =

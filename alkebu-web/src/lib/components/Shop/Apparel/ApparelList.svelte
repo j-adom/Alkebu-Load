@@ -1,5 +1,5 @@
 <script>
-    import ApparelCard from './ApparelCard.svelte'
+    import ProductCard from '$lib/components/Shop/ProductCard.svelte'
     import Pagination from '$lib/components/Pagination.svelte'
     import Select from 'svelte-select'
     import { page } from '$app/stores';
@@ -134,7 +134,7 @@
             {:else}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {#each products as product}
-                        <ApparelCard {product} />
+                        <ProductCard product={product} productType="fashion-jewelry" basePath="/shop/apparel" />
                     {/each}
                 </div>
             {/if}

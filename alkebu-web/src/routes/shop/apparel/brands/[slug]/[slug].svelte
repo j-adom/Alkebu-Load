@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import PayloadImage from '$lib/components/PayloadImage.svelte';
-    import ApparelCard from '$lib/components/Shop/Apparel/ApparelCard.svelte';
+    import ProductCard from '$lib/components/Shop/ProductCard.svelte';
     import { Search } from 'lucide-svelte';
 
     let { data } = $props();
@@ -107,7 +107,7 @@
             <div class="row">
                 {#each products as product}
                     <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                        <ApparelCard {product} />
+                        <ProductCard product={product} productType="fashion-jewelry" basePath="/shop/apparel" />
                     </div>
                 {/each}
             </div>

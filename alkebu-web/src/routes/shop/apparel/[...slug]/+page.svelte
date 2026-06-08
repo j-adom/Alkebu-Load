@@ -2,7 +2,7 @@
   import Meta from '$lib/components/Meta.svelte';
   import PayloadImage from '$lib/components/PayloadImage.svelte';
   import AddToCartButton from '$lib/components/cart/AddToCartButton.svelte';
-  import ApparelCard from '$lib/components/Shop/Apparel/ApparelCard.svelte';
+  import ProductCard from '$lib/components/Shop/ProductCard.svelte';
   import { formatCurrency } from '$lib/utils/currency';
   import { getImageUrl } from '$lib/payload';
 
@@ -325,7 +325,7 @@
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {#each relatedProducts as product}
-          <ApparelCard {product} />
+          <ProductCard product={product} productType="fashion-jewelry" basePath="/shop/apparel" />
         {/each}
       </div>
     </div>
