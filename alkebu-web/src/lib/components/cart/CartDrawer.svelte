@@ -11,9 +11,32 @@
   let actionError = $state<string | null>(null);
   let isClearing = $state(false);
   let isOpen = $state(false);
+  let drawerEl = $state<HTMLElement | null>(null);
+  let lastFocused: HTMLElement | null = null;
 
   const isCartEmpty = $derived(cartState.itemCount === 0);
   const hasEstimatedTotals = $derived(Boolean(cartState.hasEstimatedTotals));
+
+  function getFocusable(container: HTMLElement): HTMLElement[] {
+    return Array.from(
+      container.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((node) => node.offsetParent !== null);
+  }
+
+  // Move focus into the drawer when it opens; restore it to the trigger on close.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    if (isOpen && drawerEl) {
+      lastFocused = document.activeElement as HTMLElement;
+      const focusables = getFocusable(drawerEl);
+      (focusables[0] ?? drawerEl).focus();
+    } else if (!isOpen && lastFocused) {
+      lastFocused.focus();
+      lastFocused = null;
+    }
+  });
 
   $effect(() => {
     const unsubscribe = cart.subscribe((value) => {
@@ -42,6 +65,28 @@
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         cartDrawer.close();
+        return;
+      }
+      // Trap Tab focus inside the drawer while it's open.
+      if (event.key === 'Tab' && isOpen && drawerEl) {
+        const focusables = getFocusable(drawerEl);
+        if (focusables.length === 0) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (!drawerEl.contains(active)) {
+          event.preventDefault();
+          first.focus();
+        } else if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
 
@@ -81,7 +126,9 @@
 ></div>
 
 <div
+  bind:this={drawerEl}
   class={`cart-drawer ${isOpen ? 'open' : ''}`}
+  inert={!isOpen}
   aria-hidden={!isOpen}
   aria-modal="true"
   role="dialog"
