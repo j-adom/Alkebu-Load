@@ -1,5 +1,6 @@
 <script lang="ts">
   import ProductCard from '$lib/components/Shop/ProductCard.svelte';
+  import Pagination from '$lib/components/Pagination.svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { Search } from 'lucide-svelte';
@@ -36,25 +37,6 @@
 
   const startIdx = $derived(Math.min((currentPage - 1) * pageSize + 1, Math.max(totalDocs, 1)));
   const endIdx = $derived(Math.min(currentPage * pageSize, totalDocs));
-
-  const pageNumbers = $derived.by(() => {
-    // Build a pagination list with first/last, neighbors, and ellipses
-    const pages: Array<number | 'ellipsis'> = [];
-    const neighbors = 2;
-
-    pages.push(1);
-    const start = Math.max(2, currentPage - neighbors);
-    const end = Math.min(totalPages - 1, currentPage + neighbors);
-
-    if (start > 2) pages.push('ellipsis');
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    if (end < totalPages - 1) pages.push('ellipsis');
-
-    if (totalPages > 1) pages.push(totalPages);
-    return pages;
-  });
 
   const buildHref = (targetPage: number) => {
     const params = new URLSearchParams($page.url.searchParams);
@@ -156,51 +138,6 @@
           </div>
         </div>
 
-        {#if totalPages > 1}
-          <nav aria-label="Page navigation" class="post-pagination mb-6">
-            {#if currentPage > 1}
-              <a
-                href={buildHref(currentPage - 1)}
-                class="prev-link"
-                aria-label="Previous page"
-                onclick={(event) => {
-                  event.preventDefault();
-                  navigate(currentPage - 1);
-                }}
-              ><i class="fa fa-angle-left" aria-hidden="true"></i></a>
-            {/if}
-
-            {#each pageNumbers as pageNum}
-              {#if pageNum === 'ellipsis'}
-                <span class="ellipsis">...</span>
-              {:else}
-                <a
-                  href={buildHref(pageNum)}
-                  class:active={currentPage === pageNum}
-                  aria-label={`Go to page ${pageNum}`}
-                  aria-current={currentPage === pageNum ? 'page' : undefined}
-                  onclick={(event) => {
-                    event.preventDefault();
-                    navigate(pageNum);
-                  }}
-                >{pageNum}</a>
-              {/if}
-            {/each}
-
-            {#if currentPage < totalPages}
-              <a
-                href={buildHref(currentPage + 1)}
-                class="next-link"
-                aria-label="Next page"
-                onclick={(event) => {
-                  event.preventDefault();
-                  navigate(currentPage + 1);
-                }}
-              ><i class="fa fa-angle-right" aria-hidden="true"></i></a>
-            {/if}
-          </nav>
-        {/if}
-
         <div class="all_products">
           {#if books.length === 0}
             <div class="flex flex-col items-center text-center py-16 px-4">
@@ -221,102 +158,8 @@
           {/if}
         </div>
 
-        {#if totalPages > 1}
-          <nav aria-label="Page navigation" class="post-pagination mt-8">
-            {#if currentPage > 1}
-              <a
-                href={buildHref(currentPage - 1)}
-                class="prev-link"
-                aria-label="Previous page"
-                onclick={(event) => {
-                  event.preventDefault();
-                  navigate(currentPage - 1);
-                }}
-              ><i class="fa fa-angle-left" aria-hidden="true"></i></a>
-            {/if}
-
-            {#each pageNumbers as pageNum}
-              {#if pageNum === 'ellipsis'}
-                <span class="ellipsis">...</span>
-              {:else}
-                <a
-                  href={buildHref(pageNum)}
-                  class:active={currentPage === pageNum}
-                  aria-label={`Go to page ${pageNum}`}
-                  aria-current={currentPage === pageNum ? 'page' : undefined}
-                  onclick={(event) => {
-                    event.preventDefault();
-                    navigate(pageNum);
-                  }}
-                >{pageNum}</a>
-              {/if}
-            {/each}
-
-            {#if currentPage < totalPages}
-              <a
-                href={buildHref(currentPage + 1)}
-                class="next-link"
-                aria-label="Next page"
-                onclick={(event) => {
-                  event.preventDefault();
-                  navigate(currentPage + 1);
-                }}
-              ><i class="fa fa-angle-right" aria-hidden="true"></i></a>
-            {/if}
-          </nav>
-        {/if}
+        <Pagination {currentPage} {totalPages} {buildHref} onnavigate={navigate} />
       </div>
     </div>
   </div>
 </div>
-
-<style>
-  .post-pagination {
-    display: flex;
-    justify-content: right;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 5
-    px;
-  }
-
-  .post-pagination a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 40px;
-    height: 40px;
-    padding: 0 10px;
-    background-color: hsl(var(--muted));
-    color: #9ca3a9;
-    font-size: 16px;
-    font-weight: 500;
-    border-radius: 50px;
-    text-decoration: none;
-    transition: all 0.4s ease;
-  }
-
-  .post-pagination a:hover {
-    background-color: hsl(var(--primary));
-    color: #fff;
-  }
-
-  .post-pagination a.active {
-    background-color: hsl(var(--secondary));
-    color: #fff;
-    cursor: default;
-    pointer-events: none;
-  }
-
-  .post-pagination .prev-link,
-  .post-pagination .next-link {
-    border-radius: 50px;
-    padding: 0 20px;
-  }
-
-  .post-pagination .ellipsis {
-    color: #9ca3a9;
-    font-size: 16px;
-    padding: 0 5px;
-  }
-</style>

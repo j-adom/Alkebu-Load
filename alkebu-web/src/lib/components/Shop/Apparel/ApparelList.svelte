@@ -1,5 +1,6 @@
 <script>
     import ApparelCard from './ApparelCard.svelte'
+    import Pagination from '$lib/components/Pagination.svelte'
     import Select from 'svelte-select'
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
@@ -29,12 +30,6 @@
         sort = $bindable(),
         perPage = 12
     } = $props();
-    const numArray = [1,2,3,4,5]
-    let range = $derived(pageCount < 6 ? [...Array(pageCount).keys()].map(i=>i+1)
-                :currentPage < 3 ? numArray.map(num => num += 1)
-                : currentPage > (pageCount - 3) ? numArray.map(num => (pageCount - 6) + num ) 
-                : numArray.map(num => num += (currentPage -3 ))) 
-
     let sortQuery = sort.length ? `sort=${sort}&` : ''
     let sortElements = [
         {value: 'name', label: 'Title A-Z'},
@@ -144,56 +139,17 @@
                 </div>
             {/if}
         </div>
-        {#if prodCount >= perPage}
-            <nav aria-label="Page navigation example">
-                <ul class="flex justify-end rounded-sm list-none">
-                    <li class="page-item" class:d-none="{currentPage <= 1}">
-                        <a rel=prefetch class="page-link" href="{$page.url.pathname}?{sortQuery}p={currentPage - 1}#productList" tabindex="-1">Previous</a>
-                    </li>
-                    {#if pageCount > 6} 
-                        <li class="page-item" class:disabled="{currentPage === 1}">
-                            <a rel=prefetch class="page-link" href="{$page.url.pathname}?{sortQuery}p=1#productList" tabindex="-1">1</a>
-                        </li> 
-                        {#if range[0] > 2}
-                            <p>...</p>
-                        {/if}  
-                    {/if}
-                    {#each range as pageNum}
-                            <li class="page-item" class:disabled="{currentPage === pageNum}">
-                                <a rel=prefetch class="page-link" href="{$page.url.pathname}?{sortQuery}p={pageNum}#productList">
-                                    {pageNum}
-                                </a>
-                            </li>
-                    {/each}
-                    {#if pageCount > 6}
-                        {#if range[4] < (pageCount -1)}
-                            <p>...</p>
-                        {/if}  
-                        <li class="page-item" class:disabled="{currentPage === pageCount}">
-                            <a rel=prefetch class="page-link" href="{$page.url.pathname}?{sortQuery}p={pageCount}#productList" tabindex="-1">{pageCount}</a>
-                        </li>
-                    {/if}
-                    <li class="page-item" class:d-none="{currentPage == pageCount}">
-                        <a rel=prefetch class="page-link" href="{$page.url.pathname}?{sortQuery}p={currentPage + 1}#productList">Next</a>
-                    </li>
-                </ul>
-            </nav>
-        {/if}
+        <Pagination
+            currentPage={Number(currentPage)}
+            totalPages={Number(pageCount)}
+            buildHref={(p) => `${$page.url.pathname}?${sortQuery}p=${p}#productList`}
+        />
     </div>
 </div>
 </div> 
 </div>
 
 <style>
-    
-    .page-link {
-        color: hsl(var(--primary))
-    }
-    .disabled a, .page-link:hover{
-        background-color: hsl(var(--primary));
-        color: hsl(var(--muted))
-        
-    }
     .dropdown{
         padding-top: 10px; 
         --indicatorTop: 2px;
