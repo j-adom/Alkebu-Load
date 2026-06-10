@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { enrichProductFromIdentifiers } from '../../../utils/productEnrichment'
@@ -8,6 +9,7 @@ import { createOrFindPublisher, updatePublisherMetadata } from '../../../utils/p
 import { createOrFindVendor, updateVendorMetadata } from '../../../utils/vendorManager'
 import { extractAndCreateVendor } from '../../../utils/squareVendorExtractor'
 import { getSquareWebhookUrl, isValidSquareWebhookSignature } from '../../../utils/squareWebhookSignature'
+import { applyInventoryCountToEditions, type SquareInventoryCount } from '../../../utils/squareInventory'
 
 // Wrapper function to match expected interface
 async function enrichProduct(isbn: string) {
@@ -67,6 +69,7 @@ interface SquareWebhookEvent {
       catalog_version?: {
         updated_at: string
       }
+      inventory_counts?: SquareInventoryCount[]
     }
   }
   created_at?: string
@@ -90,8 +93,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 })
     }
 
-    const payload = await getPayload({ config })
-
     // Handle empty or invalid body after verifying the signed payload
     let webhookEvent: SquareWebhookEvent
     try {
@@ -106,18 +107,58 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the received event
-    console.log('📦 Square catalog webhook received:', {
+    console.log('📦 Square webhook received:', {
       type: webhookEvent.type,
       merchant_id: webhookEvent.merchant_id,
       version: webhookEvent.data?.object?.catalog_version?.updated_at,
       updated_at: webhookEvent.created_at || new Date().toISOString()
     })
 
-    // Only process catalog update events
-    if (webhookEvent.type !== 'catalog.version.updated') {
-      return NextResponse.json({ received: true })
+    // Acknowledge fast (<1s), then do the heavy work AFTER the response is sent.
+    // Square enforces a short delivery timeout; previously this handler ran a full
+    // catalog.list() + per-item enrichment inline, which exceeded the gateway timeout
+    // and returned 504 (causing Square to retry and re-run the expensive job).
+    // `after()` runs the work post-response on the persistent Node server.
+    switch (webhookEvent.type) {
+      case 'catalog.version.updated':
+        after(async () => {
+          try {
+            const payload = await getPayload({ config })
+            await processCatalogVersionUpdate(payload)
+          } catch (err) {
+            console.error('❌ catalog.version.updated processing failed:', err)
+          }
+        })
+        return NextResponse.json({ received: true, queued: 'catalog.version.updated' })
+
+      case 'inventory.count.updated':
+        after(async () => {
+          try {
+            const payload = await getPayload({ config })
+            await processInventoryCountUpdate(payload, webhookEvent)
+          } catch (err) {
+            console.error('❌ inventory.count.updated processing failed:', err)
+          }
+        })
+        return NextResponse.json({ received: true, queued: 'inventory.count.updated' })
+
+      default:
+        return NextResponse.json({ received: true })
     }
 
+  } catch (error) {
+    console.error('❌ Square webhook error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// Process a catalog.version.updated event: pull recently-changed catalog items from
+// Square and upsert them into Payload (with enrichment + image sync). Runs post-response
+// via after(); must not return an HTTP response.
+async function processCatalogVersionUpdate(payload: any) {
     // Fetch recent catalog changes
     const now = new Date()
     const beginTime = new Date(now.getTime() - 5 * 60 * 1000).toISOString() // Last 5 minutes
@@ -185,15 +226,12 @@ export async function POST(request: NextRequest) {
         message: squareError instanceof Error ? squareError.message : 'Unknown error',
         stack: squareError instanceof Error ? squareError.stack : undefined
       })
-      return NextResponse.json(
-        { error: 'Square API error', details: squareError instanceof Error ? squareError.message : 'Unknown error' },
-        { status: 500 }
-      )
+      return
     }
 
     if (allItems.length === 0) {
       console.log('📭 No catalog items found')
-      return NextResponse.json({ received: true, processed: 0 })
+      return
     }
 
     console.log(`📚 Found ${allItems.length} catalog items`)
@@ -456,20 +494,67 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`\n✅ Webhook processing complete. Processed ${processed} items.`)
+}
 
-    return NextResponse.json({
-      received: true,
-      processed,
-      total: allItems.length
-    })
+// Process an inventory.count.updated event: Square POS is the source of truth for stock,
+// so each count overwrites the matching book edition's inventory.stockLevel.
+// Lightweight (no external enrichment); runs post-response via after().
+async function processInventoryCountUpdate(payload: any, webhookEvent: SquareWebhookEvent) {
+  const counts = webhookEvent.data?.object?.inventory_counts || []
 
-  } catch (error) {
-    console.error('❌ Square webhook error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+  if (counts.length === 0) {
+    console.log('📦 inventory.count.updated: no inventory_counts in payload')
+    return
   }
+
+  console.log(`📦 Processing ${counts.length} inventory count change(s) from Square`)
+
+  let updated = 0
+  for (const count of counts) {
+    const variationId = count.catalog_object_id
+    const quantity = Number(count.quantity)
+
+    if (!variationId || Number.isNaN(quantity)) {
+      console.log('⏭️ Skipping malformed inventory count:', count)
+      continue
+    }
+
+    // Only sync the sellable on-hand state; ignore states like SOLD/WASTE/etc.
+    if (count.state && count.state !== 'IN_STOCK') {
+      console.log(`⏭️ Skipping non-IN_STOCK state (${count.state}) for ${variationId}`)
+      continue
+    }
+
+    try {
+      const result = await payload.find({
+        collection: 'books',
+        where: { 'editions.squareVariationId': { equals: variationId } },
+        limit: 1,
+        depth: 0,
+      })
+
+      if (result.docs.length === 0) {
+        console.log(`⚠️ No book edition matches Square variation ${variationId}`)
+        continue
+      }
+
+      const book = result.docs[0]
+      const newEditions = applyInventoryCountToEditions(book.editions || [], variationId, quantity)
+
+      await payload.update({
+        collection: 'books',
+        id: book.id,
+        data: { editions: newEditions },
+      })
+
+      updated++
+      console.log(`✅ Stock for "${book.title}" variation ${variationId} set to ${quantity}`)
+    } catch (err) {
+      console.error(`❌ Failed to update stock for variation ${variationId}:`, err)
+    }
+  }
+
+  console.log(`📦 Inventory sync complete: updated ${updated}/${counts.length}`)
 }
 
 // Download and upload Square images to Payload Media collection
