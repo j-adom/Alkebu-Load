@@ -19,3 +19,9 @@ node_modules/
 
 # remember plugin: session handoffs and tool-call activity logs
 .remember/
+
+# Superpowers visual brainstorming sessions and local artifacts
+.superpowers/
+
+# Local feature worktrees
+.worktrees/
