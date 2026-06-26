@@ -39,6 +39,7 @@ import { CartItems } from './collections/CartItems'
 import { Orders } from './collections/Orders'
 import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
+import { PartnershipInquiries } from './collections/PartnershipInquiries'
 import { getEmailRuntimeConfig, getEmailTransportOptions, shouldSkipEmailTransportVerify } from './app/utils/emailConfig'
 
 
@@ -131,6 +132,7 @@ export default buildConfig({
     Orders,
     Customers,
     InstitutionalAccounts,
+    PartnershipInquiries,
     // Product Collections
     Authors,
     Publishers,

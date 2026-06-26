@@ -5,6 +5,7 @@ import { Carts } from '../../src/collections/Carts';
 import { CartItems } from '../../src/collections/CartItems';
 import { Customers } from '../../src/collections/Customers';
 import { Orders } from '../../src/collections/Orders';
+import { PartnershipInquiries } from '../../src/collections/PartnershipInquiries';
 
 type AccessFn = (args: { req: { user: any }; id?: string }) => unknown;
 const access = (col: any) => col.access as Record<string, AccessFn>;
@@ -94,3 +95,35 @@ test('staff and admins can write commerce collections through Payload admin', ()
   assert.strictEqual(access(CartItems).update({ req: { user: STAFF }, id: 'item' }), true);
   assert.strictEqual(access(CartItems).delete({ req: { user: ADMIN }, id: 'item' }), true);
 });
+
+test('PartnershipInquiries.read: staff and admins can read stored inquiries', () => {
+  assert.strictEqual(callRead(PartnershipInquiries, STAFF), true);
+  assert.strictEqual(callRead(PartnershipInquiries, ADMIN), true);
+});
+
+test('PartnershipInquiries.read: public and customers cannot read stored inquiries', () => {
+  assert.strictEqual(callRead(PartnershipInquiries, null), false);
+  assert.strictEqual(callRead(PartnershipInquiries, CUSTOMER), false);
+});
+
+test('PartnershipInquiries.create/update: staff and admins can manage inquiries through admin', () => {
+  assert.strictEqual(access(PartnershipInquiries).create({ req: { user: STAFF } }), true);
+  assert.strictEqual(access(PartnershipInquiries).create({ req: { user: ADMIN } }), true);
+  assert.strictEqual(access(PartnershipInquiries).update({ req: { user: STAFF }, id: 'lead1' }), true);
+  assert.strictEqual(access(PartnershipInquiries).update({ req: { user: ADMIN }, id: 'lead1' }), true);
+});
+
+test('PartnershipInquiries.delete stays admin-only', () => {
+  assert.strictEqual(access(PartnershipInquiries).delete({ req: { user: STAFF }, id: 'lead1' }), false);
+  assert.strictEqual(access(PartnershipInquiries).delete({ req: { user: ADMIN }, id: 'lead1' }), true);
+});
+
+test('PartnershipInquiries denies direct public and customer writes', () => {
+  assert.strictEqual(access(PartnershipInquiries).create({ req: { user: null } }), false);
+  assert.strictEqual(access(PartnershipInquiries).create({ req: { user: CUSTOMER } }), false);
+  assert.strictEqual(access(PartnershipInquiries).update({ req: { user: null }, id: 'lead1' }), false);
+  assert.strictEqual(access(PartnershipInquiries).update({ req: { user: CUSTOMER }, id: 'lead1' }), false);
+  assert.strictEqual(access(PartnershipInquiries).delete({ req: { user: null }, id: 'lead1' }), false);
+  assert.strictEqual(access(PartnershipInquiries).delete({ req: { user: CUSTOMER }, id: 'lead1' }), false);
+});
+

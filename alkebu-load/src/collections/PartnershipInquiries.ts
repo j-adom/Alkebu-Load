@@ -1,0 +1,241 @@
+import type { CollectionConfig } from 'payload';
+
+const isPartnershipStaff = (user: unknown): boolean => {
+  const role = (user as { role?: string } | undefined)?.role;
+  return role === 'admin' || role === 'staff';
+};
+
+const isAdmin = (user: unknown): boolean => (user as { role?: string } | undefined)?.role === 'admin';
+
+export const PartnershipInquiries: CollectionConfig = {
+  slug: 'partnership-inquiries',
+  admin: {
+    useAsTitle: 'organizationName',
+    defaultColumns: [
+      'organizationName',
+      'inquiryType',
+      'status',
+      'followUpDate',
+      'emailStatus',
+      'crmSyncStatus',
+      'createdAt',
+    ],
+    group: 'B2B',
+    description: 'Wholesale, institutional, and non-profit partnership leads',
+  },
+  access: {
+    read: ({ req: { user } }) => isPartnershipStaff(user),
+    create: ({ req: { user } }) => isPartnershipStaff(user),
+    update: ({ req: { user } }) => isPartnershipStaff(user),
+    delete: ({ req: { user } }) => isAdmin(user),
+  },
+  fields: [
+    {
+      name: 'inquiryType',
+      type: 'select',
+      required: true,
+      options: [
+        { label: 'Wholesale', value: 'wholesale' },
+        { label: 'Institutional Contract', value: 'institutional' },
+        { label: 'Non-profit Project', value: 'nonprofit' },
+      ],
+    },
+    {
+      name: 'status',
+      type: 'select',
+      required: true,
+      defaultValue: 'new',
+      options: [
+        { label: 'New', value: 'new' },
+        { label: 'In Review', value: 'in_review' },
+        { label: 'Followed Up', value: 'followed_up' },
+        { label: 'Closed', value: 'closed' },
+      ],
+    },
+    {
+      name: 'name',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'email',
+      type: 'email',
+      required: true,
+    },
+    {
+      name: 'phone',
+      type: 'text',
+    },
+    {
+      name: 'organizationName',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'organizationType',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'message',
+      type: 'textarea',
+      required: true,
+    },
+    {
+      name: 'sourcePath',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'submittedAt',
+      type: 'date',
+      required: true,
+    },
+    {
+      name: 'wholesaleDetails',
+      type: 'group',
+      admin: {
+        condition: (data) => data.inquiryType === 'wholesale',
+      },
+      fields: [
+        {
+          name: 'expectedOrderVolume',
+          type: 'text',
+        },
+        {
+          name: 'productInterests',
+          type: 'array',
+          fields: [
+            {
+              name: 'interest',
+              type: 'text',
+            },
+          ],
+        },
+        {
+          name: 'resaleOrDistributionNeeds',
+          type: 'textarea',
+        },
+      ],
+    },
+    {
+      name: 'institutionalDetails',
+      type: 'group',
+      admin: {
+        condition: (data) => data.inquiryType === 'institutional',
+      },
+      fields: [
+        {
+          name: 'institutionType',
+          type: 'text',
+        },
+        {
+          name: 'purchasingMethod',
+          type: 'text',
+        },
+        {
+          name: 'taxExemptStatus',
+          type: 'text',
+        },
+        {
+          name: 'audienceOrStudentGroup',
+          type: 'textarea',
+        },
+        {
+          name: 'targetTimeline',
+          type: 'text',
+        },
+      ],
+    },
+    {
+      name: 'nonprofitDetails',
+      type: 'group',
+      admin: {
+        condition: (data) => data.inquiryType === 'nonprofit',
+      },
+      fields: [
+        {
+          name: 'projectType',
+          type: 'text',
+        },
+        {
+          name: 'missionOrProgramContext',
+          type: 'textarea',
+        },
+        {
+          name: 'targetTimeline',
+          type: 'text',
+        },
+        {
+          name: 'budgetRange',
+          type: 'text',
+        },
+        {
+          name: 'supportRequested',
+          type: 'text',
+        },
+      ],
+    },
+    {
+      name: 'followUpDate',
+      type: 'date',
+    },
+    {
+      name: 'internalNotes',
+      type: 'textarea',
+    },
+    {
+      name: 'assignedTo',
+      type: 'relationship',
+      relationTo: 'users',
+    },
+    {
+      name: 'emailStatus',
+      type: 'select',
+      required: true,
+      defaultValue: 'pending',
+      options: [
+        { label: 'Pending', value: 'pending' },
+        { label: 'Sent', value: 'sent' },
+        { label: 'Failed', value: 'failed' },
+      ],
+    },
+    {
+      name: 'emailSentAt',
+      type: 'date',
+    },
+    {
+      name: 'emailError',
+      type: 'textarea',
+    },
+    {
+      name: 'crmProvider',
+      type: 'text',
+      defaultValue: 'twenty',
+    },
+    {
+      name: 'crmExternalId',
+      type: 'text',
+    },
+    {
+      name: 'crmSyncStatus',
+      type: 'select',
+      required: true,
+      defaultValue: 'not_configured',
+      options: [
+        { label: 'Not Configured', value: 'not_configured' },
+        { label: 'Pending', value: 'pending' },
+        { label: 'Synced', value: 'synced' },
+        { label: 'Failed', value: 'failed' },
+      ],
+    },
+    {
+      name: 'crmLastSyncedAt',
+      type: 'date',
+    },
+    {
+      name: 'crmSyncError',
+      type: 'textarea',
+    },
+  ],
+};

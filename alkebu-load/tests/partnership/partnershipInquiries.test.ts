@@ -207,6 +207,28 @@ test('builds stored defaults for email and CRM state', () => {
   assert.ok(stored.submittedAt);
 });
 
+test('builds stored wholesale product interests in Payload array row shape', () => {
+  const stored = buildStoredPartnershipInquiry({
+    inquiryType: 'wholesale',
+    name: 'Ada Reader',
+    email: 'ada@example.com',
+    organizationName: 'Diaspora Books',
+    organizationType: 'retailer',
+    message: 'Need bulk titles.',
+    sourcePath: '/wholesale',
+    wholesaleDetails: {
+      expectedOrderVolume: '100 books',
+      productInterests: ['books', 'apparel'],
+      resaleOrDistributionNeeds: 'Campus resale',
+    },
+  });
+
+  assert.deepStrictEqual(stored.wholesaleDetails?.productInterests, [
+    { interest: 'books' },
+    { interest: 'apparel' },
+  ]);
+});
+
 test('rejects invalid inquiry types before building stored payloads', () => {
   assert.throws(
     () =>
@@ -241,7 +263,7 @@ test('builds staff email with route-specific details', () => {
     crmSyncStatus: 'not_configured',
     wholesaleDetails: {
       expectedOrderVolume: '100 books',
-      productInterests: ['books'],
+      productInterests: [{ interest: 'books' }],
       resaleOrDistributionNeeds: 'Campus resale',
     },
   });

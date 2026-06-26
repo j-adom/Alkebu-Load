@@ -75,6 +75,7 @@ export interface Config {
     orders: Order;
     customers: Customer;
     'institutional-accounts': InstitutionalAccount;
+    'partnership-inquiries': PartnershipInquiry;
     authors: Author;
     publishers: Publisher;
     vendors: Vendor;
@@ -105,6 +106,7 @@ export interface Config {
     orders: OrdersSelect<false> | OrdersSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
     'institutional-accounts': InstitutionalAccountsSelect<false> | InstitutionalAccountsSelect<true>;
+    'partnership-inquiries': PartnershipInquiriesSelect<false> | PartnershipInquiriesSelect<true>;
     authors: AuthorsSelect<false> | AuthorsSelect<true>;
     publishers: PublishersSelect<false> | PublishersSelect<true>;
     vendors: VendorsSelect<false> | VendorsSelect<true>;
@@ -4302,6 +4304,62 @@ export interface CartItem {
   createdAt: string;
 }
 /**
+ * Wholesale, institutional, and non-profit partnership leads
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partnership-inquiries".
+ */
+export interface PartnershipInquiry {
+  id: number;
+  inquiryType: 'wholesale' | 'institutional' | 'nonprofit';
+  status: 'new' | 'in_review' | 'followed_up' | 'closed';
+  name: string;
+  email: string;
+  phone?: string | null;
+  organizationName: string;
+  organizationType: string;
+  message: string;
+  sourcePath: string;
+  submittedAt: string;
+  wholesaleDetails?: {
+    expectedOrderVolume?: string | null;
+    productInterests?:
+      | {
+          interest?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+    resaleOrDistributionNeeds?: string | null;
+  };
+  institutionalDetails?: {
+    institutionType?: string | null;
+    purchasingMethod?: string | null;
+    taxExemptStatus?: string | null;
+    audienceOrStudentGroup?: string | null;
+    targetTimeline?: string | null;
+  };
+  nonprofitDetails?: {
+    projectType?: string | null;
+    missionOrProgramContext?: string | null;
+    targetTimeline?: string | null;
+    budgetRange?: string | null;
+    supportRequested?: string | null;
+  };
+  followUpDate?: string | null;
+  internalNotes?: string | null;
+  assignedTo?: (number | null) | User;
+  emailStatus: 'pending' | 'sent' | 'failed';
+  emailSentAt?: string | null;
+  emailError?: string | null;
+  crmProvider?: string | null;
+  crmExternalId?: string | null;
+  crmSyncStatus: 'not_configured' | 'pending' | 'synced' | 'failed';
+  crmLastSyncedAt?: string | null;
+  crmSyncError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "searchAnalytics".
  */
@@ -5140,6 +5198,10 @@ export interface PayloadLockedDocument {
         value: number | InstitutionalAccount;
       } | null)
     | ({
+        relationTo: 'partnership-inquiries';
+        value: number | PartnershipInquiry;
+      } | null)
+    | ({
         relationTo: 'authors';
         value: number | Author;
       } | null)
@@ -5783,6 +5845,65 @@ export interface InstitutionalAccountsSelect<T extends boolean = true> {
         verifiedAt?: T;
       };
   notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partnership-inquiries_select".
+ */
+export interface PartnershipInquiriesSelect<T extends boolean = true> {
+  inquiryType?: T;
+  status?: T;
+  name?: T;
+  email?: T;
+  phone?: T;
+  organizationName?: T;
+  organizationType?: T;
+  message?: T;
+  sourcePath?: T;
+  submittedAt?: T;
+  wholesaleDetails?:
+    | T
+    | {
+        expectedOrderVolume?: T;
+        productInterests?:
+          | T
+          | {
+              interest?: T;
+              id?: T;
+            };
+        resaleOrDistributionNeeds?: T;
+      };
+  institutionalDetails?:
+    | T
+    | {
+        institutionType?: T;
+        purchasingMethod?: T;
+        taxExemptStatus?: T;
+        audienceOrStudentGroup?: T;
+        targetTimeline?: T;
+      };
+  nonprofitDetails?:
+    | T
+    | {
+        projectType?: T;
+        missionOrProgramContext?: T;
+        targetTimeline?: T;
+        budgetRange?: T;
+        supportRequested?: T;
+      };
+  followUpDate?: T;
+  internalNotes?: T;
+  assignedTo?: T;
+  emailStatus?: T;
+  emailSentAt?: T;
+  emailError?: T;
+  crmProvider?: T;
+  crmExternalId?: T;
+  crmSyncStatus?: T;
+  crmLastSyncedAt?: T;
+  crmSyncError?: T;
   updatedAt?: T;
   createdAt?: T;
 }

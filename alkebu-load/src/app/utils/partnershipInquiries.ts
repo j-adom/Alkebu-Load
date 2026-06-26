@@ -8,6 +8,16 @@ export interface WholesaleInquiryDetails {
   resaleOrDistributionNeeds?: string;
 }
 
+export interface StoredProductInterest {
+  interest: string;
+}
+
+export interface StoredWholesaleInquiryDetails {
+  expectedOrderVolume?: string;
+  productInterests?: StoredProductInterest[];
+  resaleOrDistributionNeeds?: string;
+}
+
 export interface InstitutionalInquiryDetails {
   institutionType?: string;
   purchasingMethod?: string;
@@ -51,9 +61,13 @@ export interface NormalizedPartnershipInquiry extends PartnershipInquiryInput {
 }
 
 export interface StoredPartnershipInquiry
-  extends Omit<NormalizedPartnershipInquiry, 'inquiryType' | 'status' | 'crmExternalId'> {
+  extends Omit<
+    NormalizedPartnershipInquiry,
+    'inquiryType' | 'status' | 'crmExternalId' | 'wholesaleDetails'
+  > {
   id?: string;
   inquiryType: PartnershipInquiryType;
+  wholesaleDetails?: StoredWholesaleInquiryDetails;
   status: 'new';
   emailStatus: 'pending';
   crmProvider: 'twenty';
@@ -126,6 +140,20 @@ function normalizeWholesaleDetails(details?: WholesaleInquiryDetails): Wholesale
     expectedOrderVolume: cleanText(details.expectedOrderVolume),
     productInterests: cleanList(details.productInterests),
     resaleOrDistributionNeeds: cleanOptionalText(details.resaleOrDistributionNeeds),
+  };
+}
+
+function buildStoredWholesaleDetails(
+  details?: WholesaleInquiryDetails,
+): StoredWholesaleInquiryDetails | undefined {
+  if (!details) {
+    return undefined;
+  }
+
+  return {
+    expectedOrderVolume: details.expectedOrderVolume,
+    productInterests: details.productInterests?.map((interest) => ({ interest })),
+    resaleOrDistributionNeeds: details.resaleOrDistributionNeeds,
   };
 }
 
@@ -267,6 +295,7 @@ export function buildStoredPartnershipInquiry(input: PartnershipInquiryInput): S
   return {
     ...normalized,
     inquiryType: normalized.inquiryType,
+    wholesaleDetails: buildStoredWholesaleDetails(normalized.wholesaleDetails),
     status: 'new',
     emailStatus: 'pending',
     crmProvider: 'twenty',
@@ -284,9 +313,15 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
-function formatTextValue(value: string | string[] | undefined): string | undefined {
+function formatTextValue(
+  value: string | string[] | StoredProductInterest[] | undefined,
+): string | undefined {
   if (Array.isArray(value)) {
-    return value.length ? value.join(', ') : undefined;
+    const textValues = value
+      .map((item) => (typeof item === 'string' ? item : item.interest))
+      .filter(Boolean);
+
+    return textValues.length ? textValues.join(', ') : undefined;
   }
 
   return value || undefined;
