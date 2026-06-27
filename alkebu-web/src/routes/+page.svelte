@@ -80,18 +80,21 @@
 					{
 						title: "Wholesale",
 						subtitle: "solutions",
+						href: "/wholesale",
 						image: section4.images[0],
 						desc: "Partner with us for bulk orders and wholesale pricing for retailers and distributors.",
 					},
 					{
 						title: "Institutional",
 						subtitle: "Contracts",
+						href: "/institutional-contracts",
 						image: section4.images[1],
 						desc: "Libraries, schools, and organizations can benefit from our institutional partnerships.",
 					},
 					{
 						title: "Non-profit",
 						subtitle: "projects",
+						href: "/non-profit-projects",
 						image: section4.images[2],
 						desc: "We support community initiatives and non-profit organizations with special programs.",
 					},
@@ -442,7 +445,7 @@
 		</div>
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 			{#each businessServices as service, i}
-				<a href="/contact" class="group">
+				<a href={service.href} class="group">
 					<div class="card-modern overflow-hidden h-full">
 						<div class="relative aspect-[3/4] overflow-hidden">
 							<img

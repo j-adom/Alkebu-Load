@@ -5,6 +5,7 @@ import { handlePartnershipInquiryAction } from '$lib/server/partnershipInquiry';
 import type { Actions, PageServerLoad } from './$types';
 
 const page = partnershipPages.nonprofit;
+const relatedPages = Object.values(partnershipPages).filter((item) => item.path !== page.path);
 
 export const load: PageServerLoad = async ({ setHeaders }) => {
   setHeaders({
@@ -15,6 +16,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
 
   return {
     page,
+    relatedPages,
     seo: buildSEOData({
       title: page.seo.title,
       description: page.seo.description,
