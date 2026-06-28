@@ -12,6 +12,9 @@ export const partnershipPages = {
       headline: 'Bulk ordering rooted in culture and community.',
       body: "Source books, apparel, wellness items, and cultural goods for your shop, program, or organization with help from Nashville's Black-owned bookstore.",
       cta: 'Start a wholesale inquiry',
+      image: '/assets/images/alkebulan/bookbackground.jpg',
+      badge: 'Bulk Book Orders',
+      tiles: ['Books', 'Apparel', 'Wellness', 'Home goods'],
     },
     fit: [
       'Retailers and pop-up shops',
@@ -72,6 +75,9 @@ export const partnershipPages = {
       headline: 'Books and resources for classrooms, libraries, and institutions.',
       body: 'Work with Alkebu-Lan Images on curated orders, purchase-order friendly workflows, and materials that serve your audience.',
       cta: 'Start an institutional inquiry',
+      image: '/assets/images/resources/com_solutions_img-2.jpg',
+      badge: 'Schools & Libraries',
+      tiles: ['Classrooms', 'Libraries', 'Purchase orders', 'Curated lists'],
     },
     fit: [
       'Schools and universities',
@@ -145,6 +151,9 @@ export const partnershipPages = {
       headline: 'Mission-aligned support for community projects.',
       body: 'Tell us about your program, book drive, sponsorship idea, or community initiative so we can explore the right fit.',
       cta: 'Start a project inquiry',
+      image: '/assets/images/resources/com_solutions_img-3.jpg',
+      badge: 'Community Projects',
+      tiles: ['Book drives', 'Programs', 'Events', 'Sponsorships'],
     },
     fit: [
       'Community programs',

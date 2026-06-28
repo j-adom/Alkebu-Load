@@ -26,6 +26,9 @@ test('each page has SEO, benefits, process steps, and tailored fields', () => {
     assert.ok(page.seo.title);
     assert.ok(page.seo.description);
     assert.ok(page.hero.headline);
+    assert.ok(page.hero.image);
+    assert.ok(page.hero.badge);
+    assert.equal(page.hero.tiles.length, 4);
     assert.equal(page.benefits.length, 3);
     assert.equal(page.process.length, 3);
     assert.ok(page.form.detailFields.length >= 2);
