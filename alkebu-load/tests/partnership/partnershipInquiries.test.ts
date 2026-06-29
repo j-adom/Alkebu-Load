@@ -2,7 +2,6 @@ import assert from 'node:assert';
 import test from 'node:test';
 
 import {
-  buildPartnershipEmail,
   buildStoredPartnershipInquiry,
   normalizePartnershipInquiry,
   PARTNERSHIP_INQUIRY_TYPES,
@@ -243,61 +242,6 @@ test('rejects invalid inquiry types before building stored payloads', () => {
       }),
     /Cannot build stored partnership inquiry with invalid inquiry type/,
   );
-});
-
-test('builds staff email with route-specific details', () => {
-  const email = buildPartnershipEmail({
-    id: '42',
-    inquiryType: 'wholesale',
-    name: 'Ada Reader',
-    email: 'ada@example.com',
-    phone: '615-555-0100',
-    organizationName: 'Diaspora Books <script>alert("x")</script>',
-    organizationType: 'retailer',
-    message: 'Need <100> books & gifts.',
-    sourcePath: '/wholesale',
-    submittedAt: '2026-06-26T12:00:00.000Z',
-    status: 'new',
-    crmSyncStatus: 'not_configured',
-    wholesaleDetails: {
-      expectedOrderVolume: '100 books',
-      productInterests: [{ interest: 'books' }],
-      resaleOrDistributionNeeds: 'Campus resale',
-    },
-  });
-
-  assert.match(email.subject, /Wholesale/);
-  assert.match(email.text, /Diaspora Books/);
-  assert.match(email.text, /100 books/);
-  assert.match(email.html, /New Partnership Inquiry/);
-  assert.match(email.html, /Diaspora Books &lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt;/);
-  assert.match(email.html, /Need &lt;100&gt; books &amp; gifts\./);
-  assert.doesNotMatch(email.html, /<script>/);
-});
-
-test('builds a staff email subject without visitor-supplied line breaks', () => {
-  const email = buildPartnershipEmail({
-    inquiryType: 'institutional',
-    name: 'Maya',
-    email: 'maya@example.com',
-    organizationName: 'Nashville Library\r\nBCC: injected@example.com',
-    organizationType: 'library',
-    message: 'Curated list',
-    sourcePath: '/institutional-contracts',
-    submittedAt: '2026-06-26T12:00:00.000Z',
-    status: 'new',
-    crmSyncStatus: 'not_configured',
-    institutionalDetails: {
-      institutionType: 'library',
-      purchasingMethod: 'purchase_order',
-    },
-  });
-
-  assert.strictEqual(
-    email.subject,
-    'New Institutional Partnership Inquiry - Nashville Library BCC: injected@example.com',
-  );
-  assert.doesNotMatch(email.subject, /[\r\n]/);
 });
 
 test('exports the allowed inquiry type list', () => {

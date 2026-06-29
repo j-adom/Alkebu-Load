@@ -78,12 +78,6 @@ export interface PartnershipInquiryValidationResult {
   fieldErrors: Record<string, string[]>;
 }
 
-export interface PartnershipEmail {
-  subject: string;
-  text: string;
-  html: string;
-}
-
 const inquiryTypeLabels: Record<PartnershipInquiryType, string> = {
   wholesale: 'Wholesale',
   institutional: 'Institutional',
@@ -297,116 +291,5 @@ export function buildStoredPartnershipInquiry(input: PartnershipInquiryInput): S
     status: 'new',
     crmSyncStatus: 'not_configured',
     submittedAt: new Date().toISOString(),
-  };
-}
-
-function escapeHtml(value: unknown): string {
-  return cleanText(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function formatTextValue(
-  value: string | string[] | StoredProductInterest[] | undefined,
-): string | undefined {
-  if (Array.isArray(value)) {
-    const textValues = value
-      .map((item) => (typeof item === 'string' ? item : item.interest))
-      .filter(Boolean);
-
-    return textValues.length ? textValues.join(', ') : undefined;
-  }
-
-  return value || undefined;
-}
-
-function detailRows(inquiry: StoredPartnershipInquiry): Array<[string, string]> {
-  const rows: Array<[string, string | undefined]> = [];
-
-  if (inquiry.inquiryType === 'wholesale') {
-    rows.push(
-      ['Expected order volume', inquiry.wholesaleDetails?.expectedOrderVolume],
-      ['Product interests', formatTextValue(inquiry.wholesaleDetails?.productInterests)],
-      ['Resale or distribution needs', inquiry.wholesaleDetails?.resaleOrDistributionNeeds],
-    );
-  }
-
-  if (inquiry.inquiryType === 'institutional') {
-    rows.push(
-      ['Institution type', inquiry.institutionalDetails?.institutionType],
-      ['Purchasing method', inquiry.institutionalDetails?.purchasingMethod],
-      ['Tax exempt status', inquiry.institutionalDetails?.taxExemptStatus],
-      ['Audience or student group', inquiry.institutionalDetails?.audienceOrStudentGroup],
-      ['Target timeline', inquiry.institutionalDetails?.targetTimeline],
-    );
-  }
-
-  if (inquiry.inquiryType === 'nonprofit') {
-    rows.push(
-      ['Project type', inquiry.nonprofitDetails?.projectType],
-      ['Mission or program context', inquiry.nonprofitDetails?.missionOrProgramContext],
-      ['Target timeline', inquiry.nonprofitDetails?.targetTimeline],
-      ['Budget range', inquiry.nonprofitDetails?.budgetRange],
-      ['Support requested', inquiry.nonprofitDetails?.supportRequested],
-    );
-  }
-
-  return rows.filter((row): row is [string, string] => Boolean(row[1]));
-}
-
-function coreRows(inquiry: StoredPartnershipInquiry): Array<[string, string]> {
-  return [
-    ['Inquiry ID', inquiry.id],
-    ['Type', inquiryTypeLabels[inquiry.inquiryType as PartnershipInquiryType] ?? inquiry.inquiryType],
-    ['Submitted', inquiry.submittedAt],
-    ['Name', inquiry.name],
-    ['Email', inquiry.email],
-    ['Phone', inquiry.phone],
-    ['Organization', inquiry.organizationName],
-    ['Organization type', inquiry.organizationType],
-    ['Source path', inquiry.sourcePath],
-    ['Message', inquiry.message],
-  ].filter((row): row is [string, string] => Boolean(row[1]));
-}
-
-function rowsToText(rows: Array<[string, string]>): string {
-  return rows.map(([label, value]) => `${label}: ${value}`).join('\n');
-}
-
-function rowsToHtml(rows: Array<[string, string]>): string {
-  return rows
-    .map(([label, value]) => {
-      const htmlValue = escapeHtml(value).replace(/\n/g, '<br>');
-      return `<dt>${escapeHtml(label)}</dt><dd>${htmlValue}</dd>`;
-    })
-    .join('');
-}
-
-export function buildPartnershipEmail(inquiry: StoredPartnershipInquiry): PartnershipEmail {
-  const inquiryTypeLabel =
-    inquiryTypeLabels[inquiry.inquiryType as PartnershipInquiryType] ?? cleanText(inquiry.inquiryType);
-  const details = detailRows(inquiry);
-  const rows = coreRows(inquiry);
-  const subject = `New ${inquiryTypeLabel} Partnership Inquiry - ${cleanHeaderText(inquiry.organizationName)}`;
-  const textSections = [
-    'New Partnership Inquiry',
-    rowsToText(rows),
-    details.length ? ['Route-specific details', rowsToText(details)].join('\n') : '',
-  ].filter(Boolean);
-
-  return {
-    subject,
-    text: textSections.join('\n\n'),
-    html: [
-      '<h1>New Partnership Inquiry</h1>',
-      `<h2>${escapeHtml(inquiryTypeLabel)}</h2>`,
-      `<dl>${rowsToHtml(rows)}</dl>`,
-      details.length ? `<h2>Route-specific details</h2><dl>${rowsToHtml(details)}</dl>` : '',
-    ]
-      .filter(Boolean)
-      .join(''),
   };
 }

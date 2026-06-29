@@ -23,6 +23,26 @@ function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+function escapeHtml(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const SAFE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function emailLink(email: unknown, style: string): string {
+  const raw = String(email ?? '');
+  const escaped = escapeHtml(raw);
+  if (SAFE_EMAIL_RE.test(raw)) {
+    return `<a href="mailto:${encodeURIComponent(raw)}" style="${style}">${escaped}</a>`;
+  }
+  return escaped;
+}
+
 function emailWrapper(title: string, content: string): string {
   return `<!DOCTYPE html>
 <html>
@@ -599,8 +619,8 @@ export function generatePartnershipStaffTemplate(data: PartnershipInquiryData): 
     .map(
       ([key, value]) => `
     <tr>
-      <td style="padding: 4px 0; width: 180px; color: ${BRAND.mutedText}; font-size: 13px; vertical-align: top;">${key}</td>
-      <td style="padding: 4px 0; color: ${BRAND.darkText};">${String(value)}</td>
+      <td style="padding: 4px 0; width: 180px; color: ${BRAND.mutedText}; font-size: 13px; vertical-align: top;">${escapeHtml(key)}</td>
+      <td style="padding: 4px 0; color: ${BRAND.darkText};">${escapeHtml(value)}</td>
     </tr>`,
     )
     .join('');
@@ -622,30 +642,30 @@ export function generatePartnershipStaffTemplate(data: PartnershipInquiryData): 
       <table style="width: 100%;">
         <tr>
           <td style="padding: 4px 0; width: 180px; color: ${BRAND.mutedText}; font-size: 13px;">Type</td>
-          <td style="padding: 4px 0; font-weight: bold; color: ${BRAND.forest};">${data.typeLabel}</td>
+          <td style="padding: 4px 0; font-weight: bold; color: ${BRAND.forest};">${escapeHtml(data.typeLabel)}</td>
         </tr>
         <tr>
           <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Name</td>
-          <td style="padding: 4px 0;">${data.name}</td>
+          <td style="padding: 4px 0;">${escapeHtml(data.name)}</td>
         </tr>
         <tr>
           <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Email</td>
-          <td style="padding: 4px 0;"><a href="mailto:${data.email}" style="color: ${BRAND.indigo};">${data.email}</a></td>
+          <td style="padding: 4px 0;">${emailLink(data.email, `color: ${BRAND.indigo};`)}</td>
         </tr>
         ${data.phone ? `
         <tr>
           <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Phone</td>
-          <td style="padding: 4px 0;">${data.phone}</td>
+          <td style="padding: 4px 0;">${escapeHtml(data.phone)}</td>
         </tr>` : ''}
         ${data.organizationName ? `
         <tr>
           <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Organization</td>
-          <td style="padding: 4px 0; font-weight: 600;">${data.organizationName}</td>
+          <td style="padding: 4px 0; font-weight: 600;">${escapeHtml(data.organizationName)}</td>
         </tr>` : ''}
         ${data.sourcePath ? `
         <tr>
           <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Source</td>
-          <td style="padding: 4px 0;">${data.sourcePath}</td>
+          <td style="padding: 4px 0;">${escapeHtml(data.sourcePath)}</td>
         </tr>` : ''}
       </table>
     `)}
@@ -659,7 +679,7 @@ export function generatePartnershipStaffTemplate(data: PartnershipInquiryData): 
 
     ${data.message ? sectionBox(`
       <h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Message</h3>
-      <p style="margin: 0; white-space: pre-line;">${data.message}</p>
+      <p style="margin: 0; white-space: pre-line;">${escapeHtml(data.message)}</p>
     `) : ''}
 
     ${adminLinkHtml}
@@ -686,8 +706,8 @@ export function generatePartnershipAckTemplate(data: PartnershipInquiryData): Em
 
   const content = `
     <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Thank You for Reaching Out</h2>
-    <p>Dear ${data.name},</p>
-    <p>We've received your <strong>${data.typeLabel}</strong> partnership inquiry and our team will review it shortly.</p>
+    <p>Dear ${escapeHtml(data.name)},</p>
+    <p>We've received your <strong>${escapeHtml(data.typeLabel)}</strong> partnership inquiry and our team will review it shortly.</p>
 
     ${sectionBox(`
       <h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">What Happens Next</h3>
