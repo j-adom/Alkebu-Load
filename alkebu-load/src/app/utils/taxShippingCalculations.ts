@@ -352,6 +352,25 @@ export function calculateUspsMediaMailShipping(totalWeightOz: number): ShippingC
 }
 
 /**
+ * Deterministic carrier cost (cents) for an arbitrary set of items, ignoring the
+ * free-shipping threshold. Book-only sets use USPS Media Mail; mixed sets fall
+ * back to standard weight-based rates. This is the primitive refund math uses to
+ * compute the incremental shipping a removed item actually cost.
+ */
+export function calculateItemsShippingCost(
+  items: CartItemForTax[],
+  destinationState: string = 'TN',
+): number {
+  if (items.length === 0) return 0;
+
+  const totalWeight = calculateTotalWeight(items);
+
+  return isBookOnlyOrder(items)
+    ? calculateUspsMediaMailShipping(totalWeight).cost
+    : calculateShipping(totalWeight, 'standard', destinationState).cost;
+}
+
+/**
  * Check if order qualifies for free shipping
  */
 export function qualifiesForFreeShipping(subtotal: number): boolean {

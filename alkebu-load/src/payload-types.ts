@@ -473,6 +473,14 @@ export interface Order {
       giftMessage?: string | null;
       personalNote?: string | null;
     };
+    /**
+     * Units of this line that have been refunded (per-item refunds)
+     */
+    refundedQuantity?: number | null;
+    /**
+     * Set when this line is fully refunded — do not pack/ship it
+     */
+    doNotShip?: boolean | null;
     id?: string | null;
   }[];
   /**
@@ -540,7 +548,9 @@ export interface Order {
      * Provider customer identifier (if available)
      */
     providerCustomerId?: string | null;
-    paymentStatus?: ('pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded') | null;
+    paymentStatus?:
+      | ('pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'partially_refunded' | 'refunded')
+      | null;
     /**
      * Payment method used (card, apple_pay, etc.)
      */
@@ -615,6 +625,13 @@ export interface Order {
       sentAt?: string | null;
       error?: string | null;
     };
+    refundNotification?: {
+      status?: ('pending' | 'sent' | 'failed' | 'skipped') | null;
+      recipient?: string | null;
+      provider?: string | null;
+      sentAt?: string | null;
+      error?: string | null;
+    };
   };
   refunds?:
     | {
@@ -623,6 +640,26 @@ export interface Order {
          */
         amount: number;
         reason: string;
+        /**
+         * Optional staff note shown to the customer in the refund email
+         */
+        note?: string | null;
+        /**
+         * Line items covered by this refund: [{ itemId, productTitle, quantity, amount }] (cents). Empty for whole-order refunds.
+         */
+        items?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        /**
+         * Whether refunded units were returned to inventory
+         */
+        restock?: boolean | null;
         stripeRefundId?: string | null;
         processedAt?: string | null;
         processedBy?: (number | null) | User;
@@ -5491,6 +5528,8 @@ export interface OrdersSelect<T extends boolean = true> {
               giftMessage?: T;
               personalNote?: T;
             };
+        refundedQuantity?: T;
+        doNotShip?: T;
         id?: T;
       };
   subtotalAmount?: T;
@@ -5583,12 +5622,24 @@ export interface OrdersSelect<T extends boolean = true> {
               sentAt?: T;
               error?: T;
             };
+        refundNotification?:
+          | T
+          | {
+              status?: T;
+              recipient?: T;
+              provider?: T;
+              sentAt?: T;
+              error?: T;
+            };
       };
   refunds?:
     | T
     | {
         amount?: T;
         reason?: T;
+        note?: T;
+        items?: T;
+        restock?: T;
         stripeRefundId?: T;
         processedAt?: T;
         processedBy?: T;

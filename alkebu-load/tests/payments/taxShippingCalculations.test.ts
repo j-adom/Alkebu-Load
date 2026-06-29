@@ -5,7 +5,49 @@ import {
   calculateTax,
   calculateOrderTotals,
   calculateTotalWeight,
+  calculateItemsShippingCost,
 } from '../../src/app/utils/taxShippingCalculations';
+
+const paperback = (quantity: number, unitPrice: number) => ({
+  product: { pricing: { shippingWeight: 16 }, editions: [{ binding: 'paperback', pricing: {} }] },
+  productType: 'books',
+  quantity,
+  unitPrice,
+});
+
+const jewelry = (quantity: number, unitPrice: number) => ({
+  product: { pricing: { shippingWeight: 2 } },
+  productType: 'fashion-jewelry',
+  quantity,
+  unitPrice,
+});
+
+test('calculateItemsShippingCost: book-only set uses media mail by weight', () => {
+  // One paperback resolves to 8oz → 1 billable lb → media mail tier 1 = 413
+  assert.strictEqual(calculateItemsShippingCost([paperback(1, 1200)] as any, 'TN'), 413);
+});
+
+test('calculateItemsShippingCost: two paperbacks (16oz) still one media-mail pound', () => {
+  assert.strictEqual(calculateItemsShippingCost([paperback(2, 1200)] as any, 'TN'), 413);
+});
+
+test('calculateItemsShippingCost: mixed cart falls back to standard weight-based rates', () => {
+  // book (8oz) + jewelry (2oz) = 10oz → 1 lb, TN local standard base = 599
+  assert.strictEqual(
+    calculateItemsShippingCost([paperback(1, 1200), jewelry(1, 3000)] as any, 'TN'),
+    599,
+  );
+});
+
+test('calculateItemsShippingCost: empty set costs nothing', () => {
+  assert.strictEqual(calculateItemsShippingCost([] as any, 'TN'), 0);
+});
+
+test('calculateItemsShippingCost: ignores the free-shipping threshold (deterministic subset cost)', () => {
+  // A large book-only subtotal would ship free in calculateOrderTotals, but the
+  // subset primitive must return the real carrier cost so refund math can diff it.
+  assert.strictEqual(calculateItemsShippingCost([paperback(1, 50000)] as any, 'TN'), 413);
+});
 
 test('book-only orders use paperback fallback weight and media mail pricing', () => {
   const items = [

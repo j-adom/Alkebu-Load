@@ -1,4 +1,4 @@
-import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData } from './emailService';
+import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData } from './emailService';
 
 // Afrocentric brand constants matching alkebu-web design system
 const BRAND = {
@@ -256,6 +256,86 @@ Complete your purchase: ${data.recoveryUrl}
 Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
 
   return { subject, html: emailWrapper('Complete Your Purchase', content), text };
+}
+
+// ─── REFUND NOTIFICATION (Customer) ───────────────────────────────────
+
+export function generateRefundNotificationTemplate(data: RefundNotificationData): EmailTemplate {
+  const subject = `Refund Issued - ${data.orderNumber} | Alkebu-Lan Images`;
+
+  const itemRows = data.items
+    .map(
+      (item) => `
+    <tr>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${item.productTitle}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.amount)}</td>
+    </tr>`,
+    )
+    .join('');
+
+  const partialLine = data.isPartial
+    ? `<p style="margin: 20px 0 0;">The rest of your order will ship as normal.</p>`
+    : '';
+
+  const noteBlock = data.note
+    ? sectionBox(
+        `<h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">A Note From Our Team</h3>
+         <p style="margin: 0; white-space: pre-line;">${data.note}</p>`,
+      )
+    : '';
+
+  const content = `
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">We've Issued a Refund</h2>
+    <p>Dear ${data.customerName},</p>
+    <p style="margin: 0 0 24px; color: ${BRAND.mutedText};">
+      We've refunded <strong style="color: ${BRAND.forest};">${formatCents(data.refundAmount)}</strong> to your original payment method.
+      Refunds typically take 5–10 business days to appear, depending on your bank.
+    </p>
+
+    ${sectionBox(`
+      <h3 style="margin: 0 0 12px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Refund Details</h3>
+      <p style="margin: 0;"><strong>Order Number:</strong> ${data.orderNumber}</p>
+      <p style="margin: 4px 0 0;"><strong>Reason:</strong> ${data.reasonLabel}</p>
+      <p style="margin: 4px 0 0;"><strong>Amount Refunded:</strong> ${formatCents(data.refundAmount)}</p>
+    `)}
+
+    <h3 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px; margin: 24px 0 8px;">Refunded Items</h3>
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+      <thead>
+        <tr style="background-color: ${BRAND.cream};">
+          <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Item</th>
+          <th style="padding: 10px 8px; text-align: center; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+          <th style="padding: 10px 8px; text-align: right; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Refunded</th>
+        </tr>
+      </thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+
+    ${noteBlock}
+    ${partialLine}
+
+    <p style="margin: 24px 0 0; color: ${BRAND.mutedText};">Questions about this refund? Reply to this email or contact us at ${BRAND.phone}.</p>
+  `;
+
+  const text = `We've Issued a Refund - ${data.orderNumber}
+
+Dear ${data.customerName},
+
+We've refunded ${formatCents(data.refundAmount)} to your original payment method. Refunds typically take 5-10 business days to appear, depending on your bank.
+
+Order Number: ${data.orderNumber}
+Reason: ${data.reasonLabel}
+Amount Refunded: ${formatCents(data.refundAmount)}
+
+Refunded Items:
+${data.items.map((item) => `  ${item.productTitle} (Qty: ${item.quantity}) - ${formatCents(item.amount)}`).join('\n')}
+${data.note ? `\nA note from our team:\n${data.note}\n` : ''}${data.isPartial ? '\nThe rest of your order will ship as normal.\n' : ''}
+Questions? Contact us at ${BRAND.phone} or ${BRAND.email}
+
+Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
+
+  return { subject, html: emailWrapper('Refund Issued', content), text };
 }
 
 // ─── ORDER STATUS UPDATE (Customer) ───────────────────────────────────
