@@ -334,9 +334,9 @@ test('public and staff-only body fields are ignored by the helper path', async (
   assert.strictEqual(stored.emailError, undefined);
   assert.strictEqual(stored.assignedTo, undefined);
   assert.strictEqual(stored.internalNotes, undefined);
-  assert.strictEqual(stored.crmProvider, 'twenty');
+  assert.strictEqual((stored as any).crmProvider, undefined);
   assert.strictEqual(stored.crmExternalId, undefined);
   assert.strictEqual(stored.crmSyncStatus, 'not_configured');
-  assert.strictEqual(stored.crmLastSyncedAt, undefined);
-  assert.strictEqual(stored.crmSyncError, undefined);
+  assert.strictEqual((stored as any).crmLastSyncedAt, undefined);
+  assert.strictEqual((stored as any).crmSyncError, undefined);
 });

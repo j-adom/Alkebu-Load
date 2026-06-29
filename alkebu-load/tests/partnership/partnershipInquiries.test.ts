@@ -19,7 +19,7 @@ test('normalizes a wholesale inquiry and removes staff-only fields', () => {
     organizationType: 'retailer',
     message: ' We need bulk titles. ',
     sourcePath: '/wholesale',
-    status: 'closed',
+    status: 'contacted',
     assignedTo: 'staff-1',
     internalNotes: 'Do not trust visitor-provided workflow state',
     emailStatus: 'sent',
@@ -187,7 +187,7 @@ test('builds stored defaults for email and CRM state', () => {
     organizationType: 'nonprofit',
     message: 'Book drive support',
     sourcePath: '/non-profit-projects',
-    status: 'closed',
+    status: 'won',
     emailStatus: 'sent',
     crmProvider: 'salesforce',
     crmSyncStatus: 'synced',
@@ -202,7 +202,7 @@ test('builds stored defaults for email and CRM state', () => {
 
   assert.strictEqual(stored.status, 'new');
   assert.strictEqual(stored.emailStatus, 'pending');
-  assert.strictEqual(stored.crmProvider, 'twenty');
+  assert.strictEqual((stored as any).crmProvider, undefined);
   assert.strictEqual(stored.crmSyncStatus, 'not_configured');
   assert.ok(stored.submittedAt);
 });
@@ -259,7 +259,6 @@ test('builds staff email with route-specific details', () => {
     submittedAt: '2026-06-26T12:00:00.000Z',
     status: 'new',
     emailStatus: 'pending',
-    crmProvider: 'twenty',
     crmSyncStatus: 'not_configured',
     wholesaleDetails: {
       expectedOrderVolume: '100 books',
@@ -289,7 +288,6 @@ test('builds a staff email subject without visitor-supplied line breaks', () => 
     submittedAt: '2026-06-26T12:00:00.000Z',
     status: 'new',
     emailStatus: 'pending',
-    crmProvider: 'twenty',
     crmSyncStatus: 'not_configured',
     institutionalDetails: {
       institutionType: 'library',

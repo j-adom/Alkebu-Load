@@ -4349,7 +4349,7 @@ export interface CartItem {
 export interface PartnershipInquiry {
   id: number;
   inquiryType: 'wholesale' | 'institutional' | 'nonprofit';
-  status: 'new' | 'in_review' | 'followed_up' | 'closed';
+  status?: ('new' | 'contacted' | 'qualified' | 'won' | 'lost') | null;
   name: string;
   email: string;
   phone?: string | null;
@@ -4385,14 +4385,11 @@ export interface PartnershipInquiry {
   followUpDate?: string | null;
   internalNotes?: string | null;
   assignedTo?: (number | null) | User;
-  emailStatus: 'pending' | 'sent' | 'failed';
+  emailStatus?: ('pending' | 'sent' | 'failed') | null;
   emailSentAt?: string | null;
   emailError?: string | null;
-  crmProvider?: string | null;
   crmExternalId?: string | null;
-  crmSyncStatus: 'not_configured' | 'pending' | 'synced' | 'failed';
-  crmLastSyncedAt?: string | null;
-  crmSyncError?: string | null;
+  crmSyncStatus?: ('not_configured' | 'pending' | 'synced' | 'failed') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -5950,11 +5947,8 @@ export interface PartnershipInquiriesSelect<T extends boolean = true> {
   emailStatus?: T;
   emailSentAt?: T;
   emailError?: T;
-  crmProvider?: T;
   crmExternalId?: T;
   crmSyncStatus?: T;
-  crmLastSyncedAt?: T;
-  crmSyncError?: T;
   updatedAt?: T;
   createdAt?: T;
 }

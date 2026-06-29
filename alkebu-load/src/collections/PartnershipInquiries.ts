@@ -47,10 +47,14 @@ export const PartnershipInquiries: CollectionConfig = {
       defaultValue: 'new',
       options: [
         { label: 'New', value: 'new' },
-        { label: 'In Review', value: 'in_review' },
-        { label: 'Followed Up', value: 'followed_up' },
-        { label: 'Closed', value: 'closed' },
+        { label: 'Contacted', value: 'contacted' },
+        { label: 'Qualified', value: 'qualified' },
+        { label: 'Won', value: 'won' },
+        { label: 'Lost', value: 'lost' },
       ],
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'name',
@@ -179,15 +183,24 @@ export const PartnershipInquiries: CollectionConfig = {
     {
       name: 'followUpDate',
       type: 'date',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'internalNotes',
       type: 'textarea',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'assignedTo',
       type: 'relationship',
       relationTo: 'users',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'emailStatus',
@@ -199,23 +212,30 @@ export const PartnershipInquiries: CollectionConfig = {
         { label: 'Sent', value: 'sent' },
         { label: 'Failed', value: 'failed' },
       ],
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'emailSentAt',
       type: 'date',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'emailError',
       type: 'textarea',
-    },
-    {
-      name: 'crmProvider',
-      type: 'text',
-      defaultValue: 'twenty',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'crmExternalId',
       type: 'text',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
     {
       name: 'crmSyncStatus',
@@ -228,14 +248,9 @@ export const PartnershipInquiries: CollectionConfig = {
         { label: 'Synced', value: 'synced' },
         { label: 'Failed', value: 'failed' },
       ],
-    },
-    {
-      name: 'crmLastSyncedAt',
-      type: 'date',
-    },
-    {
-      name: 'crmSyncError',
-      type: 'textarea',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
     },
   ],
 };

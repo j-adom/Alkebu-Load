@@ -70,7 +70,6 @@ export interface StoredPartnershipInquiry
   wholesaleDetails?: StoredWholesaleInquiryDetails;
   status: 'new';
   emailStatus: 'pending';
-  crmProvider: 'twenty';
   crmSyncStatus: 'not_configured';
   submittedAt: string;
 }
@@ -298,7 +297,6 @@ export function buildStoredPartnershipInquiry(input: PartnershipInquiryInput): S
     wholesaleDetails: buildStoredWholesaleDetails(normalized.wholesaleDetails),
     status: 'new',
     emailStatus: 'pending',
-    crmProvider: 'twenty',
     crmSyncStatus: 'not_configured',
     submittedAt: new Date().toISOString(),
   };
