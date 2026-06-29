@@ -1,4 +1,4 @@
-import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData } from './emailService';
+import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData, PartnershipInquiryData } from './emailService';
 
 // Afrocentric brand constants matching alkebu-web design system
 const BRAND = {
@@ -585,4 +585,137 @@ Open dashboard: ${dashboardUrl}
 Alkebu-Lan Images`;
 
   return { subject, html: emailWrapper('Daily Order Report', content), text };
+}
+
+// ─── PARTNERSHIP STAFF NOTIFICATION ─────────────────────────────────────────
+
+export function generatePartnershipStaffTemplate(data: PartnershipInquiryData): EmailTemplate {
+  const orgDisplay = data.organizationName || data.name;
+  const subject = `New ${data.typeLabel} Partnership Inquiry — ${orgDisplay}`;
+
+  const detailEntries = Object.entries(data.details).filter(([, v]) => v != null && v !== '');
+
+  const detailRows = detailEntries
+    .map(
+      ([key, value]) => `
+    <tr>
+      <td style="padding: 4px 0; width: 180px; color: ${BRAND.mutedText}; font-size: 13px; vertical-align: top;">${key}</td>
+      <td style="padding: 4px 0; color: ${BRAND.darkText};">${String(value)}</td>
+    </tr>`,
+    )
+    .join('');
+
+  const detailTextLines = detailEntries.map(([k, v]) => `${k}: ${String(v)}`).join('\n');
+
+  const adminLinkHtml = data.adminUrl
+    ? ctaButton('View Inquiry in Admin', data.adminUrl)
+    : '';
+
+  const adminLinkText = data.adminUrl ? `\nView inquiry: ${data.adminUrl}` : '';
+
+  const content = `
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 4px;">New Partnership Inquiry</h2>
+    <p style="margin: 0 0 20px; color: ${BRAND.mutedText}; font-size: 13px;">${new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+
+    ${sectionBox(`
+      <h3 style="margin: 0 0 12px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Contact</h3>
+      <table style="width: 100%;">
+        <tr>
+          <td style="padding: 4px 0; width: 180px; color: ${BRAND.mutedText}; font-size: 13px;">Type</td>
+          <td style="padding: 4px 0; font-weight: bold; color: ${BRAND.forest};">${data.typeLabel}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Name</td>
+          <td style="padding: 4px 0;">${data.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Email</td>
+          <td style="padding: 4px 0;"><a href="mailto:${data.email}" style="color: ${BRAND.indigo};">${data.email}</a></td>
+        </tr>
+        ${data.phone ? `
+        <tr>
+          <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Phone</td>
+          <td style="padding: 4px 0;">${data.phone}</td>
+        </tr>` : ''}
+        ${data.organizationName ? `
+        <tr>
+          <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Organization</td>
+          <td style="padding: 4px 0; font-weight: 600;">${data.organizationName}</td>
+        </tr>` : ''}
+        ${data.sourcePath ? `
+        <tr>
+          <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Source</td>
+          <td style="padding: 4px 0;">${data.sourcePath}</td>
+        </tr>` : ''}
+      </table>
+    `)}
+
+    ${detailEntries.length > 0 ? sectionBox(`
+      <h3 style="margin: 0 0 12px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Details</h3>
+      <table style="width: 100%;">
+        ${detailRows}
+      </table>
+    `) : ''}
+
+    ${data.message ? sectionBox(`
+      <h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Message</h3>
+      <p style="margin: 0; white-space: pre-line;">${data.message}</p>
+    `) : ''}
+
+    ${adminLinkHtml}
+  `;
+
+  const text = `NEW ${data.typeLabel.toUpperCase()} PARTNERSHIP INQUIRY
+
+Type: ${data.typeLabel}
+Name: ${data.name}
+Email: ${data.email}
+${data.phone ? `Phone: ${data.phone}\n` : ''}${data.organizationName ? `Organization: ${data.organizationName}\n` : ''}${data.sourcePath ? `Source: ${data.sourcePath}\n` : ''}
+${detailTextLines ? `Details:\n${detailTextLines}\n` : ''}
+${data.message ? `Message:\n${data.message}\n` : ''}${adminLinkText}
+
+Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
+
+  return { subject, html: emailWrapper('New Partnership Inquiry', content), text };
+}
+
+// ─── PARTNERSHIP ACKNOWLEDGEMENT (Inquirer) ──────────────────────────────────
+
+export function generatePartnershipAckTemplate(data: PartnershipInquiryData): EmailTemplate {
+  const subject = `We received your ${data.typeLabel} inquiry | Alkebu-Lan Images`;
+
+  const content = `
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Thank You for Reaching Out</h2>
+    <p>Dear ${data.name},</p>
+    <p>We've received your <strong>${data.typeLabel}</strong> partnership inquiry and our team will review it shortly.</p>
+
+    ${sectionBox(`
+      <h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">What Happens Next</h3>
+      <p style="margin: 0 0 8px;">A member of our team will be in touch with you <strong>within 2 business days</strong> to discuss your inquiry and next steps.</p>
+      <p style="margin: 0; color: ${BRAND.mutedText}; font-size: 14px;">If you have urgent questions in the meantime, please contact us directly at ${BRAND.phone} or <a href="mailto:${BRAND.email}" style="color: ${BRAND.indigo};">${BRAND.email}</a>.</p>
+    `)}
+
+    <p style="margin: 24px 0 8px;">We appreciate your interest in partnering with Alkebu-Lan Images — Nashville's premier African-American bookstore.</p>
+    <p style="margin: 0; color: ${BRAND.mutedText};">In the spirit of community and shared knowledge,<br><strong>The Alkebu-Lan Images Team</strong></p>
+  `;
+
+  const text = `Thank You for Reaching Out
+
+Dear ${data.name},
+
+We've received your ${data.typeLabel} partnership inquiry and our team will review it shortly.
+
+What Happens Next:
+A member of our team will be in touch with you within 2 business days to discuss your inquiry and next steps.
+
+If you have urgent questions in the meantime, please contact us at ${BRAND.phone} or ${BRAND.email}.
+
+We appreciate your interest in partnering with Alkebu-Lan Images — Nashville's premier African-American bookstore.
+
+In the spirit of community and shared knowledge,
+The Alkebu-Lan Images Team
+
+Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
+
+  return { subject, html: emailWrapper('Partnership Inquiry Received', content), text };
 }

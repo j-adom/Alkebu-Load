@@ -1,28 +1,25 @@
 import {
-  buildPartnershipEmail,
   buildStoredPartnershipInquiry,
   normalizePartnershipInquiry,
   type StoredPartnershipInquiry,
   validatePartnershipInquiry,
 } from './partnershipInquiries';
+import type { EmailSendResult, PartnershipInquiryData } from './emailService';
 
 type CreatedPartnershipInquiry = Omit<StoredPartnershipInquiry, 'id'> & {
   id: string | number;
 };
 
-type EmailStatusUpdate = {
-  emailStatus?: 'pending' | 'sent' | 'failed';
-  emailSentAt?: string;
-  emailError?: string;
+type EmailGroupUpdate = {
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  sentAt?: string;
+  error?: string;
 };
 
-type EmailReplyTo = { name: string; address: string };
-
-type PartnershipInquiryUpdate = Omit<
-  Partial<StoredPartnershipInquiry>,
-  'emailStatus' | 'id'
-> &
-  EmailStatusUpdate;
+type PartnershipInquiryUpdate = {
+  staffEmail?: EmailGroupUpdate;
+  acknowledgementEmail?: EmailGroupUpdate;
+};
 
 export interface PartnershipInquirySubmissionDeps {
   verifyTurnstile: (
@@ -35,12 +32,9 @@ export interface PartnershipInquirySubmissionDeps {
     id: string | number,
     data: PartnershipInquiryUpdate,
   ) => Promise<unknown>;
-  sendStaffEmail: (email: {
-    subject: string;
-    text: string;
-    html: string;
-    replyTo?: EmailReplyTo;
-  }) => Promise<void>;
+  sendStaffEmail: (data: PartnershipInquiryData) => Promise<EmailSendResult>;
+  sendAcknowledgementEmail: (data: PartnershipInquiryData) => Promise<EmailSendResult>;
+  now?: () => number;
 }
 
 export interface PartnershipInquirySubmissionInput {
@@ -61,13 +55,21 @@ export interface PartnershipInquirySubmissionResult {
 
 const SUCCESS_MESSAGE = 'Thanks for reaching out. Your inquiry has been received.';
 
+const MIN_TIME_TO_SUBMIT_MS = 3000;
+
+const inquiryTypeLabels: Record<string, string> = {
+  wholesale: 'Wholesale',
+  institutional: 'Institutional',
+  nonprofit: 'Non-profit',
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 const cleanText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
-const cleanHeaderText = (value: unknown): string =>
-  cleanText(value)
+const cleanHeaderText = (value: string): string =>
+  value
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g, '')
     .replace(/ {2,}/g, ' ')
@@ -84,14 +86,81 @@ const successResult = (): PartnershipInquirySubmissionResult => ({
   },
 });
 
+function buildPartnershipInquiryData(
+  created: CreatedPartnershipInquiry,
+): PartnershipInquiryData {
+  const typeLabel =
+    inquiryTypeLabels[created.inquiryType] ?? created.inquiryType;
+
+  // Collect type-specific detail fields into a flat key→value map
+  const details: Record<string, unknown> = {};
+
+  if (created.inquiryType === 'wholesale' && created.wholesaleDetails) {
+    const d = created.wholesaleDetails;
+    if (d.expectedOrderVolume) details['Expected order volume'] = d.expectedOrderVolume;
+    if (d.productInterests?.length) {
+      details['Product interests'] = d.productInterests
+        .map((item) => (typeof item === 'string' ? item : item.interest))
+        .filter(Boolean)
+        .join(', ');
+    }
+    if (d.resaleOrDistributionNeeds) details['Resale or distribution needs'] = d.resaleOrDistributionNeeds;
+  }
+
+  if (created.inquiryType === 'institutional' && created.institutionalDetails) {
+    const d = created.institutionalDetails;
+    if (d.institutionType) details['Institution type'] = d.institutionType;
+    if (d.purchasingMethod) details['Purchasing method'] = d.purchasingMethod;
+    if (d.taxExemptStatus) details['Tax exempt status'] = d.taxExemptStatus;
+    if (d.audienceOrStudentGroup) details['Audience or student group'] = d.audienceOrStudentGroup;
+    if (d.targetTimeline) details['Target timeline'] = d.targetTimeline;
+  }
+
+  if (created.inquiryType === 'nonprofit' && created.nonprofitDetails) {
+    const d = created.nonprofitDetails;
+    if (d.projectType) details['Project type'] = d.projectType;
+    if (d.missionOrProgramContext) details['Mission or program context'] = d.missionOrProgramContext;
+    if (d.targetTimeline) details['Target timeline'] = d.targetTimeline;
+    if (d.budgetRange) details['Budget range'] = d.budgetRange;
+    if (d.supportRequested) details['Support requested'] = d.supportRequested;
+  }
+
+  const adminBaseUrl =
+    process.env.ORDER_ADMIN_BASE_URL || process.env.PAYLOAD_PUBLIC_SERVER_URL || '';
+  const adminUrl = adminBaseUrl
+    ? `${adminBaseUrl}/admin/collections/partnership-inquiries/${String(created.id)}`
+    : undefined;
+
+  return {
+    inquiryType: created.inquiryType,
+    typeLabel,
+    name: cleanHeaderText(created.name),
+    email: created.email,
+    phone: created.phone ?? undefined,
+    organizationName: created.organizationName,
+    message: created.message,
+    sourcePath: created.sourcePath,
+    details,
+    adminUrl,
+  };
+}
+
 export async function submitPartnershipInquiry({
   body,
   clientIp,
   deps,
 }: PartnershipInquirySubmissionInput): Promise<PartnershipInquirySubmissionResult> {
   const input = isRecord(body) ? body : {};
+  const now = deps.now ?? (() => Date.now());
 
+  // Honeypot check — silent success, no side effects
   if (cleanText(input.website)) {
+    return { status: 200, body: { success: true } };
+  }
+
+  // Minimum-time-to-submit anti-spam check (same silent-success pattern as honeypot)
+  const renderedAt = typeof input.renderedAt === 'number' ? input.renderedAt : null;
+  if (renderedAt === null || now() - renderedAt < MIN_TIME_TO_SUBMIT_MS) {
     return { status: 200, body: { success: true } };
   }
 
@@ -155,36 +224,56 @@ export async function submitPartnershipInquiry({
     };
   }
 
-  const staffEmail = buildPartnershipEmail({ ...created, id: String(created.id) });
+  const inquiryData = buildPartnershipInquiryData(created);
 
-  try {
-    await deps.sendStaffEmail({
-      ...staffEmail,
-      replyTo: { name: cleanHeaderText(created.name), address: created.email },
-    });
-  } catch (error) {
-    const message = errorMessageFor(error);
-    console.error('Partnership inquiry email failed:', error);
-
-    try {
-      await deps.updateInquiry(created.id, {
-        emailStatus: 'failed',
-        emailError: message,
-      });
-    } catch (updateError) {
-      console.error('Unable to record partnership inquiry email failure:', updateError);
-    }
-
-    return successResult();
-  }
+  // --- Staff email (best-effort) ---
+  const staffEmailResult = await deps.sendStaffEmail(inquiryData).catch((error: unknown) => ({
+    success: false,
+    error: errorMessageFor(error),
+  } as Pick<{ success: boolean; error?: string }, 'success' | 'error'>));
 
   try {
     await deps.updateInquiry(created.id, {
-      emailStatus: 'sent',
-      emailSentAt: new Date().toISOString(),
+      staffEmail: {
+        status: staffEmailResult.success ? 'sent' : 'failed',
+        sentAt: staffEmailResult.success ? new Date().toISOString() : undefined,
+        error: staffEmailResult.success ? undefined : staffEmailResult.error,
+      },
     });
-  } catch (error) {
-    console.error('Unable to record partnership inquiry email success:', error);
+  } catch (updateError) {
+    console.error('Unable to record partnership staff email status:', updateError);
+  }
+
+  if (!staffEmailResult.success) {
+    console.error(
+      'Partnership inquiry staff email failed:',
+      staffEmailResult.error,
+    );
+  }
+
+  // --- Acknowledgement email (best-effort) ---
+  const ackEmailResult = await deps.sendAcknowledgementEmail(inquiryData).catch((error: unknown) => ({
+    success: false,
+    error: errorMessageFor(error),
+  } as Pick<{ success: boolean; error?: string }, 'success' | 'error'>));
+
+  try {
+    await deps.updateInquiry(created.id, {
+      acknowledgementEmail: {
+        status: ackEmailResult.success ? 'sent' : 'failed',
+        sentAt: ackEmailResult.success ? new Date().toISOString() : undefined,
+        error: ackEmailResult.success ? undefined : ackEmailResult.error,
+      },
+    });
+  } catch (updateError) {
+    console.error('Unable to record partnership acknowledgement email status:', updateError);
+  }
+
+  if (!ackEmailResult.success) {
+    console.error(
+      'Partnership inquiry acknowledgement email failed:',
+      ackEmailResult.error,
+    );
   }
 
   return successResult();

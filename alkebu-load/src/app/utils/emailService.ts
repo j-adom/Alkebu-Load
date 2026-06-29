@@ -6,6 +6,8 @@ import {
   generateStaffNotificationTemplate,
   generateDailyDigestTemplate,
   generateRefundNotificationTemplate,
+  generatePartnershipStaffTemplate,
+  generatePartnershipAckTemplate,
 } from './emailTemplates';
 import { getEmailRuntimeConfig, type EmailProvider } from './emailConfig';
 
@@ -109,6 +111,19 @@ export interface DailyDigestData {
   totalOrderCount: number;
   totalRevenuePending: number;
   adminUrl: string;
+}
+
+export interface PartnershipInquiryData {
+  inquiryType: 'wholesale' | 'institutional' | 'nonprofit';
+  typeLabel: string; // 'Wholesale' | 'Institutional' | 'Non-profit'
+  name: string;
+  email: string;
+  phone?: string;
+  organizationName?: string;
+  message?: string;
+  sourcePath?: string;
+  details: Record<string, unknown>; // the page-specific detail fields
+  adminUrl?: string;
 }
 
 function formatError(error: unknown): string {
@@ -296,6 +311,49 @@ export async function sendDailyOrderDigest(data: DailyDigestData): Promise<Email
 
   if (result.success) {
     console.log(`Daily order digest sent to ${staffEmail}: ${data.totalOrderCount} orders`);
+  }
+
+  return result;
+}
+
+/**
+ * Send partnership inquiry notification email to staff
+ */
+export async function sendPartnershipStaffNotification(
+  data: PartnershipInquiryData,
+): Promise<EmailSendResult> {
+  const staffEmail = getEmailRuntimeConfig().staffNotificationEmail;
+  const template = generatePartnershipStaffTemplate(data);
+  const result = await sendTemplateEmail({
+    to: staffEmail,
+    template,
+  });
+
+  if (result.success) {
+    console.log(
+      `Partnership staff notification sent to ${staffEmail} for ${data.typeLabel} inquiry from ${data.organizationName || data.name}`,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Send partnership inquiry acknowledgement email to the inquirer
+ */
+export async function sendPartnershipAcknowledgement(
+  data: PartnershipInquiryData,
+): Promise<EmailSendResult> {
+  const template = generatePartnershipAckTemplate(data);
+  const result = await sendTemplateEmail({
+    to: data.email,
+    template,
+  });
+
+  if (result.success) {
+    console.log(
+      `Partnership acknowledgement sent to ${data.email} for ${data.typeLabel} inquiry`,
+    );
   }
 
   return result;

@@ -201,7 +201,7 @@ test('builds stored defaults for email and CRM state', () => {
   } as any);
 
   assert.strictEqual(stored.status, 'new');
-  assert.strictEqual(stored.emailStatus, 'pending');
+  assert.strictEqual((stored as any).emailStatus, undefined);
   assert.strictEqual((stored as any).crmProvider, undefined);
   assert.strictEqual(stored.crmSyncStatus, 'not_configured');
   assert.ok(stored.submittedAt);
@@ -258,7 +258,6 @@ test('builds staff email with route-specific details', () => {
     sourcePath: '/wholesale',
     submittedAt: '2026-06-26T12:00:00.000Z',
     status: 'new',
-    emailStatus: 'pending',
     crmSyncStatus: 'not_configured',
     wholesaleDetails: {
       expectedOrderVolume: '100 books',
@@ -287,7 +286,6 @@ test('builds a staff email subject without visitor-supplied line breaks', () => 
     sourcePath: '/institutional-contracts',
     submittedAt: '2026-06-26T12:00:00.000Z',
     status: 'new',
-    emailStatus: 'pending',
     crmSyncStatus: 'not_configured',
     institutionalDetails: {
       institutionType: 'library',

@@ -4385,9 +4385,16 @@ export interface PartnershipInquiry {
   followUpDate?: string | null;
   internalNotes?: string | null;
   assignedTo?: (number | null) | User;
-  emailStatus?: ('pending' | 'sent' | 'failed') | null;
-  emailSentAt?: string | null;
-  emailError?: string | null;
+  staffEmail?: {
+    status?: ('pending' | 'sent' | 'failed' | 'skipped') | null;
+    sentAt?: string | null;
+    error?: string | null;
+  };
+  acknowledgementEmail?: {
+    status?: ('pending' | 'sent' | 'failed' | 'skipped') | null;
+    sentAt?: string | null;
+    error?: string | null;
+  };
   crmExternalId?: string | null;
   crmSyncStatus?: ('not_configured' | 'pending' | 'synced' | 'failed') | null;
   updatedAt: string;
@@ -5944,9 +5951,20 @@ export interface PartnershipInquiriesSelect<T extends boolean = true> {
   followUpDate?: T;
   internalNotes?: T;
   assignedTo?: T;
-  emailStatus?: T;
-  emailSentAt?: T;
-  emailError?: T;
+  staffEmail?:
+    | T
+    | {
+        status?: T;
+        sentAt?: T;
+        error?: T;
+      };
+  acknowledgementEmail?:
+    | T
+    | {
+        status?: T;
+        sentAt?: T;
+        error?: T;
+      };
   crmExternalId?: T;
   crmSyncStatus?: T;
   updatedAt?: T;

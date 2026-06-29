@@ -69,7 +69,6 @@ export interface StoredPartnershipInquiry
   inquiryType: PartnershipInquiryType;
   wholesaleDetails?: StoredWholesaleInquiryDetails;
   status: 'new';
-  emailStatus: 'pending';
   crmSyncStatus: 'not_configured';
   submittedAt: string;
 }
@@ -296,7 +295,6 @@ export function buildStoredPartnershipInquiry(input: PartnershipInquiryInput): S
     inquiryType: normalized.inquiryType,
     wholesaleDetails: buildStoredWholesaleDetails(normalized.wholesaleDetails),
     status: 'new',
-    emailStatus: 'pending',
     crmSyncStatus: 'not_configured',
     submittedAt: new Date().toISOString(),
   };

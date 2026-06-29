@@ -16,7 +16,6 @@ export const PartnershipInquiries: CollectionConfig = {
       'inquiryType',
       'status',
       'followUpDate',
-      'emailStatus',
       'crmSyncStatus',
       'createdAt',
     ],
@@ -203,32 +202,60 @@ export const PartnershipInquiries: CollectionConfig = {
       },
     },
     {
-      name: 'emailStatus',
-      type: 'select',
-      required: true,
-      defaultValue: 'pending',
-      options: [
-        { label: 'Pending', value: 'pending' },
-        { label: 'Sent', value: 'sent' },
-        { label: 'Failed', value: 'failed' },
+      name: 'staffEmail',
+      type: 'group',
+      admin: {
+        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
+      },
+      fields: [
+        {
+          name: 'status',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Sent', value: 'sent' },
+            { label: 'Failed', value: 'failed' },
+            { label: 'Skipped', value: 'skipped' },
+          ],
+        },
+        {
+          name: 'sentAt',
+          type: 'date',
+        },
+        {
+          name: 'error',
+          type: 'textarea',
+        },
       ],
-      admin: {
-        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
-      },
     },
     {
-      name: 'emailSentAt',
-      type: 'date',
+      name: 'acknowledgementEmail',
+      type: 'group',
       admin: {
         condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
       },
-    },
-    {
-      name: 'emailError',
-      type: 'textarea',
-      admin: {
-        condition: (_data, _siblingData, { user }) => isPartnershipStaff(user),
-      },
+      fields: [
+        {
+          name: 'status',
+          type: 'select',
+          defaultValue: 'pending',
+          options: [
+            { label: 'Pending', value: 'pending' },
+            { label: 'Sent', value: 'sent' },
+            { label: 'Failed', value: 'failed' },
+            { label: 'Skipped', value: 'skipped' },
+          ],
+        },
+        {
+          name: 'sentAt',
+          type: 'date',
+        },
+        {
+          name: 'error',
+          type: 'textarea',
+        },
+      ],
     },
     {
       name: 'crmExternalId',

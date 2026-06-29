@@ -1,10 +1,9 @@
 import config from '@payload-config';
 import { getPayload } from 'payload';
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
 
-import { getEmailRuntimeConfig } from '@/app/utils/emailConfig';
 import { submitPartnershipInquiry } from '@/app/utils/partnershipInquirySubmission';
+import { sendPartnershipStaffNotification, sendPartnershipAcknowledgement } from '@/app/utils/emailService';
 import { getClientIp, verifyTurnstileToken } from '@/app/utils/turnstile';
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -86,32 +85,8 @@ export async function POST(request: NextRequest) {
           overrideAccess: true,
         });
       },
-      sendStaffEmail: async (email) => {
-        const emailConfig = getEmailRuntimeConfig();
-
-        if (!emailConfig.configured) {
-          throw new Error('Partnership inquiry email is not configured on the server.');
-        }
-
-        const transporter = nodemailer.createTransport({
-          host: emailConfig.host,
-          port: emailConfig.port,
-          secure: emailConfig.secure,
-          auth: {
-            user: emailConfig.user,
-            pass: emailConfig.password,
-          },
-        });
-
-        await transporter.sendMail({
-          from: `${emailConfig.fromName} <${emailConfig.fromEmail}>`,
-          to: emailConfig.staffNotificationEmail || 'info@alkebulanimages.com',
-          replyTo: email.replyTo,
-          subject: email.subject,
-          text: email.text,
-          html: email.html,
-        });
-      },
+      sendStaffEmail: sendPartnershipStaffNotification,
+      sendAcknowledgementEmail: sendPartnershipAcknowledgement,
     },
   });
 
