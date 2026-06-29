@@ -1,5 +1,24 @@
 import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData } from './emailService';
 
+// ─── Security helper ───────────────────────────────────────────────────────────
+// Escape user-controlled values before interpolating them into HTML.
+// `&` MUST be replaced first to avoid double-escaping other entities.
+const escapeHtml = (s: unknown): string =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+// Validate and encode an email address for use inside an href="mailto:…" attribute.
+// Returns the percent-encoded address when it looks like an email, or an empty string
+// (making the href harmless) when it does not.
+const safeMailto = (email: unknown): string => {
+  const s = String(email ?? '').trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? encodeURIComponent(s) : '';
+};
+
 // Afrocentric brand constants matching alkebu-web design system
 const BRAND = {
   name: 'Alkebu-Lan Images',
@@ -98,7 +117,7 @@ function ctaButton(text: string, url: string): string {
 function itemsTable(items: Array<{ productTitle: string; quantity: number; unitPrice: number; totalPrice: number }>): string {
   const rows = items.map(item => `
     <tr>
-      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${item.productTitle}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; color: ${BRAND.mutedText};">${formatCents(item.unitPrice)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.totalPrice)}</td>
@@ -141,10 +160,10 @@ function totalsBlock(subtotal: number, tax: number, shipping: number, total: num
 function addressBlock(addr: any): string {
   if (!addr) return '<p style="color: ' + BRAND.mutedText + ';">No address provided</p>';
   return `<p style="margin: 0; line-height: 1.8;">
-    ${addr.firstName || ''} ${addr.lastName || ''}<br>
-    ${addr.street || ''}${addr.street2 ? `<br>${addr.street2}` : ''}<br>
-    ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}<br>
-    ${addr.country || 'US'}${addr.phone ? `<br>${addr.phone}` : ''}
+    ${escapeHtml(addr.firstName || '')} ${escapeHtml(addr.lastName || '')}<br>
+    ${escapeHtml(addr.street || '')}${addr.street2 ? `<br>${escapeHtml(addr.street2)}` : ''}<br>
+    ${escapeHtml(addr.city || '')}, ${escapeHtml(addr.state || '')} ${escapeHtml(addr.zip || '')}<br>
+    ${escapeHtml(addr.country || 'US')}${addr.phone ? `<br>${escapeHtml(addr.phone)}` : ''}
   </p>`;
 }
 
@@ -217,14 +236,14 @@ export function generateAbandonedCartTemplate(data: AbandonedCartData): EmailTem
   const itemsList = data.items.map(item => `
     <tr>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight};">
-        <strong style="color: ${BRAND.darkText};">${item.productTitle}</strong><br>
+        <strong style="color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</strong><br>
         <span style="color: ${BRAND.mutedText}; font-size: 13px;">Qty: ${item.quantity} &middot; ${formatCents(item.totalPrice)}</span>
       </td>
     </tr>`).join('');
 
   const content = `
     <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Your Books Are Waiting</h2>
-    <p>Hello${data.customerName ? ` ${data.customerName}` : ''},</p>
+    <p>Hello${data.customerName ? ` ${escapeHtml(data.customerName)}` : ''},</p>
     <p>You left some items in your cart. They're still available and ready for you.</p>
 
     ${sectionBox(`
@@ -267,7 +286,7 @@ export function generateRefundNotificationTemplate(data: RefundNotificationData)
     .map(
       (item) => `
     <tr>
-      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${item.productTitle}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.amount)}</td>
     </tr>`,
@@ -281,13 +300,13 @@ export function generateRefundNotificationTemplate(data: RefundNotificationData)
   const noteBlock = data.note
     ? sectionBox(
         `<h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">A Note From Our Team</h3>
-         <p style="margin: 0; white-space: pre-line;">${data.note}</p>`,
+         <p style="margin: 0; white-space: pre-line;">${escapeHtml(data.note)}</p>`,
       )
     : '';
 
   const content = `
     <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">We've Issued a Refund</h2>
-    <p>Dear ${data.customerName},</p>
+    <p>Dear ${escapeHtml(data.customerName)},</p>
     <p style="margin: 0 0 24px; color: ${BRAND.mutedText};">
       We've refunded <strong style="color: ${BRAND.forest};">${formatCents(data.refundAmount)}</strong> to your original payment method.
       Refunds typically take 5–10 business days to appear, depending on your bank.
@@ -295,8 +314,8 @@ export function generateRefundNotificationTemplate(data: RefundNotificationData)
 
     ${sectionBox(`
       <h3 style="margin: 0 0 12px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Refund Details</h3>
-      <p style="margin: 0;"><strong>Order Number:</strong> ${data.orderNumber}</p>
-      <p style="margin: 4px 0 0;"><strong>Reason:</strong> ${data.reasonLabel}</p>
+      <p style="margin: 0;"><strong>Order Number:</strong> ${escapeHtml(data.orderNumber)}</p>
+      <p style="margin: 4px 0 0;"><strong>Reason:</strong> ${escapeHtml(data.reasonLabel)}</p>
       <p style="margin: 4px 0 0;"><strong>Amount Refunded:</strong> ${formatCents(data.refundAmount)}</p>
     `)}
 
@@ -371,7 +390,7 @@ export function generateOrderStatusTemplate(
       <p style="margin: 8px 0 0; color: ${BRAND.mutedText};">${config.message}</p>
       ${trackingNumber ? `
         <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid ${BRAND.borderLight};">
-          <p style="margin: 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>
+          <p style="margin: 0;"><strong>Tracking Number:</strong> ${escapeHtml(trackingNumber)}</p>
         </div>
       ` : ''}
     `)}
@@ -401,7 +420,7 @@ export function generateStaffNotificationTemplate(data: StaffNotificationData): 
 
   const itemsList = data.items.map(item =>
     `<tr>
-      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight};">${item.productTitle}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight};">${escapeHtml(item.productTitle)}</td>
       <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center;">${item.quantity}</td>
       <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right;">${formatCents(item.totalPrice)}</td>
     </tr>`).join('');
@@ -418,11 +437,11 @@ export function generateStaffNotificationTemplate(data: StaffNotificationData): 
       </tr>
       <tr>
         <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Customer</td>
-        <td style="padding: 4px 0;">${data.customerName}</td>
+        <td style="padding: 4px 0;">${escapeHtml(data.customerName)}</td>
       </tr>
       <tr>
         <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Email</td>
-        <td style="padding: 4px 0;"><a href="mailto:${data.customerEmail}" style="color: ${BRAND.indigo};">${data.customerEmail}</a></td>
+        <td style="padding: 4px 0;"><a href="mailto:${safeMailto(data.customerEmail)}" style="color: ${BRAND.indigo};">${escapeHtml(data.customerEmail)}</a></td>
       </tr>
       <tr>
         <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Payment</td>
@@ -517,11 +536,11 @@ export function generateDailyDigestTemplate(data: DailyDigestData): EmailTemplat
 
     return `<tr style="background-color: ${rowBg};">
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight};">
-        <strong>${order.orderNumber}</strong>${isStale ? ' &#9888;' : ''}<br>
-        <span style="color: ${BRAND.mutedText}; font-size: 12px;">${order.customerName}</span>
+        <strong>${escapeHtml(order.orderNumber)}</strong>${isStale ? ' &#9888;' : ''}<br>
+        <span style="color: ${BRAND.mutedText}; font-size: 12px;">${escapeHtml(order.customerName)}</span>
       </td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center;">
-        <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase;">${order.status}</span>
+        <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase;">${escapeHtml(order.status)}</span>
       </td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600;">${formatCents(order.totalAmount)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; color: ${isStale ? BRAND.terracotta : BRAND.mutedText}; font-size: 13px;">
