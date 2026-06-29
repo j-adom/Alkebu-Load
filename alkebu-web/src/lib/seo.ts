@@ -270,6 +270,68 @@ export function buildBreadcrumbJsonLd(breadcrumbs: Array<{ name: string; url: st
   };
 }
 
+export function buildPartnershipJsonLd(page: {
+  seo: { title: string; description: string };
+  path: string;
+  type: string;
+}) {
+  const serviceTypeMap: Record<string, string> = {
+    wholesale: 'Wholesale book supply and cultural product sourcing',
+    institutional: 'Institutional book orders for schools, libraries, and organizations',
+    nonprofit: 'Community project support and mission-aligned partnerships',
+  };
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Service',
+        name: page.seo.title,
+        description: page.seo.description,
+        serviceType: serviceTypeMap[page.type] ?? page.seo.title,
+        url: `${PUBLIC_SITE_URL}${page.path}`,
+        areaServed: {
+          '@type': 'Country',
+          name: 'US',
+        },
+        provider: {
+          '@type': 'Organization',
+          name: 'Alkebu-Lan Images',
+          url: PUBLIC_SITE_URL,
+          address: {
+            '@type': 'PostalAddress',
+            addressLocality: 'Nashville',
+            addressRegion: 'TN',
+            addressCountry: 'US',
+          },
+        },
+      },
+      {
+        '@type': 'Organization',
+        name: 'Alkebu-Lan Images',
+        url: PUBLIC_SITE_URL,
+        description:
+          'Nashville-based Black-owned bookstore and cultural hub specializing in African diaspora literature, wellness products, and community events.',
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: 'Nashville',
+          addressRegion: 'TN',
+          addressCountry: 'US',
+        },
+        contactPoint: {
+          '@type': 'ContactPoint',
+          contactType: 'customer service',
+          email: 'info@alkebulanimages.com',
+        },
+        logo: {
+          '@type': 'ImageObject',
+          url: `${PUBLIC_SITE_URL}/logo.png`,
+        },
+      },
+    ],
+  };
+}
+
 export interface SEOData {
   title: string;
   description: string;

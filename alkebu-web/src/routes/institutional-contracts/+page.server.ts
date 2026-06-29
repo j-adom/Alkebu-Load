@@ -1,6 +1,6 @@
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import { partnershipPages } from '$lib/data/partnershipPages';
-import { buildSEOData } from '$lib/seo';
+import { buildSEOData, buildPartnershipJsonLd } from '$lib/seo';
 import { handlePartnershipInquiryAction } from '$lib/server/partnershipInquiry';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -21,6 +21,8 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       title: page.seo.title,
       description: page.seo.description,
       canonical: `${PUBLIC_SITE_URL}${page.path}`,
+      image: page.hero.image,
+      jsonLd: buildPartnershipJsonLd(page),
     }),
   };
 };

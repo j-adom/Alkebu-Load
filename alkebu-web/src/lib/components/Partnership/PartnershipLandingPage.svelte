@@ -6,13 +6,15 @@
 
   let { data, form } = $props();
   const page = $derived(data.page);
-  const metadata = $derived({
-    title: page.seo.title,
-    description: page.seo.description,
-    image: '/assets/images/resources/logo.png',
-    imageAlt: 'Alkebu-Lan Images Logo',
-    url: page.path,
-  });
+  const metadata = $derived(
+    data.seo ?? {
+      title: page.seo.title,
+      description: page.seo.description,
+      image: '/assets/images/resources/logo.png',
+      imageAlt: 'Alkebu-Lan Images Logo',
+      url: page.path,
+    }
+  );
   const values = $derived(form?.values ?? {});
   const detailValues = $derived(values?.[page.form.detailGroup] ?? {});
   const fieldErrors = $derived(form?.fieldErrors ?? {});
