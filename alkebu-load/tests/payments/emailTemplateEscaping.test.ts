@@ -220,6 +220,62 @@ describe('generateStaffNotificationTemplate – XSS escaping', () => {
   });
 });
 
+// ─── ctaButton href protocol validation ──────────────────────────────────────
+// ctaButton is private, so we test through template call sites:
+// - generateAbandonedCartTemplate (recoveryUrl)
+// - generateStaffNotificationTemplate (adminUrl built from ORDER_ADMIN_BASE_URL / PAYLOAD_PUBLIC_SERVER_URL)
+
+describe('ctaButton – href protocol guard (defense-in-depth)', () => {
+  it('does not emit href="javascript:…" when recoveryUrl uses javascript: protocol', () => {
+    const data: AbandonedCartData = {
+      customerName: 'Test User',
+      customerEmail: 'test@example.com',
+      cartId: 'cart-xss',
+      items: [{ productTitle: 'Book', quantity: 1, unitPrice: 1000, totalPrice: 1000 }],
+      subtotal: 1000,
+      recoveryUrl: 'javascript:alert(1)',
+    };
+    const { html } = generateAbandonedCartTemplate(data);
+    assert.ok(
+      !html.includes('href="javascript:'),
+      'ctaButton must not emit href="javascript:…" for non-http(s) URL'
+    );
+  });
+
+  it('does not emit href when recoveryUrl is a data: URI', () => {
+    const data: AbandonedCartData = {
+      customerName: 'Test User',
+      customerEmail: 'test@example.com',
+      cartId: 'cart-xss2',
+      items: [{ productTitle: 'Book', quantity: 1, unitPrice: 500, totalPrice: 500 }],
+      subtotal: 500,
+      recoveryUrl: 'data:text/html,<script>alert(1)</script>',
+    };
+    const { html } = generateAbandonedCartTemplate(data);
+    assert.ok(
+      !html.includes('href="data:'),
+      'ctaButton must not emit href="data:…" for non-http(s) URL'
+    );
+  });
+
+  it('preserves a valid https recoveryUrl in the href', () => {
+    const validUrl = 'https://alkebulanimages.com/cart/abc123';
+    const data: AbandonedCartData = {
+      customerName: 'Test User',
+      customerEmail: 'test@example.com',
+      cartId: 'cart-ok',
+      items: [{ productTitle: 'Book', quantity: 1, unitPrice: 1000, totalPrice: 1000 }],
+      subtotal: 1000,
+      recoveryUrl: validUrl,
+    };
+    const { html } = generateAbandonedCartTemplate(data);
+    assert.ok(
+      html.includes(`href="${validUrl}"`),
+      'ctaButton must preserve a valid https URL in the href'
+    );
+  });
+});
+
 // ─── DAILY DIGEST ─────────────────────────────────────────────────────────────
 
 describe('generateDailyDigestTemplate – XSS escaping', () => {

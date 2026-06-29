@@ -107,8 +107,19 @@ function sectionBox(content: string, bgColor: string = BRAND.cream): string {
 }
 
 function ctaButton(text: string, url: string): string {
+  // Defense-in-depth: only allow http(s) URLs in the href to prevent javascript:
+  // or other protocol injection. If the URL is not http(s), render a non-link span
+  // so the email layout is preserved without a working (potentially malicious) link.
+  const safeUrl = /^https?:\/\//i.test(url) ? escapeHtml(url) : null;
+  if (safeUrl === null) {
+    return `<div style="text-align: center; margin: 28px 0;">
+    <span style="background-color: ${BRAND.gold}; color: ${BRAND.darkText}; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 15px; letter-spacing: 0.5px;">
+      ${text}
+    </span>
+  </div>`;
+  }
   return `<div style="text-align: center; margin: 28px 0;">
-    <a href="${url}" style="background-color: ${BRAND.gold}; color: ${BRAND.darkText}; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 15px; letter-spacing: 0.5px;">
+    <a href="${safeUrl}" style="background-color: ${BRAND.gold}; color: ${BRAND.darkText}; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 15px; letter-spacing: 0.5px;">
       ${text}
     </a>
   </div>`;
