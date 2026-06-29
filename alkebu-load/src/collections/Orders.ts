@@ -144,6 +144,23 @@ export const Orders: CollectionConfig = {
             { name: 'personalNote', type: 'textarea' },
           ],
         },
+        {
+          name: 'refundedQuantity',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          admin: {
+            description: 'Units of this line that have been refunded (per-item refunds)',
+          },
+        },
+        {
+          name: 'doNotShip',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            description: 'Set when this line is fully refunded — do not pack/ship it',
+          },
+        },
       ],
     },
     {
@@ -266,6 +283,7 @@ export const Orders: CollectionConfig = {
             { label: 'Succeeded', value: 'succeeded' },
             { label: 'Failed', value: 'failed' },
             { label: 'Cancelled', value: 'cancelled' },
+            { label: 'Partially Refunded', value: 'partially_refunded' },
             { label: 'Refunded', value: 'refunded' },
           ],
         },
@@ -469,6 +487,26 @@ export const Orders: CollectionConfig = {
             { name: 'error', type: 'textarea' },
           ],
         },
+        {
+          name: 'refundNotification',
+          type: 'group',
+          fields: [
+            {
+              name: 'status',
+              type: 'select',
+              options: [
+                { label: 'Pending', value: 'pending' },
+                { label: 'Sent', value: 'sent' },
+                { label: 'Failed', value: 'failed' },
+                { label: 'Skipped', value: 'skipped' },
+              ],
+            },
+            { name: 'recipient', type: 'email' },
+            { name: 'provider', type: 'text' },
+            { name: 'sentAt', type: 'date' },
+            { name: 'error', type: 'textarea' },
+          ],
+        },
       ],
     },
     {
@@ -487,6 +525,29 @@ export const Orders: CollectionConfig = {
           name: 'reason',
           type: 'text',
           required: true,
+        },
+        {
+          name: 'note',
+          type: 'textarea',
+          admin: {
+            description: 'Optional staff note shown to the customer in the refund email',
+          },
+        },
+        {
+          name: 'items',
+          type: 'json',
+          admin: {
+            description:
+              'Line items covered by this refund: [{ itemId, productTitle, quantity, amount }] (cents). Empty for whole-order refunds.',
+          },
+        },
+        {
+          name: 'restock',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            description: 'Whether refunded units were returned to inventory',
+          },
         },
         {
           name: 'stripeRefundId',

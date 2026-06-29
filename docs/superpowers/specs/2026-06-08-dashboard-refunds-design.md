@@ -1,7 +1,10 @@
 # Per-Item Refunds from the Order Dashboard + Customer Email
 
 **Date:** 2026-06-08
-**Status:** Design — awaiting review
+**Status:** Implemented (2026-06-09) — pending the prod smoke test in
+[2026-06-08-dashboard-refunds-smoketest.md](2026-06-08-dashboard-refunds-smoketest.md).
+Note: `refunds[].items` shipped as a `json` column (not a nested array) to avoid a
+child-table migration with no staging net.
 **Scope:** `alkebu-load` (Payload backend) + Order Dashboard UI
 
 ## Problem

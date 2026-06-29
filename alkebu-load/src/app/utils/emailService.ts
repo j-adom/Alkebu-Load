@@ -5,6 +5,7 @@ import {
   generateOrderStatusTemplate,
   generateStaffNotificationTemplate,
   generateDailyDigestTemplate,
+  generateRefundNotificationTemplate,
 } from './emailTemplates';
 import { getEmailRuntimeConfig, type EmailProvider } from './emailConfig';
 
@@ -77,6 +78,21 @@ export interface StaffNotificationData {
   shippingAddress: any;
   source: string;
   paymentMethod?: string;
+}
+
+export interface RefundNotificationData {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  refundAmount: number; // cents
+  reasonLabel: string; // human-readable reason
+  note?: string;
+  items: Array<{
+    productTitle: string;
+    quantity: number;
+    amount: number; // cents attributed to this item
+  }>;
+  isPartial: boolean;
 }
 
 export interface DailyDigestData {
@@ -225,6 +241,25 @@ export async function sendOrderStatusUpdate(
 
   if (result.success) {
     console.log(`Order status update sent to ${customerEmail} for order ${orderNumber}: ${oldStatus} → ${newStatus}`);
+  }
+
+  return result;
+}
+
+/**
+ * Send refund notification email to customer
+ */
+export async function sendRefundNotification(data: RefundNotificationData): Promise<EmailSendResult> {
+  const template = generateRefundNotificationTemplate(data);
+  const result = await sendTemplateEmail({
+    to: data.customerEmail,
+    template,
+  });
+
+  if (result.success) {
+    console.log(
+      `Refund notification sent to ${data.customerEmail} for order ${data.orderNumber}: $${(data.refundAmount / 100).toFixed(2)}`
+    );
   }
 
   return result;

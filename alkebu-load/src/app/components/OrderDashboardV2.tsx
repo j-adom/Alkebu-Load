@@ -5,11 +5,14 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { getCustomerEmail, getCustomerName } from './orderDashboard/customerDisplay'
 
 interface OrderItem {
+  id: string
   productTitle: string
   quantity: number
   unitPrice: number
   totalPrice: number
   productType: string
+  refundedQuantity?: number
+  doNotShip?: boolean
   identifiers?: {
     isbn?: string
     isbn10?: string
@@ -56,7 +59,15 @@ interface Order {
     provider?: string
     paymentMethod?: string
     paymentStatus?: string
+    stripePaymentIntentId?: string
   }
+  refunds?: Array<{
+    amount: number
+    reason?: string
+    note?: string
+    stripeRefundId?: string
+    processedAt?: string
+  }>
   emailNotifications?: {
     customerConfirmation?: {
       status?: string
@@ -103,6 +114,25 @@ interface StripeSessionRecord {
 }
 
 type Tab = 'attention' | 'shipped' | 'all'
+
+interface RefundRequestBody {
+  items?: Array<{ itemId: string; quantity: number }>
+  reason: string
+  note?: string
+  amountOverride?: number
+  restock?: boolean
+  markOutOfPrint?: boolean
+}
+
+const REFUND_REASONS: Array<{ value: string; label: string }> = [
+  { value: 'out_of_print', label: 'Out of print' },
+  { value: 'damaged', label: 'Damaged' },
+  { value: 'customer_request', label: 'Customer request' },
+  { value: 'pricing_error', label: 'Pricing error' },
+  { value: 'other', label: 'Other' },
+]
+
+const REFUNDABLE_STATUSES = ['succeeded', 'partially_refunded']
 
 const STATUS_CONFIG: Record<string, { bg: string; border: string; text: string; label: string }> = {
   pending: { bg: '#f7eadf', border: '#d9b489', text: '#8a5925', label: 'Pending payment' },
@@ -712,6 +742,33 @@ export const OrderDashboardV2: React.FC = () => {
     }
   }
 
+  const handleRefund = async (orderId: string, body: RefundRequestBody) => {
+    setActionLoading(orderId)
+    setMessage(null)
+    try {
+      const token = getToken()
+      const res = await fetch('/api/refund', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId, ...body }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Refund failed')
+      setMessage({
+        type: 'success',
+        text: `Refunded ${formatCents(data.amount)} • ${data.paymentStatus === 'refunded' ? 'fully refunded' : 'partially refunded'}`,
+      })
+      await loadOrders()
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const normalizedQuery = query.trim().toLowerCase()
   const visibleOrders = orders
     .filter((order) => statusFilter === 'all' || order.status === statusFilter)
@@ -1022,6 +1079,7 @@ export const OrderDashboardV2: React.FC = () => {
           onStatusChange={handleStatusChange}
           onShip={handleShipOrder}
           onSaveNote={handleSaveNote}
+          onRefund={handleRefund}
           isLoading={actionLoading === order.id}
         />
       ))}
@@ -1036,10 +1094,11 @@ interface OrderCardProps {
   onStatusChange: (id: string, status: string) => void
   onShip: (id: string, tracking: string, carrier: string) => void
   onSaveNote: (id: string, note: string) => void
+  onRefund: (id: string, body: RefundRequestBody) => void
   isLoading: boolean
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onStatusChange, onShip, onSaveNote, isLoading }) => {
+const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onStatusChange, onShip, onSaveNote, onRefund, isLoading }) => {
   const [tracking, setTracking] = useState(order.fulfillment?.trackingNumber || '')
   const [carrier, setCarrier] = useState(order.fulfillment?.carrier || 'usps')
   const [note, setNote] = useState(order.internalNotes || '')
@@ -1394,8 +1453,265 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
               </div>
             </SectionCard>
           </div>
+
+          <div style={{ marginTop: 18 }}>
+            <RefundPanel order={order} isLoading={isLoading} onRefund={onRefund} />
+          </div>
         </div>
       )}
     </div>
+  )
+}
+
+interface RefundLineState {
+  selected: boolean
+  quantity: number
+}
+
+const RefundPanel: React.FC<{
+  order: Order
+  isLoading: boolean
+  onRefund: (id: string, body: RefundRequestBody) => void
+}> = ({ order, isLoading, onRefund }) => {
+  const items = order.items || []
+  const refundableQtyOf = (item: OrderItem) => item.quantity - (item.refundedQuantity || 0)
+
+  const [lines, setLines] = useState<Record<number, RefundLineState>>(() => {
+    const init: Record<number, RefundLineState> = {}
+    items.forEach((item, idx) => {
+      init[idx] = { selected: false, quantity: Math.max(1, refundableQtyOf(item)) }
+    })
+    return init
+  })
+  const [reason, setReason] = useState<string>('out_of_print')
+  const [note, setNote] = useState('')
+  const [amount, setAmount] = useState('') // dollars; blank = let the server compute a fair refund
+  const [restock, setRestock] = useState(false)
+  const [markOutOfPrint, setMarkOutOfPrint] = useState(true)
+
+  // Default the "mark out of print" intent to follow the reason.
+  useEffect(() => {
+    setMarkOutOfPrint(reason === 'out_of_print')
+  }, [reason])
+
+  const alreadyRefunded = (order.refunds || []).reduce((sum, r) => sum + (r.amount || 0), 0)
+  const remainingRefundable = order.totalAmount - alreadyRefunded
+  const isRefundable =
+    REFUNDABLE_STATUSES.includes(order.payment?.paymentStatus || '') && remainingRefundable > 0
+  const isSquare = (order.payment?.provider || '').toLowerCase() === 'square'
+
+  if (!isRefundable || isSquare) {
+    return (
+      <SectionCard title="Refund">
+        <div style={{ color: '#756860', fontSize: 14, lineHeight: 1.5 }}>
+          {isSquare
+            ? 'This order was paid via Square — refund it at the register.'
+            : alreadyRefunded >= order.totalAmount && order.totalAmount > 0
+              ? `Fully refunded (${formatCents(alreadyRefunded)}).`
+              : 'Refunds are available for paid Stripe orders only.'}
+        </div>
+      </SectionCard>
+    )
+  }
+
+  const selectedEntries = Object.entries(lines).filter(
+    ([idx, line]) => line.selected && line.quantity > 0 && refundableQtyOf(items[Number(idx)]) > 0,
+  )
+  const selectedSubtotal = selectedEntries.reduce(
+    (sum, [idx, line]) => sum + items[Number(idx)].unitPrice * line.quantity,
+    0,
+  )
+  const anyBookSelected = selectedEntries.some(([idx]) => items[Number(idx)].productType === 'books')
+  const hasSelection = selectedEntries.length > 0
+  const allSelectable = items.filter((item) => refundableQtyOf(item) > 0)
+  const allSelected = hasSelection && selectedEntries.length === allSelectable.length
+
+  const toggleAll = (checked: boolean) => {
+    setLines((prev) => {
+      const next = { ...prev }
+      items.forEach((item, idx) => {
+        if (refundableQtyOf(item) > 0) {
+          next[idx] = { selected: checked, quantity: Math.max(1, refundableQtyOf(item)) }
+        }
+      })
+      return next
+    })
+  }
+
+  const setLine = (idx: number, patch: Partial<RefundLineState>) =>
+    setLines((prev) => ({ ...prev, [idx]: { ...prev[idx], ...patch } }))
+
+  const submit = () => {
+    if (!hasSelection) return
+    const overrideCents = amount.trim() ? Math.round(parseFloat(amount) * 100) : undefined
+    if (amount.trim() && (!Number.isFinite(overrideCents) || (overrideCents as number) <= 0)) {
+      window.alert('Enter a valid refund amount, or leave it blank to auto-calculate.')
+      return
+    }
+    const confirmText = overrideCents
+      ? `Refund ${formatCents(overrideCents)} to the customer? This issues a real Stripe refund.`
+      : 'Issue a fair refund (item price + tax + shipping difference) to the customer? This issues a real Stripe refund.'
+    if (!window.confirm(confirmText)) return
+
+    onRefund(order.id, {
+      items: selectedEntries.map(([idx, line]) => ({
+        itemId: items[Number(idx)].id,
+        quantity: line.quantity,
+      })),
+      reason,
+      note: note.trim() || undefined,
+      amountOverride: overrideCents,
+      restock,
+      markOutOfPrint: anyBookSelected ? markOutOfPrint : false,
+    })
+  }
+
+  const inputStyle: React.CSSProperties = {
+    borderRadius: 10,
+    border: '1px solid #d9ccb9',
+    padding: '8px 10px',
+    fontSize: 14,
+    backgroundColor: '#fff',
+    color: '#332b27',
+  }
+
+  return (
+    <SectionCard title="Refund">
+      <div style={{ display: 'grid', gap: 14 }}>
+        {alreadyRefunded > 0 && (
+          <div style={{ color: '#8a5925', fontSize: 13, fontWeight: 700 }}>
+            {formatCents(alreadyRefunded)} already refunded • {formatCents(remainingRefundable)} remaining
+          </div>
+        )}
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#3d342f' }}>
+          <input type="checkbox" checked={allSelected} onChange={(e) => toggleAll(e.target.checked)} />
+          Select all refundable items
+        </label>
+
+        <div style={{ display: 'grid', gap: 8 }}>
+          {items.map((item, idx) => {
+            const maxQty = refundableQtyOf(item)
+            const fullyRefunded = maxQty <= 0
+            const line = lines[idx]
+            return (
+              <div
+                key={`${order.id}-refund-${idx}`}
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: '1px solid #efe5d8',
+                  backgroundColor: fullyRefunded ? '#f6f1e8' : '#fff',
+                  opacity: fullyRefunded ? 0.65 : 1,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  disabled={fullyRefunded}
+                  checked={!!line?.selected && !fullyRefunded}
+                  onChange={(e) => setLine(idx, { selected: e.target.checked })}
+                />
+                <span style={{ flex: '1 1 200px', fontWeight: 700, color: '#2b2725', fontSize: 14 }}>
+                  {item.productTitle}
+                  <span style={{ color: '#6e6259', fontWeight: 600 }}> • {formatCents(item.unitPrice)} ea</span>
+                </span>
+                {fullyRefunded ? (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#1f6b35' }}>Refunded</span>
+                ) : (
+                  <label style={{ fontSize: 13, color: '#6e6259', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Qty
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxQty}
+                      value={line?.quantity ?? maxQty}
+                      onChange={(e) =>
+                        setLine(idx, {
+                          quantity: Math.max(1, Math.min(maxQty, parseInt(e.target.value, 10) || 1)),
+                        })
+                      }
+                      style={{ ...inputStyle, width: 64 }}
+                    />
+                    <span style={{ color: '#9a8c80' }}>/ {maxQty}</span>
+                  </label>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          <label style={{ display: 'grid', gap: 4, fontSize: 13, color: '#6e6259' }}>
+            Reason
+            <select value={reason} onChange={(e) => setReason(e.target.value)} style={inputStyle}>
+              {REFUND_REASONS.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: 4, fontSize: 13, color: '#6e6259' }}>
+            Refund amount (optional)
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={`Auto • selected ${formatCents(selectedSubtotal)} + tax/ship`}
+              style={inputStyle}
+            />
+          </label>
+        </div>
+
+        <label style={{ display: 'grid', gap: 4, fontSize: 13, color: '#6e6259' }}>
+          Note to customer (optional)
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="e.g. This title is no longer available from our distributor."
+            style={{ ...inputStyle, resize: 'vertical' }}
+          />
+        </label>
+
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3d342f' }}>
+            <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} />
+            Return items to stock
+          </label>
+          {anyBookSelected && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3d342f' }}>
+              <input
+                type="checkbox"
+                checked={markOutOfPrint}
+                onChange={(e) => setMarkOutOfPrint(e.target.checked)}
+              />
+              Mark refunded book(s) out of print
+            </label>
+          )}
+        </div>
+
+        <button
+          onClick={submit}
+          disabled={isLoading || !hasSelection}
+          style={{
+            padding: '12px 14px',
+            borderRadius: 12,
+            border: 'none',
+            backgroundColor: '#8b2733',
+            color: '#fff',
+            fontWeight: 800,
+            cursor: isLoading || !hasSelection ? 'not-allowed' : 'pointer',
+            opacity: isLoading || !hasSelection ? 0.6 : 1,
+          }}
+        >
+          {isLoading ? 'Processing…' : 'Issue refund'}
+        </button>
+      </div>
+    </SectionCard>
   )
 }
