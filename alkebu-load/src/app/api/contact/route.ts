@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getEmailRuntimeConfig } from '@/app/utils/emailConfig';
+import { getClientIp, verifyTurnstileToken } from '@/app/utils/turnstile';
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
@@ -12,52 +13,7 @@ const MAX_FIELD_LENGTHS = {
   message: 5000,
 };
 
-const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-
 const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
-
-const verifyTurnstileToken = async (
-  token: string,
-  remoteIp: string,
-): Promise<{ success: boolean; error?: string }> => {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    // Fail-closed: if the secret isn't configured in production, every submission
-    // is rejected. This is intentional — silently letting traffic through would
-    // remove the protection without anyone noticing.
-    console.error('TURNSTILE_SECRET_KEY is not set; rejecting contact submission.');
-    return { success: false, error: 'Bot protection is not configured on the server.' };
-  }
-
-  try {
-    const body = new URLSearchParams({ secret, response: token });
-    if (remoteIp && remoteIp !== 'unknown') {
-      body.set('remoteip', remoteIp);
-    }
-
-    const response = await fetch(TURNSTILE_VERIFY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-
-    if (!response.ok) {
-      console.warn('Turnstile siteverify returned non-2xx:', response.status);
-      return { success: false, error: 'Bot check failed. Please try again.' };
-    }
-
-    const data = (await response.json()) as { success?: boolean; 'error-codes'?: string[] };
-    if (data.success !== true) {
-      console.warn('Turnstile verification rejected token:', data['error-codes']);
-      return { success: false, error: 'Bot check failed. Please refresh the page and try again.' };
-    }
-
-    return { success: true };
-  } catch (err) {
-    console.error('Turnstile verification request failed:', err);
-    return { success: false, error: 'Bot check failed. Please try again in a moment.' };
-  }
-};
 
 const sanitizeText = (value: unknown): string => {
   if (typeof value !== 'string') return '';
@@ -77,10 +33,7 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const getClientKey = (request: NextRequest): string =>
-  request.headers.get('cf-connecting-ip') ||
-  request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-  'unknown';
+const getClientKey = (request: NextRequest): string => getClientIp(request.headers);
 
 const isRateLimited = (key: string): boolean => {
   const now = Date.now();
