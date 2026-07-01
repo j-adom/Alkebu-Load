@@ -24,7 +24,7 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Technical**: 99.9% uptime, <2s page load times, mobile-first responsive design
 - **B2B**: 3+ institutional accounts active within year one (Phase 2)
 
-## Current Status (April 2026)
+## Current Status (June 2026)
 
 ### Completed
 - **Payload CMS Backend** - All collections, relationships, access control
@@ -64,7 +64,7 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Email**: Amazon SES SMTP for transactional emails (nodemailer)
 - **Search**: FlexSearch + PostgreSQL FTS + ISBNdb/Google Books/Open Library
 - **Authentication**: Payload JWT tokens (OAuth future phase)
-- **CDN**: Cloudinary for images, Cloudflare for static assets
+- **CDN**: Cloudflare (static assets + R2-backed image delivery)
 - **Events & Ticketing**: hi.events (external instance at tickets.alkebulanimages.com)
 
 ### Repository Structure
@@ -78,7 +78,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
                 |
     Products, Carts, Orders, Customers (all in Payload)
                 |
-    Stripe (payment processing via embedded checkout)
+    Stripe (payment processing via hosted checkout)
                 |
     SvelteKit Frontend (display & interaction)
 ```
@@ -103,7 +103,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - **Tracking & Shipping** - Enter Pirate Ship tracking numbers, mark orders shipped (Phase 1: manual labels, Phase 2: Shippo API)
 - **Inventory Sync** - Real-time Square POS inventory updates via webhooks
 - **Multi-Location Tracking** - Main Store vs Warehouse inventory
-- **Refund Processing** - Admin-only API (staff use Stripe Dashboard for Phase 1)
+- **Refund Processing** - Per-item refunds from the Order Dashboard (select items/quantities, reason, optional restock); calls Stripe, records per-line refund state, and emails the customer. Admin-only POST.
 - **Abandoned Cart Recovery** - Scheduled cleanup every 2 hours
 
 ### 1b. Shipping Management
@@ -131,7 +131,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - Rich content: book reviews, cultural articles, wellness guides
 - SEO optimization with auto-generated meta tags, structured data
 - Product relationships linking articles to relevant products
-- Comment system with Perspective API filtering
+- Comment system with toxicity/moderation filtering (`toxicityCheck`)
 
 ### 3. Community Directory
 
@@ -193,6 +193,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - **Events** - Registration, recurring, venues
 - **Businesses** - Directory listings with type/category distinctions
 - **Comments** - Universal commenting with moderation
+- **Reviews** - Product / business reviews & ratings
 
 ### System Collections
 - **Authors**, **Publishers**, **Vendors** - Relationship management
@@ -224,7 +225,8 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - [x] Business directory with type distinctions
 - [x] Order management (dashboard, notifications, daily digest)
 - [x] Email system (Afrocentric branded templates)
-- [x] Refund API with admin-only auth
+- [x] Per-item dashboard refunds (admin-only POST, prorated tax + incremental shipping, customer email)
+- [x] Customer consolidation (Customers collection + rollups, orders auto-linked)
 - [x] Frontend-backend checkout integration
 - [ ] Data import from Square
 - [x] Production deployment
@@ -236,7 +238,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - Blog content creation & publishing workflow
 - Advanced search features (voice, barcode)
 - Customer loyalty integration
-- Listmonk email marketing
+- Listmonk email marketing campaigns (newsletter signup is already live)
 - Consignment vendor reports
 
 ### Phase 3: Business Intelligence

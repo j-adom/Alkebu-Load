@@ -1,12 +1,18 @@
 # Alkebulanimages 2.0 - Development Guide
 
-**Updated:** April 28, 2026  
+**Updated:** June 30, 2026  
 **Production backend:** `https://payload.alkebulanimages.com`  
 **Production storefront:** `https://alkebulanimages.com`
 
 ## Project Overview
 
 Alkebulanimages 2.0 is a modern e-commerce platform for a Nashville-based Black-owned bookstore, built with Payload CMS backend and SvelteKit frontend.
+
+> **Working with an AI agent (Claude Code)?** Read the per-package guides first:
+> [`alkebu-load/CLAUDE.md`](../alkebu-load/CLAUDE.md) (backend) and
+> [`alkebu-web/CLAUDE.md`](../alkebu-web/CLAUDE.md) (storefront). The repo also wires
+> Svelte + Tailwind MCP servers (see [mcp-setup.md](mcp-setup.md)); run the Svelte
+> `svelte-autofixer` on any component before finalizing it.
 
 ### Architecture
 - **Backend**: Payload CMS 3.x with integrated e-commerce (`alkebu-load/`)
@@ -39,7 +45,7 @@ npm run dev  # Runs on :5173
 ## Quick Start - Complete Local Development Setup
 
 ### Prerequisites
-- **Node.js 18+** (recommended: use fnm or nvm for version management)
+- **Node.js 18.20.2+ (or 20.9+)** (recommended: use fnm or nvm for version management)
 - **Git** (for cloning and version control)
 - **Terminal/Command Line** (bash, zsh, or similar)
 
@@ -174,7 +180,7 @@ rm -rf alkebu-web/.svelte-kit
 # Most common: PAYLOAD_API_URL not pointing to running backend
 
 # Verify backend API is accessible
-curl http://localhost:3000/api/globals/settings
+curl http://localhost:3000/api/health
 
 # Check if admin user was created
 # Visit http://localhost:3000/admin - should show login, not setup
@@ -193,36 +199,19 @@ GOOGLE_BOOKS_API_KEY=your-google-books-api-key
 pnpm dev
 ```
 
-#### With OAuth Authentication (Optional)
+### Docker Setup (aspirational — not the supported path)
 
-```bash  
-# In alkebu-web/.env.local, add OAuth credentials:
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-FACEBOOK_APP_ID=your-facebook-app-id  
-FACEBOOK_APP_SECRET=your-facebook-app-secret
-
-# Restart frontend
-npm run dev
-```
-
-### Docker Setup (Alternative to Manual Setup)
-
-```bash
-# From project root - starts both services together
-docker-compose up
-
-# Services will be available at same URLs:
-# Frontend: http://localhost:5173
-# Backend: http://localhost:3000
-```
+`docker-compose.yml` exists but is aspirational: only the `payload` service
+builds against current code (and `postgres` works for local Postgres). The
+`medusa`/`frontend` services reference paths/builds that no longer exist. Use the
+manual setup above; don't rely on `docker-compose up` for a full stack.
 
 ## Environment Configuration
 
 ### Backend (.env in alkebu-load/)
 ```bash
-# Database
-DATABASE_URI=sqlite:./dev.db  # Development
+# Database (URI scheme selects the adapter: file: → SQLite, postgres → Postgres)
+DATABASE_URI=file:./alkebulanimages.db  # Development (SQLite)
 DATABASE_URI=postgresql://user:pass@host:port/db  # Production
 
 # Security
@@ -236,8 +225,10 @@ SQUARE_ENVIRONMENT=sandbox  # or production
 
 # Stripe Payments
 STRIPE_SECRET_KEY=sk_test_your-stripe-key
-STRIPE_WEBHOOK_ENDPOINT_SECRET=whsec_your-webhook-secret
-STRIPE_PUBLIC_KEY=pk_test_your-public-key
+STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
+
+# Square webhook signature (required for inventory sync)
+SQUARE_WEBHOOK_SIGNATURE_KEY=your-square-webhook-signature-key
 
 # External Book APIs (optional)
 ISBNDB_API_KEY=your-isbndb-key
@@ -251,16 +242,17 @@ SES_SMTP_PASSWORD=your-ses-smtp-password
 SMTP_HOST=email-smtp.us-east-2.amazonaws.com
 SMTP_PORT=587
 
-# File Storage (Cloudinary)
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=your-api-key
-CLOUDINARY_API_SECRET=your-api-secret
+# File Storage (Cloudflare R2, S3-compatible — via @payloadcms/storage-s3)
+R2_ACCESS_KEY_ID=your-r2-access-key
+R2_SECRET_ACCESS_KEY=your-r2-secret
+R2_BUCKET=alkebulan-online
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 ```
 
 ### Frontend (.env in alkebu-web/)
 ```bash
-# Payload API Configuration
-PUBLIC_PAYLOAD_URL=http://localhost:3000
+# Payload API Configuration (server-only; PAYLOAD_API_URL is private)
+PAYLOAD_API_URL=http://localhost:3000
 PAYLOAD_API_KEY=your-api-key
 
 # Site Configuration
@@ -289,19 +281,20 @@ pnpm start            # Start production server
 
 # Code Quality
 pnpm lint             # Run ESLint
-pnpm type-check       # TypeScript type checking
+pnpm check:scripts    # Type-check standalone scripts/ (tsconfig.scripts.json)
+pnpm test             # Node test runner (auto-injects STRIPE_SECRET_KEY=sk_test_dummy)
 
-# Database & Types
-pnpm generate:types   # Generate TypeScript types from collections
-pnpm db:migrate       # Run database migrations
-pnpm db:seed          # Seed development data
+# Payload / Types
+pnpm generate:types      # Regenerate src/payload-types.ts after schema changes
+pnpm generate:importmap  # Regenerate admin import map after admin component changes
+pnpm payload             # Payload CLI passthrough
 
-# Scripts (Development Tools)
-tsx scripts/square-integration.ts    # Test Square API
-tsx scripts/import-books.ts          # Import book data
-tsx scripts/square-payload-sync.ts   # Sync Square inventory  
-tsx scripts/initialize-search.ts     # Initialize search indices
-tsx scripts/initialize-search.ts --sample-data  # Initialize with sample data
+# Scripts (Development Tools) — Local-API scripts need the CSS stub loader
+NODE_OPTIONS="--loader ./css-stub-loader.mjs" tsx scripts/square-integration.ts    # Test Square API
+NODE_OPTIONS="--loader ./css-stub-loader.mjs" tsx scripts/import-books.ts          # Import book data
+NODE_OPTIONS="--loader ./css-stub-loader.mjs" tsx scripts/square-payload-sync.ts   # Sync Square inventory
+NODE_OPTIONS="--loader ./css-stub-loader.mjs" tsx scripts/initialize-search.ts     # Initialize search indices
+NODE_OPTIONS="--loader ./css-stub-loader.mjs" tsx scripts/initialize-search.ts --sample-data  # ...with sample data
 ```
 
 ### Frontend (alkebu-web)
@@ -310,19 +303,19 @@ tsx scripts/initialize-search.ts --sample-data  # Initialize with sample data
 npm run dev           # Start dev server
 npm run dev -- --host # Expose to network
 
-# Building
+# Building (build runs check:svelte first, so type/svelte errors fail the build)
 npm run build         # Build for production
 npm run preview       # Preview production build
 
 # Code Quality
-npm run check         # Svelte type checking
+npm run check         # svelte-kit sync + tsc --noEmit
+npm run check:svelte  # svelte-check
 npm run check:watch   # Watch mode type checking
 npm run lint          # Run ESLint
-npm run format        # Format with Prettier
 
-# Testing (if configured)
-npm run test          # Run tests
-npm run test:watch    # Watch mode tests
+# Other
+npm run sync:payment-provider  # Fetch payment provider config from backend
+npm run test          # Run tests (node --test tests/*.test.mjs)
 ```
 
 ## Project Structure
@@ -372,21 +365,25 @@ alkebulanimages2.0/
 
 ### E-commerce Collections
 - **Carts/CartItems**: Shopping cart with session/user tracking
-- **Orders**: Stripe-integrated order management
-- **Customers**: Extended user profiles with addresses
+- **Orders**: Stripe-integrated order management (per-item refunds, fulfillment)
+- **Customers**: Extended user profiles with addresses + rollups
+- **InstitutionalAccounts**: B2B / tax-exempt accounts (Phase 2)
 
 ### Content Collections
-- **BlogPosts**: Articles with product relationships
+- **BlogPosts**: Articles with product relationships (REST slug: `blogPosts`)
 - **Events**: Author visits, workshops with registration
-- **Businesses**: Local directory with reviews
+- **Businesses**: Local directory
+- **Comments/Reviews**: Moderated comments (toxicity check) + product/business reviews
+- **ExternalBooks**: Cached external book-API results (not sellable inventory)
 
 ### Global Singletons (Single Pages)
-- **HomePage, AboutPage, ContactPage, ShopPage**: Migrated from Sanity
+- **HomePage, AboutPage, ContactPage, ShopPage**: Editable content pages
 - **SiteSettings**: Site-wide configuration
 
 ### System Collections
 - **Authors/Publishers/Vendors**: Relationship management
-- **Categories/Tags**: Flexible taxonomy system
+- **Media / Users**: Assets and accounts (roles: admin / staff / editor / customer)
+- **BookQuotes**: Quote-request records
 - **SearchAnalytics**: Search behavior tracking
 
 ## Authentication Implementation
@@ -485,9 +482,9 @@ GET /api/wellness-lifestyle
 GET /api/fashion-jewelry  
 GET /api/oils-incense
 
-# Content
-GET /api/blog-posts
-GET /api/blog-posts/:slug
+# Content  (note: blog slug is camelCase `blogPosts`, not `blog-posts`)
+GET /api/blogPosts
+GET /api/blogPosts/:slug
 GET /api/events
 GET /api/businesses
 
@@ -548,8 +545,8 @@ GET /api/graphql (GraphQL endpoint)
 ### Database Management
 ```bash
 # Development (SQLite)
-# Database file: alkebu-load/dev.db
-# Backup: cp dev.db dev.db.backup
+# Database file: alkebu-load/alkebulanimages.db
+# Backup: cp alkebulanimages.db alkebulanimages.db.backup
 
 # Production (PostgreSQL)  
 # Use database provider's backup tools
@@ -560,26 +557,15 @@ GET /api/graphql (GraphQL endpoint)
 
 ### Backend Testing
 ```bash
-# Unit tests for utilities
-npm run test:utils
-
-# Integration tests for APIs
-npm run test:api
-
-# E2E tests for checkout flow
-npm run test:e2e
+# Node test runner against tests/**/*.test.ts
+# (script auto-injects STRIPE_SECRET_KEY=sk_test_dummy for module-load init)
+pnpm test
 ```
 
 ### Frontend Testing
 ```bash
-# Component tests
-npm run test:components
-
-# Page tests  
-npm run test:pages
-
-# E2E tests with Playwright
-npm run test:e2e
+# Node test runner against tests/*.test.mjs
+npm run test
 ```
 
 ## Deployment
@@ -600,8 +586,8 @@ pnpm build
 # Build command
 npm run build
 
-# Output directory  
-build/
+# Output (via @sveltejs/adapter-cloudflare → Cloudflare Pages)
+.svelte-kit/cloudflare/
 
 # Environment variables
 # Set in Cloudflare dashboard
@@ -692,7 +678,7 @@ pnpm dev
 ls alkebu-web/.env.local || cp alkebu-web/.env.example alkebu-web/.env.local
 
 # 2. Verify backend connection
-curl http://localhost:3000/api/globals || echo "Backend API not responding"
+curl http://localhost:3000/api/health || echo "Backend API not responding"
 
 # 3. Clear SvelteKit cache
 rm -rf alkebu-web/.svelte-kit
@@ -751,7 +737,7 @@ PUBLIC_SITE_URL=http://localhost:5173  # ✅ Local frontend URL
 - Verify PostgreSQL full-text search setup
 
 **Images not loading**
-- Check Cloudinary configuration
+- Check R2/S3 bucket configuration (R2_* env vars)
 - Verify image upload permissions
 - Check network connectivity
 - Verify PayloadImage component implementation
@@ -780,7 +766,7 @@ We provide an automated script to verify your setup:
 
 ```bash
 # Backend health check
-curl http://localhost:3000/api/globals || echo "❌ Backend API down"
+curl http://localhost:3000/api/health || echo "❌ Backend API down"
 
 # Frontend health check  
 curl http://localhost:5173 || echo "❌ Frontend down"

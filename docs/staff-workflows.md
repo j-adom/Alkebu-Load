@@ -1,6 +1,6 @@
 # Staff Workflows
 
-**Updated:** May 28, 2026  
+**Updated:** June 30, 2026  
 **Payload admin:** https://payload.alkebulanimages.com/admin  
 **Order dashboard:** https://payload.alkebulanimages.com/admin/order-dashboard
 
@@ -49,21 +49,20 @@ Digest should include:
 2. Confirm items, shipping address, and requested shipping method.
 3. Purchase/print label through the current shipping tool if label automation is not active.
 4. Copy tracking number.
-5. In Payload, select carrier and paste tracking.
-6. Mark shipped.
+5. In the dashboard, select carrier (including **Direct to Home** for local hand-delivery — no tracking) and paste the tracking number.
+6. Mark shipped. Once fulfilled/received, use **Mark complete** to close out the order.
 7. Confirm the customer shipping email was sent.
 
 ## Refund Workflow
 
-Phase 1 operational path:
+Refunds are issued directly from the Order Dashboard (admin-only):
 
-1. Customer requests refund by phone/email.
-2. Admin reviews request.
-3. Admin performs refund in Stripe Dashboard for strongest audit trail.
-4. Stripe webhook updates Payload refund/payment state.
-5. Admin verifies the order remains auditable.
+1. Open the order in the Order Dashboard (`/admin/order-dashboard`).
+2. In the **RefundPanel**, select the line items and quantities to refund (or the whole order).
+3. Choose a reason and, optionally, restock the items and/or mark them out-of-print.
+4. Submit. The system issues the **Stripe** refund, records per-line refund state on the order (prorated tax + incremental shipping), and emails the customer a refund notification.
 
-The backend also has refund API support for admin users. Use direct Stripe Dashboard refunds until staff are trained on any in-admin refund tooling.
+`POST /api/refund` is **admin-only**; staff can view refund status (`GET`) but cannot issue refunds. A direct Stripe Dashboard refund remains available as a fallback for exceptional cases — the Stripe webhook reconciles Payload payment state.
 
 ## Adding New Books
 
