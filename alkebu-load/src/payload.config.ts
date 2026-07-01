@@ -8,6 +8,7 @@ import sharp from 'sharp'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 import type { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
+import { buildMcpPlugin } from './plugins/mcp'
 
 import { HomePage } from './globals/HomePage'
 import { AboutPage } from './globals/AboutPage'
@@ -188,6 +189,8 @@ export default buildConfig({
       generateTitle,
       generateURL,
     }),
+    // Staff-agent MCP server (dormant unless MCP_ENABLED=true). Endpoint: /api/mcp
+    buildMcpPlugin(),
   ],
   email: nodemailerAdapter({
     defaultFromAddress: emailRuntime.fromEmail,
