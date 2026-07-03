@@ -1,4 +1,5 @@
 import { externalBookAPI, ExternalBookData } from './externalBookAPI';
+import { sendRawEmail } from './emailService';
 
 export interface QuoteRequest {
   bookTitle: string;
@@ -181,13 +182,11 @@ class QuoteRequestSystem {
     externalResults: ExternalBookData[]
   ) {
     const email = this.generateCustomerConfirmationEmail(quoteRequest, quoteId, externalResults);
-    
-    // Here you would integrate with your email service (SendGrid, Nodemailer, etc.)
-    console.log('Sending customer confirmation email:', email);
-    
-    // For now, just log the email content
-    // In production, you'd send the actual email:
-    // await emailService.send(email);
+
+    const result = await sendRawEmail(email);
+    if (!result.success) {
+      console.error(`Quote ${quoteId}: customer confirmation email failed:`, result.error);
+    }
   }
 
   /**
@@ -211,8 +210,13 @@ class QuoteRequestSystem {
 
     for (const staffMember of staffMembers.docs) {
       if (staffMember.email) {
-        console.log(`Sending staff notification to ${staffMember.email}:`, email);
-        // await emailService.send({ ...email, to: staffMember.email });
+        const result = await sendRawEmail({ ...email, to: staffMember.email });
+        if (!result.success) {
+          console.error(
+            `Quote ${quoteId}: staff notification to ${staffMember.email} failed:`,
+            result.error,
+          );
+        }
       }
     }
   }
@@ -565,8 +569,10 @@ class QuoteRequestSystem {
       text: `Hi ${quote.customerName}, we wanted to follow up on your quote for "${quote.bookTitle}". Quote ID: ${quote.id}. Please let us know if you have questions or would like to proceed!`
     };
 
-    console.log('Sending follow-up email:', email);
-    // await emailService.send(email);
+    const result = await sendRawEmail(email);
+    if (!result.success) {
+      console.error(`Quote ${quote.id}: follow-up email failed:`, result.error);
+    }
 
     // Log the communication
     await payload.update({
