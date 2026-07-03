@@ -13,6 +13,10 @@
     canonicalUrl?: string;
     twitterCard?: string;
     product?: ProductMeta | null;
+    noIndex?: boolean;
+    /** Pre-built application/ld+json script-tag string from $lib/seo ldScript(). */
+    jsonLd?: string | null;
+    breadcrumbsJsonLd?: string | null;
   };
 
   type Props = Metadata & {
@@ -30,6 +34,9 @@
     canonicalUrl,
     twitterCard,
     product,
+    noIndex,
+    jsonLd,
+    breadcrumbsJsonLd,
   }: Props = $props();
 
   const resolved = $derived({
@@ -40,6 +47,9 @@
     url: canonicalUrl ?? canonical ?? url ?? metadata?.canonicalUrl ?? metadata?.canonical ?? metadata?.url,
     twitterCard: twitterCard ?? metadata?.twitterCard ?? 'summary_large_image',
     product: product ?? metadata?.product,
+    noIndex: noIndex ?? metadata?.noIndex ?? false,
+    jsonLd: jsonLd ?? metadata?.jsonLd,
+    breadcrumbsJsonLd: breadcrumbsJsonLd ?? metadata?.breadcrumbsJsonLd,
   });
 
   const productPrice = $derived(
@@ -86,4 +96,16 @@
   {/if}
 
   <meta property="twitter:card" content={resolved.twitterCard} />
+
+  {#if resolved.noIndex}
+    <meta name="robots" content="noindex, nofollow" />
+  {/if}
+
+  {#if resolved.jsonLd}
+    {@html resolved.jsonLd}
+  {/if}
+
+  {#if resolved.breadcrumbsJsonLd}
+    {@html resolved.breadcrumbsJsonLd}
+  {/if}
 </svelte:head>

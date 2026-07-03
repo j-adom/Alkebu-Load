@@ -1,7 +1,10 @@
 import { PUBLIC_SITE_URL } from '$env/static/public';
 
 export function ldScript(obj: unknown) {
-  return `<script type="application/ld+json">${JSON.stringify(obj, null, 2)}</script>`;
+  // Escape `<` inside the JSON so content (e.g. a title containing
+  // "</script>") cannot terminate the tag when injected with {@html}.
+  const json = JSON.stringify(obj, null, 2).replace(/</g, '\\u003C');
+  return `<script type="application/ld+json">${json}</script>`;
 }
 
 export function buildProductJsonLd(product: any, slug: string) {
