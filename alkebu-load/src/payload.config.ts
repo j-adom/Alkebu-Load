@@ -215,6 +215,18 @@ export default buildConfig({
         },
         schedule: [{ cron: '0 12 * * *', queue: 'default' }], // 12:00 UTC = 7:00 AM CDT / 6:00 AM CST
       },
+      {
+        slug: 'recover-stripe-orders',
+        handler: async ({ req }) => {
+          // Backstop for missed/failed Stripe webhooks: recreate orders for
+          // paid sessions with no matching order and alert staff. Sessions
+          // younger than 30 minutes are left for normal webhook retries.
+          const { runScheduledStripeRecovery } = await import('./app/utils/stripeRecovery');
+          const summary = await runScheduledStripeRecovery(req.payload);
+          return { output: { scanned: summary.scanned, recovered: summary.recovered.length } };
+        },
+        schedule: [{ cron: '15 * * * *', queue: 'default' }], // Hourly at :15
+      },
     ],
   },
 })

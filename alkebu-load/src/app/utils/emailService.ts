@@ -6,6 +6,8 @@ import {
   generateStaffNotificationTemplate,
   generateDailyDigestTemplate,
   generateRefundNotificationTemplate,
+  generateRecoveryAlertTemplate,
+  type RecoveryAlertData,
 } from './emailTemplates';
 import { getEmailRuntimeConfig, type EmailProvider } from './emailConfig';
 
@@ -281,6 +283,31 @@ export async function sendStaffOrderNotification(data: StaffNotificationData): P
   }
 
   return result;
+}
+
+/**
+ * Send an ad-hoc email with a pre-built subject/body (e.g. quote-request
+ * notifications). Resolves with success:false rather than throwing when the
+ * transport is unconfigured or delivery fails.
+ */
+export async function sendRawEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<EmailSendResult> {
+  const { to, ...template } = params;
+  return sendTemplateEmail({ to, template });
+}
+
+/**
+ * Alert staff that the scheduled Stripe reconciliation recovered orders the
+ * webhook missed. Recovery skips customer emails, so staff must follow up.
+ */
+export async function sendRecoveryAlert(data: RecoveryAlertData): Promise<EmailSendResult> {
+  const staffEmail = getEmailRuntimeConfig().staffNotificationEmail;
+  const template = generateRecoveryAlertTemplate(data);
+  return sendTemplateEmail({ to: staffEmail, template });
 }
 
 /**

@@ -586,3 +586,67 @@ Alkebu-Lan Images`;
 
   return { subject, html: emailWrapper('Daily Order Report', content), text };
 }
+
+// ─── STRIPE RECOVERY ALERT (Staff) ────────────────────────────────────
+
+export interface RecoveryAlertData {
+  recovered: Array<{
+    orderNumber?: string;
+    totalAmount?: number; // cents
+    guestEmail?: string;
+  }>;
+  scanned: number;
+  adminUrl: string;
+}
+
+export function generateRecoveryAlertTemplate(data: RecoveryAlertData): EmailTemplate {
+  const count = data.recovered.length;
+  const subject = `Recovered ${count} missed order${count === 1 ? '' : 's'} from Stripe | Alkebu-Lan Images`;
+
+  const rows = data.recovered
+    .map(
+      (order) => `
+    <tr>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${order.orderNumber || 'Unknown'}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.mutedText};">${order.guestEmail || '—'}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(order.totalAmount || 0)}</td>
+    </tr>`,
+    )
+    .join('');
+
+  const content = `
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Missed Orders Recovered</h2>
+    <p style="margin: 0 0 16px; color: ${BRAND.mutedText};">
+      The hourly Stripe reconciliation job found ${count} paid checkout session${count === 1 ? '' : 's'}
+      with no matching order (scanned ${data.scanned} recent sessions) and recreated ${count === 1 ? 'it' : 'them'}.
+      Customers were NOT emailed a confirmation automatically — review and follow up.
+    </p>
+    ${sectionBox(`
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Order</th>
+            <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Customer</th>
+            <th style="padding: 10px 8px; text-align: right; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `)}
+    <p style="margin: 20px 0 0; text-align: center;">
+      <a href="${data.adminUrl}" style="display: inline-block; background-color: ${BRAND.gold}; color: ${BRAND.forest}; font-weight: bold; padding: 12px 28px; border-radius: 6px; text-decoration: none;">Open Order Dashboard</a>
+    </p>`;
+
+  const text = `Missed Orders Recovered
+
+The hourly Stripe reconciliation job recovered ${count} paid session(s) with no matching order (scanned ${data.scanned} recent sessions).
+Customers were NOT emailed automatically - review and follow up.
+
+${data.recovered.map((o) => `- ${o.orderNumber || 'Unknown'} | ${o.guestEmail || 'no email'} | ${formatCents(o.totalAmount || 0)}`).join('\n')}
+
+Order dashboard: ${data.adminUrl}
+
+Alkebu-Lan Images`;
+
+  return { subject, html: emailWrapper('Missed Orders Recovered', content), text };
+}
