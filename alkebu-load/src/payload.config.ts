@@ -219,6 +219,17 @@ export default buildConfig({
         schedule: [{ cron: '0 12 * * *', queue: 'default' }], // 12:00 UTC = 7:00 AM CDT / 6:00 AM CST
       },
       {
+        slug: 'quote-followups',
+        handler: async ({ req }) => {
+          // Nudge customers with quotes stuck in quote-sent / awaiting-response
+          // for 7+ days; each quote is re-nudged at most every 7 days.
+          const { quoteRequestSystem } = await import('./app/utils/quoteRequestSystem');
+          await quoteRequestSystem.processQuoteFollowups(req.payload);
+          return { output: {} };
+        },
+        schedule: [{ cron: '0 15 * * *', queue: 'default' }], // 15:00 UTC = 10:00 AM CDT / 9:00 AM CST
+      },
+      {
         slug: 'recover-stripe-orders',
         handler: async ({ req }) => {
           // Backstop for missed/failed Stripe webhooks: recreate orders for

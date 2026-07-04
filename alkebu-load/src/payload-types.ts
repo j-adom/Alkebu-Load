@@ -65,6 +65,7 @@ export interface Config {
   auth: {
     users: UserAuthOperations;
     customers: CustomerAuthOperations;
+    'payload-mcp-api-keys': PayloadMcpApiKeyAuthOperations;
   };
   blocks: {};
   collections: {
@@ -90,6 +91,7 @@ export interface Config {
     searchAnalytics: SearchAnalytic;
     bookQuotes: BookQuote;
     externalBooks: ExternalBook;
+    'payload-mcp-api-keys': PayloadMcpApiKey;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
@@ -120,6 +122,7 @@ export interface Config {
     searchAnalytics: SearchAnalyticsSelect<false> | SearchAnalyticsSelect<true>;
     bookQuotes: BookQuotesSelect<false> | BookQuotesSelect<true>;
     externalBooks: ExternalBooksSelect<false> | ExternalBooksSelect<true>;
+    'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -150,11 +153,13 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User | Customer;
+  user: User | Customer | PayloadMcpApiKey;
   jobs: {
     tasks: {
       'cleanup-abandoned-carts': TaskCleanupAbandonedCarts;
       'daily-order-digest': TaskDailyOrderDigest;
+      'quote-followups': TaskQuoteFollowups;
+      'recover-stripe-orders': TaskRecoverStripeOrders;
       inline: {
         input: unknown;
         output: unknown;
@@ -182,6 +187,24 @@ export interface UserAuthOperations {
   };
 }
 export interface CustomerAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface PayloadMcpApiKeyAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -5024,6 +5047,153 @@ export interface ExternalBook {
   createdAt: string;
 }
 /**
+ * API keys control which collections, resources, tools, and prompts MCP clients can access
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-mcp-api-keys".
+ */
+export interface PayloadMcpApiKey {
+  id: number;
+  /**
+   * The user that the API key is associated with.
+   */
+  user: number | User;
+  /**
+   * A useful label for the API key.
+   */
+  label?: string | null;
+  /**
+   * The purpose of the API key.
+   */
+  description?: string | null;
+  orders?: {
+    /**
+     * Allow clients to find orders.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to update orders.
+     */
+    update?: boolean | null;
+  };
+  books?: {
+    /**
+     * Allow clients to find books.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to update books.
+     */
+    update?: boolean | null;
+  };
+  wellnessLifestyle?: {
+    /**
+     * Allow clients to find wellness-lifestyle.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to update wellness-lifestyle.
+     */
+    update?: boolean | null;
+  };
+  fashionJewelry?: {
+    /**
+     * Allow clients to find fashion-jewelry.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to update fashion-jewelry.
+     */
+    update?: boolean | null;
+  };
+  oilsIncense?: {
+    /**
+     * Allow clients to find oils-incense.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to update oils-incense.
+     */
+    update?: boolean | null;
+  };
+  blogPosts?: {
+    /**
+     * Allow clients to find blogPosts.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to create blogPosts.
+     */
+    create?: boolean | null;
+    /**
+     * Allow clients to update blogPosts.
+     */
+    update?: boolean | null;
+  };
+  customers?: {
+    /**
+     * Allow clients to find customers.
+     */
+    find?: boolean | null;
+  };
+  carts?: {
+    /**
+     * Allow clients to find carts.
+     */
+    find?: boolean | null;
+  };
+  reviews?: {
+    /**
+     * Allow clients to find reviews.
+     */
+    find?: boolean | null;
+  };
+  searchAnalytics?: {
+    /**
+     * Allow clients to find searchAnalytics.
+     */
+    find?: boolean | null;
+  };
+  authors?: {
+    /**
+     * Allow clients to find authors.
+     */
+    find?: boolean | null;
+  };
+  publishers?: {
+    /**
+     * Allow clients to find publishers.
+     */
+    find?: boolean | null;
+  };
+  vendors?: {
+    /**
+     * Allow clients to find vendors.
+     */
+    find?: boolean | null;
+  };
+  'payload-mcp-tool'?: {
+    /**
+     * List orders that need staff action (paid or processing but not yet shipped), newest first — the "Needs Attention" dashboard view.
+     */
+    listOrdersNeedsAttention?: boolean | null;
+    /**
+     * List products at or below a stock threshold (default 5). Optionally target a specific product collection.
+     */
+    lowStock?: boolean | null;
+    /**
+     * Compute a PROPOSED refund for an order and return a ready-to-review request body. Does NOT issue the refund — an admin must POST the returned body to /api/refund. Omit items for a whole-order refund.
+     */
+    draftRefund?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  enableAPIKey?: boolean | null;
+  apiKey?: string | null;
+  apiKeyIndex?: string | null;
+  collection: 'payload-mcp-api-keys';
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -5092,7 +5262,12 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'cleanup-abandoned-carts' | 'daily-order-digest';
+        taskSlug:
+          | 'inline'
+          | 'cleanup-abandoned-carts'
+          | 'daily-order-digest'
+          | 'quote-followups'
+          | 'recover-stripe-orders';
         taskID: string;
         input?:
           | {
@@ -5125,7 +5300,9 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'cleanup-abandoned-carts' | 'daily-order-digest') | null;
+  taskSlug?:
+    | ('inline' | 'cleanup-abandoned-carts' | 'daily-order-digest' | 'quote-followups' | 'recover-stripe-orders')
+    | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -5235,6 +5412,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'externalBooks';
         value: number | ExternalBook;
+      } | null)
+    | ({
+        relationTo: 'payload-mcp-api-keys';
+        value: number | PayloadMcpApiKey;
       } | null);
   globalSlug?: string | null;
   user:
@@ -5245,6 +5426,10 @@ export interface PayloadLockedDocument {
     | {
         relationTo: 'customers';
         value: number | Customer;
+      }
+    | {
+        relationTo: 'payload-mcp-api-keys';
+        value: number | PayloadMcpApiKey;
       };
   updatedAt: string;
   createdAt: string;
@@ -5263,6 +5448,10 @@ export interface PayloadPreference {
     | {
         relationTo: 'customers';
         value: number | Customer;
+      }
+    | {
+        relationTo: 'payload-mcp-api-keys';
+        value: number | PayloadMcpApiKey;
       };
   key?: string | null;
   value?:
@@ -7078,6 +7267,99 @@ export interface ExternalBooksSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-mcp-api-keys_select".
+ */
+export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
+  user?: T;
+  label?: T;
+  description?: T;
+  orders?:
+    | T
+    | {
+        find?: T;
+        update?: T;
+      };
+  books?:
+    | T
+    | {
+        find?: T;
+        update?: T;
+      };
+  wellnessLifestyle?:
+    | T
+    | {
+        find?: T;
+        update?: T;
+      };
+  fashionJewelry?:
+    | T
+    | {
+        find?: T;
+        update?: T;
+      };
+  oilsIncense?:
+    | T
+    | {
+        find?: T;
+        update?: T;
+      };
+  blogPosts?:
+    | T
+    | {
+        find?: T;
+        create?: T;
+        update?: T;
+      };
+  customers?:
+    | T
+    | {
+        find?: T;
+      };
+  carts?:
+    | T
+    | {
+        find?: T;
+      };
+  reviews?:
+    | T
+    | {
+        find?: T;
+      };
+  searchAnalytics?:
+    | T
+    | {
+        find?: T;
+      };
+  authors?:
+    | T
+    | {
+        find?: T;
+      };
+  publishers?:
+    | T
+    | {
+        find?: T;
+      };
+  vendors?:
+    | T
+    | {
+        find?: T;
+      };
+  'payload-mcp-tool'?:
+    | T
+    | {
+        listOrdersNeedsAttention?: T;
+        lowStock?: T;
+        draftRefund?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  enableAPIKey?: T;
+  apiKey?: T;
+  apiKeyIndex?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -7553,6 +7835,22 @@ export interface TaskCleanupAbandonedCarts {
  * via the `definition` "TaskDaily-order-digest".
  */
 export interface TaskDailyOrderDigest {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskQuote-followups".
+ */
+export interface TaskQuoteFollowups {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskRecover-stripe-orders".
+ */
+export interface TaskRecoverStripeOrders {
   input?: unknown;
   output?: unknown;
 }
