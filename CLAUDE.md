@@ -87,6 +87,7 @@ Search bootstrap is fragile — see "Gotchas" below before touching it.
 - **Scheduled jobs** (Payload cron):
   - `cleanup-abandoned-carts` — every 2 hours
   - `daily-order-digest` — 12:00 UTC (7 AM CT)
+  - `recover-stripe-orders` — hourly at :15; reconciles paid Stripe sessions with no matching order and emails staff on recovery
 - **Refund API**: admin-only POST, admin+staff GET. Phase 1 staff use the Stripe Dashboard for actual refunds.
 
 ## Key Files
@@ -165,6 +166,9 @@ Search bootstrap is fragile — see "Gotchas" below before touching it.
 - **`docker-compose.yml` is aspirational.** Only the `payload` service builds against current code; `medusa` and `frontend` services reference paths/builds that don't exist or aren't current. The `postgres` service works for local Postgres if needed.
 - **Backend must be running before frontend** — the SvelteKit build/dev expects Payload at `PAYLOAD_API_URL` (default `http://localhost:3000`).
 - **Production checkout email is verified; other transactional emails are not** (see [docs/launch.md](docs/launch.md)). Don't claim end-to-end SES coverage without spot-checking.
+- **Payload REST `select` uses bracket syntax** — `select[slug]=true&select[updatedAt]=true`. The comma form (`select=slug,updatedAt`) is silently ignored and returns id-only docs; this broke the production sitemap for months (fixed July 3, 2026).
+- **Media collection has no `imageSizes`** — uploads store the raw original in R2, nothing auto-resizes (the "Cloudflare Images" fields in the Media schema are unwired). Pre-optimize images before upload until responsive sizes land. The homepage set was overwritten in R2 directly on July 3, 2026 (originals backed up outside the repo).
+- **JSON-LD flows through `Meta.svelte`** — server loads build `seo.jsonLd`/`seo.breadcrumbsJsonLd` strings (via `ldScript` in `alkebu-web/src/lib/seo.ts`) and `Meta.svelte` injects them with `{@html}`. If a component rebuilds its own `metadata` object (like `BookDetailPage` does), it must forward those fields or the schema silently disappears.
 
 ## Reference Docs
 

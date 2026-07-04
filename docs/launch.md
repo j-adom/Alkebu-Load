@@ -1,11 +1,59 @@
 # Launch and Operations Board
 
-**Updated:** May 29, 2026  
+**Updated:** July 3, 2026  
 **Storefront:** https://alkebulanimages.com  
 **Payload/Admin:** https://payload.alkebulanimages.com  
 **Health:** https://payload.alkebulanimages.com/api/health
 
 Online ordering is live. The current work is production confidence: catalog quality, staff workflow verification, webhook confidence, and speed/security polish.
+
+## July 3, 2026 — P0 Revenue & SEO Fixes (deployed and verified against production)
+
+Branch `fix/p0-revenue-seo` merged to main. Business context: current goals are $5-10k/month
+online sales, B2B inquiry capture (schools/nonprofits), community-driven repeat purchase,
+and long-term data ownership independent of Square.
+
+- [x] **Stripe webhook order loss fixed** — `checkout.session.completed` now throws on
+  cart-not-found so Stripe retries delivery (was: silent 200 acknowledgment that
+  permanently dropped a paid order with no alert). `src/app/utils/stripeHelpers.ts`.
+- [x] **Hourly Stripe reconciliation cron** — new `recover-stripe-orders` job (hourly at :15)
+  recreates any order the webhook missed and emails staff a "Missed Orders Recovered"
+  alert (recovery deliberately skips customer emails — a human follows up). Skips sessions
+  <30 min old; dismissed sessions stay excluded via their stub orders.
+- [x] **Quote-request emails wired** — the customer-confirmation, staff-notification, and
+  follow-up senders in `quoteRequestSystem.ts` were `console.log` stubs; B2B/quote
+  inquiries created rows but notified no one. Now send via `emailService.sendRawEmail`.
+- [x] **Sitemap restored (1 URL → ~5,032)** — Payload's REST API ignores comma select
+  syntax (`select=slug,updatedAt` returns id-only docs); the missing `updatedAt` threw and
+  the route served its 1-URL fallback. Now uses bracket syntax (`select[slug]=true`),
+  tolerates missing dates, and the static list drops the 404ing `/returns`, `/terms`,
+  `/shipping` in favor of real routes.
+- [x] **robots.txt unshadowed** — removed `static/robots.txt`, which overrode the dynamic
+  route on Cloudflare; live robots now has the sitemap pointer and cart/checkout/api disallows.
+- [x] **JSON-LD structured data renders** — Product/Breadcrumb (and event/business) schema
+  was computed server-side but never injected into the HTML. `Meta.svelte` now renders it;
+  verified live on book pages (Product with price/availability/ISBN + BreadcrumbList).
+- [x] **/login 500 removed** — orphan route (form action, no page component) deleted;
+  now 404s. A route-integrity test fails if any route exports actions without a page.
+- [x] **Homepage images optimized** — 7 R2 objects overwritten in place at their original
+  keys (16.3 MB → 1.34 MB total; hero 3.2 MB → 305 KB) with 1-year Cache-Control headers.
+  Originals backed up at `~/Coding/optimized-homepage-images/originals-backup/`. Media
+  cache rule active on `media.alkebulanimages.com` (verified MISS → HIT). Note: the Media
+  collection has no `imageSizes` — new uploads store raw originals; pre-optimize until
+  responsive sizes/edge transforms land (P1).
+- [x] **Search Console** — domain property was already verified (~3 months of data:
+  2.83K clicks / 164K impressions / avg position 9.8; non-brand traffic is book-title
+  queries). Sitemap submitted July 3; "Couldn't fetch" placeholder expected to flip to
+  Success within ~48h.
+
+**Monitoring cadence:** Sitemaps status (next day) → Pages indexed count weekly (baseline
+11.4K indexed / 20.5K not; was ~14K before a June dip) → Search Appearance → Product
+results (2-3 weeks, rich-results payoff) → staff inbox for recovery alerts.
+
+**Known unmerged work:** `feat/staff-agent-mcp-foundation` holds email XSS hardening
+(`a9c6074`, `d68b8f0`), web vitals for Rybbit (`9d366a9`), a docs refresh (`f12d364`,
+`e023280`), and the dormant staff-agent MCP server. Merge soon — the email escaping fixes
+belong in production.
 
 ## Source of Truth
 
@@ -76,8 +124,12 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
   - May 29 verification: code sets `Cache-Control: private, no-store`; live `/cart` and `/checkout` headers match.
 - [x] Baseline security headers are present.
   - May 29 verification: storefront and Payload send HSTS, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`.
-- [ ] Run Lighthouse/PageSpeed on /, /shop/books, one book detail page, /cart, and /checkout after the latest deploy.
-  - Still needs a real Lighthouse/PageSpeed run after the next deploy. Public availability and header smoke checks passed, but those are not performance measurements.
+- [x] Run Lighthouse/PageSpeed on the homepage.
+  - July 3 PageSpeed (pre-image-fix): mobile Performance 70 / Accessibility 96 / Best
+    Practices 100 / SEO 92; desktop Performance 80. Mobile LCP was 19.9s, caused entirely
+    by unoptimized images (3.2 MB hero, ~16 MB homepage total) — fixed same day via R2
+    overwrite + media cache rule. Rerun after a few days to capture the improved score;
+    /shop/books, book detail, /cart, /checkout still unmeasured.
 - [x] Continue legacy CSS/asset cleanup until global template CSS can be removed safely.
   - May 29 local development: removed the unused Agrikol icon-font load from `alkebu-web/src/app.html`; pruned unreferenced legacy vendor CSS/JS and retired icon fonts from `alkebu-web/static/assets`; added `npm test` guard coverage for the app shell and retired assets.
   - May 29 local verification: `npm test`, `npm run lint`, `npm run check:svelte`, and `npm run build` exit 0. `svelte-check` still reports the existing 9 warnings.
@@ -87,10 +139,32 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
 - [ ] Confirm SPF, DKIM, and DMARC for production sending domains.
   - Still requires DNS/sender access, especially the active DKIM selector for the production mail provider.
 
+## P1.5 - Growth Engine (queued from the July 3 holistic review)
+
+- [ ] Crawlable pagination on /shop/books — SSR HTML exposes only ~27 book links and no
+  pagination links; crawlers can't walk the 5k catalog from listing pages (sitemap now
+  covers discovery, but internal links drive ranking).
+- [ ] Canonical URL consolidation — listing pages link `/shop/books/<slug>/<isbn>` while
+  `/shop/books/<slug>` also resolves; each self-canonicalizes (duplicate-content split).
+  Pick one shape and canonicalize the other to it.
+- [ ] Book covers as og:image + Product JSON-LD image (currently generic og-image.png).
+- [ ] Meta descriptions from synopsis (currently thin "Title by Author").
+- [ ] Fix blog post detail page — no data loader; individual posts render empty.
+- [ ] Media collection `imageSizes` (or Cloudflare edge transforms) + real responsive
+  srcset so future uploads don't ship raw originals.
+- [ ] B2B front door: /schools + /wholesale landing pages (June design work), link the
+  homepage business-services cards (currently no hrefs), add inquiry-type selector to the
+  contact form so B2B leads are tagged; schedule `processQuoteFollowups` (written, uncronned).
+- [ ] Check Search Console → Pages → "Excluded by noindex" (3,591 pages): confirm they are
+  payload.* backend URLs, not storefront pages.
+- [ ] Explore Google Merchant Center free listings once Product structured data is picked up.
+
 ## P2 - UX and Content Polish
 
 - [ ] Activate FlexSearch as a real cache tier, with bootstrap timing, index freshness, and memory footprint handled together.
-- [ ] Implement real newsletter signup.
+- [x] Implement real newsletter signup.
+  - Footer form POSTs to `/api/newsletter`, which proxies to the listmonk instance with
+    server-only credentials; 409 (already subscribed) treated as success. Working in production.
 - [ ] Add related-product rendering for health-and-beauty and home-goods once those collections contain enough real products to verify the UI.
 - [ ] Clean up home-goods taxonomy: decide whether oils/incense remains the backend home-goods collection or split art/imports/home decor into dedicated collections.
 - [ ] Replace the placeholder return-policy banner.

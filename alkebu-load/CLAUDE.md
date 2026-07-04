@@ -85,6 +85,8 @@ This single Payload instance handles:
 - Transport: `@payloadcms/email-nodemailer` → Amazon SES SMTP, with generic SMTP fallback
 - Templates (`src/app/utils/emailTemplates.ts`) — Afrocentric branded (Kente Gold, Forest Green): order confirmation, staff notification, status updates, daily digest, abandoned cart
 - Daily order digest cron: `daily-order-digest` at 12:00 UTC (7 AM CT)
+- Stripe reconciliation cron: `recover-stripe-orders` hourly at :15 — recreates orders the webhook missed (`stripeRecovery.ts`), emails staff via `sendRecoveryAlert`; recovery skips customer emails by design
+- Quote-request emails (customer confirmation / staff notification / follow-up) send for real via `emailService.sendRawEmail` as of July 3, 2026 — they were `console.log` stubs before
 
 ### Search (three tiers)
 1. **FlexSearch** (client-side, 0–50 ms) — pre-indexed; bootstrap is fragile, see Gotchas
@@ -178,6 +180,12 @@ This single Payload instance handles:
 - Perspective API key — comment moderation
 
 ## Gotchas
+
+- **Stripe webhook must fail loudly.** `handleCheckoutCompleted` throws on cart-not-found / no-items so the route 500s and Stripe retries (July 3, 2026). Never restore the old silent `return` — it acknowledged the event and permanently dropped paid orders. The `recover-stripe-orders` cron is the backstop, not a substitute.
+
+- **REST `select` uses bracket syntax** — `select[field]=true`. The comma form is silently ignored (returns id-only docs); it broke the storefront sitemap in production.
+
+- **Media has no `imageSizes`** — uploads store the raw original in R2; the `cloudflareImageId` field is unwired. Pre-optimize before upload. Payload dedupes filenames on re-upload (`name-1.jpg`), so "replacing" a file via admin changes the filename — overwrite the R2 object directly when the URL must stay stable.
 
 - **Search is brittle.** When touching search code:
   - Use `authorsText.name` in PostgreSQL fallbacks, not the nested `authors[]` relationship array (silently fails in `OR` queries — see `381e6db`)
