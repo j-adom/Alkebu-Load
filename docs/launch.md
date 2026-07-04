@@ -112,7 +112,7 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
 
 - [x] Backend production builds fail on type/lint errors.
   - May 28 local verification: `pnpm run build` exits 0 and runs Next compile, lint, and type checks; warnings remain non-blocking.
-  - May 28 local verification: `pnpm run check:scripts`, `pnpm test`, and `pnpm run lint` exit 0; tests pass 74/74.
+  - Local verification: `pnpm run check:scripts`, `pnpm test`, and `pnpm run lint` exit 0 (re-run `pnpm test` for the current pass count rather than trusting a snapshot).
 - [x] Frontend production builds now run svelte-check before vite build.
   - May 28 local verification: `npm run build` exits 0 after `svelte-check` reports 0 errors and 9 warnings.
   - May 28 local verification: `npm run lint` exits 0.
@@ -134,7 +134,7 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
   - May 29 local development: removed the unused Agrikol icon-font load from `alkebu-web/src/app.html`; pruned unreferenced legacy vendor CSS/JS and retired icon fonts from `alkebu-web/static/assets`; added `npm test` guard coverage for the app shell and retired assets.
   - May 29 local verification: `npm test`, `npm run lint`, `npm run check:svelte`, and `npm run build` exit 0. `svelte-check` still reports the existing 9 warnings.
   - The remaining global CSS is intentional for now: current routes still use Font Awesome plus template selectors such as `.page-header`, `.product`, and `.single-sidebar`.
-- [ ] Audit all transactional emails: checkout confirmation, staff notification, shipping update, daily digest, contact form.
+- [ ] Audit all transactional emails: checkout confirmation, staff notification, shipping update, refund notification, daily digest, contact form.
   - Still requires controlled checkout/admin/contact-form coverage plus inbox verification; no local-only code check can confirm delivery.
 - [ ] Confirm SPF, DKIM, and DMARC for production sending domains.
   - Still requires DNS/sender access, especially the active DKIM selector for the production mail provider.
@@ -193,7 +193,7 @@ Run after every meaningful backend/frontend deploy:
 10. Confirm customer and staff emails arrived.
 11. Process order in /admin/order-dashboard.
 12. Add tracking and confirm shipping email.
-13. Refund the controlled payment and confirm records remain auditable.
+13. Issue a per-item refund from the Order Dashboard RefundPanel; confirm the Stripe refund, the per-line refund records on the order, and the customer refund email.
 
 ## Public Smoke Test
 

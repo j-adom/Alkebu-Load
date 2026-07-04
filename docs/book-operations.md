@@ -95,11 +95,16 @@ ISBNDB_API_KEY=your-key pnpm tsx scripts/enrich-books-batch-fast.ts --dry-run
 ISBNDB_API_KEY=your-key pnpm tsx scripts/enrich-books-batch-fast.ts --limit 50
 ~~~
 
-Depending on which script is used in the current branch, older installs may also have:
+Alternate enrichment scripts (ISBNdb / metadata):
 
 ~~~bash
-pnpm tsx scripts/enrich-books-from-isbn.ts
+pnpm tsx scripts/enrich-books-isbndb.ts
+pnpm tsx scripts/enrich-books-metadata.ts
 ~~~
+
+Note: auto-enrichment also runs automatically on book create/update (ISBNdb first,
+Google Books fallback). Bulk imports set `DISABLE_AUTO_BOOK_ENRICHMENT=true` to skip
+the slow external-API path.
 
 Batch enrichment fills empty fields only, including authors, publisher, descriptions, subjects, binding, pages, publication date, language, and cover images.
 

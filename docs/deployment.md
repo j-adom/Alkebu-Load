@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Updated:** May 28, 2026  
+**Updated:** June 30, 2026  
 **Storefront:** https://alkebulanimages.com  
 **Payload/Admin:** https://payload.alkebulanimages.com
 

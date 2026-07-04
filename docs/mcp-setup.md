@@ -1,20 +1,12 @@
 # MCP (Model Context Protocol) Setup
 
-This document explains the MCP filesystem server configuration for the Alkebulanimages 2.0 project.
-
-## What is MCP?
-
-MCP (Model Context Protocol) is a protocol that allows Claude to interact with external tools and services. The filesystem MCP server provides enhanced file system access capabilities.
+This document explains the MCP servers configured for the Alkebulanimages 2.0
+project. MCP lets Claude interact with external tools and documentation sources.
 
 ## Configuration
 
-### Location
-The MCP configuration is located at:
-```
-.claude/mcp.json
-```
-
-### Current Setup
+The MCP configuration lives at `.claude/mcp.json`. It currently defines **three**
+servers:
 
 ```json
 {
@@ -28,130 +20,86 @@ The MCP configuration is located at:
       ],
       "description": "Filesystem access for alkebulanimages2.0 project",
       "enabled": true
+    },
+    "svelte": {
+      "url": "https://mcp.svelte.dev/mcp",
+      "transport": "sse",
+      "description": "Official Svelte MCP server for Svelte 5 and SvelteKit docs, code analysis, and best practices",
+      "enabled": true
+    },
+    "tailwindcss-server": {
+      "command": "tailwindcss-server"
     }
   }
 }
 ```
 
-## What This Provides
+> The optional, opt-in **Payload MCP server** (`@payloadcms/plugin-mcp`, served by
+> the backend at `/api/mcp`, enabled via `MCP_ENABLED=true`) is a *separate*
+> mechanism — it is served by the Payload app itself, not launched from
+> `.claude/mcp.json`. It is dormant by default; see the backend design spec if/when
+> it is enabled.
 
-The filesystem MCP server gives Claude access to:
+## 1. Filesystem MCP server
 
-1. **Read files** - Enhanced file reading capabilities
-2. **Write files** - Create and modify files
-3. **Directory operations** - List, create, and manage directories
-4. **File search** - Advanced file searching within the project
-5. **File metadata** - Access file information (size, permissions, timestamps)
+Runs `@modelcontextprotocol/server-filesystem` (via `npx -y`, no install needed)
+scoped to the project root `/home/jadom/Coding/alkebulanimages2.0`. Provides
+enhanced read/write/search/metadata access to:
+- `alkebu-load/` — Payload CMS backend
+- `alkebu-web/` — SvelteKit frontend
+- `alkebu-shared/` — **empty placeholder** (planned shared types, not implemented)
+- `docs/` — project documentation
 
-## Allowed Directory
+**Security:** scoped to the project directory only — it cannot reach parent
+directories, system files, or other user directories. See `.claude/settings.local.json`
+for complementary tool permissions.
 
-The MCP server is configured to access:
-- **Root**: `/home/jadom/Coding/alkebulanimages2.0`
-- **Includes**: All subdirectories:
-  - `alkebu-load/` - Payload CMS backend
-  - `alkebu-web/` - SvelteKit frontend
-  - `alkebu-shared/` - Shared utilities (future)
-  - `docs/` - Project documentation
+## 2. Svelte MCP server
 
-## Security
+A remote **SSE** server at `https://mcp.svelte.dev/mcp` providing Svelte 5 /
+SvelteKit documentation, code analysis, and an autofixer. **Use it for any work in
+`alkebu-web/`.** The workflow (see the repo [CLAUDE.md](../CLAUDE.md) "Svelte MCP
+Server" section) is:
 
-### Scope Restriction
-The MCP server is restricted to the project directory only. It cannot access:
-- Parent directories
-- System files outside the project
-- Other user directories
+1. `list-sections` — discover relevant Svelte/SvelteKit topics
+2. `get-documentation` — pull full content for the sections you need
+3. `svelte-autofixer` — **run on any component before finalizing; loop until clean**
+4. `playground-link` — only after user confirmation, never for code already written to files
 
-### Additional Permissions
-See `.claude/settings.local.json` for additional tool permissions that complement the MCP server.
+## 3. Tailwind CSS MCP server
 
-## How to Restart MCP Server
+Runs a local `tailwindcss-server` binary (note: a bare `command`, not an `npx -y`
+wrapper — the binary must be on your `PATH`). Provides Tailwind class/utility
+assistance for the storefront's Tailwind v3 setup.
 
-If you need to restart the MCP server (after configuration changes):
+## Restarting / applying config changes
 
-1. **Claude Desktop App**: Restart the application
-2. **Claude Code**: The server will restart automatically on next use
+- **Claude Code**: servers restart automatically on next use after editing `.claude/mcp.json`.
+- **Claude Desktop App**: restart the application.
 
 ## Troubleshooting
 
-### MCP Server Not Starting
-
-**Check npx availability:**
+**Filesystem server not starting** — check `npx`:
 ```bash
-which npx
-npx --version
-```
-
-**Test MCP server manually:**
-```bash
+which npx && npx --version
 npx -y @modelcontextprotocol/server-filesystem /home/jadom/Coding/alkebulanimages2.0
 ```
 
-### Permission Issues
-
-Ensure the project directory is readable:
+**Svelte (SSE) server unreachable** — it's a remote endpoint; verify network access:
 ```bash
-ls -la /home/jadom/Coding/alkebulanimages2.0
+curl -I https://mcp.svelte.dev/mcp
 ```
+An interactively-authenticated/remote MCP may be unavailable in headless runs.
 
-### Package Not Found
-
-Install the MCP filesystem server globally:
+**Tailwind server not found** — the `tailwindcss-server` binary must be installed and on `PATH`:
 ```bash
-npm install -g @modelcontextprotocol/server-filesystem
+which tailwindcss-server
 ```
-
-## Advanced Configuration
-
-### Multiple Directories
-
-To allow access to multiple directories, modify the args:
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/home/jadom/Coding/alkebulanimages2.0",
-        "/home/jadom/Coding/other-project"
-      ],
-      "enabled": true
-    }
-  }
-}
-```
-
-### Read-Only Mode
-
-For read-only access, use the `--readonly` flag:
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "--readonly",
-        "/home/jadom/Coding/alkebulanimages2.0"
-      ],
-      "enabled": true
-    }
-  }
-}
-```
+If missing, install it (or disable the server in `.claude/mcp.json`).
 
 ## Related Documentation
 
 - [MCP Specification](https://modelcontextprotocol.io/)
-- [Filesystem Server Documentation](https://github.com/modelcontextprotocol/servers)
+- [Filesystem Server](https://github.com/modelcontextprotocol/servers)
+- [Svelte MCP](https://mcp.svelte.dev/)
 - [Claude Code Documentation](https://docs.claude.com/claude-code)
-
-## Notes
-
-- The MCP server runs in the background when Claude Code is active
-- No manual installation is required - `npx -y` handles it automatically
-- The server is scoped to this project only for security
