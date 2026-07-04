@@ -141,20 +141,30 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
 
 ## P1.5 - Growth Engine (queued from the July 3 holistic review)
 
-- [ ] Crawlable pagination on /shop/books — SSR HTML exposes only ~27 book links and no
-  pagination links; crawlers can't walk the 5k catalog from listing pages (sitemap now
-  covers discovery, but internal links drive ranking).
-- [ ] Canonical URL consolidation — listing pages link `/shop/books/<slug>/<isbn>` while
-  `/shop/books/<slug>` also resolves; each self-canonicalizes (duplicate-content split).
-  Pick one shape and canonicalize the other to it.
-- [ ] Book covers as og:image + Product JSON-LD image (currently generic og-image.png).
-- [ ] Meta descriptions from synopsis (currently thin "Title by Author").
-- [ ] Fix blog post detail page — no data loader; individual posts render empty.
+- [x] Crawlable pagination on /shop/books (July 3, `feat/p1.5-seo-growth`) — paginated
+  pages are indexable with self-referencing `?p=N` canonicals and per-page titles; the
+  real blocker was `noindex, nofollow` on pages ≥ 2, now `noindex, follow` where noIndex
+  remains (genre/tag/author listings).
+- [x] Canonical URL consolidation (July 3) — `/shop/books/<slug>` is canonical (matches
+  the sitemap). Cards, related-books, and search results link slug-only;
+  `/<slug>/<isbn>` pages still resolve but canonicalize to the slug URL. Note: the
+  FlexSearch index stores book slugs as `slug/isbn`; the storefront normalizes on
+  render — fix the index shape whenever search is next touched.
+- [x] Book covers as og:image + Product JSON-LD image (July 3) — JSON-LD now reads the
+  populated `images[0].image.url` Media shape; hosted covers preferred over scraped URLs.
+- [x] Meta descriptions from synopsis (July 3) — the rich Lexical `description` object
+  no longer shadows `synopsis` in the fallback chain; Lexical text is extracted as a
+  last resort before the "Title by Author" fallback.
+- [x] Fix blog post detail page (July 3) — `/blog/[slug]` loader added (published-only,
+  404s drafts), template moved off Sanity-era fields (`body`→`content`,
+  `mainImage`→`featuredImage`, `publishedAt`→`publishDate`), Article JSON-LD + meta head
+  wired. NB: production has zero published posts — verified against a synthetic post.
 - [ ] Media collection `imageSizes` (or Cloudflare edge transforms) + real responsive
   srcset so future uploads don't ship raw originals.
 - [ ] B2B front door: /schools + /wholesale landing pages (June design work), link the
   homepage business-services cards (currently no hrefs), add inquiry-type selector to the
-  contact form so B2B leads are tagged; schedule `processQuoteFollowups` (written, uncronned).
+  contact form so B2B leads are tagged. ~~schedule `processQuoteFollowups`~~ — done
+  July 3: `quote-followups` cron, daily 15:00 UTC.
 - [ ] Check Search Console → Pages → "Excluded by noindex" (3,591 pages): confirm they are
   payload.* backend URLs, not storefront pages.
 - [ ] Explore Google Merchant Center free listings once Product structured data is picked up.
