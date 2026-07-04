@@ -7,11 +7,33 @@ export function ldScript(obj: unknown) {
   return `<script type="application/ld+json">${json}</script>`;
 }
 
+/** Extract plain text from a Payload Lexical rich-text object (or pass strings through). */
+export function extractLexicalText(node: any): string {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (typeof node.text === 'string') return node.text;
+  const children = node.root ? [node.root] : node.children;
+  if (Array.isArray(children)) return children.map(extractLexicalText).join(' ');
+  return '';
+}
+
+/**
+ * Best plain-text description for a product. Plain-text fields win over the
+ * rich Lexical `description`, which is an object and used to shadow `synopsis`.
+ */
+export function resolveProductDescription(product: any, fallback = ''): string {
+  const plain = [product?.seoDescription, product?.synopsis, product?.shortDescription].find(
+    (value: any) => typeof value === 'string' && value.trim()
+  );
+  if (plain) return plain.trim();
+  const rich = extractLexicalText(product?.description).replace(/\s+/g, ' ').trim();
+  return rich || fallback;
+}
+
 export function buildProductJsonLd(product: any, slug: string) {
   // Determine product name and description (works for both books and fashion)
   const productName = product.name || product.title;
-  const productDesc = product.shortDescription || product.seoDescription || product.description || product.synopsis;
-  const descText = typeof productDesc === 'string' ? productDesc : '';
+  const descText = resolveProductDescription(product);
 
   // Determine price (fashion uses price field, books use pricing.retailPrice)
   const price = product.price || (product.pricing?.retailPrice ? product.pricing.retailPrice / 100 : null);
@@ -38,8 +60,12 @@ export function buildProductJsonLd(product: any, slug: string) {
     priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days from now
   } : undefined;
 
-  // Get image URL (fashion uses scrapedImageUrls, books use images)
-  const imageUrl = product.scrapedImageUrls?.[0]?.url || product.images?.[0]?.url;
+  // Get image URL — books populate images[].image as a Media doc; fashion uses
+  // scrapedImageUrls. Prefer our own hosted cover over scraped external URLs.
+  const imageUrl =
+    product.images?.[0]?.image?.url ||
+    product.images?.[0]?.url ||
+    product.scrapedImageUrls?.[0]?.url;
 
   const editions: any[] = product.editions || [];
   // Best edition: in-stock first, then most recently published, then first
@@ -96,16 +122,17 @@ export function buildProductJsonLd(product: any, slug: string) {
 }
 
 export function buildArticleJsonLd(post: any, slug: string) {
+  const imageUrl = post.featuredImage?.url;
+  const authorName = post.author?.name || post.guestAuthor;
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
-    description: post.seoDescription || post.excerpt,
-    image: post.featuredImage?.url ? `${PUBLIC_SITE_URL}${post.featuredImage.url}` : undefined,
-    author: post.author ? {
+    description: post.seo?.description || post.excerpt || undefined,
+    image: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `${PUBLIC_SITE_URL}${imageUrl}`) : undefined,
+    author: authorName ? {
       '@type': 'Person',
-      name: post.author.name,
-      url: `${PUBLIC_SITE_URL}/authors/${post.author.slug}`
+      name: authorName
     } : {
       '@type': 'Organization',
       name: 'Alkebu-Lan Images',
@@ -120,7 +147,7 @@ export function buildArticleJsonLd(post: any, slug: string) {
         url: `${PUBLIC_SITE_URL}/logo.png`
       }
     },
-    datePublished: post.publishedAt || post.createdAt,
+    datePublished: post.publishDate || post.publishedAt || post.createdAt,
     dateModified: post.updatedAt,
     url: `${PUBLIC_SITE_URL}/blog/${slug}`,
     mainEntityOfPage: {

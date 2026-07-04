@@ -83,9 +83,8 @@ export function normalizeProduct(
     compareCents = product?.pricing?.comparePrice ?? primaryEdition?.pricing?.comparePrice ?? 0;
     priceLabel = formatCurrency((priceCents || 0) / 100);
 
-    const isbn =
-      primaryEdition?.isbn13 || primaryEdition?.isbn || product?.isbn13 || product?.isbn || '';
-    href = slug ? (isbn ? `${base}/${slug}/${isbn}` : `${base}/${slug}`) : base;
+    // Link the canonical slug URL (not /slug/isbn) so all internal links and
+    // the sitemap agree on one URL shape per book.
     aspectClass = 'aspect-[2/3]';
   } else if (productType === 'fashion-jewelry') {
     subtitle = (product?.brand?.name || product?.brand || product?.category || '').toString();

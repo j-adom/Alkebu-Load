@@ -1,5 +1,5 @@
 import { appendBookStorefrontFilters, getProductBySlug, getRelatedBooks, payloadGet } from '$lib/server/payload';
-import { buildProductJsonLd, buildSEOData } from '$lib/seo';
+import { buildProductJsonLd, buildSEOData, resolveProductDescription } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
@@ -32,11 +32,11 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       ),
     ];
 
-    // Build breadcrumbs
+    // Breadcrumbs point at the canonical slug URL
     const breadcrumbs = [
       { name: 'Home', url: `${PUBLIC_SITE_URL}/` },
       { name: 'Books', url: `${PUBLIC_SITE_URL}/shop/books` },
-      { name: product.title, url: `${PUBLIC_SITE_URL}/shop/books/${slug}/${isbn}` }
+      { name: product.title, url: `${PUBLIC_SITE_URL}/shop/books/${slug}` }
     ];
 
     // Set strong edge caching (24 hours) with long stale window (7 days)
@@ -47,8 +47,8 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       'x-key': `product:${product.id}${product.authors?.length ? `,authors:${product.authors.map((a: any) => a.id).join(',')}` : ''}${product.publisher ? `,publisher:${product.publisher.id}` : ''}`
     });
 
-    // Build structured data
-    const jsonLd = buildProductJsonLd(product, `${slug}/${isbn}`);
+    // Build structured data against the canonical slug URL
+    const jsonLd = buildProductJsonLd(product, slug);
 
     // authorsText is [{name}] from enrichment; authors is the relationship array (may be empty)
     const authorNamesFromText = product.authorsText?.map((a: any) => a.name).filter(Boolean) || [];
@@ -56,16 +56,18 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     const authorNames = (authorNamesFromText.length ? authorNamesFromText : authorNamesFromRel).join(', ') || 'Various Authors';
 
     // Build description with fallback
-    const descriptionFallback = `${product.title} by ${authorNames}`;
-    const rawDesc = product.seoDescription || product.synopsis || product.description || descriptionFallback;
-    const description = typeof rawDesc === 'string' ? rawDesc : descriptionFallback;
+    const description = resolveProductDescription(product, `${product.title} by ${authorNames}`);
 
-    // Build SEO data
+    // Build SEO data — canonical is the slug URL so edition pages consolidate
+    // ranking signals onto one page per book
     const seoData = buildSEOData({
       title: product.titleLong || product.title,
       description,
-      canonical: `${PUBLIC_SITE_URL}/shop/books/${slug}/${isbn}`,
-      image: product.images?.[0]?.image?.url || product.images?.[0]?.url,
+      canonical: `${PUBLIC_SITE_URL}/shop/books/${slug}`,
+      image:
+        product.images?.[0]?.image?.url ||
+        product.images?.[0]?.url ||
+        product.scrapedImageUrls?.[0]?.url,
       imageAlt: `Cover of ${product.title}`,
       jsonLd,
       breadcrumbs

@@ -98,7 +98,8 @@
   <meta property="twitter:card" content={resolved.twitterCard} />
 
   {#if resolved.noIndex}
-    <meta name="robots" content="noindex, nofollow" />
+    <!-- "follow" keeps product links on noindexed listing pages crawlable -->
+    <meta name="robots" content="noindex, follow" />
   {/if}
 
   {#if resolved.jsonLd}

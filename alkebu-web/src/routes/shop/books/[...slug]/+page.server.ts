@@ -1,5 +1,5 @@
 import { getProductBySlug, payloadGet, getBooksByAuthor, getRelatedBooks } from '$lib/server/payload';
-import { buildProductJsonLd, buildSEOData } from '$lib/seo';
+import { buildProductJsonLd, buildSEOData, resolveProductDescription } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
@@ -50,10 +50,10 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     // Build structured data
     const jsonLd = buildProductJsonLd(product, slug);
 
-    // Build SEO data with safe description
+    // Build SEO data with safe description (synopsis-first; the rich Lexical
+    // description object used to shadow it and force the thin fallback)
     const fallbackDesc = `${product.title} by ${product.authors?.map((a: any) => a.name).join(', ') || 'Various Authors'}`;
-    const rawDescription = product.seoDescription || product.description || product.synopsis || fallbackDesc;
-    const description = typeof rawDescription === 'string' ? rawDescription : fallbackDesc;
+    const description = resolveProductDescription(product, fallbackDesc);
     const image = product.images?.[0]?.image?.url || product.images?.[0]?.url || product.scrapedImageUrls?.[0]?.url;
 
     const seoData = buildSEOData({
