@@ -16,8 +16,12 @@ export { blockMcpFieldUpdate } from './access';
  *  4. Per-API-key toggles + the key owner's user access rules apply on top,
  *     enforced by the plugin at /api/mcp (Bearer auth; no key ⇒ rejected).
  *
- * Opt-in per environment: dormant (adds no collections, no schema change) unless
- * MCP_ENABLED=true. Endpoint once enabled: `<serverURL>/api/mcp`.
+ * Opt-in per environment: functionally dormant unless MCP_ENABLED=true, BUT the
+ * plugin still registers its `payload-mcp-api-keys` collection even when disabled
+ * (upstream keeps schema consistent across environments). Adding/upgrading this
+ * plugin is therefore a DB migration event — prod Postgres needs the DDL before
+ * deploy (see scripts/fix-mcp-schema.sql, 2026-07-05 /admin outage).
+ * Endpoint once enabled: `<serverURL>/api/mcp`.
  */
 export function buildMcpPlugin() {
   return mcpPlugin({
