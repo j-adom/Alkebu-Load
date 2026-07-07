@@ -323,7 +323,7 @@ export async function getBusinessBySlug(slug: string) {
 }
 
 export async function getBlogPosts(page = 1, limit = 12) {
-  return await payloadGet<PayloadCollectionResponse<BlogPost>>(`/api/blogPosts?where[status][equals]=published&page=${page}&limit=${limit}&depth=1&sort=-publishedAt`);
+  return await payloadGet<PayloadCollectionResponse<BlogPost>>(`/api/blogPosts?where[status][equals]=published&page=${page}&limit=${limit}&depth=1&sort=-publishDate`);
 }
 
 export async function getUpcomingEvents(page = 1, limit = 12) {

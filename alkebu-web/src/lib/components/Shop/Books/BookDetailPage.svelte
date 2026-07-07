@@ -118,6 +118,9 @@
     image: seo?.image || coverUrl,
     imageAlt: seo?.imageAlt || book?.title,
     url: seo?.canonical || `/shop/books/${book?.slug || ""}`,
+    noIndex: seo?.noIndex,
+    jsonLd: seo?.jsonLd,
+    breadcrumbsJsonLd: seo?.breadcrumbsJsonLd,
   }));
 </script>
 

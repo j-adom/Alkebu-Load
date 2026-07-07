@@ -76,10 +76,12 @@
                 >
               {/if}
               <!-- Date Badge -->
-              <div class="absolute top-4 left-4 bg-kente-gold text-primary-foreground px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5">
-                <Calendar class="w-4 h-4" />
-                {dayjs(post.publishedAt).format('MMM DD, YYYY')}
-              </div>
+              {#if post.publishDate}
+                <div class="absolute top-4 left-4 bg-kente-gold text-primary-foreground px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5">
+                  <Calendar class="w-4 h-4" />
+                  {dayjs(post.publishDate).format('MMM DD, YYYY')}
+                </div>
+              {/if}
             </a>
 
             <!-- Content -->

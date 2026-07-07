@@ -1,5 +1,5 @@
 import type { Payload } from 'payload'
-import type Stripe from 'stripe'
+import Stripe from 'stripe'
 import { getCartItems } from './cartOperations'
 import { buildOrderShippingAddress } from './stripeHelpers'
 import { getEmailRuntimeConfig } from './emailConfig'
@@ -238,4 +238,129 @@ export async function recoverStripeSessionAsOrder(
       error: err instanceof Error ? err.message : String(err),
     }
   }
+}
+
+// ─── Scheduled reconciliation ───────────────────────────────────────────
+
+export type RecoveryCandidateOptions = {
+  /** Skip sessions younger than this — the webhook may still be retrying. */
+  minAgeMinutes?: number
+  /** Injectable clock (ms since epoch) for tests. */
+  now?: number
+}
+
+/**
+ * Filter recent Stripe sessions down to paid sessions that have no matching
+ * Payload order (by session id or payment intent id) and are old enough that
+ * normal webhook delivery/retries have had a chance to run.
+ *
+ * Dismissed sessions are excluded automatically: dismissal creates a stub
+ * Order carrying the session id, so they arrive here already "matched".
+ */
+export function selectRecoveryCandidates(
+  sessions: Stripe.Checkout.Session[],
+  existingOrders: Array<{ payment?: { stripeSessionId?: string | null; stripePaymentIntentId?: string | null } }>,
+  options: RecoveryCandidateOptions = {},
+): Stripe.Checkout.Session[] {
+  const { minAgeMinutes = 30, now = Date.now() } = options
+
+  const matchedSessionIds = new Set<string>()
+  const matchedPaymentIntentIds = new Set<string>()
+  for (const order of existingOrders) {
+    if (order?.payment?.stripeSessionId) matchedSessionIds.add(order.payment.stripeSessionId)
+    if (order?.payment?.stripePaymentIntentId) {
+      matchedPaymentIntentIds.add(order.payment.stripePaymentIntentId)
+    }
+  }
+
+  const maxCreated = Math.floor(now / 1000) - minAgeMinutes * 60
+
+  return sessions.filter((session) => {
+    if (session.payment_status !== 'paid') return false
+    if (session.created > maxCreated) return false
+    if (matchedSessionIds.has(session.id)) return false
+    const pi =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id
+    if (pi && matchedPaymentIntentIds.has(pi)) return false
+    return true
+  })
+}
+
+let scheduledStripeClient: Stripe | null = null
+function getScheduledStripe(): Stripe {
+  if (!scheduledStripeClient) {
+    scheduledStripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-08-27.basil',
+    })
+  }
+  return scheduledStripeClient
+}
+
+/**
+ * Hourly reconciliation backstop for the Stripe webhook (see the
+ * `recover-stripe-orders` job in payload.config.ts).
+ *
+ * Lists recent Stripe sessions, recovers any paid session that has no
+ * matching Payload order, and emails staff when something was recovered —
+ * recovery deliberately does not email customers, so a human must follow up.
+ */
+export async function runScheduledStripeRecovery(
+  payload: Payload,
+  options: { limit?: number; minAgeMinutes?: number } = {},
+): Promise<{ scanned: number; candidates: number; recovered: RecoveryResult[]; failed: RecoveryResult[] }> {
+  const limit = options.limit ?? 40
+
+  const stripeSessions = await getScheduledStripe().checkout.sessions.list({
+    limit,
+    expand: ['data.payment_intent'],
+  })
+
+  const payloadOrders = await payload.find({
+    collection: 'orders',
+    limit: 200,
+    sort: '-createdAt',
+    depth: 0,
+  })
+
+  const candidates = selectRecoveryCandidates(
+    stripeSessions.data,
+    payloadOrders.docs as any[],
+    { minAgeMinutes: options.minAgeMinutes },
+  )
+
+  const results: RecoveryResult[] = []
+  for (const session of candidates) {
+    results.push(await recoverStripeSessionAsOrder(payload, session))
+  }
+
+  const recovered = results.filter((r) => r.status === 'recovered')
+  const failed = results.filter((r) => r.status === 'failed')
+
+  if (recovered.length > 0) {
+    try {
+      const { sendRecoveryAlert } = await import('./emailService')
+      await sendRecoveryAlert({
+        recovered: recovered.map((r) => ({
+          orderNumber: r.orderNumber,
+          totalAmount: r.totalAmount,
+          guestEmail: r.guestEmail,
+        })),
+        scanned: stripeSessions.data.length,
+        adminUrl: `${process.env.ORDER_ADMIN_BASE_URL || process.env.PAYLOAD_PUBLIC_SERVER_URL || ''}/admin/order-dashboard`,
+      })
+    } catch (err) {
+      // Alerting must never fail the recovery itself.
+      console.error('Stripe recovery: staff alert email failed:', err)
+    }
+  }
+
+  if (results.length > 0) {
+    console.log(
+      `Stripe recovery job: scanned=${stripeSessions.data.length} candidates=${candidates.length} recovered=${recovered.length} failed=${failed.length}`,
+    )
+  }
+
+  return { scanned: stripeSessions.data.length, candidates: candidates.length, recovered, failed }
 }

@@ -2,13 +2,18 @@
   import {urlFor} from "$lib/payload";
   import { page } from '$app/stores'
   import LexicalRenderer from "$lib/components/LexicalRenderer.svelte";
+  import Meta from "$lib/components/Meta.svelte";
   import { Calendar, ChevronRight, Facebook, Twitter, ArrowLeft } from 'lucide-svelte';
   import dayjs from "dayjs";
 
   let { data } = $props();
   const settings = $derived(data.settings || {});
   const post = $derived(data.post || {});
+  const latestPosts = $derived(data.latestPosts || []);
+  const authorName = $derived(post.author?.name || post.guestAuthor || "");
 </script>
+
+<Meta metadata={data.seo} />
 
 <!-- Modern Page Header -->
 <section
@@ -37,21 +42,30 @@
       <!-- Main Content -->
       <article class="lg:w-2/3">
         <!-- Featured Image -->
-        <div class="relative rounded-2xl overflow-hidden mb-8">
-          <img
-            src={urlFor(post.mainImage).size(800, 450).url()}
-            alt={post.title}
-            class="w-full h-auto"
-          >
-          <div class="absolute bottom-4 left-4 bg-kente-gold text-primary-foreground px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
-            <Calendar class="w-4 h-4" />
-            {dayjs(post.publishedAt).format('MMMM DD, YYYY')}
+        {#if post.featuredImage}
+          <div class="relative rounded-2xl overflow-hidden mb-8">
+            <img
+              src={urlFor(post.featuredImage).width(800).height(450).url()}
+              alt={post.featuredImageAlt || post.title}
+              class="w-full h-auto"
+            >
+            {#if post.publishDate}
+              <div class="absolute bottom-4 left-4 bg-kente-gold text-primary-foreground px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+                <Calendar class="w-4 h-4" />
+                {dayjs(post.publishDate).format('MMMM DD, YYYY')}
+              </div>
+            {/if}
           </div>
-        </div>
+        {:else if post.publishDate}
+          <p class="flex items-center gap-2 text-muted-foreground font-medium mb-8">
+            <Calendar class="w-4 h-4" />
+            {dayjs(post.publishDate).format('MMMM DD, YYYY')}
+          </p>
+        {/if}
 
         <!-- Article Body -->
         <div class="prose prose-lg max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary hover:prose-a:text-primary/80 mb-8">
-          <LexicalRenderer content={post.body} />
+          <LexicalRenderer content={post.content} />
         </div>
 
         <!-- Share & Tags -->
@@ -80,21 +94,12 @@
         </div>
 
         <!-- Author Box -->
-        {#if post.author}
+        {#if authorName}
           <div class="flex flex-col sm:flex-row gap-6 p-6 bg-muted rounded-2xl mb-8">
-            {#if post.author.image}
-              <img
-                src={urlFor(post.author.image).size(120, 120).url()}
-                alt={post.author.name}
-                class="w-24 h-24 rounded-full object-cover flex-shrink-0"
-              >
-            {/if}
             <div>
-              <h3 class="text-xl font-bold mb-2">{post.author.name}</h3>
-              {#if post.author.bio}
-                <div class="text-muted-foreground">
-                  <LexicalRenderer content={post.author.bio} />
-                </div>
+              <h3 class="text-xl font-bold mb-2">{authorName}</h3>
+              {#if post.authorBio}
+                <p class="text-muted-foreground">{post.authorBio}</p>
               {/if}
             </div>
           </div>
@@ -111,16 +116,16 @@
       <aside class="lg:w-1/3">
         <div class="sticky top-24">
           <!-- Latest Posts -->
-          {#if post.latest && post.latest.length > 0}
+          {#if latestPosts.length > 0}
             <div class="card-modern p-6">
               <h3 class="text-xl font-bold mb-6 pb-4 border-b border-border">Latest Posts</h3>
               <div class="space-y-4">
-                {#each post.latest as l}
+                {#each latestPosts as l}
                   <a href="/blog/{l.slug}" class="group flex gap-4">
-                    {#if l.mainImage}
+                    {#if l.featuredImage}
                       <img
-                        src={urlFor(l.mainImage).size(80, 80).url()}
-                        alt={l.mainImage.alt || l.title}
+                        src={urlFor(l.featuredImage).width(80).height(80).url()}
+                        alt={l.featuredImage.alt || l.title}
                         class="w-20 h-20 rounded-lg object-cover flex-shrink-0"
                       >
                     {/if}
@@ -128,9 +133,9 @@
                       <h4 class="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
                         {l.title}
                       </h4>
-                      {#if l.publishedAt}
+                      {#if l.publishDate}
                         <p class="text-sm text-muted-foreground mt-1">
-                          {dayjs(l.publishedAt).format('MMM DD, YYYY')}
+                          {dayjs(l.publishDate).format('MMM DD, YYYY')}
                         </p>
                       {/if}
                     </div>

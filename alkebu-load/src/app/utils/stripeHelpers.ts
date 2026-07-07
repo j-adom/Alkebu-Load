@@ -346,16 +346,17 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     });
 
     if (!carts.docs.length) {
-      console.error('Cart not found for session:', session.id);
-      return;
+      // Throw so the webhook route returns 500 and Stripe retries delivery.
+      // Silently returning acknowledges the event (200) and permanently drops
+      // a paid order; the recover-stripe-orders job is the final backstop.
+      throw new Error(`Cart not found for Stripe session ${session.id}`);
     }
 
     const cart = carts.docs[0];
     const cartItems = await getCartItems(payload, String(cart.id), 2);
 
     if (!cartItems.length) {
-      console.error('Cart items not found for session:', session.id);
-      return;
+      throw new Error(`Cart items not found for Stripe session ${session.id}`);
     }
 
     // Prevent duplicate order creation

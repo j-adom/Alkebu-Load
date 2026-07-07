@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload';
 import { sendOrderStatusUpdate } from '../app/utils/emailService';
 import { upsertCustomerForOrder } from '../app/utils/customerUpsert';
 import { computeCustomerRollups } from '../app/utils/customerRollups';
+import { blockMcpFieldUpdate } from '../plugins/mcp/access';
 
 const isCommerceStaff = (user: unknown): boolean => {
   const role = (user as { role?: string } | undefined)?.role;
@@ -74,6 +75,8 @@ export const Orders: CollectionConfig = {
       name: 'items',
       type: 'array',
       required: true,
+      // Line items carry pricing/refund state — not writable via the MCP agent.
+      access: { update: blockMcpFieldUpdate },
       fields: [
         {
           name: 'product',
@@ -167,6 +170,7 @@ export const Orders: CollectionConfig = {
       name: 'subtotalAmount',
       type: 'number',
       required: true,
+      access: { update: blockMcpFieldUpdate },
       admin: {
         description: 'Subtotal before tax and shipping (cents)',
       },
@@ -175,6 +179,7 @@ export const Orders: CollectionConfig = {
       name: 'taxAmount',
       type: 'number',
       required: true,
+      access: { update: blockMcpFieldUpdate },
       admin: {
         description: 'Total tax amount (cents)',
       },
@@ -183,6 +188,7 @@ export const Orders: CollectionConfig = {
       name: 'shippingAmount',
       type: 'number',
       defaultValue: 0,
+      access: { update: blockMcpFieldUpdate },
       admin: {
         description: 'Shipping cost (cents)',
       },
@@ -191,6 +197,7 @@ export const Orders: CollectionConfig = {
       name: 'totalAmount',
       type: 'number',
       required: true,
+      access: { update: blockMcpFieldUpdate },
       admin: {
         description: 'Final total amount (cents)',
       },
@@ -198,6 +205,7 @@ export const Orders: CollectionConfig = {
     {
       name: 'taxRate',
       type: 'number',
+      access: { update: blockMcpFieldUpdate },
       admin: {
         description: 'Tax rate applied (e.g., 0.07 for 7%)',
       },
@@ -238,6 +246,8 @@ export const Orders: CollectionConfig = {
     {
       name: 'payment',
       type: 'group',
+      // Payment + refund state is provider-owned — not writable via the MCP agent.
+      access: { update: blockMcpFieldUpdate },
       fields: [
         {
           name: 'stripePaymentIntentId',

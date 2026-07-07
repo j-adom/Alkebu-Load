@@ -1,11 +1,59 @@
 # Launch and Operations Board
 
-**Updated:** May 29, 2026  
+**Updated:** July 3, 2026  
 **Storefront:** https://alkebulanimages.com  
 **Payload/Admin:** https://payload.alkebulanimages.com  
 **Health:** https://payload.alkebulanimages.com/api/health
 
 Online ordering is live. The current work is production confidence: catalog quality, staff workflow verification, webhook confidence, and speed/security polish.
+
+## July 3, 2026 — P0 Revenue & SEO Fixes (deployed and verified against production)
+
+Branch `fix/p0-revenue-seo` merged to main. Business context: current goals are $5-10k/month
+online sales, B2B inquiry capture (schools/nonprofits), community-driven repeat purchase,
+and long-term data ownership independent of Square.
+
+- [x] **Stripe webhook order loss fixed** — `checkout.session.completed` now throws on
+  cart-not-found so Stripe retries delivery (was: silent 200 acknowledgment that
+  permanently dropped a paid order with no alert). `src/app/utils/stripeHelpers.ts`.
+- [x] **Hourly Stripe reconciliation cron** — new `recover-stripe-orders` job (hourly at :15)
+  recreates any order the webhook missed and emails staff a "Missed Orders Recovered"
+  alert (recovery deliberately skips customer emails — a human follows up). Skips sessions
+  <30 min old; dismissed sessions stay excluded via their stub orders.
+- [x] **Quote-request emails wired** — the customer-confirmation, staff-notification, and
+  follow-up senders in `quoteRequestSystem.ts` were `console.log` stubs; B2B/quote
+  inquiries created rows but notified no one. Now send via `emailService.sendRawEmail`.
+- [x] **Sitemap restored (1 URL → ~5,032)** — Payload's REST API ignores comma select
+  syntax (`select=slug,updatedAt` returns id-only docs); the missing `updatedAt` threw and
+  the route served its 1-URL fallback. Now uses bracket syntax (`select[slug]=true`),
+  tolerates missing dates, and the static list drops the 404ing `/returns`, `/terms`,
+  `/shipping` in favor of real routes.
+- [x] **robots.txt unshadowed** — removed `static/robots.txt`, which overrode the dynamic
+  route on Cloudflare; live robots now has the sitemap pointer and cart/checkout/api disallows.
+- [x] **JSON-LD structured data renders** — Product/Breadcrumb (and event/business) schema
+  was computed server-side but never injected into the HTML. `Meta.svelte` now renders it;
+  verified live on book pages (Product with price/availability/ISBN + BreadcrumbList).
+- [x] **/login 500 removed** — orphan route (form action, no page component) deleted;
+  now 404s. A route-integrity test fails if any route exports actions without a page.
+- [x] **Homepage images optimized** — 7 R2 objects overwritten in place at their original
+  keys (16.3 MB → 1.34 MB total; hero 3.2 MB → 305 KB) with 1-year Cache-Control headers.
+  Originals backed up at `~/Coding/optimized-homepage-images/originals-backup/`. Media
+  cache rule active on `media.alkebulanimages.com` (verified MISS → HIT). Note: the Media
+  collection has no `imageSizes` — new uploads store raw originals; pre-optimize until
+  responsive sizes/edge transforms land (P1).
+- [x] **Search Console** — domain property was already verified (~3 months of data:
+  2.83K clicks / 164K impressions / avg position 9.8; non-brand traffic is book-title
+  queries). Sitemap submitted July 3; "Couldn't fetch" placeholder expected to flip to
+  Success within ~48h.
+
+**Monitoring cadence:** Sitemaps status (next day) → Pages indexed count weekly (baseline
+11.4K indexed / 20.5K not; was ~14K before a June dip) → Search Appearance → Product
+results (2-3 weeks, rich-results payoff) → staff inbox for recovery alerts.
+
+**Known unmerged work:** `feat/staff-agent-mcp-foundation` holds email XSS hardening
+(`a9c6074`, `d68b8f0`), web vitals for Rybbit (`9d366a9`), a docs refresh (`f12d364`,
+`e023280`), and the dormant staff-agent MCP server. Merge soon — the email escaping fixes
+belong in production.
 
 ## Source of Truth
 
@@ -64,7 +112,7 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
 
 - [x] Backend production builds fail on type/lint errors.
   - May 28 local verification: `pnpm run build` exits 0 and runs Next compile, lint, and type checks; warnings remain non-blocking.
-  - May 28 local verification: `pnpm run check:scripts`, `pnpm test`, and `pnpm run lint` exit 0; tests pass 74/74.
+  - Local verification: `pnpm run check:scripts`, `pnpm test`, and `pnpm run lint` exit 0 (re-run `pnpm test` for the current pass count rather than trusting a snapshot).
 - [x] Frontend production builds now run svelte-check before vite build.
   - May 28 local verification: `npm run build` exits 0 after `svelte-check` reports 0 errors and 9 warnings.
   - May 28 local verification: `npm run lint` exits 0.
@@ -76,21 +124,61 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
   - May 29 verification: code sets `Cache-Control: private, no-store`; live `/cart` and `/checkout` headers match.
 - [x] Baseline security headers are present.
   - May 29 verification: storefront and Payload send HSTS, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`.
-- [ ] Run Lighthouse/PageSpeed on /, /shop/books, one book detail page, /cart, and /checkout after the latest deploy.
-  - Still needs a real Lighthouse/PageSpeed run after the next deploy. Public availability and header smoke checks passed, but those are not performance measurements.
+- [x] Run Lighthouse/PageSpeed on the homepage.
+  - July 3 PageSpeed (pre-image-fix): mobile Performance 70 / Accessibility 96 / Best
+    Practices 100 / SEO 92; desktop Performance 80. Mobile LCP was 19.9s, caused entirely
+    by unoptimized images (3.2 MB hero, ~16 MB homepage total) — fixed same day via R2
+    overwrite + media cache rule. Rerun after a few days to capture the improved score;
+    /shop/books, book detail, /cart, /checkout still unmeasured.
 - [x] Continue legacy CSS/asset cleanup until global template CSS can be removed safely.
   - May 29 local development: removed the unused Agrikol icon-font load from `alkebu-web/src/app.html`; pruned unreferenced legacy vendor CSS/JS and retired icon fonts from `alkebu-web/static/assets`; added `npm test` guard coverage for the app shell and retired assets.
   - May 29 local verification: `npm test`, `npm run lint`, `npm run check:svelte`, and `npm run build` exit 0. `svelte-check` still reports the existing 9 warnings.
   - The remaining global CSS is intentional for now: current routes still use Font Awesome plus template selectors such as `.page-header`, `.product`, and `.single-sidebar`.
-- [ ] Audit all transactional emails: checkout confirmation, staff notification, shipping update, daily digest, contact form.
+- [ ] Audit all transactional emails: checkout confirmation, staff notification, shipping update, refund notification, daily digest, contact form.
   - Still requires controlled checkout/admin/contact-form coverage plus inbox verification; no local-only code check can confirm delivery.
 - [ ] Confirm SPF, DKIM, and DMARC for production sending domains.
   - Still requires DNS/sender access, especially the active DKIM selector for the production mail provider.
 
+## P1.5 - Growth Engine (queued from the July 3 holistic review)
+
+- [x] Crawlable pagination on /shop/books (July 3, `feat/p1.5-seo-growth`) — paginated
+  pages are indexable with self-referencing `?p=N` canonicals and per-page titles; the
+  real blocker was `noindex, nofollow` on pages ≥ 2, now `noindex, follow` where noIndex
+  remains (genre/tag/author listings).
+- [x] Canonical URL consolidation (July 3) — `/shop/books/<slug>` is canonical (matches
+  the sitemap). Cards, related-books, and search results link slug-only;
+  `/<slug>/<isbn>` pages still resolve but canonicalize to the slug URL. Note: the
+  FlexSearch index stores book slugs as `slug/isbn`; the storefront normalizes on
+  render — fix the index shape whenever search is next touched.
+- [x] Book covers as og:image + Product JSON-LD image (July 3) — JSON-LD now reads the
+  populated `images[0].image.url` Media shape; hosted covers preferred over scraped URLs.
+- [x] Meta descriptions from synopsis (July 3) — the rich Lexical `description` object
+  no longer shadows `synopsis` in the fallback chain; Lexical text is extracted as a
+  last resort before the "Title by Author" fallback.
+- [x] Fix blog post detail page (July 3) — `/blog/[slug]` loader added (published-only,
+  404s drafts), template moved off Sanity-era fields (`body`→`content`,
+  `mainImage`→`featuredImage`, `publishedAt`→`publishDate`), Article JSON-LD + meta head
+  wired. NB: production has zero published posts — verified against a synthetic post.
+- [ ] Media collection `imageSizes` (or Cloudflare edge transforms) + real responsive
+  srcset so future uploads don't ship raw originals.
+- [ ] B2B front door: /schools + /wholesale landing pages (June design work), link the
+  homepage business-services cards (currently no hrefs), add inquiry-type selector to the
+  contact form so B2B leads are tagged. ~~schedule `processQuoteFollowups`~~ — done
+  July 3: `quote-followups` cron, daily 15:00 UTC.
+- [x] Check Search Console → Pages → "Excluded by noindex" (3,591 pages) — checked July 7:
+  they are storefront `/search?q=` internal-search URLs (legacy subject-heading queries,
+  first detected 8/16/22), not payload.* URLs. Noindex on internal search is correct;
+  no action. Sitemap status flipped to Success. Watch instead: "Duplicate, Google chose
+  different canonical" (1,635 — should shrink from the July 7 canonical consolidation)
+  and "Server error (5xx)" (734 — example URLs not yet investigated).
+- [ ] Explore Google Merchant Center free listings once Product structured data is picked up.
+
 ## P2 - UX and Content Polish
 
 - [ ] Activate FlexSearch as a real cache tier, with bootstrap timing, index freshness, and memory footprint handled together.
-- [ ] Implement real newsletter signup.
+- [x] Implement real newsletter signup.
+  - Footer form POSTs to `/api/newsletter`, which proxies to the listmonk instance with
+    server-only credentials; 409 (already subscribed) treated as success. Working in production.
 - [ ] Add related-product rendering for health-and-beauty and home-goods once those collections contain enough real products to verify the UI.
 - [ ] Clean up home-goods taxonomy: decide whether oils/incense remains the backend home-goods collection or split art/imports/home decor into dedicated collections.
 - [ ] Replace the placeholder return-policy banner.
@@ -119,7 +207,7 @@ Run after every meaningful backend/frontend deploy:
 10. Confirm customer and staff emails arrived.
 11. Process order in /admin/order-dashboard.
 12. Add tracking and confirm shipping email.
-13. Refund the controlled payment and confirm records remain auditable.
+13. Issue a per-item refund from the Order Dashboard RefundPanel; confirm the Stripe refund, the per-line refund records on the order, and the customer refund email.
 
 ## Public Smoke Test
 

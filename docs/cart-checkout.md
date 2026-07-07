@@ -84,9 +84,17 @@ npm run sync:payment-provider
 
 That script reads the payment provider selected in Payload Site Settings and writes the generated frontend provider module.
 
+## Refunds
+
+- `POST /api/refund` (admin-only) issues full or **per-item** refunds; `GET` is admin+staff.
+- Refund math lives in `src/app/utils/refundCalculations.ts` (pure/tested): prorated tax by selected-subtotal share, incremental shipping, and partial-refund status transitions.
+- Options: select line items + quantities, reason, and optional restock / mark-out-of-print.
+- The refund is issued via Stripe, per-line refund state is recorded on the order, and a refund-notification email is sent to the customer.
+- Surfaced in the Order Dashboard RefundPanel (`/admin/order-dashboard`).
+
 ## Shipping and Tax
 
-- Book-only orders can use media-mail estimates.
+- Book-only orders default to USPS Media Mail rates; mixed carts use standard rates.
 - Shippo can provide live carrier rates when configured.
 - Static/estimated rates are the fallback when Shippo fails or is not configured.
 - Tennessee addresses collect tax when applicable; out-of-state addresses should not.

@@ -1,6 +1,6 @@
 # Alkebulanimages 2.0 - Product Requirements Document
 
-**Last Updated:** April 30, 2026
+**Last Updated:** July 3, 2026
 
 ## Executive Summary
 
@@ -16,7 +16,17 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Secondary**: Provide a lean order-processing workflow so staff can handle online orders while working in-store
 - **Tertiary**: Drive brand loyalty via events calendar and local Black business directory as low-cost community engagement tools
 
-### Success Metrics
+### Business Goals (July 2026 — these drive prioritization)
+1. **Sales**: $5-10k/month in online revenue (~150-400 orders/month at book AOV)
+2. **B2B**: capture inquiries from schools/nonprofits (bulk purchase orders, recurring
+   partnerships); Phase 1 is a credible intake path, fulfillment stays manual
+3. **Community**: drive local repeat purchase via email (listmonk, working), social, and
+   in-store events; use the site to communicate news directly
+4. **Data ownership**: long-term independence from Square — in-store customers, loyalty,
+   and purchase history should live in Payload (Square's Customers/Orders/Loyalty APIs
+   make a historical backfill feasible; the sync is unbuilt)
+
+### Legacy Success Metrics (original launch targets, kept for reference)
 - **E-commerce**: 300% increase in online sales within first year
 - **Community Engagement**: Directory of 100+ local Black businesses
 - **Content**: 2-3 blog posts weekly with 1,000+ monthly readers
@@ -24,7 +34,26 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Technical**: 99.9% uptime, <2s page load times, mobile-first responsive design
 - **B2B**: 3+ institutional accounts active within year one (Phase 2)
 
-## Current Status (April 2026)
+## Current Status (July 2026)
+
+### July 3, 2026 — Holistic review + P0 fixes (see [launch.md](launch.md) for detail)
+- **SEO plumbing repaired and verified in production**: sitemap 1 URL → ~5,032; dynamic
+  robots.txt unshadowed; Product/Breadcrumb JSON-LD now renders on product pages; /login
+  500 removed. Sitemap submitted to Search Console (domain property already verified,
+  ~3 months of data).
+- **Revenue protection**: Stripe webhook no longer silently drops paid orders on
+  cart-not-found (throws → Stripe retries); new hourly `recover-stripe-orders`
+  reconciliation cron with staff email alerts.
+- **B2B intake unblocked**: quote-request emails (customer confirmation, staff
+  notification, follow-up) were stubs — now actually send.
+- **Performance**: homepage images 16.3 MB → 1.34 MB (hero 3.2 MB → 305 KB), overwritten
+  in R2 with 1-year cache headers; media cache rule verified serving from Cloudflare edge.
+  Pre-fix PageSpeed: mobile 70 perf (19.9s LCP, image-caused) / 96 a11y / 100 BP / 92 SEO.
+- **Honest gaps recorded** (blocking the business goals; queued in launch.md P1.5): no
+  customer accounts/order-history/wishlists UI (PRD previously overstated this), blog post
+  detail broken, no B2B landing pages (homepage cards link nowhere), reviews not displayed,
+  Square customer/loyalty sync is dead code targeting the wrong collection, shop listing
+  pagination invisible to crawlers, duplicate book URL shapes.
 
 ### Completed
 - **Payload CMS Backend** - All collections, relationships, access control
@@ -64,7 +93,7 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Email**: Amazon SES SMTP for transactional emails (nodemailer)
 - **Search**: FlexSearch + PostgreSQL FTS + ISBNdb/Google Books/Open Library
 - **Authentication**: Payload JWT tokens (OAuth future phase)
-- **CDN**: Cloudinary for images, Cloudflare for static assets
+- **CDN**: Cloudflare (static assets + R2-backed image delivery)
 - **Events & Ticketing**: hi.events (external instance at tickets.alkebulanimages.com)
 
 ### Repository Structure
@@ -78,7 +107,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
                 |
     Products, Carts, Orders, Customers (all in Payload)
                 |
-    Stripe (payment processing via embedded checkout)
+    Stripe (payment processing via hosted checkout)
                 |
     SvelteKit Frontend (display & interaction)
 ```
@@ -94,7 +123,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - Quote requests for unavailable titles (24-72hr response)
 - Persistent shopping carts with Local API (<50ms operations)
 - Stripe hosted Checkout with preview-locked Tennessee tax and shipping totals
-- Account management with order history and wishlists
+- Account management with order history and wishlists *(planned — no login/account UI exists yet; guest checkout only as of July 2026)*
 
 #### Staff Features
 - **Order Dashboard** - Tablet-optimized view at `/admin/order-dashboard` with tabs for "Needs Attention", "Shipped", "All Orders"
@@ -103,7 +132,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - **Tracking & Shipping** - Enter Pirate Ship tracking numbers, mark orders shipped (Phase 1: manual labels, Phase 2: Shippo API)
 - **Inventory Sync** - Real-time Square POS inventory updates via webhooks
 - **Multi-Location Tracking** - Main Store vs Warehouse inventory
-- **Refund Processing** - Admin-only API (staff use Stripe Dashboard for Phase 1)
+- **Refund Processing** - Per-item refunds from the Order Dashboard (select items/quantities, reason, optional restock); calls Stripe, records per-line refund state, and emails the customer. Admin-only POST.
 - **Abandoned Cart Recovery** - Scheduled cleanup every 2 hours
 
 ### 1b. Shipping Management
@@ -131,7 +160,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - Rich content: book reviews, cultural articles, wellness guides
 - SEO optimization with auto-generated meta tags, structured data
 - Product relationships linking articles to relevant products
-- Comment system with Perspective API filtering
+- Comment system with toxicity/moderation filtering (`toxicityCheck`)
 
 ### 3. Community Directory
 
@@ -193,6 +222,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - **Events** - Registration, recurring, venues
 - **Businesses** - Directory listings with type/category distinctions
 - **Comments** - Universal commenting with moderation
+- **Reviews** - Product / business reviews & ratings
 
 ### System Collections
 - **Authors**, **Publishers**, **Vendors** - Relationship management
@@ -224,7 +254,8 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - [x] Business directory with type distinctions
 - [x] Order management (dashboard, notifications, daily digest)
 - [x] Email system (Afrocentric branded templates)
-- [x] Refund API with admin-only auth
+- [x] Per-item dashboard refunds (admin-only POST, prorated tax + incremental shipping, customer email)
+- [x] Customer consolidation (Customers collection + rollups, orders auto-linked)
 - [x] Frontend-backend checkout integration
 - [ ] Data import from Square
 - [x] Production deployment
@@ -236,7 +267,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - Blog content creation & publishing workflow
 - Advanced search features (voice, barcode)
 - Customer loyalty integration
-- Listmonk email marketing
+- Listmonk email marketing campaigns (newsletter signup is already live)
 - Consignment vendor reports
 
 ### Phase 3: Business Intelligence
@@ -271,6 +302,7 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 ### Scheduled Jobs (Payload)
 - `cleanup-abandoned-carts` - Every 2 hours
 - `daily-order-digest` - 12:00 UTC (7 AM CDT)
+- `recover-stripe-orders` - Hourly at :15 (reconciles paid Stripe sessions with no matching order; emails staff on recovery)
 
 ## Security
 

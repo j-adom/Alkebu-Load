@@ -12,18 +12,9 @@
   let { books = [], title = "More by this Author" }: Props = $props();
 
   // Get ISBN for book link
-  function getBookISBN(book: any): string {
-    const primaryEdition =
-      book?.editions?.find((e: any) => e.isPrimary) || book?.editions?.[0];
-    return primaryEdition?.isbn || primaryEdition?.isbn10 || book.id || "";
-  }
-
-  // Build book URL with slug and ISBN
+  // Canonical book URL — slug only, matching the sitemap and listing cards
   function getBookUrl(book: any): string {
-    const isbn = getBookISBN(book);
-    return book?.slug && isbn
-      ? `/shop/books/${book.slug}/${isbn}`
-      : `/shop/books`;
+    return book?.slug ? `/shop/books/${book.slug}` : `/shop/books`;
   }
 </script>
 

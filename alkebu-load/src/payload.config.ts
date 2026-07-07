@@ -8,6 +8,7 @@ import sharp from 'sharp'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 import type { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
+import { buildMcpPlugin } from './plugins/mcp'
 
 import { HomePage } from './globals/HomePage'
 import { AboutPage } from './globals/AboutPage'
@@ -190,6 +191,8 @@ export default buildConfig({
       generateTitle,
       generateURL,
     }),
+    // Staff-agent MCP server (dormant unless MCP_ENABLED=true). Endpoint: /api/mcp
+    buildMcpPlugin(),
   ],
   email: nodemailerAdapter({
     defaultFromAddress: emailRuntime.fromEmail,
@@ -216,6 +219,29 @@ export default buildConfig({
           return { output: {} };
         },
         schedule: [{ cron: '0 12 * * *', queue: 'default' }], // 12:00 UTC = 7:00 AM CDT / 6:00 AM CST
+      },
+      {
+        slug: 'quote-followups',
+        handler: async ({ req }) => {
+          // Nudge customers with quotes stuck in quote-sent / awaiting-response
+          // for 7+ days; each quote is re-nudged at most every 7 days.
+          const { quoteRequestSystem } = await import('./app/utils/quoteRequestSystem');
+          await quoteRequestSystem.processQuoteFollowups(req.payload);
+          return { output: {} };
+        },
+        schedule: [{ cron: '0 15 * * *', queue: 'default' }], // 15:00 UTC = 10:00 AM CDT / 9:00 AM CST
+      },
+      {
+        slug: 'recover-stripe-orders',
+        handler: async ({ req }) => {
+          // Backstop for missed/failed Stripe webhooks: recreate orders for
+          // paid sessions with no matching order and alert staff. Sessions
+          // younger than 30 minutes are left for normal webhook retries.
+          const { runScheduledStripeRecovery } = await import('./app/utils/stripeRecovery');
+          const summary = await runScheduledStripeRecovery(req.payload);
+          return { output: { scanned: summary.scanned, recovered: summary.recovered.length } };
+        },
+        schedule: [{ cron: '15 * * * *', queue: 'default' }], // Hourly at :15
       },
     ],
   },

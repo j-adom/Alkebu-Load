@@ -34,12 +34,12 @@
 - **Payments**: Stripe hosted Checkout (primary), Square POS inventory sync, Square hosted checkout adapter under validation
 - **Email**: Amazon SES SMTP with generic SMTP fallback for transactional emails
 - **Search**: Three-tier system (FlexSearch + PostgreSQL FTS + External APIs)
-- **File Storage**: Cloudinary for images
+- **File Storage**: Cloudflare R2 (S3-compatible) via @payloadcms/storage-s3
 - **Authentication**: Payload JWT tokens (no external auth libraries)
 
 ### Frontend (alkebu-web)
 - **Framework**: SvelteKit with TypeScript
-- **Svelte Version**: 5.39.7 (upgraded January 2025)
+- **Svelte Version**: 5.x (Svelte 5 runes; `^5.33.0` in package.json)
 - **Deployment**: Cloudflare Pages with adapter-cloudflare
 - **Authentication**: Payload JWT validation via hooks.server.ts
 - **Styling**: TailwindCSS 3.x with shadcn-svelte components
@@ -50,8 +50,8 @@
 ### Infrastructure
 - **Backend Hosting**: `payload.alkebulanimages.com`
 - **Frontend Hosting**: `alkebulanimages.com` on Cloudflare
-- **CDN**: Cloudinary for images, Cloudflare for static assets
-- **Database**: Managed PostgreSQL (Neon.tech or similar)
+- **CDN**: Cloudflare (static assets + R2-backed image delivery)
+- **Database**: PostgreSQL (Coolify-managed, production)
 
 ## Data Architecture
 
@@ -129,7 +129,7 @@ Businesses (local directory with distinctions)
 ### Global Singletons
 ```
 HomePage, AboutPage, ContactPage, ShopPage, SiteSettings
-- Migrated from Sanity document types
+- Editable single-page content
 - Managed through Payload Globals
 - No collections needed for single pages
 ```
@@ -214,7 +214,7 @@ Square POS API:
 - Location management
 
 Stripe API:
-- Embedded Checkout sessions
+- Hosted Checkout sessions (redirect flow)
 - Webhook: /api/stripe-webhook
 - Payment processing
 
@@ -228,7 +228,7 @@ External Book APIs:
 
 ### Routing Strategy
 ```
-/ (homepage) - SSR prerendered
+/ (homepage) - SSR (short cache TTL, not prerendered)
 /shop/* - SSR with caching
   /books/* - Book catalog & filtering
   /apparel/* - Fashion & jewelry
@@ -266,7 +266,7 @@ No Cache:
 ```
 Image Handling:
 - PayloadImage component with lazy loading
-- Responsive images via Cloudinary
+- Responsive images served from Cloudflare R2
 - WebP format with fallbacks
 
 Bundle Splitting:
@@ -365,10 +365,9 @@ Payload JWT:
 
 ### Application Monitoring
 ```
-- Error tracking (Sentry)
-- Performance monitoring
-- Database query analysis
-- API response times
+- Analytics: self-hosted Rybbit
+- Health check: GET /api/health
+- Planned: error tracking, performance monitoring, query analysis
 ```
 
 ### Business Analytics

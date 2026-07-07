@@ -1,5 +1,24 @@
 import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData, PartnershipInquiryData } from './emailService';
 
+// ─── Security helper ───────────────────────────────────────────────────────────
+// Escape user-controlled values before interpolating them into HTML.
+// `&` MUST be replaced first to avoid double-escaping other entities.
+const escapeHtml = (s: unknown): string =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+// Validate and encode an email address for use inside an href="mailto:…" attribute.
+// Returns the percent-encoded address when it looks like an email, or an empty string
+// (making the href harmless) when it does not.
+const safeMailto = (email: unknown): string => {
+  const s = String(email ?? '').trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? encodeURIComponent(s) : '';
+};
+
 // Afrocentric brand constants matching alkebu-web design system
 const BRAND = {
   name: 'Alkebu-Lan Images',
@@ -21,15 +40,6 @@ const BRAND = {
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
-}
-
-function escapeHtml(s: unknown): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 const SAFE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -108,8 +118,19 @@ function sectionBox(content: string, bgColor: string = BRAND.cream): string {
 }
 
 function ctaButton(text: string, url: string): string {
+  // Defense-in-depth: only allow http(s) URLs in the href to prevent javascript:
+  // or other protocol injection. If the URL is not http(s), render a non-link span
+  // so the email layout is preserved without a working (potentially malicious) link.
+  const safeUrl = /^https?:\/\//i.test(url) ? escapeHtml(url) : null;
+  if (safeUrl === null) {
+    return `<div style="text-align: center; margin: 28px 0;">
+    <span style="background-color: ${BRAND.gold}; color: ${BRAND.darkText}; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 15px; letter-spacing: 0.5px;">
+      ${text}
+    </span>
+  </div>`;
+  }
   return `<div style="text-align: center; margin: 28px 0;">
-    <a href="${url}" style="background-color: ${BRAND.gold}; color: ${BRAND.darkText}; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 15px; letter-spacing: 0.5px;">
+    <a href="${safeUrl}" style="background-color: ${BRAND.gold}; color: ${BRAND.darkText}; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 15px; letter-spacing: 0.5px;">
       ${text}
     </a>
   </div>`;
@@ -118,7 +139,7 @@ function ctaButton(text: string, url: string): string {
 function itemsTable(items: Array<{ productTitle: string; quantity: number; unitPrice: number; totalPrice: number }>): string {
   const rows = items.map(item => `
     <tr>
-      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${item.productTitle}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; color: ${BRAND.mutedText};">${formatCents(item.unitPrice)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.totalPrice)}</td>
@@ -161,10 +182,10 @@ function totalsBlock(subtotal: number, tax: number, shipping: number, total: num
 function addressBlock(addr: any): string {
   if (!addr) return '<p style="color: ' + BRAND.mutedText + ';">No address provided</p>';
   return `<p style="margin: 0; line-height: 1.8;">
-    ${addr.firstName || ''} ${addr.lastName || ''}<br>
-    ${addr.street || ''}${addr.street2 ? `<br>${addr.street2}` : ''}<br>
-    ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}<br>
-    ${addr.country || 'US'}${addr.phone ? `<br>${addr.phone}` : ''}
+    ${escapeHtml(addr.firstName || '')} ${escapeHtml(addr.lastName || '')}<br>
+    ${escapeHtml(addr.street || '')}${addr.street2 ? `<br>${escapeHtml(addr.street2)}` : ''}<br>
+    ${escapeHtml(addr.city || '')}, ${escapeHtml(addr.state || '')} ${escapeHtml(addr.zip || '')}<br>
+    ${escapeHtml(addr.country || 'US')}${addr.phone ? `<br>${escapeHtml(addr.phone)}` : ''}
   </p>`;
 }
 
@@ -237,14 +258,14 @@ export function generateAbandonedCartTemplate(data: AbandonedCartData): EmailTem
   const itemsList = data.items.map(item => `
     <tr>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight};">
-        <strong style="color: ${BRAND.darkText};">${item.productTitle}</strong><br>
+        <strong style="color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</strong><br>
         <span style="color: ${BRAND.mutedText}; font-size: 13px;">Qty: ${item.quantity} &middot; ${formatCents(item.totalPrice)}</span>
       </td>
     </tr>`).join('');
 
   const content = `
     <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Your Books Are Waiting</h2>
-    <p>Hello${data.customerName ? ` ${data.customerName}` : ''},</p>
+    <p>Hello${data.customerName ? ` ${escapeHtml(data.customerName)}` : ''},</p>
     <p>You left some items in your cart. They're still available and ready for you.</p>
 
     ${sectionBox(`
@@ -287,7 +308,7 @@ export function generateRefundNotificationTemplate(data: RefundNotificationData)
     .map(
       (item) => `
     <tr>
-      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${item.productTitle}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.amount)}</td>
     </tr>`,
@@ -301,13 +322,13 @@ export function generateRefundNotificationTemplate(data: RefundNotificationData)
   const noteBlock = data.note
     ? sectionBox(
         `<h3 style="margin: 0 0 8px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">A Note From Our Team</h3>
-         <p style="margin: 0; white-space: pre-line;">${data.note}</p>`,
+         <p style="margin: 0; white-space: pre-line;">${escapeHtml(data.note)}</p>`,
       )
     : '';
 
   const content = `
     <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">We've Issued a Refund</h2>
-    <p>Dear ${data.customerName},</p>
+    <p>Dear ${escapeHtml(data.customerName)},</p>
     <p style="margin: 0 0 24px; color: ${BRAND.mutedText};">
       We've refunded <strong style="color: ${BRAND.forest};">${formatCents(data.refundAmount)}</strong> to your original payment method.
       Refunds typically take 5–10 business days to appear, depending on your bank.
@@ -315,8 +336,8 @@ export function generateRefundNotificationTemplate(data: RefundNotificationData)
 
     ${sectionBox(`
       <h3 style="margin: 0 0 12px; color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; font-size: 16px;">Refund Details</h3>
-      <p style="margin: 0;"><strong>Order Number:</strong> ${data.orderNumber}</p>
-      <p style="margin: 4px 0 0;"><strong>Reason:</strong> ${data.reasonLabel}</p>
+      <p style="margin: 0;"><strong>Order Number:</strong> ${escapeHtml(data.orderNumber)}</p>
+      <p style="margin: 4px 0 0;"><strong>Reason:</strong> ${escapeHtml(data.reasonLabel)}</p>
       <p style="margin: 4px 0 0;"><strong>Amount Refunded:</strong> ${formatCents(data.refundAmount)}</p>
     `)}
 
@@ -391,7 +412,7 @@ export function generateOrderStatusTemplate(
       <p style="margin: 8px 0 0; color: ${BRAND.mutedText};">${config.message}</p>
       ${trackingNumber ? `
         <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid ${BRAND.borderLight};">
-          <p style="margin: 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>
+          <p style="margin: 0;"><strong>Tracking Number:</strong> ${escapeHtml(trackingNumber)}</p>
         </div>
       ` : ''}
     `)}
@@ -421,7 +442,7 @@ export function generateStaffNotificationTemplate(data: StaffNotificationData): 
 
   const itemsList = data.items.map(item =>
     `<tr>
-      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight};">${item.productTitle}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight};">${escapeHtml(item.productTitle)}</td>
       <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center;">${item.quantity}</td>
       <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right;">${formatCents(item.totalPrice)}</td>
     </tr>`).join('');
@@ -438,11 +459,11 @@ export function generateStaffNotificationTemplate(data: StaffNotificationData): 
       </tr>
       <tr>
         <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Customer</td>
-        <td style="padding: 4px 0;">${data.customerName}</td>
+        <td style="padding: 4px 0;">${escapeHtml(data.customerName)}</td>
       </tr>
       <tr>
         <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Email</td>
-        <td style="padding: 4px 0;"><a href="mailto:${data.customerEmail}" style="color: ${BRAND.indigo};">${data.customerEmail}</a></td>
+        <td style="padding: 4px 0;"><a href="mailto:${safeMailto(data.customerEmail)}" style="color: ${BRAND.indigo};">${escapeHtml(data.customerEmail)}</a></td>
       </tr>
       <tr>
         <td style="padding: 4px 0; color: ${BRAND.mutedText}; font-size: 13px;">Payment</td>
@@ -537,11 +558,11 @@ export function generateDailyDigestTemplate(data: DailyDigestData): EmailTemplat
 
     return `<tr style="background-color: ${rowBg};">
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight};">
-        <strong>${order.orderNumber}</strong>${isStale ? ' &#9888;' : ''}<br>
-        <span style="color: ${BRAND.mutedText}; font-size: 12px;">${order.customerName}</span>
+        <strong>${escapeHtml(order.orderNumber)}</strong>${isStale ? ' &#9888;' : ''}<br>
+        <span style="color: ${BRAND.mutedText}; font-size: 12px;">${escapeHtml(order.customerName)}</span>
       </td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center;">
-        <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase;">${order.status}</span>
+        <span style="background-color: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase;">${escapeHtml(order.status)}</span>
       </td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600;">${formatCents(order.totalAmount)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; color: ${isStale ? BRAND.terracotta : BRAND.mutedText}; font-size: 13px;">
@@ -605,6 +626,70 @@ Open dashboard: ${dashboardUrl}
 Alkebu-Lan Images`;
 
   return { subject, html: emailWrapper('Daily Order Report', content), text };
+}
+
+// ─── STRIPE RECOVERY ALERT (Staff) ────────────────────────────────────
+
+export interface RecoveryAlertData {
+  recovered: Array<{
+    orderNumber?: string;
+    totalAmount?: number; // cents
+    guestEmail?: string;
+  }>;
+  scanned: number;
+  adminUrl: string;
+}
+
+export function generateRecoveryAlertTemplate(data: RecoveryAlertData): EmailTemplate {
+  const count = data.recovered.length;
+  const subject = `Recovered ${count} missed order${count === 1 ? '' : 's'} from Stripe | Alkebu-Lan Images`;
+
+  const rows = data.recovered
+    .map(
+      (order) => `
+    <tr>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${order.orderNumber || 'Unknown'}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.mutedText};">${order.guestEmail || '—'}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(order.totalAmount || 0)}</td>
+    </tr>`,
+    )
+    .join('');
+
+  const content = `
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Missed Orders Recovered</h2>
+    <p style="margin: 0 0 16px; color: ${BRAND.mutedText};">
+      The hourly Stripe reconciliation job found ${count} paid checkout session${count === 1 ? '' : 's'}
+      with no matching order (scanned ${data.scanned} recent sessions) and recreated ${count === 1 ? 'it' : 'them'}.
+      Customers were NOT emailed a confirmation automatically — review and follow up.
+    </p>
+    ${sectionBox(`
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Order</th>
+            <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Customer</th>
+            <th style="padding: 10px 8px; text-align: right; border-bottom: 2px solid ${BRAND.gold}; color: ${BRAND.forest}; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `)}
+    <p style="margin: 20px 0 0; text-align: center;">
+      <a href="${data.adminUrl}" style="display: inline-block; background-color: ${BRAND.gold}; color: ${BRAND.forest}; font-weight: bold; padding: 12px 28px; border-radius: 6px; text-decoration: none;">Open Order Dashboard</a>
+    </p>`;
+
+  const text = `Missed Orders Recovered
+
+The hourly Stripe reconciliation job recovered ${count} paid session(s) with no matching order (scanned ${data.scanned} recent sessions).
+Customers were NOT emailed automatically - review and follow up.
+
+${data.recovered.map((o) => `- ${o.orderNumber || 'Unknown'} | ${o.guestEmail || 'no email'} | ${formatCents(o.totalAmount || 0)}`).join('\n')}
+
+Order dashboard: ${data.adminUrl}
+
+Alkebu-Lan Images`;
+
+  return { subject, html: emailWrapper('Missed Orders Recovered', content), text };
 }
 
 // ─── PARTNERSHIP STAFF NOTIFICATION ─────────────────────────────────────────

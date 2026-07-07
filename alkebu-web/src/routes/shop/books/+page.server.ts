@@ -1,6 +1,15 @@
 import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { bookGenres } from '$lib/data/catalog';
+import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
+
+const buildListingCanonical = (category: string | undefined, page: number) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (page > 1) params.set('p', page.toString());
+  const query = params.toString();
+  return `${PUBLIC_SITE_URL}/shop/books${query ? `?${query}` : ''}`;
+};
 
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
   const pageParam = url.searchParams.get('p') || url.searchParams.get('page') || '1';
@@ -65,12 +74,15 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       currentCategory: category,
       sort: sortParam || 'newest',
       seo: {
-        title: category ? `${category} Books` : 'Books',
+        title: `${category ? `${category} Books` : 'Books'}${page > 1 ? ` – Page ${page}` : ''}`,
         description: category
           ? `Explore our collection of ${category.toLowerCase()} books featuring African diaspora authors and themes.`
           : 'Discover our curated collection of books celebrating African diaspora literature, culture, and history.',
-        canonical: `https://alkebulanimages.com/shop/books${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-        noIndex: page > 1 // Don't index pagination pages
+        // Paginated pages are indexable with self-referencing canonicals so
+        // crawlers can walk the full catalog; sort/limit variants normalize
+        // to the plain category+page URL.
+        canonical: buildListingCanonical(category, page),
+        noIndex: false
       }
     };
 
@@ -100,7 +112,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       seo: {
         title: 'Books',
         description: 'Discover our curated collection of books celebrating African diaspora literature.',
-        canonical: 'https://alkebulanimages.com/shop/books',
+        canonical: buildListingCanonical(undefined, 1),
         noIndex: false
       }
     };
