@@ -165,8 +165,12 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
   homepage business-services cards (currently no hrefs), add inquiry-type selector to the
   contact form so B2B leads are tagged. ~~schedule `processQuoteFollowups`~~ — done
   July 3: `quote-followups` cron, daily 15:00 UTC.
-- [ ] Check Search Console → Pages → "Excluded by noindex" (3,591 pages): confirm they are
-  payload.* backend URLs, not storefront pages.
+- [x] Check Search Console → Pages → "Excluded by noindex" (3,591 pages) — checked July 7:
+  they are storefront `/search?q=` internal-search URLs (legacy subject-heading queries,
+  first detected 8/16/22), not payload.* URLs. Noindex on internal search is correct;
+  no action. Sitemap status flipped to Success. Watch instead: "Duplicate, Google chose
+  different canonical" (1,635 — should shrink from the July 7 canonical consolidation)
+  and "Server error (5xx)" (734 — example URLs not yet investigated).
 - [ ] Explore Google Merchant Center free listings once Product structured data is picked up.
 
 ## P2 - UX and Content Polish
