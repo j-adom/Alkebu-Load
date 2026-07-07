@@ -18,14 +18,32 @@ export function extractLexicalText(node: any): string {
 }
 
 /**
+ * Strip HTML tags and common entities from CMS text. Imported synopses often
+ * carry literal `<p>`/`<br>` markup that must not reach meta descriptions or
+ * JSON-LD text fields.
+ */
+const stripHtml = (value: string): string =>
+  value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
  * Best plain-text description for a product. Plain-text fields win over the
  * rich Lexical `description`, which is an object and used to shadow `synopsis`.
  */
 export function resolveProductDescription(product: any, fallback = ''): string {
-  const plain = [product?.seoDescription, product?.synopsis, product?.shortDescription].find(
-    (value: any) => typeof value === 'string' && value.trim()
-  );
-  if (plain) return plain.trim();
+  for (const value of [product?.seoDescription, product?.synopsis, product?.shortDescription]) {
+    if (typeof value !== 'string') continue;
+    const text = stripHtml(value);
+    if (text) return text;
+  }
   const rich = extractLexicalText(product?.description).replace(/\s+/g, ' ').trim();
   return rich || fallback;
 }

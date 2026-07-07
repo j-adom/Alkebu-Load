@@ -29,3 +29,13 @@ test('ldScript escapes < so JSON-LD cannot break out of its script tag', () => {
 
   assert.match(seo, /\\u003C/i);
 });
+
+test('resolveProductDescription strips HTML markup from description candidates', () => {
+  const seo = readProjectFile('src/lib/seo.ts');
+
+  // Imported synopses carry literal `<p>` markup; the resolver must pass
+  // every candidate through stripHtml before it reaches meta descriptions
+  // or JSON-LD, not trust the field to be plain text.
+  assert.match(seo, /const stripHtml =/);
+  assert.match(seo, /stripHtml\(value\)/);
+});
