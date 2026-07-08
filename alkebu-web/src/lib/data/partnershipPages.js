@@ -22,9 +22,10 @@ export const partnershipPages = {
       subhead:
         "Source books, apparel, wellness items, and cultural goods for your shop, program, or organization with help from Nashville's Black-owned bookstore.",
       cta: 'Start a wholesale inquiry',
-      // Unsplash (free license): photo-1560693478-dfdb32f2176a, self-hosted pre-optimized
-      image: '/assets/images/partnership/wholesale-shelves.jpg',
-      imageAlt: 'Wooden bookstore shelves packed with books',
+      // Same photo as the homepage "Wholesale" card, for visual continuity
+      // from click to landing (homePage global section4[0], self-hosted).
+      image: '/assets/images/partnership/wholesale-warehouse.jpg',
+      imageAlt: 'A high-bay warehouse aisle stacked with cases of stock',
       trustRow: ['Nashville Black-owned', 'Bulk & resale friendly', 'Pickup or nationwide shipping'],
     },
     // Unsplash (free license): photo-1613577553731-e102e5de62f5, self-hosted pre-optimized
@@ -98,9 +99,10 @@ export const partnershipPages = {
       subhead:
         'Work with Alkebu-Lan Images on curated orders, purchase-order friendly workflows, and materials that serve your audience.',
       cta: 'Start an institutional inquiry',
-      // Unsplash (free license): photo-1741699428220-65f37f3fbbcb, self-hosted pre-optimized
-      image: '/assets/images/partnership/institutional-library.jpg',
-      imageAlt: 'A student studying among the shelves of a library reading room',
+      // Same photo as the homepage "Institutional" card, for visual continuity
+      // from click to landing (homePage global section4[1], self-hosted).
+      image: '/assets/images/partnership/institutional-classroom.jpg',
+      imageAlt: 'A young student reading and writing at a classroom table',
       trustRow: ['Purchase orders & invoices', 'Tax-exempt friendly', 'Curated to your readers'],
     },
     // Unsplash (free license): photo-1720659201108-4efe526b289c, self-hosted pre-optimized
@@ -187,9 +189,10 @@ export const partnershipPages = {
       subhead:
         'Tell us about your program, book drive, sponsorship idea, or community initiative so we can explore the right fit.',
       cta: 'Start a project inquiry',
-      // Unsplash (free license): photo-1610500796385-3ffc1ae2f046, self-hosted pre-optimized
-      image: '/assets/images/partnership/nonprofit-reading.jpg',
-      imageAlt: 'Children reading and writing together at a community program',
+      // Same photo as the homepage "Non-profit" card, for visual continuity
+      // from click to landing (homePage global section4[2], self-hosted).
+      image: '/assets/images/partnership/nonprofit-future.jpg',
+      imageAlt: 'A child at a community march holding a hand-lettered "Our Future Matters" sign',
       trustRow: ['Mission-first review', 'Book drives to sponsorships', 'Rooted in community'],
     },
     // Unsplash (free license): photo-1773224811488-070c7dce2657, self-hosted pre-optimized

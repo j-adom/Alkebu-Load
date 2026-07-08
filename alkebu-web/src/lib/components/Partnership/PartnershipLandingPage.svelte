@@ -75,12 +75,12 @@
     ></div>
 
     <div class="container relative z-10 mx-auto px-4 py-20 md:py-28">
-      <div class="hero-enter max-w-3xl">
+      <div class="hero-enter mx-auto max-w-3xl text-center md:mx-0 md:text-left">
         <p class="mb-4 text-sm font-semibold uppercase tracking-wide text-primary-strong">{page.hero.eyebrow}</p>
         <h1 class="font-display text-5xl font-bold tracking-tight md:text-6xl lg:text-7xl">{page.hero.headline}</h1>
-        <div class="mt-6 h-1 w-20 bg-primary"></div>
-        <p class="mt-6 max-w-2xl font-serif text-xl italic leading-8 text-muted-foreground">{page.hero.subhead}</p>
-        <div class="mt-8 flex flex-wrap items-center gap-4">
+        <div class="mx-auto mt-6 h-1 w-20 bg-primary md:mx-0"></div>
+        <p class="mx-auto mt-6 max-w-2xl font-serif text-xl italic leading-8 text-muted-foreground md:mx-0">{page.hero.subhead}</p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-4 md:justify-start">
           <a href="#inquiry" class="btn-primary btn-lg inline-flex items-center gap-2">
             {page.hero.cta}
             <ArrowRight class="h-5 w-5" />
@@ -92,7 +92,7 @@
             Talk with staff
           </a>
         </div>
-        <ul class="mt-10 flex flex-wrap divide-x divide-border text-sm text-muted-foreground">
+        <ul class="mt-10 flex flex-wrap justify-center divide-x divide-border text-sm text-muted-foreground md:justify-start">
           {#each page.hero.trustRow as item}
             <li class="px-4 first:pl-0">{item}</li>
           {/each}
@@ -105,10 +105,12 @@
   <section class="section bg-background">
     <div class="container mx-auto grid items-center gap-10 px-4 md:grid-cols-2">
       <div>
-        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">Who this is for</p>
-        <div class="mb-6 h-1 w-20 bg-primary"></div>
-        <h2 class="font-display text-3xl font-bold md:text-4xl">A fit for organizations like yours</h2>
-        <ul class="mt-8 grid gap-4">
+        <div class="text-center md:text-left">
+          <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">Who this is for</p>
+          <div class="mx-auto mb-6 h-1 w-20 bg-primary md:mx-0"></div>
+          <h2 class="font-display text-3xl font-bold md:text-4xl">A fit for organizations like yours</h2>
+        </div>
+        <ul class="mx-auto mt-8 grid max-w-sm gap-4 md:mx-0 md:max-w-none">
           {#each page.fit as item}
             <li class="flex items-start gap-3 text-lg">
               <span aria-hidden="true" class="mt-2.5 h-px w-6 shrink-0 bg-[color:var(--track-accent)]"></span>
@@ -120,10 +122,10 @@
       <img
         src={page.hero.image}
         alt={page.hero.imageAlt}
-        class="rounded-2xl shadow-medium"
+        class="aspect-[4/3] w-full rounded-2xl object-cover shadow-medium"
         loading="lazy"
         width="720"
-        height="480"
+        height="540"
       />
     </div>
   </section>
@@ -131,15 +133,15 @@
   <!-- HOW WE HELP — three quiet blocks, track symbol as the section marker -->
   <section class="section bg-background">
     <div class="container mx-auto px-4">
-      <div class="mb-10 max-w-2xl">
+      <div class="mx-auto mb-10 max-w-2xl text-center md:mx-0 md:text-left">
         <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">How we help</p>
-        <div class="mb-6 h-1 w-20 bg-primary"></div>
+        <div class="mx-auto mb-6 h-1 w-20 bg-primary md:mx-0"></div>
         <h2 class="font-display text-3xl font-bold md:text-4xl">Clear support from inquiry to next steps</h2>
       </div>
       <div class="grid gap-10 md:grid-cols-3">
         {#each page.benefits as benefit}
-          <article class="border-t border-border pt-6">
-            <div aria-hidden="true" class="adinkra mb-5 h-8 w-8" style="--symbol: url('{page.symbol}')"></div>
+          <article class="border-t border-border pt-6 text-center md:text-left">
+            <div aria-hidden="true" class="adinkra mx-auto mb-5 h-8 w-8 md:mx-0" style="--symbol: url('{page.symbol}')"></div>
             <h3 class="font-display text-xl font-bold">{benefit.title}</h3>
             <p class="mt-3 leading-7 text-muted-foreground">{benefit.body}</p>
           </article>
@@ -158,11 +160,11 @@
       <div class="relative grid gap-10 md:grid-cols-3">
         <div aria-hidden="true" class="absolute left-0 right-0 top-9 hidden h-px bg-primary/40 md:block"></div>
         {#each page.process as step, index}
-          <div class="relative">
-            <p class="relative z-10 inline-block bg-background pr-4 font-display text-6xl font-bold leading-none text-[color:var(--track-accent)]">
+          <div class="relative text-center md:text-left">
+            <p class="relative z-10 inline-block bg-background px-4 font-display text-6xl font-bold leading-none text-[color:var(--track-accent)] md:pl-0">
               0{index + 1}
             </p>
-            <p class="mt-4 max-w-xs text-lg leading-7">{step}</p>
+            <p class="mx-auto mt-4 max-w-xs text-lg leading-7 md:mx-0">{step}</p>
           </div>
         {/each}
       </div>
@@ -188,9 +190,9 @@
   <!-- INQUIRY FORM — the conversion moment, elevated -->
   <section id="inquiry" class="section bg-background">
     <div class="container mx-auto max-w-3xl px-4">
-      <div class="mb-8">
+      <div class="mb-8 text-center md:text-left">
         <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">Start the conversation</p>
-        <div class="mb-6 h-1 w-20 bg-primary"></div>
+        <div class="mx-auto mb-6 h-1 w-20 bg-primary md:mx-0"></div>
         <h2 class="font-display text-3xl font-bold md:text-4xl">{page.form.heading}</h2>
         <p class="mt-3 text-muted-foreground">
           Share a few details and the Alkebu-Lan Images team will follow up within two business days.
