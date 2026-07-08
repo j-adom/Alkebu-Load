@@ -1,8 +1,10 @@
 <script>
+  import { onMount } from 'svelte';
   import { enhance } from '$app/forms';
   import { PUBLIC_TURNSTILE_SITE_KEY } from '$env/static/public';
   import Meta from '$lib/components/Meta.svelte';
-  import { ArrowRight, CheckCircle2, ClipboardCheck, Layers3, PackageCheck, Send, Truck } from 'lucide-svelte';
+  import { trackEvent } from '$lib/analytics';
+  import { ArrowRight, Send } from 'lucide-svelte';
 
   let { data, form } = $props();
   const page = $derived(data.page);
@@ -18,10 +20,42 @@
   const values = $derived(form?.values ?? {});
   const detailValues = $derived(values?.[page.form.detailGroup] ?? {});
   const fieldErrors = $derived(form?.fieldErrors ?? {});
-  const benefitIcons = [PackageCheck, Layers3, Truck];
 
   const optionLabel = (option) => option.replaceAll('_', ' ');
   const errorsFor = (field) => fieldErrors[field.name] ?? fieldErrors[`${page.form.detailGroup}.${field.name}`];
+  const errorId = (field) => `error-${page.form.detailGroup}-${field.name}`;
+
+  // Anti-spam: backend silently drops submissions younger than its minimum
+  // time-to-submit, keyed off this timestamp. Set on mount so it reflects when
+  // the visitor actually saw the form, not when the edge cached the page.
+  let renderedAt = $state(Date.now());
+  onMount(() => {
+    renderedAt = Date.now();
+  });
+
+  // Conversion funnel instrumentation (Rybbit): page view is automatic;
+  // form-start fires once on first focus, outcomes fire when `form` updates.
+  let formStarted = false;
+  const onFormFocus = () => {
+    if (formStarted) return;
+    formStarted = true;
+    trackEvent('partnership_form_start', { track: page.type });
+  };
+
+  let statusRegion = $state(null);
+  $effect(() => {
+    if (form?.success) {
+      trackEvent('partnership_form_submit_success', { track: page.type });
+    } else if (form?.error) {
+      trackEvent('partnership_form_submit_error', {
+        track: page.type,
+        reason: Object.keys(form?.fieldErrors ?? {}).length ? 'validation' : 'server',
+      });
+    }
+    if (form?.success || form?.error) {
+      statusRegion?.focus();
+    }
+  });
 </script>
 
 <svelte:head>
@@ -30,201 +64,268 @@
 
 <Meta {metadata} />
 
-<section class="relative isolate overflow-hidden bg-kente-forest text-white">
-  <img
-    src={page.hero.image}
-    alt=""
-    class="absolute inset-0 h-full w-full object-cover"
-    fetchpriority="high"
-  />
-  <div class="absolute inset-0 bg-gradient-to-r from-kente-forest via-kente-forest/88 to-kente-forest/40"></div>
-  <div class="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background to-transparent"></div>
+<div style="--track-accent: {page.accent}">
+  <!-- HERO — type + track symbol, no photo scrim. The Adinkra watermark is the
+       page's one bold move; everything after it stays quiet. -->
+  <section class="relative isolate overflow-hidden bg-background">
+    <div
+      aria-hidden="true"
+      class="adinkra pointer-events-none absolute -right-16 top-1/2 h-[22rem] w-[22rem] -translate-y-1/2 opacity-[0.07] md:-right-8 md:h-[32rem] md:w-[32rem] lg:right-8"
+      style="--symbol: url('{page.symbol}')"
+    ></div>
 
-  <div class="container relative z-10 mx-auto grid min-h-[680px] gap-10 px-4 py-20 lg:grid-cols-[1fr_0.92fr] lg:items-center lg:py-24">
-    <div class="max-w-3xl">
-      <p class="mb-4 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-kente-gold">
-        <span class="h-px w-10 bg-kente-gold"></span>
-        {page.hero.eyebrow}
-      </p>
-      <h1 class="font-display text-4xl font-bold leading-tight md:text-6xl">{page.hero.headline}</h1>
-      <p class="mt-6 max-w-2xl text-lg leading-8 text-white/84">{page.hero.body}</p>
-      <div class="mt-8 flex flex-wrap items-center gap-4">
-        <a href="#inquiry" class="btn-primary btn-lg inline-flex items-center gap-2">
-          {page.hero.cta}
-          <ArrowRight class="h-5 w-5" />
-        </a>
-        <a href="tel:615-321-4111" class="inline-flex min-h-12 items-center border border-white/25 px-5 text-sm font-semibold text-white transition-colors hover:border-kente-gold hover:text-kente-gold">
-          Talk with staff
-        </a>
-      </div>
-    </div>
-
-    <div class="relative lg:justify-self-end">
-      <div class="absolute -right-2 -top-8 z-20 flex h-28 w-28 items-center justify-center rounded-full bg-primary p-4 text-center text-sm font-black uppercase leading-tight text-primary-foreground shadow-strong md:h-32 md:w-32">
-        {page.hero.badge}
-      </div>
-      <div class="border border-white/15 bg-white/12 p-4 shadow-strong backdrop-blur-md md:p-5">
-        <div class="grid gap-3 sm:grid-cols-2">
-          {#each page.hero.tiles as tile}
-            <div class="flex min-h-20 items-center gap-3 bg-background/95 p-4 text-foreground shadow-soft">
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
-                <CheckCircle2 class="h-5 w-5" />
-              </span>
-              <span class="text-sm font-bold uppercase tracking-wide">{tile}</span>
-            </div>
+    <div class="container relative z-10 mx-auto px-4 py-20 md:py-28">
+      <div class="hero-enter max-w-3xl">
+        <p class="mb-4 text-sm font-semibold uppercase tracking-wide text-primary-strong">{page.hero.eyebrow}</p>
+        <h1 class="font-display text-5xl font-bold tracking-tight md:text-6xl lg:text-7xl">{page.hero.headline}</h1>
+        <div class="mt-6 h-1 w-20 bg-primary"></div>
+        <p class="mt-6 max-w-2xl font-serif text-xl italic leading-8 text-muted-foreground">{page.hero.subhead}</p>
+        <div class="mt-8 flex flex-wrap items-center gap-4">
+          <a href="#inquiry" class="btn-primary btn-lg inline-flex items-center gap-2">
+            {page.hero.cta}
+            <ArrowRight class="h-5 w-5" />
+          </a>
+          <a
+            href="tel:615-321-4111"
+            class="inline-flex min-h-12 items-center px-2 text-sm font-semibold text-foreground underline-offset-4 transition-colors hover:text-kente-terracotta hover:underline"
+          >
+            Talk with staff
+          </a>
+        </div>
+        <ul class="mt-10 flex flex-wrap divide-x divide-border text-sm text-muted-foreground">
+          {#each page.hero.trustRow as item}
+            <li class="px-4 first:pl-0">{item}</li>
           {/each}
-        </div>
-        <div class="mt-4 bg-kente-forest/92 p-5 text-white">
-          <h2 class="font-display text-2xl font-bold">Who this is for</h2>
-          <div class="mt-4 grid gap-3">
-            {#each page.fit as item}
-              <div class="flex items-start gap-3 text-white/88">
-                <CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-kente-gold" />
-                <span>{item}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
+        </ul>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="section bg-background">
-  <div class="container mx-auto px-4">
-    <div class="mb-10 max-w-2xl">
-      <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">Built for practical partnership</p>
-      <h2 class="font-display text-3xl font-bold md:text-4xl">Clear support from inquiry to next steps</h2>
+  <!-- FIT — who this is for, with the photo as evidence, not headline -->
+  <section class="section bg-background">
+    <div class="container mx-auto grid items-center gap-10 px-4 md:grid-cols-2">
+      <div>
+        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">Who this is for</p>
+        <div class="mb-6 h-1 w-20 bg-primary"></div>
+        <h2 class="font-display text-3xl font-bold md:text-4xl">A fit for organizations like yours</h2>
+        <ul class="mt-8 grid gap-4">
+          {#each page.fit as item}
+            <li class="flex items-start gap-3 text-lg">
+              <span aria-hidden="true" class="mt-2.5 h-px w-6 shrink-0 bg-[color:var(--track-accent)]"></span>
+              <span>{item}</span>
+            </li>
+          {/each}
+        </ul>
+      </div>
+      <img
+        src={page.hero.image}
+        alt={page.hero.imageAlt}
+        class="rounded-2xl shadow-medium"
+        loading="lazy"
+        width="720"
+        height="480"
+      />
     </div>
-    <div class="grid gap-6 md:grid-cols-3">
-      {#each page.benefits as benefit, index}
-        {@const Icon = benefitIcons[index % benefitIcons.length]}
-        <article class="group border border-border bg-card p-6 shadow-soft transition-transform hover:-translate-y-1 hover:shadow-medium">
-          <div class="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-            <Icon class="h-7 w-7" />
-          </div>
-          <h3 class="font-display text-xl font-bold">{benefit.title}</h3>
-          <p class="mt-3 text-sm leading-6 text-muted-foreground">{benefit.body}</p>
-        </article>
-      {/each}
-    </div>
-  </div>
-</section>
+  </section>
 
-<section class="section bg-[#f7f1e5]">
-  <div class="container mx-auto px-4">
-    <div class="mx-auto max-w-3xl text-center">
-      <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">How it works</p>
-      <h2 class="font-display text-3xl font-bold md:text-4xl">Simple next steps</h2>
+  <!-- HOW WE HELP — three quiet blocks, track symbol as the section marker -->
+  <section class="section bg-background">
+    <div class="container mx-auto px-4">
+      <div class="mb-10 max-w-2xl">
+        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">How we help</p>
+        <div class="mb-6 h-1 w-20 bg-primary"></div>
+        <h2 class="font-display text-3xl font-bold md:text-4xl">Clear support from inquiry to next steps</h2>
+      </div>
+      <div class="grid gap-10 md:grid-cols-3">
+        {#each page.benefits as benefit}
+          <article class="border-t border-border pt-6">
+            <div aria-hidden="true" class="adinkra mb-5 h-8 w-8" style="--symbol: url('{page.symbol}')"></div>
+            <h3 class="font-display text-xl font-bold">{benefit.title}</h3>
+            <p class="mt-3 leading-7 text-muted-foreground">{benefit.body}</p>
+          </article>
+        {/each}
+      </div>
     </div>
-    <div class="mt-10 grid gap-5 md:grid-cols-3">
-      {#each page.process as step, index}
-        <div class="relative bg-background p-6 shadow-soft">
-          <div class="absolute -top-5 left-6 flex h-10 w-10 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground shadow-medium">
-            {index + 1}
+  </section>
+
+  <!-- PROCESS — numbered because it truly is a three-step intake -->
+  <section class="section bg-background">
+    <div class="container mx-auto px-4">
+      <div class="mx-auto mb-12 max-w-2xl text-center">
+        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">How it works</p>
+        <h2 class="font-display text-3xl font-bold md:text-4xl">Three steps, start to follow-up</h2>
+      </div>
+      <div class="relative grid gap-10 md:grid-cols-3">
+        <div aria-hidden="true" class="absolute left-0 right-0 top-9 hidden h-px bg-primary/40 md:block"></div>
+        {#each page.process as step, index}
+          <div class="relative">
+            <p class="relative z-10 inline-block bg-background pr-4 font-display text-6xl font-bold leading-none text-[color:var(--track-accent)]">
+              0{index + 1}
+            </p>
+            <p class="mt-4 max-w-xs text-lg leading-7">{step}</p>
           </div>
-          <p class="mt-5 font-semibold leading-7">{step}</p>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  {#if page.midImage}
+    <!-- Evidence band — photography as proof, never as the headline -->
+    <section class="section bg-background pt-0">
+      <div class="container mx-auto px-4">
+        <img
+          src={page.midImage.src}
+          alt={page.midImage.alt}
+          class="h-64 w-full rounded-2xl object-cover shadow-medium md:h-80"
+          loading="lazy"
+          width="1600"
+          height="1064"
+        />
+      </div>
+    </section>
+  {/if}
+
+  <!-- INQUIRY FORM — the conversion moment, elevated -->
+  <section id="inquiry" class="section bg-background">
+    <div class="container mx-auto max-w-3xl px-4">
+      <div class="mb-8">
+        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-primary-strong">Start the conversation</p>
+        <div class="mb-6 h-1 w-20 bg-primary"></div>
+        <h2 class="font-display text-3xl font-bold md:text-4xl">{page.form.heading}</h2>
+        <p class="mt-3 text-muted-foreground">
+          Share a few details and the Alkebu-Lan Images team will follow up within two business days.
+        </p>
+      </div>
+
+      <div class="card-modern border-t-2 p-6 md:p-8" style="border-top-color: var(--track-accent)">
+        <div bind:this={statusRegion} tabindex="-1" aria-live="polite" class="outline-none">
+          {#if form?.success}
+            <div class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{form.message}</div>
+          {/if}
+          {#if form?.error}
+            <div class="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{form.error}</div>
+          {/if}
         </div>
-      {/each}
-    </div>
-  </div>
-</section>
 
-<section id="inquiry" class="section bg-background">
-  <div class="container mx-auto px-4">
-    <div class="grid overflow-hidden border border-border bg-card shadow-medium lg:grid-cols-[0.78fr_1.22fr]">
-      <aside class="bg-kente-forest p-8 text-white md:p-10">
-        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-kente-gold">Let's work together</p>
-        <h2 class="font-display text-3xl font-bold">{page.form.heading}</h2>
-        <p class="mt-4 text-white/78">Share a few details and the Alkebu-Lan Images team will follow up with next steps.</p>
-
-        <div class="mt-8 border-t border-white/15 pt-7">
-          <h3 class="flex items-center gap-2 text-lg font-bold"><ClipboardCheck class="h-5 w-5 text-kente-gold" />What happens next</h3>
-          <div class="mt-5 grid gap-4">
-            {#each page.process as step, index}
-              <div class="flex gap-3 text-sm text-white/84">
-                <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/12 text-xs font-bold text-kente-gold">{index + 1}</span>
-                <span>{step}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-      </aside>
-
-      <div class="p-6 md:p-8">
-        {#if form?.success}
-          <div class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{form.message}</div>
-        {/if}
-        {#if form?.error}
-          <div class="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{form.error}</div>
-        {/if}
-
-        <form method="POST" class="grid gap-5" use:enhance>
+        <form method="POST" class="grid gap-8" use:enhance onfocusincapture={onFormFocus}>
           <input type="hidden" name="inquiryType" value={page.type} />
+          <input type="hidden" name="renderedAt" value={renderedAt} />
           <div class="hidden" aria-hidden="true">
             <label for="website">Website</label>
             <input id="website" name="website" tabindex="-1" autocomplete="off" value={values.website || ''} />
           </div>
 
-          <div class="grid gap-4 md:grid-cols-2">
-            <label class="grid gap-2 text-sm font-medium">Name<input class="input-modern" name="name" value={values.name || ''} required /></label>
-            <label class="grid gap-2 text-sm font-medium">Email<input class="input-modern" name="email" type="email" value={values.email || ''} required /></label>
-            <label class="grid gap-2 text-sm font-medium">Phone<input class="input-modern" name="phone" type="tel" value={values.phone || ''} /></label>
-            <label class="grid gap-2 text-sm font-medium">Organization<input class="input-modern" name="organizationName" value={values.organizationName || ''} required /></label>
-          </div>
-
-          <label class="grid gap-2 text-sm font-medium">Organization type<input class="input-modern" name="organizationType" value={values.organizationType || ''} required /></label>
-
-          {#each page.form.detailFields as field}
-            {@const fieldErrorsForInput = errorsFor(field)}
-            <div class="grid gap-2 text-sm font-medium">
-              <span>{field.label}</span>
-              {#if field.type === 'textarea'}
-                <textarea class="textarea-modern" name={`${page.form.detailGroup}.${field.name}`} rows="4" required={field.required}>{detailValues[field.name] || ''}</textarea>
-              {:else if field.type === 'select'}
-                <select class="select-modern" name={`${page.form.detailGroup}.${field.name}`} required={field.required} value={detailValues[field.name] || ''}>
-                  <option value="">Select one</option>
-                  {#each field.options as option}
-                    <option value={option}>{optionLabel(option)}</option>
-                  {/each}
-                </select>
-              {:else if field.type === 'checkboxes'}
-                <div class="grid gap-2 sm:grid-cols-2">
-                  {#each field.options as option}
-                    <label class="flex items-center gap-2 border border-border px-3 py-2 text-sm font-normal transition-colors hover:border-primary/50 hover:bg-primary/5">
-                      <input type="checkbox" name={`${page.form.detailGroup}.${field.name}`} value={option} checked={(detailValues[field.name] || []).includes(option)} />
-                      {optionLabel(option)}
-                    </label>
-                  {/each}
-                </div>
-              {:else}
-                <input class="input-modern" name={`${page.form.detailGroup}.${field.name}`} value={detailValues[field.name] || ''} required={field.required} />
-              {/if}
-              {#if fieldErrorsForInput}
-                <p class="text-sm text-destructive">{fieldErrorsForInput.join(' ')}</p>
-              {/if}
+          <fieldset class="grid gap-4 border-0 p-0">
+            <legend class="mb-4 font-display text-lg font-bold">Contact</legend>
+            <div class="grid gap-4 md:grid-cols-2">
+              <label class="grid gap-2 text-sm font-medium">Name<input class="input-modern" name="name" autocomplete="name" value={values.name || ''} required /></label>
+              <label class="grid gap-2 text-sm font-medium">Email<input class="input-modern" name="email" type="email" autocomplete="email" value={values.email || ''} required /></label>
+              <label class="grid gap-2 text-sm font-medium">Phone<input class="input-modern" name="phone" type="tel" autocomplete="tel" value={values.phone || ''} /></label>
+              <label class="grid gap-2 text-sm font-medium">Organization<input class="input-modern" name="organizationName" autocomplete="organization" value={values.organizationName || ''} required /></label>
             </div>
-          {/each}
+            <label class="grid gap-2 text-sm font-medium">Organization type<input class="input-modern" name="organizationType" value={values.organizationType || ''} required /></label>
+          </fieldset>
 
-          <label class="grid gap-2 text-sm font-medium">Message<textarea class="textarea-modern" name="message" rows="5" required>{values.message || ''}</textarea></label>
+          <fieldset class="grid gap-5 border-0 p-0">
+            <legend class="mb-4 font-display text-lg font-bold">{page.form.detailLegend}</legend>
+            {#each page.form.detailFields as field}
+              {@const fieldErrorsForInput = errorsFor(field)}
+              <div class="grid gap-2 text-sm font-medium">
+                {#if field.type === 'checkboxes'}
+                  <span id={`label-${errorId(field)}`}>{field.label}</span>
+                  <div class="grid gap-2 sm:grid-cols-2" role="group" aria-labelledby={`label-${errorId(field)}`} aria-describedby={fieldErrorsForInput ? errorId(field) : undefined}>
+                    {#each field.options as option}
+                      <label class="flex items-center gap-2 border border-border px-3 py-2 text-sm font-normal transition-colors hover:border-kente-terracotta/60 hover:bg-primary/5">
+                        <input type="checkbox" name={`${page.form.detailGroup}.${field.name}`} value={option} checked={(detailValues[field.name] || []).includes(option)} />
+                        {optionLabel(option)}
+                      </label>
+                    {/each}
+                  </div>
+                {:else}
+                  <label class="grid gap-2">
+                    <span>{field.label}</span>
+                    {#if field.type === 'textarea'}
+                      <textarea class="textarea-modern" name={`${page.form.detailGroup}.${field.name}`} rows="4" required={field.required} aria-invalid={fieldErrorsForInput ? 'true' : undefined} aria-describedby={fieldErrorsForInput ? errorId(field) : undefined}>{detailValues[field.name] || ''}</textarea>
+                    {:else if field.type === 'select'}
+                      <select class="select-modern" name={`${page.form.detailGroup}.${field.name}`} required={field.required} value={detailValues[field.name] || ''} aria-invalid={fieldErrorsForInput ? 'true' : undefined} aria-describedby={fieldErrorsForInput ? errorId(field) : undefined}>
+                        <option value="">Select one</option>
+                        {#each field.options as option}
+                          <option value={option}>{optionLabel(option)}</option>
+                        {/each}
+                      </select>
+                    {:else}
+                      <input class="input-modern" name={`${page.form.detailGroup}.${field.name}`} value={detailValues[field.name] || ''} required={field.required} aria-invalid={fieldErrorsForInput ? 'true' : undefined} aria-describedby={fieldErrorsForInput ? errorId(field) : undefined} />
+                    {/if}
+                  </label>
+                {/if}
+                {#if fieldErrorsForInput}
+                  <p id={errorId(field)} class="text-sm font-normal text-destructive">{fieldErrorsForInput.join(' ')}</p>
+                {/if}
+              </div>
+            {/each}
+            <label class="grid gap-2 text-sm font-medium">Message<textarea class="textarea-modern" name="message" rows="5" required>{values.message || ''}</textarea></label>
+          </fieldset>
+
           <div class="cf-turnstile" data-sitekey={PUBLIC_TURNSTILE_SITE_KEY} data-theme="light"></div>
           <button type="submit" class="btn-primary inline-flex items-center gap-2 justify-self-start"><Send class="h-5 w-5" />{page.form.submitLabel}</button>
         </form>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="section bg-muted/30">
-  <div class="container mx-auto px-4">
-    <h2 class="font-display text-2xl font-bold">Other ways to work with us</h2>
-    <div class="mt-6 grid gap-4 md:grid-cols-2">
-      {#each data.relatedPages as related}
-        <a href={related.path} class="block border border-border bg-card p-5 shadow-soft transition-transform hover:-translate-y-1 hover:shadow-medium">
-          <p class="font-semibold">{related.hero.eyebrow}</p>
-          <p class="mt-2 text-sm text-muted-foreground">{related.hero.headline}</p>
-        </a>
-      {/each}
+  <!-- CROSS-LINKS — the other two tracks, each wearing its own symbol -->
+  <section class="section bg-background">
+    <div class="container mx-auto px-4">
+      <h2 class="font-display text-2xl font-bold">Other ways to work with us</h2>
+      <div class="mt-6 grid gap-4 md:grid-cols-2">
+        {#each data.relatedPages as related}
+          <a
+            href={related.path}
+            class="card-modern group flex items-start gap-4 p-5 transition-colors hover:border-kente-terracotta/60"
+            style="--track-accent: {related.accent}"
+          >
+            <span aria-hidden="true" class="adinkra mt-1 h-10 w-10 shrink-0" style="--symbol: url('{related.symbol}')"></span>
+            <span>
+              <span class="block text-sm font-semibold uppercase tracking-wide text-primary-strong">{related.hero.eyebrow}</span>
+              <span class="mt-1 block font-display text-lg font-bold">{related.hero.headline}</span>
+              <span class="mt-2 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors group-hover:text-kente-terracotta">
+                Learn more <ArrowRight class="h-4 w-4" />
+              </span>
+            </span>
+          </a>
+        {/each}
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+</div>
+
+<style>
+  /* Adinkra symbols ship as flat SVG files; a mask lets the same file take any
+     track accent without duplicating tinted assets. */
+  .adinkra {
+    background-color: var(--track-accent);
+    -webkit-mask: var(--symbol) center / contain no-repeat;
+    mask: var(--symbol) center / contain no-repeat;
+  }
+
+  .hero-enter {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-enter {
+      animation: hero-fade 0.6s ease-out both;
+    }
+
+    @keyframes hero-fade {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
+</style>

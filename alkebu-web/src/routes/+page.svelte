@@ -445,7 +445,7 @@
 		</div>
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 			{#each businessServices as service, i}
-				<a href={service.href} class="group">
+				<a href={service.href || "/contact"} class="group">
 					<div class="card-modern overflow-hidden h-full">
 						<div class="relative aspect-[3/4] overflow-hidden">
 							<img

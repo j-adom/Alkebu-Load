@@ -1,20 +1,34 @@
+// Per-track identity: each partnership track carries its own Adinkra symbol +
+// accent color (existing brand tokens only — see the design spec's "Signature"
+// section). Terracotta stays the shared hover accent so the set reads as one
+// family; the symbol/accent pair is what tells the three tracks apart.
 export const partnershipPages = {
   wholesale: {
     type: 'wholesale',
     path: '/wholesale',
+    accent: '#D4AF37', // Kente Gold
+    symbol: '/assets/images/alkebulan/basket-4.svg',
+    symbolMeaning: 'Basket — abundance and trade',
     seo: {
-      title: 'Wholesale Books and Cultural Products | Alkebu-Lan Images',
+      title: 'Wholesale Books and Cultural Products',
       description:
         'Partner with Alkebu-Lan Images for bulk orders, wholesale books, cultural products, and resale-friendly sourcing.',
     },
     hero: {
-      eyebrow: 'Wholesale Solutions',
-      headline: 'Bulk ordering rooted in culture and community.',
-      body: "Source books, apparel, wellness items, and cultural goods for your shop, program, or organization with help from Nashville's Black-owned bookstore.",
+      eyebrow: 'Wholesale',
+      headline: 'Stock your shelves with books that matter.',
+      subhead:
+        "Source books, apparel, wellness items, and cultural goods for your shop, program, or organization with help from Nashville's Black-owned bookstore.",
       cta: 'Start a wholesale inquiry',
-      image: '/assets/images/alkebulan/bookbackground.jpg',
-      badge: 'Bulk Book Orders',
-      tiles: ['Books', 'Apparel', 'Wellness', 'Home goods'],
+      // Unsplash (free license): photo-1560693478-dfdb32f2176a, self-hosted pre-optimized
+      image: '/assets/images/partnership/wholesale-shelves.jpg',
+      imageAlt: 'Wooden bookstore shelves packed with books',
+      trustRow: ['Nashville Black-owned', 'Bulk & resale friendly', 'Pickup or nationwide shipping'],
+    },
+    // Unsplash (free license): photo-1613577553731-e102e5de62f5, self-hosted pre-optimized
+    midImage: {
+      src: '/assets/images/partnership/wholesale-stack.jpg',
+      alt: 'A stack of hardcover books ready to ship',
     },
     fit: [
       'Retailers and pop-up shops',
@@ -45,6 +59,7 @@ export const partnershipPages = {
       heading: 'Wholesale Inquiry',
       submitLabel: 'Send wholesale inquiry',
       detailGroup: 'wholesaleDetails',
+      detailLegend: 'Order details',
       detailFields: [
         { name: 'expectedOrderVolume', label: 'Expected order volume', type: 'text', required: true },
         {
@@ -65,19 +80,23 @@ export const partnershipPages = {
   institutional: {
     type: 'institutional',
     path: '/institutional-contracts',
+    accent: '#3D4F7C', // Kente Indigo
+    symbol: '/assets/images/alkebulan/crocs.svg',
+    symbolMeaning: 'Siamese crocodiles — unity and shared destiny',
     seo: {
-      title: 'Institutional Book Orders | Alkebu-Lan Images',
+      title: 'Institutional Book Orders',
       description:
         'Books and culturally relevant materials for schools, libraries, churches, and institutions.',
     },
     hero: {
       eyebrow: 'Institutional Contracts',
-      headline: 'Books and resources for classrooms, libraries, and institutions.',
-      body: 'Work with Alkebu-Lan Images on curated orders, purchase-order friendly workflows, and materials that serve your audience.',
+      headline: 'Books that serve your readers, on institutional terms.',
+      subhead:
+        'Work with Alkebu-Lan Images on curated orders, purchase-order friendly workflows, and materials that serve your audience.',
       cta: 'Start an institutional inquiry',
       image: '/assets/images/resources/com_solutions_img-2.jpg',
-      badge: 'Schools & Libraries',
-      tiles: ['Classrooms', 'Libraries', 'Purchase orders', 'Curated lists'],
+      imageAlt: 'Curated books prepared for a classroom and library order',
+      trustRow: ['Purchase orders & invoices', 'Tax-exempt friendly', 'Curated to your readers'],
     },
     fit: [
       'Schools and universities',
@@ -96,7 +115,7 @@ export const partnershipPages = {
       },
       {
         title: 'Follow-up with context',
-        body: 'Your inquiry lands in Payload with enough structure for staff to respond clearly.',
+        body: 'Your inquiry lands with enough structure for staff to respond clearly.',
       },
     ],
     process: [
@@ -108,6 +127,7 @@ export const partnershipPages = {
       heading: 'Institutional Inquiry',
       submitLabel: 'Send institutional inquiry',
       detailGroup: 'institutionalDetails',
+      detailLegend: 'Institution details',
       detailFields: [
         {
           name: 'institutionType',
@@ -141,19 +161,23 @@ export const partnershipPages = {
   nonprofit: {
     type: 'nonprofit',
     path: '/non-profit-projects',
+    accent: '#2D5A3D', // Kente Forest
+    symbol: '/assets/images/alkebulan/sankofa.svg',
+    symbolMeaning: 'Sankofa — return and reclaim; learn from the past',
     seo: {
-      title: 'Non-profit Projects | Alkebu-Lan Images',
+      title: 'Non-profit Projects',
       description:
         'Community project, book drive, sponsorship, and mission-aligned partnership inquiries for Alkebu-Lan Images.',
     },
     hero: {
       eyebrow: 'Non-profit Projects',
-      headline: 'Mission-aligned support for community projects.',
-      body: 'Tell us about your program, book drive, sponsorship idea, or community initiative so we can explore the right fit.',
+      headline: 'Put books to work for your mission.',
+      subhead:
+        'Tell us about your program, book drive, sponsorship idea, or community initiative so we can explore the right fit.',
       cta: 'Start a project inquiry',
       image: '/assets/images/resources/com_solutions_img-3.jpg',
-      badge: 'Community Projects',
-      tiles: ['Book drives', 'Programs', 'Events', 'Sponsorships'],
+      imageAlt: 'Books gathered for a community program',
+      trustRow: ['Mission-first review', 'Book drives to sponsorships', 'Rooted in community'],
     },
     fit: [
       'Community programs',
@@ -171,8 +195,8 @@ export const partnershipPages = {
         body: 'Staff can understand the purpose before responding.',
       },
       {
-        title: 'CRM-ready history',
-        body: 'Inquiries are stored for follow-up now and future CRM sync later.',
+        title: 'History that follows up',
+        body: 'Inquiries are stored so the conversation picks up where it left off.',
       },
     ],
     process: [
@@ -184,6 +208,7 @@ export const partnershipPages = {
       heading: 'Non-profit Project Inquiry',
       submitLabel: 'Send project inquiry',
       detailGroup: 'nonprofitDetails',
+      detailLegend: 'Project details',
       detailFields: [
         {
           name: 'projectType',

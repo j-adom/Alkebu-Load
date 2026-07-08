@@ -57,6 +57,9 @@ export async function handlePartnershipInquiryAction({
   };
 
   const turnstileToken = text(formData, 'cf-turnstile-response');
+  // Backend anti-spam silently drops submissions without a plausible
+  // renderedAt timestamp — forward it as a number or not at all.
+  const renderedAt = Number(formData.get('renderedAt'));
 
   if (!values.name || !values.email || !values.organizationName || !values.organizationType || !values.message) {
     return fail(400, {
@@ -78,7 +81,11 @@ export async function handlePartnershipInquiryAction({
     const response = await fetch(`${getPayloadApiUrl()}/api/partnership-inquiries`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getPayloadAuthHeader() },
-      body: JSON.stringify({ ...values, turnstileToken }),
+      body: JSON.stringify({
+        ...values,
+        turnstileToken,
+        ...(Number.isFinite(renderedAt) && renderedAt > 0 ? { renderedAt } : {}),
+      }),
     });
 
     const data = await response.json().catch(() => ({}));
