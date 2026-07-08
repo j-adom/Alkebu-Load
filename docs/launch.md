@@ -161,10 +161,17 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
   wired. NB: production has zero published posts — verified against a synthetic post.
 - [ ] Media collection `imageSizes` (or Cloudflare edge transforms) + real responsive
   srcset so future uploads don't ship raw originals.
-- [ ] B2B front door: /schools + /wholesale landing pages (June design work), link the
-  homepage business-services cards (currently no hrefs), add inquiry-type selector to the
-  contact form so B2B leads are tagged. ~~schedule `processQuoteFollowups`~~ — done
-  July 3: `quote-followups` cron, daily 15:00 UTC.
+- [x] B2B front door — SHIPPED July 8 (deployed & verified live). Three landing pages
+  `/wholesale`, `/institutional-contracts`, `/non-profit-projects` (editorial design:
+  per-track Adinkra symbol + accent, Lora subhead, evidence photos reusing the homepage
+  card images). Backed by a new `PartnershipInquiries` collection + `/api/partnership-inquiries`
+  endpoint, branded staff + acknowledgement emails, Turnstile + honeypot + min-time-to-submit
+  anti-spam, Rybbit funnel events, and a11y form (fieldset/legend, aria-live). Homepage
+  business-service cards now link to the three routes (were all `/contact`), with `/contact`
+  fallback. Deploy carried a Payload schema change (new collection) — `/admin` stayed 200
+  throughout. NB: an inquiry-type selector was NOT added to the generic contact form; B2B
+  leads are captured via the dedicated pages/collection instead. ~~schedule
+  `processQuoteFollowups`~~ — done July 3: `quote-followups` cron, daily 15:00 UTC.
 - [x] Check Search Console → Pages → "Excluded by noindex" (3,591 pages) — checked July 7:
   they are storefront `/search?q=` internal-search URLs (legacy subject-heading queries,
   first detected 8/16/22), not payload.* URLs. Noindex on internal search is correct;
