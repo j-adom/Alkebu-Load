@@ -123,6 +123,7 @@
         src={page.hero.image}
         alt={page.hero.imageAlt}
         class="aspect-[4/3] w-full rounded-2xl object-cover shadow-medium"
+        style="object-position: {page.hero.imagePosition ?? 'center'}"
         loading="lazy"
         width="720"
         height="540"

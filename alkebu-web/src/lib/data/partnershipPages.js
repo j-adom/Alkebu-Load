@@ -193,6 +193,9 @@ export const partnershipPages = {
       // from click to landing (homePage global section4[2], self-hosted).
       image: '/assets/images/partnership/nonprofit-future.jpg',
       imageAlt: 'A child at a community march holding a hand-lettered "Our Future Matters" sign',
+      // Tall portrait source: bias the 4/3 crop upward so the face and the
+      // full sign survive instead of being cut off at the top.
+      imagePosition: 'center 22%',
       trustRow: ['Mission-first review', 'Book drives to sponsorships', 'Rooted in community'],
     },
     // Unsplash (free license): photo-1773224811488-070c7dce2657, self-hosted pre-optimized
