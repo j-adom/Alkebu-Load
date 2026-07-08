@@ -1,14 +1,16 @@
 // Per-track identity: each partnership track carries its own Adinkra symbol +
-// accent color (existing brand tokens only — see the design spec's "Signature"
-// section). Terracotta stays the shared hover accent so the set reads as one
-// family; the symbol/accent pair is what tells the three tracks apart.
+// accent color (see the design spec's "Signature" section). Terracotta stays
+// the shared hover accent so the set reads as one family; the symbol/accent
+// pair is what tells the three tracks apart. Symbols are distinct from the
+// homepage's basket/crocs/sankofa set: CC0 SVGs by GeorgesMbakop via Wikimedia
+// Commons, self-hosted in static/assets/images/adinkra/.
 export const partnershipPages = {
   wholesale: {
     type: 'wholesale',
     path: '/wholesale',
     accent: '#D4AF37', // Kente Gold
-    symbol: '/assets/images/alkebulan/basket-4.svg',
-    symbolMeaning: 'Basket — abundance and trade',
+    symbol: '/assets/images/adinkra/nteasee.svg',
+    symbolMeaning: 'Nteasee — understanding and cooperation',
     seo: {
       title: 'Wholesale Books and Cultural Products',
       description:
@@ -29,6 +31,8 @@ export const partnershipPages = {
     midImage: {
       src: '/assets/images/partnership/wholesale-stack.jpg',
       alt: 'A stack of hardcover books ready to ship',
+      width: 1600,
+      height: 1064,
     },
     fit: [
       'Retailers and pop-up shops',
@@ -81,8 +85,8 @@ export const partnershipPages = {
     type: 'institutional',
     path: '/institutional-contracts',
     accent: '#3D4F7C', // Kente Indigo
-    symbol: '/assets/images/alkebulan/crocs.svg',
-    symbolMeaning: 'Siamese crocodiles — unity and shared destiny',
+    symbol: '/assets/images/adinkra/nyansapo.svg',
+    symbolMeaning: 'Nyansapo, the wisdom knot — wisdom, ingenuity, learning',
     seo: {
       title: 'Institutional Book Orders',
       description:
@@ -94,9 +98,17 @@ export const partnershipPages = {
       subhead:
         'Work with Alkebu-Lan Images on curated orders, purchase-order friendly workflows, and materials that serve your audience.',
       cta: 'Start an institutional inquiry',
-      image: '/assets/images/resources/com_solutions_img-2.jpg',
-      imageAlt: 'Curated books prepared for a classroom and library order',
+      // Unsplash (free license): photo-1741699428220-65f37f3fbbcb, self-hosted pre-optimized
+      image: '/assets/images/partnership/institutional-library.jpg',
+      imageAlt: 'A student studying among the shelves of a library reading room',
       trustRow: ['Purchase orders & invoices', 'Tax-exempt friendly', 'Curated to your readers'],
+    },
+    // Unsplash (free license): photo-1720659201108-4efe526b289c, self-hosted pre-optimized
+    midImage: {
+      src: '/assets/images/partnership/institutional-aisle.jpg',
+      alt: 'A student browsing a school library aisle',
+      width: 1600,
+      height: 1067,
     },
     fit: [
       'Schools and universities',
@@ -162,8 +174,8 @@ export const partnershipPages = {
     type: 'nonprofit',
     path: '/non-profit-projects',
     accent: '#2D5A3D', // Kente Forest
-    symbol: '/assets/images/alkebulan/sankofa.svg',
-    symbolMeaning: 'Sankofa — return and reclaim; learn from the past',
+    symbol: '/assets/images/adinkra/boa-me-na-me-mmoa-wo.svg',
+    symbolMeaning: 'Boa Me Na Me Mmoa Wo — help me and let me help you',
     seo: {
       title: 'Non-profit Projects',
       description:
@@ -175,9 +187,17 @@ export const partnershipPages = {
       subhead:
         'Tell us about your program, book drive, sponsorship idea, or community initiative so we can explore the right fit.',
       cta: 'Start a project inquiry',
-      image: '/assets/images/resources/com_solutions_img-3.jpg',
-      imageAlt: 'Books gathered for a community program',
+      // Unsplash (free license): photo-1610500796385-3ffc1ae2f046, self-hosted pre-optimized
+      image: '/assets/images/partnership/nonprofit-reading.jpg',
+      imageAlt: 'Children reading and writing together at a community program',
       trustRow: ['Mission-first review', 'Book drives to sponsorships', 'Rooted in community'],
+    },
+    // Unsplash (free license): photo-1773224811488-070c7dce2657, self-hosted pre-optimized
+    midImage: {
+      src: '/assets/images/partnership/nonprofit-lending.jpg',
+      alt: 'A neighborhood lending library stocked with books at dusk',
+      width: 1600,
+      height: 901,
     },
     fit: [
       'Community programs',

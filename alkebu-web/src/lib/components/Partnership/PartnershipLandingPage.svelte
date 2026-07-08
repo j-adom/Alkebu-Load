@@ -178,8 +178,8 @@
           alt={page.midImage.alt}
           class="h-64 w-full rounded-2xl object-cover shadow-medium md:h-80"
           loading="lazy"
-          width="1600"
-          height="1064"
+          width={page.midImage.width}
+          height={page.midImage.height}
         />
       </div>
     </section>
