@@ -130,6 +130,9 @@ gentle notice (it usually stays fulfillable as a special order; only if Ingram a
    loading), same `BookDetailPage` layout, `<meta robots="noindex">`, absent from sitemap.
 6. **Log the query** (query + `matched:false` only — not Ingram data) to `SearchAnalytics` →
    a "most-wanted, not-carried" report driving what to promote into curated inventory.
+   **Forward-compat:** design this logging to **accumulate frequency over time** (counts per
+   normalized query/ISBN), not log-and-forget — so the "search frequency" signal is ready for
+   the Merchandising Intelligence phase. Cheap now, expensive to retrofit.
 
 ## Data model changes
 
@@ -192,6 +195,31 @@ data-integrity-sensitive:
 **Secondary benefit:** likely shrinks the GSC *"Duplicate, Google chose different canonical"*
 bucket (multiple records per work is a classic cause) — an SEO win alongside better UX (one page
 per work, choose your binding).
+
+## Future phase — Merchandising Intelligence & Inventory Tiering (later; enabled by this build)
+
+Turn the signals this engine collects into curation decisions: promote high-demand long-tail
+titles **up** into curated store inventory (indexed, and potentially stocked **direct from
+publisher at higher margin** where velocity justifies it), and demote stale titles **out**
+(de-index / request-only).
+
+**Signals:**
+- **Long-tail search frequency** of not-carried titles (from Stage-2 demand logging — made
+  forward-compatible above).
+- **Ingram demand / velocity** — *change* in Ingram on-hand over time (a title's stock dropping
+  fast = selling well industry-wide → a direct-from-publisher candidate).
+- Store sales velocity (Square).
+
+**Tiering action** = promote a long-tail `Book` into the curated, indexed catalog (buy direct
+where margin justifies) or demote a curated title to request-only + `noindex`.
+
+**Compliance / sourcing:** retaining a *time-series of Ingram inventory* is precisely what the
+**FTP Inventory feed** (load-into-DB, permitted) is for — the **Web Service prohibits DB
+mirroring**. So this is the phase where the deferred FTP feed earns its keep: source Ingram
+inventory history from the FTP file, not the API. (Alternatively, store only *derived* signals —
+velocity buckets / deltas — rather than raw quantities.)
+
+Own spec when pursued.
 
 ## Build sequencing
 
