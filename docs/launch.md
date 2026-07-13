@@ -50,10 +50,10 @@ and long-term data ownership independent of Square.
 11.4K indexed / 20.5K not; was ~14K before a June dip) → Search Appearance → Product
 results (2-3 weeks, rich-results payoff) → staff inbox for recovery alerts.
 
-**Known unmerged work:** `feat/staff-agent-mcp-foundation` holds email XSS hardening
-(`a9c6074`, `d68b8f0`), web vitals for Rybbit (`9d366a9`), a docs refresh (`f12d364`,
-`e023280`), and the dormant staff-agent MCP server. Merge soon — the email escaping fixes
-belong in production.
+**Resolved July 13, 2026:** `feat/staff-agent-mcp-foundation` is fully merged into `main`.
+Email XSS hardening (`a9c6074`, `d68b8f0`), web vitals for Rybbit (`9d366a9`), and the docs
+refresh (`f12d364`, `e023280`) are all in production; `escapeHtml` is applied across the
+transactional templates and `ctaButton` hrefs are validated as `http(s)`. Nothing outstanding.
 
 ## Source of Truth
 
