@@ -50,7 +50,10 @@ const SIZE_LABELS: Record<string, string> = {
 };
 
 // Distinct soap products. Each is its own line; some carry a size variant.
-const SOAPS: Array<{ key: string; name: string; pattern: RegExp }> = [
+// Exported so scripts/backfill-wellness-shipping-weights.ts (Task 6) can classify
+// each line's packaging-weight default from its `name` -- by product shape, same
+// rule as the rest of this file -- without duplicating this list.
+export const SOAPS: Array<{ key: string; name: string; pattern: RegExp }> = [
   { key: 'raw-black-soap', name: 'Raw Black Soap', pattern: /^raw black soap\b/i },
   { key: 'yadain-bar-soap', name: 'Yadain Bar Soap', pattern: /^yadain bar soap$/i },
   { key: 'turmeric-kojic-facial-bar', name: 'Turmeric, Lemon, Honey & Kojic Facial Bar', pattern: /^turmeric, lemon, honey & kojic facial bar$/i },
@@ -98,8 +101,8 @@ const SOAPS: Array<{ key: string; name: string; pattern: RegExp }> = [
   { key: 'round-black-soap', name: 'Round Black Soap', pattern: /^(small )?round black soap$|^small black round soap$/i },
 ];
 
-// Distinct raw butters. No variant axis.
-const RAW_BUTTERS: Array<{ key: string; name: string; pattern: RegExp }> = [
+// Distinct raw butters. No variant axis. Exported for the same reason as SOAPS above.
+export const RAW_BUTTERS: Array<{ key: string; name: string; pattern: RegExp }> = [
   { key: 'raw-shea-butter', name: 'Raw Shea Butter', pattern: /^raw shea butter$/i },
   { key: 'natural-raw-mango-butter', name: 'Natural Raw Mango Butter', pattern: /^natural raw mango butter$/i },
   { key: 'cocoa-butter-vitamin-e', name: 'Cocoa Butter with Vitamin E', pattern: /^cocoa butter w\/ vitamin e$/i },
