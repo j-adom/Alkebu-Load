@@ -10,9 +10,12 @@
  * stop that: it starts from the EXISTING row for every variation Square still carries,
  * and overwrites only the fields Square actually owns.
  *
- * Square is the source of truth for: `price`, `sku`, `scent`, and `squareItemId` (where
- * the field exists on the collection -- OilsIncense.variations[] has no such field, and
- * the merge respects that by only touching it when the incoming row carries the key).
+ * Square is the source of truth for: `price`, `sku`, `scent`, `variantName`, and
+ * `squareItemId` (where the field exists on the collection -- OilsIncense.variations[]
+ * has no such field, and the merge respects that by only touching it when the incoming
+ * row carries the key). `variantName` carries Square's own size/option label
+ * (item_variation_data.name, e.g. "1 oz", "Roll-on") -- it must be overwritten on every
+ * sync, same as price/sku/scent, or a size change in Square would go stale in Payload.
  *
  * Preserved from the existing row, NEVER overwritten: `stock`, `weight`, `isAvailable`,
  * `size`, `packaging`, `concentration`, `color`, `id` -- and anything else already on the
@@ -33,6 +36,7 @@ export interface MergeableVariation {
   sku: string;
   price: number;
   scent?: string | null;
+  variantName?: string | null;
   squareVariationId?: string | null;
   squareItemId?: string | null;
   stock?: number | null;
@@ -81,6 +85,7 @@ export function mergeVariations<T extends MergeableVariation>(
       price: inc.price,
       sku: inc.sku,
       scent: inc.scent,
+      variantName: inc.variantName,
       squareVariationId: inc.squareVariationId,
     };
     if ('squareItemId' in inc) {

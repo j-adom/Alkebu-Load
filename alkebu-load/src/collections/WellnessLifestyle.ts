@@ -442,6 +442,15 @@ const WellnessLifestyle: CollectionConfig = {
           }
         },
         {
+          name: 'variantName',
+          type: 'text',
+          admin: {
+            description:
+              'The size/option label exactly as Square names it (e.g. "1 oz", "1/4 oz", "Roll-on"); ' +
+              'empty for single-variation products.',
+          },
+        },
+        {
           name: 'color',
           type: 'text',
           admin: {

@@ -2042,6 +2042,10 @@ export interface WellnessLifestyle {
      */
     scent?: string | null;
     /**
+     * The size/option label exactly as Square names it (e.g. "1 oz", "1/4 oz", "Roll-on"); empty for single-variation products.
+     */
+    variantName?: string | null;
+    /**
      * Color of this variation (for candles, soaps, etc.)
      */
     color?: string | null;
@@ -3035,6 +3039,10 @@ export interface OilsIncense {
      * Specific scent for this variation (if different from main)
      */
     scent?: string | null;
+    /**
+     * The size/option label exactly as Square names it (e.g. "1 oz", "1/4 oz", "Roll-on"); empty for single-variation products.
+     */
+    variantName?: string | null;
     /**
      * Square POS variation ID for inventory sync
      */
@@ -6565,6 +6573,7 @@ export interface WellnessLifestyleSelect<T extends boolean = true> {
         packaging?: T;
         concentration?: T;
         scent?: T;
+        variantName?: T;
         color?: T;
         squareVariationId?: T;
         squareItemId?: T;
@@ -6808,6 +6817,7 @@ export interface OilsIncenseSelect<T extends boolean = true> {
         size?: T;
         packaging?: T;
         scent?: T;
+        variantName?: T;
         squareVariationId?: T;
         price?: T;
         stock?: T;

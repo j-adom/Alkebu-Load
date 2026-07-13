@@ -19,7 +19,7 @@ test('a variation with an existing weight is NOT overwritten, even if it looks w
   assert.strictEqual(next[0].weight, 999); // staff-entered value is authoritative -- survives
 });
 
-test('other fields on the row (price, stock, sku, isAvailable) survive the weight write', () => {
+test('other fields on the row (price, stock, sku, isAvailable, scent, size, packaging, variantName) survive the weight write', () => {
   const variations = [
     {
       id: 'row-1',
@@ -28,6 +28,10 @@ test('other fields on the row (price, stock, sku, isAvailable) survive the weigh
       stock: 12,
       isAvailable: true,
       squareVariationId: 'SQ-VAR-1',
+      scent: 'Peppermint',
+      size: { volume: 6, unit: 'oz' },
+      packaging: 'bar',
+      variantName: 'Bar',
     },
   ];
 
@@ -40,6 +44,10 @@ test('other fields on the row (price, stock, sku, isAvailable) survive the weigh
   assert.strictEqual(next[0].stock, 12);
   assert.strictEqual(next[0].isAvailable, true);
   assert.strictEqual(next[0].squareVariationId, 'SQ-VAR-1');
+  assert.strictEqual(next[0].scent, 'Peppermint');
+  assert.deepStrictEqual(next[0].size, { volume: 6, unit: 'oz' });
+  assert.strictEqual(next[0].packaging, 'bar');
+  assert.strictEqual(next[0].variantName, 'Bar');
 });
 
 test('other rows in the array are untouched (same reference) when only one row needs a weight', () => {
@@ -103,24 +111,52 @@ test('whipped shea butter picks the size-specific default when a size signal exi
   assert.ok(noSignal.reason?.includes('4oz'));
 });
 
-test('scented oil defaults to the 1oz weight (documented dominant size) unless a different size is signaled', () => {
+test('scented oil defaults to the 1oz weight (documented dominant size) when no size signal exists at all', () => {
   const noSignal = resolveVariationWeight('scented-oil', { scent: 'Egyptian Musk' });
   assert.strictEqual(noSignal.weight, 3);
+});
 
+test('scented oil resolves every defined bottle size from variantName, Square\'s real per-variation label', () => {
+  const quarterOz = resolveVariationWeight('scented-oil', { variantName: '1/4 oz', scent: '5th Ave' });
+  assert.strictEqual(quarterOz.weight, 2);
+
+  const rollOn = resolveVariationWeight('scented-oil', { variantName: 'Roll-on', scent: '5th Ave' });
+  assert.strictEqual(rollOn.weight, 2);
+
+  const halfOz = resolveVariationWeight('scented-oil', { variantName: '1/2 oz', scent: '5th Ave' });
+  assert.strictEqual(halfOz.weight, 3);
+
+  const oneOz = resolveVariationWeight('scented-oil', { variantName: '1 oz', scent: '5th Ave' });
+  assert.strictEqual(oneOz.weight, 3);
+
+  const twoOz = resolveVariationWeight('scented-oil', { variantName: '2 oz', scent: '5th Ave' });
+  assert.strictEqual(twoOz.weight, 5);
+});
+
+test('scented oil resolves the legacy OilsIncense size-select slugs the same way as real variantName labels', () => {
   const oneOz = resolveVariationWeight('scented-oil', { size: '1-oz-bottle', scent: 'Egyptian Musk' });
   assert.strictEqual(oneOz.weight, 3);
 
   const twoOz = resolveVariationWeight('scented-oil', { size: '2-oz-bottle', scent: 'Egyptian Musk' });
-  assert.strictEqual(twoOz.weight, null);
-  assert.ok(twoOz.reason?.includes('2'));
+  assert.strictEqual(twoOz.weight, 5);
 });
 
-test('round black soap always gets the bar-soap default regardless of Regular/Small', () => {
-  const regular = resolveVariationWeight('round-black-soap', { sku: 'round-black-soap-regular' });
+test('scented oil reports unresolved (never guesses) when a size signal exists but matches no defined bottle size', () => {
+  const unknownSize = resolveVariationWeight('scented-oil', { variantName: '5 oz', scent: 'Egyptian Musk' });
+  assert.strictEqual(unknownSize.weight, null);
+  assert.ok(unknownSize.reason?.includes('5 oz'));
+});
+
+test('round black soap resolves the Regular default but reports Small as unresolved rather than reusing a known-wrong guess', () => {
+  const regular = resolveVariationWeight('round-black-soap', { variantName: 'Regular', sku: 'round-black-soap-regular' });
   assert.strictEqual(regular.weight, 6);
 
-  const small = resolveVariationWeight('round-black-soap', { sku: 'round-black-soap-small' });
-  assert.strictEqual(small.weight, 6);
+  const noSignal = resolveVariationWeight('round-black-soap', { sku: 'round-black-soap-regular' });
+  assert.strictEqual(noSignal.weight, 6);
+
+  const small = resolveVariationWeight('round-black-soap', { variantName: 'Small', sku: 'round-black-soap-small' });
+  assert.strictEqual(small.weight, null);
+  assert.ok(small.reason?.toLowerCase().includes('small'));
 });
 
 test('raw shea butter gets its own 18oz default, distinct from the 10oz cocoa/mango bucket', () => {

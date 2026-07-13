@@ -39,6 +39,39 @@ test('an existing row keeps synced stock and a backfilled weight when Square res
   assert.strictEqual(merged[0].price, 1200); // Square DOES own price -- it must update
 });
 
+test('variantName is Square-owned: it is overwritten on merge, never preserved from the existing row', () => {
+  const existing = [
+    {
+      id: 'row-1',
+      sku: 'SKU-1',
+      price: 1500,
+      scent: '5th Ave',
+      variantName: '1 oz',
+      squareVariationId: 'SQ-VAR-1',
+      squareItemId: 'SQ-ITEM-1',
+      stock: 10,
+      weight: 3,
+      isAvailable: true,
+    },
+  ];
+  const incoming = [
+    {
+      sku: 'SKU-1',
+      price: 1500,
+      scent: '5th Ave',
+      variantName: '2 oz', // Square renamed/reclassified this variation's size
+      squareVariationId: 'SQ-VAR-1',
+      squareItemId: 'SQ-ITEM-1',
+      stock: 0,
+    },
+  ];
+
+  const { merged } = mergeVariations(existing, incoming);
+
+  assert.strictEqual(merged[0].variantName, '2 oz'); // Square owns it -- must update, not preserve '1 oz'
+  assert.strictEqual(merged[0].stock, 10); // still preserved -- variantName ownership doesn't leak into stock
+});
+
 test('a brand-new Square variation is inserted fresh with stock: 0', () => {
   const existing: ReturnType<typeof Array> = [];
   const incoming = [

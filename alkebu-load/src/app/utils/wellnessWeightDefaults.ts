@@ -19,24 +19,29 @@
  * and silently dropped a real, sellable soap).
  *
  * Where the brief's table gives two different weights for one line depending
- * on size (Raw Black Soap: 1 lb vs 1/2 lb; Whipped Shea Butter: 4 oz vs 8 oz),
- * this module looks for a size signal on the variation row itself (`size`,
- * `sku`, `scent`) before picking a default. When that signal is genuinely
- * absent:
+ * on size (Raw Black Soap: 1 lb vs 1/2 lb; Whipped Shea Butter: 4 oz vs 8 oz;
+ * Scented Oil: 1/4 oz through 2 oz), this module looks for a size signal on
+ * the variation row. `variantName` -- Square's own item_variation_data.name
+ * (e.g. "1 oz", "1/4 oz", "Roll-on"), persisted verbatim by the importer -- is
+ * now the AUTHORITATIVE size signal. `size` / `sku` / `scent` are checked only
+ * as a secondary fallback, for rows imported before `variantName` existed.
+ * When no signal is present at all:
  *   - Raw Black Soap defaults to the full 1 lb weight -- same "assume full
  *     unless flagged half" convention `matchProductLine` itself uses.
  *   - Scented Oil defaults to the 1 oz weight -- documented in
  *     wellnessProductLines.ts as the dominant bottle size ("the top seller,
- *     2,259 units").
+ *     2,259 units"). A row that DOES carry a size signal but one that doesn't
+ *     match any known bottle size is left unresolved rather than guessed.
  *   - Whipped Shea Butter has no such dominant-size evidence in this
  *     codebase, and it is literally the $14.99-tub example from the brief --
  *     so an unresolved row is left unset and reported rather than guessed.
  *
  * Round Black Soap has no distinct entry in the brief's table, but it IS a
  * bar soap, and the brief's instruction is explicit: "all bar soaps -> 6 oz".
- * Both its Regular and Small rows get the bar-soap default; the backfill
- * script's summary should still flag it for human review since a genuinely
- * "Small" row likely weighs less in reality.
+ * That default applies to the Regular row. A "Small" row (detected via
+ * `variantName`/matchProductLine's variantLabel) has no defined weight of its
+ * own in the brief -- rather than keep re-using the Regular 6oz guess (known
+ * wrong), it is left unresolved and reported for a human to fill in.
  */
 
 import { RAW_BUTTERS, SOAPS } from './wellnessProductLines';
@@ -49,6 +54,9 @@ export interface VariationSizeGroup {
 export interface WeightableVariation {
   sku?: string | null;
   scent?: string | null;
+  // Square's own item_variation_data.name (e.g. "1 oz", "1/4 oz", "Roll-on"),
+  // persisted verbatim by the importer -- the authoritative size signal.
+  variantName?: string | null;
   // WellnessLifestyle.variations[].size is a { volume, unit } group;
   // OilsIncense.variations[].size is a fixed select string (e.g. '1-oz-bottle').
   size?: VariationSizeGroup | string | null;
@@ -122,6 +130,13 @@ const textSizeOunces = (text: string): number | undefined => {
 };
 
 function extractSizeHintOunces(variation: WeightableVariation): number | undefined {
+  // variantName is the authoritative size signal -- checked first. size/sku/scent
+  // below are a secondary fallback, kept for rows imported before variantName existed.
+  if (typeof variation.variantName === 'string' && variation.variantName.trim()) {
+    const fromName = textSizeOunces(variation.variantName);
+    if (fromName !== undefined) return fromName;
+  }
+
   if (variation.size && typeof variation.size === 'object') {
     const fromGroup = sizeGroupToOunces(variation.size);
     if (fromGroup !== undefined) return fromGroup;
@@ -132,6 +147,30 @@ function extractSizeHintOunces(variation: WeightableVariation): number | undefin
 
 function looksHalfPound(variation: WeightableVariation): boolean {
   return extractSizeHintOunces(variation) === 8;
+}
+
+// --- Scented Oil size -> weight table ---------------------------------------
+// Real Square variation names (item_variation_data.name) for this line, and the
+// packaging weight each ships at (ounces, including packaging). "Roll-on" has no
+// literal fluid-ounce value of its own -- it is a distinct bottle format, not a
+// fraction of the numbered sizes below -- so it is matched by name, not by number.
+const OIL_SIZE_TO_WEIGHT: Array<{ pattern: RegExp; weight: number }> = [
+  { pattern: /roll[\s-]?on/i, weight: 2 },
+  { pattern: /(1\/4|0\.25|quarter)\s*-?\s*oz/i, weight: 2 },
+  { pattern: /(1\/2|0\.5|half)\s*-?\s*oz/i, weight: 3 },
+  { pattern: /\b2(\.0+)?\s*-?\s*oz\b/i, weight: 5 },
+  { pattern: /\b1(\.0+)?\s*-?\s*oz\b/i, weight: 3 },
+];
+
+function resolveOilSizeWeight(text: string): number | undefined {
+  for (const { pattern, weight } of OIL_SIZE_TO_WEIGHT) {
+    if (pattern.test(text)) return weight;
+  }
+  return undefined;
+}
+
+function hasAnyOilSizeMention(text: string): boolean {
+  return /oz\b/i.test(text) || /roll[\s-]?on/i.test(text);
 }
 
 // --- per-line default table, derived from the Phase 1 line lists -----------
@@ -181,9 +220,25 @@ export function resolveVariationWeight(lineKey: string, variation: WeightableVar
   }
 
   if (lineKey === 'round-black-soap') {
-    // "all bar soaps -> 6 oz" per the brief -- applies to both Regular and
-    // Small rows here; the backfill script's report should still flag this
-    // line for human review since a genuine Small likely weighs less.
+    // "all bar soaps -> 6 oz" per the brief -- but that default was verified
+    // against the Regular size only. A "Small" row (surfaced via variantName --
+    // either Square's own variation name or, when Square only carries a generic
+    // per-variation name like "Regular", matchProductLine's variantLabel) has no
+    // defined weight in the brief. Silently reusing the Regular default for it
+    // is a knowingly-wrong guess -- report it unresolved instead.
+    const text = [variation.variantName, textOf(variation)]
+      .filter((v): v is string => typeof v === 'string' && v.length > 0)
+      .join(' ');
+
+    if (/small/i.test(text)) {
+      return {
+        weight: null,
+        reason:
+          'Round Black Soap "Small" has no defined shipped weight -- the 6oz default is verified ' +
+          'for the Regular size only; a human must supply the Small weight.',
+      };
+    }
+
     return { weight: BAR_SOAP_OZ };
   }
 
@@ -199,11 +254,24 @@ export function resolveVariationWeight(lineKey: string, variation: WeightableVar
   }
 
   if (lineKey === 'scented-oil') {
-    const hint = extractSizeHintOunces(variation);
-    if (hint === undefined || hint === 1) return { weight: 3 };
+    const text = [variation.variantName, textOf(variation)]
+      .filter((v): v is string => typeof v === 'string' && v.length > 0)
+      .join(' ');
+
+    const resolved = resolveOilSizeWeight(text);
+    if (resolved !== undefined) return { weight: resolved };
+
+    // No size signal at all (not even an "oz"/"roll-on" mention anywhere) -- fall
+    // back to the documented dominant bottle size (1oz, "the top seller, 2,259
+    // units" per wellnessProductLines.ts) rather than leaving these unresolved.
+    if (!hasAnyOilSizeMention(text)) return { weight: 3 };
+
     return {
       weight: null,
-      reason: `Scented Oil's 3oz default only covers the 1oz bottle; this row's size signal (~${hint}oz) is a different bottle size with no defined default.`,
+      reason:
+        `Scented Oil's size signal on this row ("${text.trim()}") doesn't match a defined bottle ` +
+        'size (1/4 oz -> 2oz, 1/2 oz -> 3oz, 1 oz -> 3oz, 2 oz -> 5oz, Roll-on -> 2oz) -- add a ' +
+        'default before running --commit for this row.',
     };
   }
 

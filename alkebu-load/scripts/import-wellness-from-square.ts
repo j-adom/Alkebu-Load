@@ -30,8 +30,8 @@
  * wipe any staff `isAvailable` toggle. `mergeVariations()` (src/app/utils/
  * wellnessVariationMerge.ts) fixes this: it starts from the EXISTING row for every
  * variation Square still carries and only overwrites the fields Square owns (price,
- * sku, scent, squareItemId). Variations gone from Square are kept (never deleted) and
- * reported for human review, never silently dropped.
+ * sku, scent, variantName, squareItemId). Variations gone from Square are kept (never
+ * deleted) and reported for human review, never silently dropped.
  *
  * Defaults to --dry-run; pass --commit to write. Every skipped item and every orphaned
  * (in Payload, gone from Square) variation is printed in full (never truncated) -- a
@@ -106,6 +106,7 @@ const centsVerbatim = (amount: bigint | null | undefined): number | undefined =>
 interface PendingVariation {
   sku: string
   scent?: string
+  variantName?: string
   price: number
   stock: number
   squareItemId: string
@@ -123,6 +124,7 @@ interface PendingLine {
 interface WellnessVariation {
   sku: string
   scent?: string
+  variantName?: string
   price: number
   stock?: number
   squareItemId?: string
@@ -137,6 +139,7 @@ interface WellnessVariation {
 interface OilsIncenseVariation {
   sku: string
   scent?: string
+  variantName?: string
   price: number
   stock?: number
   squareVariationId?: string
@@ -173,6 +176,7 @@ function buildWellnessLifestyleVariations(line: PendingLine): WellnessVariation[
   return line.variations.map((v) => ({
     sku: v.sku,
     scent: v.scent,
+    variantName: v.variantName,
     price: v.price,
     stock: v.stock,
     squareItemId: v.squareItemId,
@@ -196,6 +200,7 @@ function buildOilsIncenseVariations(line: PendingLine): OilsIncenseVariation[] {
   return line.variations.map((v) => ({
     sku: v.sku,
     scent: v.scent,
+    variantName: v.variantName,
     price: v.price,
     stock: v.stock,
     squareVariationId: v.squareVariationId,
@@ -263,13 +268,30 @@ async function main() {
         continue
       }
 
+      // Square's item_variation_data.name carries the size/option label (e.g. "1 oz",
+      // "1/4 oz", "Roll-on") for scent-axis and no-axis lines -- this is the size signal
+      // that wellnessWeightDefaults.ts needs and that was previously discarded entirely
+      // (the bug this importer exists to fix).
+      //
+      // For size-axis lines (raw-black-soap, round-black-soap) the size distinction is
+      // NOT reliably on the variation -- verified live: Raw Black Soap's variation name
+      // is blank, but Round Black Soap's variation name is populated with something else
+      // entirely unrelated to size ("Black", the soap's color; "Regular", Square's own
+      // generic default) that would silently mask the real "Small" distinction if used
+      // here. The size axis for these two lines lives on the SQUARE ITEM name --
+      // matchProductLine() already parses it into `variantLabel` ("1 lb"/"1/2 lb",
+      // "Small"/"Regular") -- so that is the source of truth for variantName on these
+      // lines, unconditionally, never Square's per-variation name.
       const sizeLabel = variationObj.itemVariationData?.name ?? ''
+      const variantName =
+        (match.variantAxis === 'size' ? match.variantLabel : sizeLabel) || undefined
 
       line.variations.push({
         sku:
           variationObj.itemVariationData?.sku ||
           `${match.lineKey}-${slugify(match.variantLabel)}-${slugify(sizeLabel)}`.replace(/-+$/, ''),
         scent: match.variantAxis === 'scent' ? match.variantLabel : undefined,
+        variantName,
         price,
         stock: 0, // Only used for a genuinely new row -- see mergeVariations().
         squareItemId: itemId,
