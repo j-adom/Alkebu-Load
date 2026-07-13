@@ -175,6 +175,9 @@ function hasAnyOilSizeMention(text: string): boolean {
 
 // --- per-line default table, derived from the Phase 1 line lists -----------
 
+// Owner-confirmed placeholder (2026-07-13): a single 4 oz-by-volume tub, 0.5 lb shipped
+// incl. container. PLACEHOLDER — weigh a packed tub and correct it; this is the $30k/yr line.
+const WHIPPED_SHEA_BUTTER_OZ = 8;
 const BAR_SOAP_OZ = 6;
 const RAW_SHEA_BUTTER_OZ = 18;
 const RAW_COCOA_MANGO_BUTTER_OZ = 10;
@@ -243,14 +246,11 @@ export function resolveVariationWeight(lineKey: string, variation: WeightableVar
   }
 
   if (lineKey === 'whipped-shea-butter') {
-    const hint = extractSizeHintOunces(variation);
-    if (hint === 4) return { weight: 6 };
-    if (hint === 8) return { weight: 11 };
-    return {
-      weight: null,
-      reason:
-        'Whipped Shea Butter ships in 4oz (-> 6oz) and 8oz (-> 11oz) sizes, but this row carries no size signal (sku/scent/size) to tell them apart.',
-    };
+    // Owner-confirmed (2026-07-13): the line is a single 4 oz-by-volume tub — there is no
+    // second size, which is why Square records no size on these rows. Shipped weight incl.
+    // container is 0.5 lb. Flagged as a placeholder: it was given as "a good placeholder",
+    // so weigh a packed tub before trusting it on the $30k/yr top line.
+    return { weight: WHIPPED_SHEA_BUTTER_OZ };
   }
 
   if (lineKey === 'scented-oil') {

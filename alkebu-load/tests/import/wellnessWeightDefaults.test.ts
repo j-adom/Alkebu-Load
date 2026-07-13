@@ -94,21 +94,20 @@ test('raw black soap defaults to the full 1 lb weight unless a half-lb signal is
   assert.strictEqual(halfTyped.weight, 10);
 });
 
-test('whipped shea butter picks the size-specific default when a size signal exists, else reports unresolved', () => {
-  const fourOz = resolveVariationWeight('whipped-shea-butter', { sku: 'whipped-shea-4oz-peppermint' });
-  assert.strictEqual(fourOz.weight, 6);
+test('whipped shea butter is a single 4oz tub shipping at 0.5 lb, regardless of scent', () => {
+  // Owner-confirmed 2026-07-13: one tub, 4 oz by volume, 0.5 lb (8 oz) shipped incl. container.
+  // Square records no size on these rows precisely BECAUSE there is only one size -- so the
+  // absence of a size signal is expected here and must resolve, not report unresolved.
+  // This covers all 67 variations of the $30k/yr top line.
+  assert.strictEqual(resolveVariationWeight('whipped-shea-butter', { scent: 'Rihanna Riri' }).weight, 8);
+  assert.strictEqual(resolveVariationWeight('whipped-shea-butter', { scent: 'Black Woman' }).weight, 8);
+  assert.strictEqual(
+    resolveVariationWeight('whipped-shea-butter', { sku: 'whipped-shea-4oz-peppermint' }).weight,
+    8,
+  );
 
-  const eightOz = resolveVariationWeight('whipped-shea-butter', {
-    size: { volume: 8, unit: 'oz' },
-    scent: 'Mango',
-  });
-  assert.strictEqual(eightOz.weight, 11);
-
-  // No size signal at all -- this is the exact "$14.99 tub" example from the brief,
-  // so guessing between 6oz and 11oz is not acceptable; must report instead.
-  const noSignal = resolveVariationWeight('whipped-shea-butter', { scent: 'Rihanna Riri' });
-  assert.strictEqual(noSignal.weight, null);
-  assert.ok(noSignal.reason?.includes('4oz'));
+  // No row in this line is left without a weight -- an unset weight makes Shippo mis-rate.
+  assert.strictEqual(resolveVariationWeight('whipped-shea-butter', {}).reason, undefined);
 });
 
 test('scented oil defaults to the 1oz weight (documented dominant size) when no size signal exists at all', () => {
