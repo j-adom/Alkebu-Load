@@ -24,6 +24,20 @@
   // takes over from here for every change after that (scent/size clicks).
   let selectedVariation = $state<VariantOption | null>(resolveDefaultVariation(variations));
 
+  // `$state` initializers only run once, at component creation. A
+  // client-side navigation between two products under this same
+  // `[...slug]` route swaps `data.product` without remounting this
+  // component — `{#key product.id}` below only remounts the markup, not
+  // this script's state — so without this effect the page would briefly
+  // show the NEW product's name/image with the OLD product's price and SKU.
+  // Re-seed the selection whenever `variations` (derived from `product`)
+  // changes identity. This runs client-side only (effects don't execute
+  // during SSR), which is fine: the initializer above already gives SSR and
+  // first paint the correct value.
+  $effect(() => {
+    selectedVariation = resolveDefaultVariation(variations);
+  });
+
   const displayPriceCents = $derived(selectedVariation?.price ?? 0);
   const inStock = $derived(
     selectedVariation ? (selectedVariation.stock ?? 0) > 0 && selectedVariation.isAvailable !== false : false,

@@ -52,9 +52,21 @@ export const SEARCH_INDEX_BOOTSTRAP_TARGETS: SearchBootstrapTarget[] = [
   { collection: 'blogPosts', type: 'blogPosts', where: { status: { equals: 'published' } } },
   { collection: 'events', type: 'events', where: { status: { equals: 'published' } } },
   { collection: 'businesses', type: 'businesses', where: { status: { equals: 'published' } } },
-  { collection: 'wellness-lifestyle', type: 'wellnessLifestyle' },
+  {
+    collection: 'wellness-lifestyle',
+    type: 'wellnessLifestyle',
+    // Curation gate: Square carries bulk supply SKUs and miscategorized items
+    // (a djembe drum, a line item named "Shipping") that must never be
+    // searchable until a human approves them.
+    where: { publishOnline: { equals: true } },
+  },
   { collection: 'fashion-jewelry', type: 'fashionJewelry' },
-  { collection: 'oils-incense', type: 'oilsIncense' },
+  {
+    collection: 'oils-incense',
+    type: 'oilsIncense',
+    // Same curation gate as wellness-lifestyle.
+    where: { publishOnline: { equals: true } },
+  },
 ];
 
 export function getSearchBootstrapTargets(availableCollectionSlugs?: string[]): SearchBootstrapTarget[] {

@@ -23,7 +23,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
         page: page.toString(),
         limit: limit.toString(),
         depth: '2',
-        sort: sort
+        sort: sort,
+        'where[publishOnline][equals]': 'true' // Curation gate: only human-approved products
       });
 
       const wellnessData = await payloadGet<any>(`/api/wellness-lifestyle?${wellnessParams.toString()}`);
@@ -39,7 +40,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
         limit: limit.toString(),
         depth: '2',
         sort: sort,
-        'where[productType][equals]': 'fragrance-oil'
+        'where[productType][equals]': 'fragrance-oil',
+        'where[publishOnline][equals]': 'true' // Curation gate: only human-approved products
       });
 
       const oilsData = await payloadGet<any>(`/api/oils-incense?${oilsParams.toString()}`);

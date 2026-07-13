@@ -69,7 +69,11 @@
   });
 
   const hasSizeAxis = $derived(sizes.length > 0);
-  const hasPicker = $derived(hasScentAxis || hasSizeAxis);
+  // Gate on variations.length, not on whether scent/size happen to be
+  // populated — a single-variation soap can still have a populated `scent`
+  // field, and showing a picker with nothing to pick violates the
+  // single-variation → no-picker requirement.
+  const hasPicker = $derived(variations.length > 1);
 
   function defaultSize(pool: VariantOption[]): string {
     if (!sizes.length) return '';

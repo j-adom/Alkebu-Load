@@ -14,8 +14,12 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     let productType: 'oils-incense' | 'fashion-jewelry' = 'oils-incense';
 
     // Primary: oils-incense collection for incense items
+    // Curation gate: publishOnline must be true, or the product must be
+    // unreachable — including by direct slug URL. Square carries bulk supply
+    // SKUs and miscategorized items, so nothing reaches customers without a
+    // human ticking the box in the admin.
     try {
-      const searchResult = await payloadGet<any>(`/api/oils-incense?where[slug][equals]=${slug}&where[productType][in]=incense-pack,sage-bundle,palo-santo&limit=1`);
+      const searchResult = await payloadGet<any>(`/api/oils-incense?where[slug][equals]=${encodeURIComponent(slug)}&where[productType][in]=incense-pack,sage-bundle,palo-santo&where[publishOnline][equals]=true&limit=1`);
       if (searchResult.docs?.length > 0) {
         product = searchResult.docs[0];
         productType = 'oils-incense';

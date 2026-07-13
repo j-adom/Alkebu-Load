@@ -24,7 +24,8 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
         limit: limit.toString(),
         depth: '2',
         sort: sort,
-        'where[productType][in]': 'incense-pack,sage-bundle,palo-santo'
+        'where[productType][in]': 'incense-pack,sage-bundle,palo-santo',
+        'where[publishOnline][equals]': 'true' // Curation gate: only human-approved products
       });
 
       const incenseData = await payloadGet<any>(`/api/oils-incense?${incenseParams.toString()}`);

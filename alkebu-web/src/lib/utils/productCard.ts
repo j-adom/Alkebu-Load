@@ -92,8 +92,18 @@ export function normalizeProduct(
     const variations = Array.isArray(product?.variations) ? product.variations : [];
     if (variations.length > 0) {
       const prices = variations.map((v: any) => Number(v?.price) || 0).filter((p: number) => p > 0);
-      const min = prices.length ? Math.min(...prices) : 0;
-      priceLabel = (variations.length > 1 ? 'From ' : '') + formatCurrency(min);
+      if (prices.length > 0) {
+        const min = Math.min(...prices);
+        priceLabel = (variations.length > 1 ? 'From ' : '') + formatCurrency(min);
+      } else {
+        // The FashionJewelry `variations[]` schema has no `price` field
+        // (Type x Size x Color x Material only) — the real price lives on
+        // the top-level `price` field, stored in DOLLARS (e.g. `price: 25`
+        // = $25.00), not cents. Since `variations` is required with
+        // minRows: 1, every real product takes this branch; without this
+        // fallback every apparel card silently rendered "$0.00".
+        priceLabel = formatCurrency(product?.price ?? 0);
+      }
     } else {
       priceCents = product?.pricing?.retailPrice ?? 0;
       priceLabel = formatCurrency((priceCents || 0) / 100);

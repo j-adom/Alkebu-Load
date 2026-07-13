@@ -22,7 +22,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       limit: Math.ceil(limit / 2).toString(),
       depth: '2',
       sort: sort,
-      'where[productType][in]': 'incense-pack,sage-bundle,palo-santo' // Filter for all incense types
+      'where[productType][in]': 'incense-pack,sage-bundle,palo-santo', // Filter for all incense types
+      'where[publishOnline][equals]': 'true' // Curation gate: only human-approved products
     });
 
     if (category && category !== 'art' && category !== 'imports') {

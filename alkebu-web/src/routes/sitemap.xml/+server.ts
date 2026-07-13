@@ -33,9 +33,16 @@ export const GET: RequestHandler = async () => {
       ),
       payloadGet<PayloadCollectionResponse<any>>(collectionPath('businesses')),
       payloadGet<PayloadCollectionResponse<any>>(collectionPath('fashion-jewelry')),
-      payloadGet<PayloadCollectionResponse<any>>(collectionPath('wellness-lifestyle')),
+      // Curation gate: wellness-lifestyle/oils-incense carry unreviewed Square
+      // imports (bulk supply SKUs, miscategorized items, disease-claim SKUs)
+      // that must never be published to Google until a human approves them.
+      payloadGet<PayloadCollectionResponse<any>>(
+        collectionPath('wellness-lifestyle', 'where[publishOnline][equals]=true&'),
+      ),
       // `type` drives the oils-vs-incense URL split below.
-      payloadGet<PayloadCollectionResponse<any>>(collectionPath('oils-incense', '', ['type'])),
+      payloadGet<PayloadCollectionResponse<any>>(
+        collectionPath('oils-incense', 'where[publishOnline][equals]=true&', ['type']),
+      ),
     ]);
 
     const withSlug = (response: PayloadCollectionResponse<any>) =>

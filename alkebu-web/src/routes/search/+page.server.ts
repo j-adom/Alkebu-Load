@@ -216,6 +216,14 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
       params.append('where[or][3][editions.isbn10][contains]', query);
       appendBookStorefrontFilters(params);
     }
+    if (col.type === 'health' || col.type === 'home') {
+      // Curation gate: wellness-lifestyle/oils-incense carry unreviewed Square
+      // imports (bulk supply SKUs, miscategorized items, disease-claim SKUs)
+      // that must stay invisible until a human ticks publishOnline. Sibling
+      // top-level `where` keys are implicitly ANDed by Payload, same pattern
+      // as appendBookStorefrontFilters above.
+      params.set('where[publishOnline][equals]', 'true');
+    }
     try {
       const resp = await payloadGet<any>(`${col.path}?${params}`);
       return (resp.docs || []).map((item: any) => ({

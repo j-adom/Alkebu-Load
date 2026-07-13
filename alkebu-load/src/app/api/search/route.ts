@@ -112,7 +112,15 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
       try {
         const res = await payload.find({
           collection: 'wellness-lifestyle',
-          where: { or: [{ title: { contains: query } }, { shortDescription: { contains: query } }] },
+          where: {
+            and: [
+              // Curation gate: Square carries bulk supply SKUs and
+              // miscategorized items that must stay hidden until a human
+              // approves them via publishOnline.
+              { publishOnline: { equals: true } },
+              { or: [{ title: { contains: query } }, { shortDescription: { contains: query } }] },
+            ],
+          },
           limit,
           depth: 1,
         })
@@ -164,7 +172,13 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
       try {
         const res = await payload.find({
           collection: 'oils-incense',
-          where: { or: [{ title: { contains: query } }, { shortDescription: { contains: query } }] },
+          where: {
+            and: [
+              // Same curation gate as wellness-lifestyle.
+              { publishOnline: { equals: true } },
+              { or: [{ title: { contains: query } }, { shortDescription: { contains: query } }] },
+            ],
+          },
           limit,
           depth: 1,
         })
