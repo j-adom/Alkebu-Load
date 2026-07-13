@@ -1929,21 +1929,6 @@ export interface WellnessLifestyle {
    * Scent details for fragrant products
    */
   scentProfile?: {
-    scentFamily?:
-      | (
-          | 'floral'
-          | 'woody'
-          | 'citrus'
-          | 'herbal'
-          | 'spicy'
-          | 'earthy'
-          | 'sweet'
-          | 'fresh'
-          | 'exotic'
-          | 'sacred'
-          | 'musky'
-        )[]
-      | null;
     scentNotes?:
       | {
           note?: ('top' | 'middle' | 'base') | null;
@@ -6543,7 +6528,6 @@ export interface WellnessLifestyleSelect<T extends boolean = true> {
   scentProfile?:
     | T
     | {
-        scentFamily?: T;
         scentNotes?:
           | T
           | {

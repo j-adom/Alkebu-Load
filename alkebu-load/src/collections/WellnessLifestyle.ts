@@ -240,24 +240,6 @@ const WellnessLifestyle: CollectionConfig = {
       },
       fields: [
         {
-          name: 'scentFamily',
-          type: 'select',
-          hasMany: true,
-          options: [
-            { label: 'Floral', value: 'floral' },
-            { label: 'Woody', value: 'woody' },
-            { label: 'Citrus', value: 'citrus' },
-            { label: 'Herbal', value: 'herbal' },
-            { label: 'Spicy', value: 'spicy' },
-            { label: 'Earthy', value: 'earthy' },
-            { label: 'Sweet', value: 'sweet' },
-            { label: 'Fresh', value: 'fresh' },
-            { label: 'Exotic', value: 'exotic' },
-            { label: 'Sacred', value: 'sacred' },
-            { label: 'Musky', value: 'musky' }
-          ]
-        },
-        {
           name: 'scentNotes',
           type: 'array',
           fields: [
