@@ -1,4 +1,8 @@
+import { toCents } from './productPricing';
+
 type Customization = Record<string, unknown> | undefined;
+
+const WELLNESS_COLLECTIONS = new Set(['wellness-lifestyle', 'oils-incense']);
 
 const asNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -13,15 +17,6 @@ const asFiniteNumber = (value: unknown): number | null => {
   }
 
   return value;
-};
-
-const normalizePriceToCents = (value: unknown): number | null => {
-  const amount = asFiniteNumber(value);
-
-  if (amount === null) return null;
-
-  // Existing book prices are stored in cents, while apparel data is stored in dollars.
-  return Math.round(amount >= 1000 ? amount : amount * 100);
 };
 
 const normalizeBookPriceToCents = (value: unknown): number | null => {
@@ -107,6 +102,31 @@ const resolveFashionVariation = (product: any, customization?: Customization) =>
   return matchedVariation ?? product.variations[0];
 };
 
+const resolveWellnessVariation = (product: any, customization?: Customization) => {
+  if (!Array.isArray(product?.variations) || product.variations.length === 0) {
+    return null;
+  }
+
+  const requestedSku = customization?.variationSku;
+  if (requestedSku) {
+    const bySku = product.variations.find((variation: any) =>
+      matchesText(variation?.sku, requestedSku),
+    );
+    if (bySku) return bySku;
+  }
+
+  const requestedVariationId = customization?.squareVariationId;
+  if (requestedVariationId) {
+    const byId = product.variations.find((variation: any) =>
+      matchesText(variation?.squareVariationId, requestedVariationId),
+    );
+    if (byId) return byId;
+  }
+
+  // Single-variation products (most soaps, raw butters) need no selection.
+  return product.variations.length === 1 ? product.variations[0] : null;
+};
+
 export const resolveCartProductTitle = (
   product: any,
   customization?: Customization,
@@ -125,23 +145,47 @@ export const resolveCartProductTitle = (
 
 export const resolveCartProductUnitPrice = (
   product: any,
+  productType: string,
   customization?: Customization,
 ): number => {
+  if (WELLNESS_COLLECTIONS.has(productType)) {
+    const variation = resolveWellnessVariation(product, customization);
+    const price = toCents(variation?.price, productType);
+
+    if (price === null) {
+      // Never fall through to 0 — a $0.00 line item is a silent revenue loss.
+      throw new Error(
+        `Cannot resolve price for ${productType} product ${product?.id ?? '(unknown)'}: ` +
+          `no variation matched (sku=${customization?.variationSku ?? 'none'}) or variation has no price.`,
+      );
+    }
+
+    return price;
+  }
+
   const bookEdition = resolveBookEdition(product, customization);
   const fashionVariation = resolveFashionVariation(product, customization);
   const hasBookPricing =
     bookEdition?.pricing?.retailPrice !== undefined ||
     product?.pricing?.retailPrice !== undefined;
 
-  return (
+  const price =
     (hasBookPricing
       ? normalizeBookPriceToCents(bookEdition?.pricing?.retailPrice) ??
         normalizeBookPriceToCents(product?.pricing?.retailPrice)
       : null) ??
-    normalizePriceToCents(fashionVariation?.price) ??
-    normalizePriceToCents(product?.price) ??
-    0
-  );
+    toCents(fashionVariation?.price, productType) ??
+    toCents(product?.price, productType);
+
+  if (price === null) {
+    console.error(
+      `[cart] Unresolvable price for ${productType} product ${product?.id ?? '(unknown)'}; ` +
+        `falling back to 0. This is a bug.`,
+    );
+    return 0;
+  }
+
+  return price;
 };
 
 export const resolveCartStripePriceId = (

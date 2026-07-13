@@ -163,6 +163,8 @@ export interface CartItem {
     giftWrap?: boolean;
     giftMessage?: string;
     personalNote?: string;
+    variationSku?: string;
+    squareVariationId?: string;
   };
 }
 
@@ -352,7 +354,7 @@ export async function addToCart(
       });
     } else {
       const productTitle = resolveCartProductTitle(product, item.customization);
-      const unitPrice = resolveCartProductUnitPrice(product, item.customization);
+      const unitPrice = resolveCartProductUnitPrice(product, item.productType, item.customization);
       const identifiers = resolveCartProductIdentifiers(
         product,
         item.productType,
