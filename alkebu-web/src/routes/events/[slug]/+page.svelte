@@ -4,6 +4,7 @@
   import ProductCard from '$lib/components/Shop/ProductCard.svelte';
   import { urlFor, getImageUrl } from '$lib/payload';
   import { formatDate } from '$lib/utils/date';
+  import { resolveOilsIncenseShopSection } from '$lib/utils/oilsIncenseSection.js';
 
   let { data } = $props();
   const event = $derived(data.event || {});
@@ -13,15 +14,23 @@
   // at depth>=1; when unpopulated they arrive as bare IDs (strings), so filter to objects.
   const featuredProducts = $derived.by(() => {
     const groups = [
-      { items: event.relatedBooks, productType: 'books', basePath: '/shop/books' },
-      { items: event.relatedWellnessProducts, productType: 'wellness-lifestyle', basePath: '/shop/health-and-beauty' },
-      { items: event.relatedFashionJewelry, productType: 'fashion-jewelry', basePath: '/shop/apparel' },
-      { items: event.relatedOilsIncense, productType: 'oils-incense', basePath: '/shop/home-goods' }
+      { items: event.relatedBooks, productType: 'books', basePath: () => '/shop/books' },
+      { items: event.relatedWellnessProducts, productType: 'wellness-lifestyle', basePath: () => '/shop/health-and-beauty' },
+      { items: event.relatedFashionJewelry, productType: 'fashion-jewelry', basePath: () => '/shop/apparel' },
+      // OilsIncense spans two storefront sections (fragrance-oil ->
+      // health-and-beauty; incense-pack/sage-bundle/palo-santo -> home-goods),
+      // so the base path must be resolved per-item from the product's own
+      // productType field, not hardcoded per-group.
+      {
+        items: event.relatedOilsIncense,
+        productType: 'oils-incense',
+        basePath: (p: any) => `/shop/${resolveOilsIncenseShopSection(p?.productType)}`
+      }
     ] as const;
     return groups.flatMap((g) =>
       (Array.isArray(g.items) ? g.items : [])
         .filter((p: any) => p && typeof p === 'object')
-        .map((p: any) => ({ product: p, productType: g.productType, basePath: g.basePath }))
+        .map((p: any) => ({ product: p, productType: g.productType, basePath: g.basePath(p) }))
     );
   });
 

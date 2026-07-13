@@ -34,14 +34,16 @@
  * deleted) and reported for human review, never silently dropped.
  *
  * SAME OWNERSHIP SPLIT APPLIES AT THE DOCUMENT LEVEL: Square owns price/stock
- * (via variations[]) and productType; Payload owns name, slug, images, and all
+ * (via variations[]); Payload owns name, slug, productType, images, and all
  * marketing copy once a document exists. The UPDATE payload (built by
  * buildWellnessLifestyleUpdateDoc / buildOilsIncenseUpdateDoc in
- * src/app/utils/wellnessImportDocs.ts) therefore never includes `name` or
- * `slug` -- only the CREATE path seeds those, once, from Square's item name.
- * Sending them on every update would silently revert a staff rename or a
- * hand-edited marketing slug, and a reverted slug 404s a URL already indexed
- * by Google (the sitemap emits it).
+ * src/app/utils/wellnessImportDocs.ts) therefore never includes `name`,
+ * `slug`, or `productType` -- only the CREATE path seeds those, once, from
+ * Square's item name/category. Sending them on every update would silently
+ * revert a staff rename, a hand-edited marketing slug, or a staff correction
+ * to a misdetected productType -- and on OilsIncense, productType IS the
+ * storefront-section selector (resolveOilsIncenseShopSection), so reverting
+ * it flips the URL section and 404s a slug already indexed by Google.
  *
  * Defaults to --dry-run; pass --commit to write. Every skipped item and every orphaned
  * (in Payload, gone from Square) variation is printed in full (never truncated) -- a
@@ -200,9 +202,9 @@ function buildWellnessLifestyleVariations(line: PendingLine): WellnessVariation[
   }))
 }
 
-// name/slug/update-doc ownership split lives in wellnessImportDocs.ts (shared,
-// unit-tested pure builders) -- CREATE seeds name/slug once; UPDATE sends only
-// the fields Square owns (variations, productType).
+// name/slug/productType/update-doc ownership split lives in wellnessImportDocs.ts
+// (shared, unit-tested pure builders) -- CREATE seeds name/slug/productType once;
+// UPDATE sends only the field Square owns on every re-sync (variations).
 function buildWellnessLifestyleDoc(lineKey: string, line: PendingLine, variations: WellnessVariation[]) {
   return buildWellnessLifestyleCreateDoc({
     name: line.match.lineName,
@@ -377,7 +379,7 @@ async function main() {
             existingDoc.variations ?? [],
             incomingVariations,
           )
-          const data = buildWellnessLifestyleUpdateDoc({ productType: line.match.productType, variations: merged })
+          const data = buildWellnessLifestyleUpdateDoc({ variations: merged })
           await payload.update({ collection: 'wellness-lifestyle', id: existingDoc.id, data })
           updated++
           if (orphaned.length > 0) {
@@ -403,7 +405,7 @@ async function main() {
             existingDoc.variations ?? [],
             incomingVariations,
           )
-          const data = buildOilsIncenseUpdateDoc({ productType: line.match.productType, variations: merged })
+          const data = buildOilsIncenseUpdateDoc({ variations: merged })
           await payload.update({ collection: 'oils-incense', id: existingDoc.id, data })
           updated++
           if (orphaned.length > 0) {

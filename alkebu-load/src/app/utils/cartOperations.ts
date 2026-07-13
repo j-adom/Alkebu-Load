@@ -400,6 +400,20 @@ export async function addToCart(
       return { success: false, error: 'Unable to create or find cart' };
     }
 
+    // Resolved up front (not just in the create branch) so the SAME resolved
+    // sku can be used both to key the dedupe match below AND to price/label
+    // the line. This is what makes re-adding a DIFFERENT variation of the
+    // same product start a separate cart line instead of merging into the
+    // first variation's stale price/sku (see cartOperations.ts FIX A).
+    const productTitle = resolveCartProductTitle(product, item.customization);
+    const unitPrice = resolveCartProductUnitPrice(product, item.productType, item.customization);
+    const identifiers = resolveCartProductIdentifiers(
+      product,
+      item.productType,
+      item.customization,
+    );
+    const requestedSku = identifiers.sku ?? item.customization?.variationSku ?? undefined;
+
     // Check if item already exists in cart. We filter in memory because
     // polymorphic relationship queries on `product` are unreliable across adapters.
     const existingItems = await payload.find({
@@ -433,32 +447,41 @@ export async function addToCart(
         relatedProductId = (relatedProductId as Record<string, unknown>).id;
       }
 
+      // Products with no variation concept (identifiers.sku undefined on both
+      // sides) still merge on productId+productType alone, same as before.
+      // Products WITH a resolved variation sku only merge when the sku
+      // matches too -- a different variation (different scent, size, edition,
+      // color) is a different product to the customer and must be its own line.
+      const existingSku =
+        (typeof cartItem?.identifiers?.sku === 'string' && cartItem.identifiers.sku.trim()) ||
+        (typeof cartItem?.customization?.variationSku === 'string' && cartItem.customization.variationSku.trim()) ||
+        undefined;
+
       return (
         String(relatedProductId) === String(item.productId) &&
-        String(relatedProductType) === String(item.productType)
+        String(relatedProductType) === String(item.productType) &&
+        String(existingSku ?? '') === String(requestedSku ?? '')
       );
     });
 
     let cartItem;
     if (existing) {
-      // Update existing item quantity
+      // Update existing item quantity. Recompute unitPrice/identifiers too --
+      // this only runs when the sku already matched, but keeps the stored
+      // line in sync with the resolved product data instead of trusting
+      // whatever was persisted on the very first add.
       cartItem = await payload.update({
         collection: 'cart-items',
         id: existing.id,
         data: {
           quantity: existing.quantity + item.quantity,
           customization: item.customization || existing.customization,
+          unitPrice,
+          identifiers,
+          stripePriceId: identifiers.stripePriceId || resolveCartStripePriceId(product, item.customization),
         },
       });
     } else {
-      const productTitle = resolveCartProductTitle(product, item.customization);
-      const unitPrice = resolveCartProductUnitPrice(product, item.productType, item.customization);
-      const identifiers = resolveCartProductIdentifiers(
-        product,
-        item.productType,
-        item.customization,
-      );
-
       // Create new cart item
       cartItem = await (payload as any).create({
         collection: 'cart-items',
@@ -557,15 +580,31 @@ export async function updateCartItemQuantity(
 
     // Check inventory/availability rules
     const product = getRelationValue(cartItem.product) as any;
+    const productType = String(cartItem.productType || '');
+
+    // Wellness/oils stock lives at variations[].stock, not
+    // product.inventory.trackQuantity (undefined on these collections, so the
+    // books/fashion check below is always a silent no-op for them). Gate the
+    // requested TOTAL quantity against the cart line's already-selected
+    // variation before allowing the update -- otherwise a line added at a
+    // valid quantity can be PATCHed past its variation's stock with no check.
+    const wellnessStock = evaluateWellnessVariationStock(
+      product,
+      productType,
+      (cartItem as any).customization,
+      quantity,
+    );
+    if (!wellnessStock.allowed) {
+      return { success: false, error: wellnessStock.error };
+    }
+
     const stockLevel =
       typeof product?.inventory?.stockLevel === 'number'
         ? product.inventory.stockLevel
         : 0;
     const trackQuantity = Boolean(product?.inventory?.trackQuantity);
     const allowBackorders = Boolean(product?.inventory?.allowBackorders);
-    const shouldEnforceInventory = shouldEnforceInventoryForProduct(
-      String(cartItem.productType || ''),
-    );
+    const shouldEnforceInventory = shouldEnforceInventoryForProduct(productType);
     const inStockForQuantity = !trackQuantity || stockLevel >= quantity;
 
     if (shouldEnforceInventory && !inStockForQuantity) {

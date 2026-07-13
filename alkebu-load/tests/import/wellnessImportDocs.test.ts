@@ -8,13 +8,16 @@ import {
   buildOilsIncenseUpdateDoc,
 } from '../../src/app/utils/wellnessImportDocs';
 
-// FIX 4: Square owns price/stock/variations (and productType); Payload owns
-// name, slug, images, and marketing copy once a document exists. The CREATE
-// doc seeds name/slug once; the UPDATE doc must NEVER include them, or a
-// staff-renamed product (and its marketing slug) gets silently reverted on
-// every re-import -- and a reverted slug 404s a URL already indexed by Google.
+// FIX 4 / final-review FIX D: Square owns price/stock/variations; Payload
+// owns name, slug, productType, images, and marketing copy once a document
+// exists. The CREATE doc seeds name/slug/productType once; the UPDATE doc
+// must NEVER include any of them, or a staff-renamed product (and its
+// marketing slug), or a staff-corrected productType, gets silently reverted
+// on every re-import. On OilsIncense productType is the storefront-section
+// selector, so reverting it 404s a slug already indexed by Google -- same
+// failure mode as the name/slug revert.
 
-test('wellness-lifestyle CREATE doc includes name and slug', () => {
+test('wellness-lifestyle CREATE doc includes name, slug, and productType', () => {
   const doc = buildWellnessLifestyleCreateDoc({
     name: 'Whipped Shea Butter',
     slug: 'whipped-shea-butter',
@@ -28,19 +31,18 @@ test('wellness-lifestyle CREATE doc includes name and slug', () => {
   assert.deepStrictEqual(doc.variations, [{ sku: 'WSB-1', price: 1200 }]);
 });
 
-test('wellness-lifestyle UPDATE doc omits name and slug entirely', () => {
+test('wellness-lifestyle UPDATE doc omits name, slug, and productType entirely', () => {
   const doc: Record<string, unknown> = buildWellnessLifestyleUpdateDoc({
-    productType: 'body-butter',
     variations: [{ sku: 'WSB-1', price: 1300 }],
   });
 
   assert.strictEqual('name' in doc, false);
   assert.strictEqual('slug' in doc, false);
-  assert.strictEqual(doc.productType, 'body-butter');
+  assert.strictEqual('productType' in doc, false);
   assert.deepStrictEqual(doc.variations, [{ sku: 'WSB-1', price: 1300 }]);
 });
 
-test('oils-incense CREATE doc includes name and slug', () => {
+test('oils-incense CREATE doc includes name, slug, and productType', () => {
   const doc = buildOilsIncenseCreateDoc({
     name: 'Scented Oil',
     slug: 'scented-oil',
@@ -50,27 +52,38 @@ test('oils-incense CREATE doc includes name and slug', () => {
 
   assert.strictEqual(doc.name, 'Scented Oil');
   assert.strictEqual(doc.slug, 'scented-oil');
+  assert.strictEqual(doc.productType, 'fragrance-oil');
 });
 
-test('oils-incense UPDATE doc omits name and slug entirely', () => {
+test('oils-incense UPDATE doc omits name, slug, and productType entirely', () => {
   const doc: Record<string, unknown> = buildOilsIncenseUpdateDoc({
-    productType: 'fragrance-oil',
     variations: [{ sku: 'SO-1', price: 550 }],
   });
 
   assert.strictEqual('name' in doc, false);
   assert.strictEqual('slug' in doc, false);
-  assert.strictEqual(doc.productType, 'fragrance-oil');
+  assert.strictEqual('productType' in doc, false);
 });
 
-test('a staff-edited name/slug is never part of the update payload regardless of what Square sends', () => {
+test('a staff-edited name/slug/productType is never part of the update payload regardless of what Square sends', () => {
   // Simulates a staff renaming "Whipped Shea Butter" -> "Shea Butter Cream (Staff Renamed)"
   // and re-slugging it in admin, then Square re-syncing the same line: the update
-  // payload must be structurally incapable of carrying Square's original name/slug.
+  // payload must be structurally incapable of carrying Square's original name/slug/productType.
   const updateDoc: Record<string, unknown> = buildWellnessLifestyleUpdateDoc({
-    productType: 'body-butter',
     variations: [{ sku: 'WSB-1', price: 1400 }],
   });
 
-  assert.deepStrictEqual(Object.keys(updateDoc).sort(), ['productType', 'variations']);
+  assert.deepStrictEqual(Object.keys(updateDoc).sort(), ['variations']);
+});
+
+test('a staff-corrected oils-incense productType survives re-import (the FIX D regression case)', () => {
+  // matchProductLine() misdetected this line as fragrance-oil; staff corrected
+  // it to sage-bundle in admin. The next import's UPDATE payload must not be
+  // able to flip it back -- that would silently 404 an indexed
+  // /shop/home-goods/<slug> URL by routing it to health-and-beauty again.
+  const updateDoc: Record<string, unknown> = buildOilsIncenseUpdateDoc({
+    variations: [{ sku: 'SO-1', price: 600 }],
+  });
+
+  assert.strictEqual('productType' in updateDoc, false);
 });

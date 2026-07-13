@@ -192,6 +192,12 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             price: doc.price || null,
             slug: doc.slug || doc.id,
             score: 1,
+            // OilsIncense spans two storefront sections (fragrance-oil ->
+            // health-and-beauty; incense-pack/sage-bundle/palo-santo ->
+            // home-goods) -- resolveOilsIncenseShopSection on the frontend
+            // needs this to link to the section that will actually resolve
+            // the product instead of always guessing health-and-beauty.
+            metadata: { productType: doc.productType },
           })
         }
       } catch (err) {

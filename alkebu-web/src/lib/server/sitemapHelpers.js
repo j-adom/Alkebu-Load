@@ -3,6 +3,8 @@
  * unit-tested with `node --test`.
  */
 
+export { resolveOilsIncenseShopSection } from '../utils/oilsIncenseSection.js';
+
 /**
  * Static storefront pages advertised in the sitemap. Paths must correspond to
  * real routes — production 404s here waste crawl budget.
@@ -38,24 +40,6 @@ export function buildSitemapSelectParams() {
     'select[slug]': 'true',
     'select[updatedAt]': 'true',
   });
-}
-
-/**
- * OilsIncense.productType is one of: fragrance-oil | incense-pack |
- * sage-bundle | palo-santo. This collection has NO `type` field (a prior bug
- * read `product.type`, which is always undefined, and every oils-incense URL
- * silently fell back to /shop/health-and-beauty). Fragrance oils render under
- * health-and-beauty; the rest (incense-pack/sage-bundle/palo-santo) render
- * under home-goods — matches the routing in
- * src/routes/shop/health-and-beauty/+page.server.ts and
- * src/routes/shop/home-goods/+page.server.ts.
- *
- * @param {string | undefined} productType
- * @returns {'home-goods' | 'health-and-beauty'}
- */
-export function resolveOilsIncenseShopSection(productType) {
-  const INCENSE_LIKE_PRODUCT_TYPES = new Set(['incense-pack', 'sage-bundle', 'palo-santo']);
-  return INCENSE_LIKE_PRODUCT_TYPES.has(productType) ? 'home-goods' : 'health-and-beauty';
 }
 
 /**

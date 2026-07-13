@@ -226,7 +226,7 @@ class SearchEngine {
     this.productIndex = new Document({
       id: 'id',
       index: ['name', 'description', 'brand', 'tags', 'scent'],
-      store: ['name', 'description', 'brand', 'imageUrl', 'price', 'type'],
+      store: ['name', 'description', 'brand', 'imageUrl', 'price', 'type', 'slug', 'productType'],
       tag: ['category', 'type'],
       tokenize: 'forward',
       resolution: 3,
@@ -334,7 +334,13 @@ class SearchEngine {
             scent: toSearchText(doc.scent || doc.baseScent || ''),
             imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
             price: doc.variants?.[0]?.price || doc.variations?.[0]?.price || 0,
-            type: type
+            type: type,
+            slug: doc.slug,
+            // OilsIncense-only field; undefined for wellnessLifestyle/fashionJewelry.
+            // Carried through so the storefront can route oils-incense hits to the
+            // correct section (health-and-beauty vs home-goods) instead of
+            // guessing from the collection-level `type` alone.
+            productType: doc.productType
           });
           break;
       }
@@ -471,8 +477,9 @@ class SearchEngine {
                   excerpt: doc.description?.substring(0, 200) + '...',
                   imageUrl: doc.imageUrl,
                   price: doc.price,
+                  slug: doc.slug,
                   score: 0.6,
-                  metadata: { brand: doc.brand, type: doc.type }
+                  metadata: { brand: doc.brand, type: doc.type, productType: doc.productType }
                 });
               }
             }
