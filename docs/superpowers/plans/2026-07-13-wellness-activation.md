@@ -556,6 +556,22 @@ test('same soap in two sizes is one product with a size variant', () => {
   assert.strictEqual(halfLb?.variantLabel, '1/2 lb');
 });
 
+test('ingredient words in a Phase 1 product name do not trigger exclusion', () => {
+  // Regression: an earlier draft excluded /\bhoney\b/ to keep Phase 2 tonics out, which
+  // silently dropped this $2,572/yr soap — the #2 soap by revenue. Exclude by product
+  // shape, never by ingredient.
+  const bar = matchProductLine('Turmeric, Lemon, Honey & Kojic Facial Bar');
+  assert.strictEqual(bar?.lineKey, 'turmeric-kojic-facial-bar');
+  assert.strictEqual(bar?.variantAxis, 'none');
+});
+
+test('a size-suffixed soap is not eaten by the bulk guard', () => {
+  // Regression: "Raw Black Soap 1/2 LB" contains "2 LB", which the bulk guard's
+  // \d+\s*lb pattern matches. Anchored allow-list entries must be checked BEFORE the guard.
+  assert.strictEqual(matchProductLine('Raw Black Soap 1/2 LB')?.lineKey, 'raw-black-soap');
+  assert.strictEqual(matchProductLine('Raw Black Soap 1/2 LB')?.variantLabel, '1/2 lb');
+});
+
 test('bulk supply, packaging, and miscategorized items are excluded', () => {
   // Bulk / raw materials the store blends with — never sellable online.
   assert.strictEqual(matchProductLine('25lb Box Shea Butter'), null);
@@ -601,16 +617,25 @@ export interface ProductLineMatch {
  * as a publish signal.
  */
 
-// Matched FIRST. Anything here is excluded no matter what else it looks like.
-const EXCLUDED = [
-  /\b\d+\s*(lb|lbs|gallon|gal|liter|litre|oz)\s+(box|bottle|jug|fragrance oil)\b/i,
-  /\bbottle\b/i,          // empty containers: "1oz Oil Bottle single"
+/**
+ * Guards the two LOOSE scent patterns below against bulk supply and packaging SKUs.
+ *
+ * This list covers bulk/packaging/miscategorized items ONLY. It deliberately does NOT
+ * list the deferred Phase 2 families (Sea Moss, Bitters/Tonics) — the allow-list below
+ * is anchored, so anything not explicitly named already returns null.
+ *
+ * Excluding by ingredient word is a trap: an earlier draft had /\bhoney\b/ to keep the
+ * Phase 2 tonics out, which silently dropped "Turmeric, Lemon, Honey & Kojic Facial Bar" —
+ * a $2,572/yr Phase 1 soap. Exclude by *product shape*, never by ingredient.
+ */
+const BULK_OR_PACKAGING = [
+  /\b\d+\s*(lb|lbs|gallon|gal|liter|litre)\s*(box|bottle|jug)?\b/i, // "25lb Box Shea Butter", "3 Gallon BPA Free Bottle"
+  /\bbottle\b/i,                              // empty containers: "1oz Oil Bottle single"
   /\bdozen|gross|bulk\b/i,
-  /\bdiamond cut|swirl|spout|roll-on bottle\b/i,
+  /\bdiamond cut|swirl|spout|roll-on\b/i,
   /^\s*shipping\s*$/i,
   /\bdjembe|bucket hat|rug|shower curtain\b/i,
-  /\bseamoss|sea moss\b/i,                        // Phase 2: perishable
-  /\bbitters|tonic|capsules|tincture|honey\b/i,   // Phase 2: regulatory
+  /^\d+\s*lb\s+fragrance oil$/i,              // "1 lb Fragrance Oil" — blending stock
 ];
 
 const SIZE_LABELS: Record<string, string> = {
@@ -647,36 +672,11 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
   const name = (squareItemName || '').trim();
   if (!name) return null;
 
-  if (EXCLUDED.some((pattern) => pattern.test(name))) return null;
+  // ORDER MATTERS. The anchored allow-lists (soaps, raw butters) run FIRST, before the
+  // bulk guard. "Raw Black Soap 1/2 LB" contains "2 LB" and would otherwise be eaten by
+  // the guard's \d+\s*lb pattern. Anchored names are already unambiguous — they need no guard.
 
-  // 1. Whipped Shea Butter — scent is the variant axis.
-  const shea = /^whipped shea butter\s+(.+)$/i.exec(name);
-  if (shea) {
-    return {
-      lineKey: 'whipped-shea-butter',
-      lineName: 'Whipped Shea Butter',
-      collection: 'wellness-lifestyle',
-      variantLabel: shea[1].trim(),
-      variantAxis: 'scent',
-    };
-  }
-
-  // 2. Scented Oil — scent is the variant axis. Two naming conventions in Square:
-  //    "<Scent> Scented Oil" and the bare "<Scent> type".
-  const scented = /^(.+?)\s+scented oil$/i.exec(name);
-  const typeOil = /^(.+?)\s+type$/i.exec(name);
-  const oilScent = scented?.[1] ?? typeOil?.[1];
-  if (oilScent) {
-    return {
-      lineKey: 'scented-oil',
-      lineName: 'Scented Oil',
-      collection: 'oils-incense',
-      variantLabel: oilScent.trim(),
-      variantAxis: 'scent',
-    };
-  }
-
-  // 3. Soaps — distinct products; Raw Black Soap additionally has a size axis.
+  // 1. Soaps — distinct products; Raw Black Soap additionally has a size axis.
   for (const soap of SOAPS) {
     if (!soap.pattern.test(name)) continue;
 
@@ -700,7 +700,7 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
     };
   }
 
-  // 4. Raw butters — distinct products, no variants.
+  // 2. Raw butters — distinct products, no variants.
   for (const butter of RAW_BUTTERS) {
     if (butter.pattern.test(name)) {
       return {
@@ -713,7 +713,38 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
     }
   }
 
-  // Not in Phase 1.
+  // Only the LOOSE patterns below need the bulk/packaging guard.
+  if (BULK_OR_PACKAGING.some((pattern) => pattern.test(name))) return null;
+
+  // 3. Whipped Shea Butter — scent is the variant axis (loose tail).
+  const shea = /^whipped shea butter\s+(.+)$/i.exec(name);
+  if (shea) {
+    return {
+      lineKey: 'whipped-shea-butter',
+      lineName: 'Whipped Shea Butter',
+      collection: 'wellness-lifestyle',
+      variantLabel: shea[1].trim(),
+      variantAxis: 'scent',
+    };
+  }
+
+  // 4. Scented Oil — scent is the variant axis. Two naming conventions in Square:
+  //    "<Scent> Scented Oil" and the bare "<Scent> type" (the top seller, 2,259 units).
+  const scented = /^(.+?)\s+scented oil$/i.exec(name);
+  const typeOil = /^(.+?)\s+type$/i.exec(name);
+  const oilScent = scented?.[1] ?? typeOil?.[1];
+  if (oilScent) {
+    return {
+      lineKey: 'scented-oil',
+      lineName: 'Scented Oil',
+      collection: 'oils-incense',
+      variantLabel: oilScent.trim(),
+      variantAxis: 'scent',
+    };
+  }
+
+  // Not in Phase 1. The allow-list is anchored, so Sea Moss, Bitters/Tonics, and every
+  // other deferred or unknown item falls through to null without needing an exclusion rule.
   return null;
 };
 ```
