@@ -78,3 +78,89 @@ test('bulk supply, packaging, and miscategorized items are excluded', () => {
   assert.strictEqual(matchProductLine('Seamoss World Gel'), null);
   assert.strictEqual(matchProductLine('AIH Blood Pressure'), null);
 });
+
+test('sea moss is only excluded as a perishable, never by the ingredient word', () => {
+  // Sea moss GEL/raw moss/capsules are refrigerated perishables deferred to Phase 2 —
+  // they must stay null. But "Sea Moss and Manuka Honey Bar Soap" is a shelf-stable,
+  // house-made soap that happens to contain sea moss as an ingredient — it's Phase 1
+  // and must match. A naive /sea ?moss/ exclusion would wrongly drop this sellable
+  // product, exactly like the /\bhoney\b/ trap documented above. Exclude by product
+  // shape (soap vs. perishable), never by ingredient word.
+  const soap = matchProductLine('Sea Moss and Manuka Honey Bar Soap');
+  assert.strictEqual(soap?.lineKey, 'sea-moss-manuka-honey-bar-soap');
+  assert.strictEqual(soap?.productType, 'soap');
+
+  assert.strictEqual(matchProductLine('Seamoss World Gel'), null);
+  assert.strictEqual(matchProductLine('Seamoss World Raw Moss'), null);
+  assert.strictEqual(matchProductLine('Sea Moss Capsules'), null);
+  assert.strictEqual(matchProductLine('NaturalZing Sea Moss 16oz'), null);
+});
+
+test('whipped shea butter matches both the "Butter" and shortened naming conventions', () => {
+  // Square uses "Whipped Shea Butter <scent>" and, for some SKUs, the shortened
+  // "Whipped Shea <scent>" (no "Butter"). Both must collapse to the same line.
+  const withButter = matchProductLine('Whipped Shea Peppermint');
+  assert.strictEqual(withButter?.lineKey, 'whipped-shea-butter');
+  assert.strictEqual(withButter?.variantAxis, 'scent');
+  assert.strictEqual(withButter?.variantLabel, 'Peppermint');
+
+  const rihannaRiri = matchProductLine('Whipped Shea Rihanna Riri');
+  assert.strictEqual(rihannaRiri?.lineKey, 'whipped-shea-butter');
+  assert.strictEqual(rihannaRiri?.variantAxis, 'scent');
+  assert.strictEqual(rihannaRiri?.variantLabel, 'Rihanna Riri');
+});
+
+test('round black soap size/naming variants all collapse to one line', () => {
+  const regular = matchProductLine('Round Black Soap');
+  const small = matchProductLine('Small Round Black Soap');
+  const smallAltOrder = matchProductLine('Small Black Round Soap');
+
+  assert.strictEqual(regular?.lineKey, 'round-black-soap');
+  assert.strictEqual(regular?.variantAxis, 'size');
+  assert.strictEqual(regular?.variantLabel, 'Regular');
+
+  assert.strictEqual(small?.lineKey, 'round-black-soap');
+  assert.strictEqual(small?.variantLabel, 'Small');
+
+  assert.strictEqual(smallAltOrder?.lineKey, 'round-black-soap');
+  assert.strictEqual(smallAltOrder?.variantLabel, 'Small');
+});
+
+test('honey-named soaps confirmed 3 more times still match, distinct from Phase 2 honey/bitters', () => {
+  // Same ingredient-word trap as the Turmeric/Kojic regression above, now confirmed
+  // with 3 more soap names that contain "Honey". Meanwhile a genuine Phase 2
+  // honey/bitters product (AIH tonic line) must still return null.
+  const buttermilk = matchProductLine('Buttermilk & Manuka Honey Soap');
+  assert.strictEqual(buttermilk?.lineKey, 'buttermilk-manuka-honey-soap');
+  assert.strictEqual(buttermilk?.productType, 'soap');
+
+  const blackSeed = matchProductLine('Honey & Black Seed Soap');
+  assert.strictEqual(blackSeed?.lineKey, 'honey-black-seed-soap');
+  assert.strictEqual(blackSeed?.productType, 'soap');
+
+  assert.strictEqual(matchProductLine('AIH A to Z Honey'), null);
+  assert.strictEqual(matchProductLine('AIH Blood Pressure'), null);
+});
+
+test('a representative sample of the Step 5 dry-run additions match with a valid productType', () => {
+  const soapNames = [
+    'Neem Soap',
+    'Activated Charcoal Soap',
+    'Nubian Heritage Bar Soap',
+    'Egyptian Musk Soap',
+    'Peppermint Soap',
+    'Moringa Soap with Chia Seeds',
+  ];
+  for (const itemName of soapNames) {
+    const match = matchProductLine(itemName);
+    assert.notStrictEqual(match, null, `expected a match for "${itemName}"`);
+    assert.strictEqual(match?.productType, 'soap', `expected soap productType for "${itemName}"`);
+  }
+
+  const rawButterNames = ['Raw Cocoa Butter', 'Sunaroma Mango Butter 1lb'];
+  for (const itemName of rawButterNames) {
+    const match = matchProductLine(itemName);
+    assert.notStrictEqual(match, null, `expected a match for "${itemName}"`);
+    assert.strictEqual(match?.productType, 'body-butter', `expected body-butter productType for "${itemName}"`);
+  }
+});
