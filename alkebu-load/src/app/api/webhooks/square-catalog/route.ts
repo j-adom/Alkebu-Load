@@ -9,7 +9,11 @@ import { createOrFindPublisher, updatePublisherMetadata } from '../../../utils/p
 import { createOrFindVendor, updateVendorMetadata } from '../../../utils/vendorManager'
 import { extractAndCreateVendor } from '../../../utils/squareVendorExtractor'
 import { getSquareWebhookUrl, isValidSquareWebhookSignature } from '../../../utils/squareWebhookSignature'
-import { applyInventoryCountToEditions, type SquareInventoryCount } from '../../../utils/squareInventory'
+import {
+  applyInventoryCountToEditions,
+  applyInventoryCountToVariations,
+  type SquareInventoryCount,
+} from '../../../utils/squareInventory'
 
 // Wrapper function to match expected interface
 async function enrichProduct(isbn: string) {
@@ -496,8 +500,42 @@ async function processCatalogVersionUpdate(payload: any) {
     console.log(`\n✅ Webhook processing complete. Processed ${processed} items.`)
 }
 
+// Square is the source of truth for stock; each count overwrites the matching
+// wellness/oils variation. Returns true if a document was updated.
+async function applyInventoryCountToWellness(
+  payload: any,
+  variationId: string,
+  quantity: number,
+): Promise<boolean> {
+  for (const collection of ['wellness-lifestyle', 'oils-incense'] as const) {
+    const result = await payload.find({
+      collection,
+      where: { 'variations.squareVariationId': { equals: variationId } },
+      limit: 1,
+      depth: 0,
+    })
+
+    if (result.docs.length === 0) continue
+
+    const doc = result.docs[0]
+    const newVariations = applyInventoryCountToVariations(doc.variations || [], variationId, quantity)
+
+    await payload.update({
+      collection,
+      id: doc.id,
+      data: { variations: newVariations },
+    })
+
+    console.log(`✅ Stock for "${doc.name}" variation ${variationId} set to ${quantity}`)
+    return true
+  }
+
+  return false
+}
+
 // Process an inventory.count.updated event: Square POS is the source of truth for stock,
-// so each count overwrites the matching book edition's inventory.stockLevel.
+// so each count overwrites the matching book edition's inventory.stockLevel (falling
+// through to wellness-lifestyle / oils-incense variations when no book matches).
 // Lightweight (no external enrichment); runs post-response via after().
 async function processInventoryCountUpdate(payload: any, webhookEvent: SquareWebhookEvent) {
   const counts = webhookEvent.data?.object?.inventory_counts || []
@@ -534,7 +572,14 @@ async function processInventoryCountUpdate(payload: any, webhookEvent: SquareWeb
       })
 
       if (result.docs.length === 0) {
-        console.log(`⚠️ No book edition matches Square variation ${variationId}`)
+        const wellnessUpdated = await applyInventoryCountToWellness(payload, variationId, quantity)
+
+        if (wellnessUpdated) {
+          updated++
+        } else {
+          console.log(`⚠️ No book edition or wellness variation matches Square variation ${variationId}`)
+        }
+
         continue
       }
 

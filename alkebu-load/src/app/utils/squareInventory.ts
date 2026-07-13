@@ -26,3 +26,27 @@ export function applyInventoryCountToEditions(
       : edition,
   )
 }
+
+/**
+ * Return a new variations array (WellnessLifestyle / OilsIncense) with the matching
+ * variation's `stock` set to `quantity`. Square POS is the source of truth for stock,
+ * so this overwrites the existing value.
+ *
+ * Payload does NOT row-reconcile array fields on update -- sending `variations` replaces
+ * the entire stored array. This function starts from the EXISTING row for every
+ * variation and only overwrites `stock` on the matching one via a spread, so every other
+ * field (price, weight, sku, scent, isAvailable, size, packaging, squareItemId, etc.) on
+ * every row -- matched or not -- is preserved untouched. Non-matching variations are
+ * returned unchanged (same reference).
+ */
+export function applyInventoryCountToVariations(
+  variations: any[],
+  squareVariationId: string,
+  quantity: number,
+): any[] {
+  return variations.map((variation) =>
+    variation?.squareVariationId === squareVariationId
+      ? { ...variation, stock: quantity }
+      : variation,
+  )
+}
