@@ -90,9 +90,10 @@ const OilsIncense: CollectionConfig = {
     {
       name: 'baseScent',
       type: 'text',
-      required: true,
+      required: false,
       admin: {
-        description: 'Primary scent (e.g., "Egyptian Musk", "Nag Champa", "White Sage")'
+        description: 'Legacy top-level scent field. Scent is now a variant axis — set it per-variation ' +
+          'under variations[].scent instead. Leave blank for multi-scent products.'
       }
     },
     {
@@ -133,7 +134,7 @@ const OilsIncense: CollectionConfig = {
         {
           name: 'size',
           type: 'select',
-          required: true,
+          required: false,
           options: [
             // For fragrance oils
             { label: '1/4 oz Bottle', value: '0.25-oz-bottle' },
@@ -166,6 +167,13 @@ const OilsIncense: CollectionConfig = {
           ],
           admin: {
             description: 'How the product is packaged'
+          }
+        },
+        {
+          name: 'scent',
+          type: 'text',
+          admin: {
+            description: 'Specific scent for this variation (if different from main)'
           }
         },
         {

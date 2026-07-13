@@ -1897,7 +1897,7 @@ export interface WellnessLifestyle {
   /**
    * Main ingredient or scent (e.g., "Lavender", "Shea Butter", "White Sage")
    */
-  primaryIngredient: string;
+  primaryIngredient?: string | null;
   /**
    * Complete ingredient list
    */
@@ -2994,9 +2994,9 @@ export interface OilsIncense {
    */
   shortDescription?: string | null;
   /**
-   * Primary scent (e.g., "Egyptian Musk", "Nag Champa", "White Sage")
+   * Legacy top-level scent field. Scent is now a variant axis — set it per-variation under variations[].scent instead. Leave blank for multi-scent products.
    */
-  baseScent: string;
+  baseScent?: string | null;
   /**
    * General scent category
    */
@@ -3014,20 +3014,27 @@ export interface OilsIncense {
     /**
      * Size/format of this variation
      */
-    size:
-      | '0.25-oz-bottle'
-      | '0.5-oz-bottle'
-      | '1-oz-bottle'
-      | '2-oz-bottle'
-      | '0.33-oz-rollon'
-      | 'incense-pack'
-      | 'small-bundle'
-      | 'large-bundle'
-      | 'single-stick';
+    size?:
+      | (
+          | '0.25-oz-bottle'
+          | '0.5-oz-bottle'
+          | '1-oz-bottle'
+          | '2-oz-bottle'
+          | '0.33-oz-rollon'
+          | 'incense-pack'
+          | 'small-bundle'
+          | 'large-bundle'
+          | 'single-stick'
+        )
+      | null;
     /**
      * How the product is packaged
      */
     packaging?: ('glass-bottle' | 'roll-on' | 'box' | 'pouch' | 'bundle') | null;
+    /**
+     * Specific scent for this variation (if different from main)
+     */
+    scent?: string | null;
     /**
      * Square POS variation ID for inventory sync
      */
@@ -6800,6 +6807,7 @@ export interface OilsIncenseSelect<T extends boolean = true> {
         sku?: T;
         size?: T;
         packaging?: T;
+        scent?: T;
         squareVariationId?: T;
         price?: T;
         stock?: T;

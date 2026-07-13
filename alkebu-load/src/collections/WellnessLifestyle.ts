@@ -166,7 +166,7 @@ const WellnessLifestyle: CollectionConfig = {
     {
       name: 'primaryIngredient',
       type: 'text',
-      required: true,
+      required: false,
       admin: {
         description: 'Main ingredient or scent (e.g., "Lavender", "Shea Butter", "White Sage")'
       }
