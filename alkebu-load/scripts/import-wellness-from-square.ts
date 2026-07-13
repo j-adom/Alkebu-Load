@@ -33,6 +33,16 @@
  * sku, scent, variantName, squareItemId). Variations gone from Square are kept (never
  * deleted) and reported for human review, never silently dropped.
  *
+ * SAME OWNERSHIP SPLIT APPLIES AT THE DOCUMENT LEVEL: Square owns price/stock
+ * (via variations[]) and productType; Payload owns name, slug, images, and all
+ * marketing copy once a document exists. The UPDATE payload (built by
+ * buildWellnessLifestyleUpdateDoc / buildOilsIncenseUpdateDoc in
+ * src/app/utils/wellnessImportDocs.ts) therefore never includes `name` or
+ * `slug` -- only the CREATE path seeds those, once, from Square's item name.
+ * Sending them on every update would silently revert a staff rename or a
+ * hand-edited marketing slug, and a reverted slug 404s a URL already indexed
+ * by Google (the sitemap emits it).
+ *
  * Defaults to --dry-run; pass --commit to write. Every skipped item and every orphaned
  * (in Payload, gone from Square) variation is printed in full (never truncated) -- a
  * silently-dropped sellable product or a silently-discarded row would look identical to
@@ -45,6 +55,12 @@ import { getPayload } from 'payload'
 import { SquareClient, type CatalogObject } from 'square'
 import { matchProductLine, type ProductLineMatch } from '../src/app/utils/wellnessProductLines'
 import { mergeVariations } from '../src/app/utils/wellnessVariationMerge'
+import {
+  buildWellnessLifestyleCreateDoc,
+  buildWellnessLifestyleUpdateDoc,
+  buildOilsIncenseCreateDoc,
+  buildOilsIncenseUpdateDoc,
+} from '../src/app/utils/wellnessImportDocs'
 
 // Deliberately NOT importing src/payload-types.ts here. That file's `declare module
 // 'payload'` augmentation is ambient/global: once any file in this tsc program
@@ -184,13 +200,16 @@ function buildWellnessLifestyleVariations(line: PendingLine): WellnessVariation[
   }))
 }
 
+// name/slug/update-doc ownership split lives in wellnessImportDocs.ts (shared,
+// unit-tested pure builders) -- CREATE seeds name/slug once; UPDATE sends only
+// the fields Square owns (variations, productType).
 function buildWellnessLifestyleDoc(lineKey: string, line: PendingLine, variations: WellnessVariation[]) {
-  return {
+  return buildWellnessLifestyleCreateDoc({
     name: line.match.lineName,
     slug: lineKey,
     productType: line.match.productType,
     variations,
-  }
+  })
 }
 
 // OilsIncense.variations[] has no squareItemId field in the schema (only
@@ -207,13 +226,14 @@ function buildOilsIncenseVariations(line: PendingLine): OilsIncenseVariation[] {
   }))
 }
 
+// CREATE path only -- see buildWellnessLifestyleDoc above.
 function buildOilsIncenseDoc(lineKey: string, line: PendingLine, variations: OilsIncenseVariation[]) {
-  return {
+  return buildOilsIncenseCreateDoc({
     name: line.match.lineName,
     slug: lineKey,
     productType: line.match.productType,
     variations,
-  }
+  })
 }
 
 async function main() {
@@ -357,7 +377,7 @@ async function main() {
             existingDoc.variations ?? [],
             incomingVariations,
           )
-          const data = buildWellnessLifestyleDoc(lineKey, line, merged)
+          const data = buildWellnessLifestyleUpdateDoc({ productType: line.match.productType, variations: merged })
           await payload.update({ collection: 'wellness-lifestyle', id: existingDoc.id, data })
           updated++
           if (orphaned.length > 0) {
@@ -383,7 +403,7 @@ async function main() {
             existingDoc.variations ?? [],
             incomingVariations,
           )
-          const data = buildOilsIncenseDoc(lineKey, line, merged)
+          const data = buildOilsIncenseUpdateDoc({ productType: line.match.productType, variations: merged })
           await payload.update({ collection: 'oils-incense', id: existingDoc.id, data })
           updated++
           if (orphaned.length > 0) {

@@ -118,7 +118,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
               // miscategorized items that must stay hidden until a human
               // approves them via publishOnline.
               { publishOnline: { equals: true } },
-              { or: [{ title: { contains: query } }, { shortDescription: { contains: query } }] },
+              { or: [{ name: { contains: query } }, { shortDescription: { contains: query } }] },
             ],
           },
           limit,
@@ -176,7 +176,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             and: [
               // Same curation gate as wellness-lifestyle.
               { publishOnline: { equals: true } },
-              { or: [{ title: { contains: query } }, { shortDescription: { contains: query } }] },
+              { or: [{ name: { contains: query } }, { shortDescription: { contains: query } }] },
             ],
           },
           limit,

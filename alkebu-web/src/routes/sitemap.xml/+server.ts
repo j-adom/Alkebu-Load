@@ -8,6 +8,7 @@ import {
   SITEMAP_STATIC_PAGES,
   buildSitemapSelectParams,
   sitemapUrlElement,
+  resolveOilsIncenseShopSection,
 } from '$lib/server/sitemapHelpers.js';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 
@@ -39,9 +40,10 @@ export const GET: RequestHandler = async () => {
       payloadGet<PayloadCollectionResponse<any>>(
         collectionPath('wellness-lifestyle', 'where[publishOnline][equals]=true&'),
       ),
-      // `type` drives the oils-vs-incense URL split below.
+      // `productType` (NOT `type` -- OilsIncense has no `type` field) drives
+      // the oils-vs-incense URL split below.
       payloadGet<PayloadCollectionResponse<any>>(
-        collectionPath('oils-incense', 'where[publishOnline][equals]=true&', ['type']),
+        collectionPath('oils-incense', 'where[publishOnline][equals]=true&', ['productType']),
       ),
     ]);
 
@@ -115,12 +117,13 @@ export const GET: RequestHandler = async () => {
 
     const oilsUrls = withSlug(oils)
       .map((product: any) => {
-        // Oils render under health-and-beauty, incense under home-goods.
-        const baseUrl =
-          product.type === 'incense'
-            ? `${PUBLIC_SITE_URL}/shop/home-goods`
-            : `${PUBLIC_SITE_URL}/shop/health-and-beauty`;
-        return sitemapUrlElement(`${baseUrl}/${product.slug}`, product.updatedAt, '0.8', 'weekly');
+        const section = resolveOilsIncenseShopSection(product.productType);
+        return sitemapUrlElement(
+          `${PUBLIC_SITE_URL}/shop/${section}/${product.slug}`,
+          product.updatedAt,
+          '0.8',
+          'weekly',
+        );
       })
       .join('');
 

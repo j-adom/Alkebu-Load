@@ -351,6 +351,9 @@ const Events: CollectionConfig = {
       type: 'relationship',
       relationTo: 'wellness-lifestyle',
       hasMany: true,
+      filterOptions: {
+        publishOnline: { equals: true },
+      },
       admin: {
         description: 'Wellness products featured at this event'
       }
@@ -369,6 +372,9 @@ const Events: CollectionConfig = {
       type: 'relationship',
       relationTo: 'oils-incense',
       hasMany: true,
+      filterOptions: {
+        publishOnline: { equals: true },
+      },
       admin: {
         description: 'Oils/incense products featured at this event'
       }

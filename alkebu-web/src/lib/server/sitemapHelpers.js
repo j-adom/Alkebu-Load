@@ -41,6 +41,24 @@ export function buildSitemapSelectParams() {
 }
 
 /**
+ * OilsIncense.productType is one of: fragrance-oil | incense-pack |
+ * sage-bundle | palo-santo. This collection has NO `type` field (a prior bug
+ * read `product.type`, which is always undefined, and every oils-incense URL
+ * silently fell back to /shop/health-and-beauty). Fragrance oils render under
+ * health-and-beauty; the rest (incense-pack/sage-bundle/palo-santo) render
+ * under home-goods — matches the routing in
+ * src/routes/shop/health-and-beauty/+page.server.ts and
+ * src/routes/shop/home-goods/+page.server.ts.
+ *
+ * @param {string | undefined} productType
+ * @returns {'home-goods' | 'health-and-beauty'}
+ */
+export function resolveOilsIncenseShopSection(productType) {
+  const INCENSE_LIKE_PRODUCT_TYPES = new Set(['incense-pack', 'sage-bundle', 'palo-santo']);
+  return INCENSE_LIKE_PRODUCT_TYPES.has(productType) ? 'home-goods' : 'health-and-beauty';
+}
+
+/**
  * Render one `<url>` element. Tolerates a missing/invalid lastmod (Payload
  * docs can lack `updatedAt` when a query misbehaves) instead of throwing and
  * collapsing the whole sitemap to the fallback.

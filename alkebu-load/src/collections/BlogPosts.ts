@@ -135,6 +135,9 @@ const BlogPosts: CollectionConfig = {
       type: 'relationship',
       relationTo: 'wellness-lifestyle',
       hasMany: true,
+      filterOptions: {
+        publishOnline: { equals: true },
+      },
       admin: {
         description: 'Wellness and lifestyle products featured in this post'
       }
@@ -153,6 +156,9 @@ const BlogPosts: CollectionConfig = {
       type: 'relationship',
       relationTo: 'oils-incense',
       hasMany: true,
+      filterOptions: {
+        publishOnline: { equals: true },
+      },
       admin: {
         description: 'Oils and incense products featured in this post'
       }

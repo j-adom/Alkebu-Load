@@ -5,6 +5,7 @@ import {
   SITEMAP_STATIC_PAGES,
   buildSitemapSelectParams,
   sitemapUrlElement,
+  resolveOilsIncenseShopSection,
 } from '../src/lib/server/sitemapHelpers.js';
 
 test('sitemap select params use Payload bracket syntax, not comma syntax', () => {
@@ -39,4 +40,22 @@ test('static sitemap pages only reference routes that exist', () => {
   assert.equal(paths.includes('/returns'), false);
   assert.equal(paths.includes('/terms'), false);
   assert.equal(paths.includes('/shipping'), false);
+});
+
+// FIX 5: OilsIncense has no `type` field (only `productType`); reading
+// `product.type` is always undefined and every oils-incense URL silently fell
+// back to health-and-beauty, including sage bundles and palo santo.
+test('fragrance oils resolve to health-and-beauty', () => {
+  assert.equal(resolveOilsIncenseShopSection('fragrance-oil'), 'health-and-beauty');
+});
+
+test('incense-pack, sage-bundle, and palo-santo resolve to home-goods', () => {
+  assert.equal(resolveOilsIncenseShopSection('incense-pack'), 'home-goods');
+  assert.equal(resolveOilsIncenseShopSection('sage-bundle'), 'home-goods');
+  assert.equal(resolveOilsIncenseShopSection('palo-santo'), 'home-goods');
+});
+
+test('an unknown/undefined productType falls back to health-and-beauty (not a throw)', () => {
+  assert.equal(resolveOilsIncenseShopSection(undefined), 'health-and-beauty');
+  assert.equal(resolveOilsIncenseShopSection('something-new'), 'health-and-beauty');
 });

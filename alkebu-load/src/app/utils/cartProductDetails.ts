@@ -102,7 +102,7 @@ const resolveFashionVariation = (product: any, customization?: Customization) =>
   return matchedVariation ?? product.variations[0];
 };
 
-const resolveWellnessVariation = (product: any, customization?: Customization) => {
+export const resolveWellnessVariation = (product: any, customization?: Customization) => {
   if (!Array.isArray(product?.variations) || product.variations.length === 0) {
     return null;
   }

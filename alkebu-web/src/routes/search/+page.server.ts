@@ -1,5 +1,6 @@
 import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
+import { resolveOilsIncenseShopSection } from '$lib/server/sitemapHelpers.js';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 
@@ -47,12 +48,20 @@ const FLEXSEARCH_TO_DISPLAY: Record<string, DisplayType> = {
 };
 
 // Map types to URL patterns
-const TYPE_URL_PREFIX: Partial<Record<string, (slug: string) => string>> = {
+const TYPE_URL_PREFIX: Partial<Record<string, (slug: string, result?: FlexSearchResult) => string>> = {
   // FlexSearch indexes book slugs as "slug/isbn"; keep only the canonical slug
   books: (slug) => `/shop/books/${slug.split('/')[0]}`,
   fashionJewelry: (slug) => `/shop/apparel/${slug}`,
   wellnessLifestyle: (slug) => `/shop/health-and-beauty/${slug}`,
-  oilsIncense: (slug) => `/shop/home-goods/${slug}`,
+  // OilsIncense spans two storefront sections: fragrance oils live under
+  // health-and-beauty, incense/sage/palo-santo under home-goods. FlexSearch's
+  // product index doesn't currently carry productType in its metadata (only
+  // the collection-level 'oilsIncense' tag), so resolveOilsIncenseShopSection
+  // falls back to health-and-beauty when it's absent -- this branch mainly
+  // matters once tier-1 indexing carries productType; the tier-2 fallback
+  // below always has the full doc and resolves it correctly per item.
+  oilsIncense: (slug, result) =>
+    `/shop/${resolveOilsIncenseShopSection(result?.metadata?.productType)}/${slug}`,
   blogPosts: (slug) => `/blog/${slug}`,
   businesses: (slug) => `/directory/${slug}`,
   events: (slug) => `/events/${slug}`,
@@ -79,7 +88,10 @@ interface FlexSearchResult {
   price?: number;
   slug?: string;
   score: number;
-  metadata?: Record<string, any>;
+  // `productType` isn't populated by the current FlexSearch index (see
+  // TYPE_URL_PREFIX.oilsIncense above) but is typed here so the URL-mapping
+  // logic keeps working once it is.
+  metadata?: Record<string, any> & { productType?: string };
 }
 
 interface FlexSearchResponse {
@@ -124,7 +136,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
         combinedResults = searchResponse.internal.map((result) => {
           const displayType = FLEXSEARCH_TO_DISPLAY[result.type] || result.type;
           const urlBuilder = TYPE_URL_PREFIX[result.type];
-          const resultUrl = urlBuilder && result.slug ? urlBuilder(result.slug) : '#';
+          const resultUrl = urlBuilder && result.slug ? urlBuilder(result.slug, result) : '#';
 
           return {
             type: displayType,
@@ -200,8 +212,14 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
     // Canonical slug-only book URLs; the detail page picks the best edition itself.
     { type: 'books' as DisplayType, path: '/api/books', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/books/${i.slug}` },
     { type: 'apparel' as DisplayType, path: '/api/fashion-jewelry', titleField: 'name', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/apparel/${i.slug}` },
-    { type: 'health' as DisplayType, path: '/api/wellness-lifestyle', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/health-and-beauty/${i.slug}` },
-    { type: 'home' as DisplayType, path: '/api/oils-incense', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/home-goods/${i.slug}` },
+    // wellness-lifestyle/oils-incense have no `title` or rich-text-JSON-only
+    // `description` field usable in a plain-text query -- only `name` and
+    // `shortDescription` exist (see CLAUDE.md search gotchas).
+    { type: 'health' as DisplayType, path: '/api/wellness-lifestyle', titleField: 'name', descField: 'shortDescription', imgField: 'images', urlFn: (i: any) => `/shop/health-and-beauty/${i.slug}` },
+    // OilsIncense spans two storefront sections -- resolve per item's
+    // productType instead of hardcoding home-goods for every hit (fragrance
+    // oils live under health-and-beauty).
+    { type: 'home' as DisplayType, path: '/api/oils-incense', titleField: 'name', descField: 'shortDescription', imgField: 'images', urlFn: (i: any) => `/shop/${resolveOilsIncenseShopSection(i.productType)}/${i.slug}` },
     { type: 'blog' as DisplayType, path: '/api/blogPosts', titleField: 'title', descField: 'excerpt', imgField: 'featuredImage', urlFn: (i: any) => `/blog/${i.slug}` },
     { type: 'directory' as DisplayType, path: '/api/businesses', titleField: 'name', descField: 'description', imgField: 'logo', urlFn: (i: any) => `/directory/${i.slug}` },
     { type: 'events' as DisplayType, path: '/api/events', titleField: 'title', descField: 'description', imgField: 'featuredImage', urlFn: (i: any) => `/events/${i.slug}` },

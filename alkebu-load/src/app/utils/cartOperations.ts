@@ -10,7 +10,79 @@ import {
   resolveCartProductTitle,
   resolveCartProductUnitPrice,
   resolveCartStripePriceId,
+  resolveWellnessVariation,
 } from './cartProductDetails';
+
+const WELLNESS_GATED_PRODUCT_TYPES = new Set(['wellness-lifestyle', 'oils-incense']);
+
+const isWellnessGatedProductType = (productType: string): boolean =>
+  WELLNESS_GATED_PRODUCT_TYPES.has(productType);
+
+/**
+ * publishOnline is the human curation gate for wellness/oils products (Square's
+ * feed includes a djembe drum, a "Shipping" line item, refrigerated perishables,
+ * and supplements with FDA/FTC-risky disease-claim names). Product ids are
+ * publicly enumerable, so the gate must be enforced here — not just at read time —
+ * or an unpublished product can still reach a cart, a Stripe line item, and a
+ * customer confirmation email.
+ */
+export function evaluateWellnessPublishGate(
+  product: any,
+  productType: string,
+): { allowed: boolean; error?: string } {
+  if (!isWellnessGatedProductType(productType)) {
+    return { allowed: true };
+  }
+
+  if (product?.publishOnline !== true) {
+    return {
+      allowed: false,
+      error: 'This product is not yet available for purchase.',
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Wellness/oils stock lives at variations[].stock (there is no
+ * product.inventory.trackQuantity on these collections), so it must be checked
+ * against the SELECTED variation, not the product-level inventory fields the
+ * books/fashion path relies on.
+ */
+export function evaluateWellnessVariationStock(
+  product: any,
+  productType: string,
+  customization: CartItem['customization'] | undefined,
+  quantity: number,
+): { allowed: boolean; error?: string } {
+  if (!isWellnessGatedProductType(productType)) {
+    return { allowed: true };
+  }
+
+  const variation = resolveWellnessVariation(product, customization);
+
+  // No single matching variation (ambiguous multi-variation product with no
+  // selection) — let price resolution fail loudly downstream instead of
+  // guessing which variation's stock to check.
+  if (!variation) {
+    return { allowed: true };
+  }
+
+  if (variation.isAvailable === false) {
+    return { allowed: false, error: 'This option is currently unavailable.' };
+  }
+
+  const stock = typeof variation.stock === 'number' ? variation.stock : 0;
+  if (stock < quantity) {
+    return {
+      allowed: false,
+      error: `Only ${Math.max(stock, 0)} items available in stock`,
+    };
+  }
+
+  return { allowed: true };
+}
 
 const AVAILABLE_VENDOR_KEYWORDS = [
   'ingram',
@@ -132,11 +204,22 @@ function mapCartItemsForTax(items: any[]): CartItemForTax[] {
         productData = item.product;
       }
     }
+    // The selected variation's sku, persisted at add-to-cart time in
+    // `identifiers.sku` (CartItems' `customization` group has no variationSku
+    // field of its own — identifiers is the only place this survives storage).
+    // Carried through so resolveItemWeight() can match the correct
+    // variations[].weight instead of falling back to the per-type default.
+    const sku =
+      (typeof item.identifiers?.sku === 'string' && item.identifiers.sku.trim()) ||
+      (typeof item.customization?.variationSku === 'string' && item.customization.variationSku.trim()) ||
+      undefined;
+
     return {
       product: productData || { pricing: {} },
       productType: item.productType || 'books',
       quantity: item.quantity || 1,
       unitPrice: item.unitPrice || 0,
+      sku: sku || undefined,
     };
   });
 }
@@ -255,6 +338,21 @@ export async function addToCart(
           error: 'This title is no longer available.',
         };
       }
+    }
+
+    const wellnessGate = evaluateWellnessPublishGate(product, item.productType);
+    if (!wellnessGate.allowed) {
+      return { success: false, error: wellnessGate.error };
+    }
+
+    const wellnessStock = evaluateWellnessVariationStock(
+      product,
+      item.productType,
+      item.customization,
+      item.quantity,
+    );
+    if (!wellnessStock.allowed) {
+      return { success: false, error: wellnessStock.error };
     }
 
     // Books remain purchasable unless explicitly marked request-only/discontinued.

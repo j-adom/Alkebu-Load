@@ -902,9 +902,10 @@ const WellnessLifestyle: CollectionConfig = {
   ],
 
   // Hooks for auto-processing
-  // Public read access
+  // Public read access is restricted to published docs; logged-in staff
+  // (admin UI, Local API without overrideAccess) see everything.
   access: {
-    read: () => true,
+    read: ({ req }) => (req.user ? true : { publishOnline: { equals: true } }),
   },
 
   hooks: {

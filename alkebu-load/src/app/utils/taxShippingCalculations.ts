@@ -44,10 +44,19 @@ export interface CartItemForTax {
         shippingWeight?: number;
       };
     }>;
+    // Wellness/oils (and fashion) variants — matched against `sku` below.
+    variations?: Array<{
+      sku?: string;
+      weight?: number;
+    }>;
   };
   productType: string;
   quantity: number;
   unitPrice: number;
+  // The selected variation's sku, when the cart item is a variant product
+  // (wellness/oils/fashion). Used to resolve the correct shipped weight from
+  // product.variations[] instead of falling back to the per-type default.
+  sku?: string;
 }
 
 // Tennessee tax rates
@@ -261,6 +270,25 @@ function getBookBinding(item: CartItemForTax): string | undefined {
   return item.product?.editions?.find(Boolean)?.binding;
 }
 
+/**
+ * Weight of the selected variation, matched by sku. Wellness/oils docs have no
+ * `pricing` group at all, so without this every wellness/oils line silently
+ * fell back to the 4oz (wellness) / 3oz (oils) per-type default regardless of
+ * the actual product's backfilled weight.
+ */
+function resolveVariationWeight(item: CartItemForTax): number | undefined {
+  if (!item.sku) return undefined;
+
+  const variations = item.product?.variations;
+  if (!Array.isArray(variations)) return undefined;
+
+  const matched = variations.find(
+    (variation) => typeof variation?.sku === 'string' && variation.sku === item.sku,
+  );
+
+  return typeof matched?.weight === 'number' && matched.weight > 0 ? matched.weight : undefined;
+}
+
 function resolveItemWeight(item: CartItemForTax): number {
   const editionWeight = item.product?.editions?.find(
     (edition) =>
@@ -270,6 +298,13 @@ function resolveItemWeight(item: CartItemForTax): number {
 
   if (typeof editionWeight === 'number' && editionWeight > 0) {
     return editionWeight;
+  }
+
+  if (item.productType !== 'books') {
+    const variationWeight = resolveVariationWeight(item);
+    if (typeof variationWeight === 'number' && variationWeight > 0) {
+      return variationWeight;
+    }
   }
 
   const topLevelWeight = item.product?.pricing?.shippingWeight;

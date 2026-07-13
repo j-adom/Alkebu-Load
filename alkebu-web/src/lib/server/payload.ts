@@ -309,12 +309,54 @@ export async function getProducts(page = 1, limit = 12, collection: 'books' | 'w
 
 export async function getBlogPostBySlug(slug: string) {
   const response = await payloadGet<PayloadCollectionResponse<BlogPost>>(`/api/blogPosts?where[slug][equals]=${encodeURIComponent(slug)}&where[status][equals]=published&limit=1&depth=2`);
-  return response.docs[0] || null;
+  const post = response.docs[0] || null;
+  if (!post) return null;
+
+  // BlogPost's TS interface doesn't declare these (the frontend doesn't render
+  // them today), but depth=2 still populates them on the raw API response —
+  // filter the same gated products as events, belt-and-braces.
+  const raw = post as unknown as { relatedWellnessProducts?: any[]; relatedOilsIncense?: any[] };
+  if (Array.isArray(raw.relatedWellnessProducts)) {
+    raw.relatedWellnessProducts = raw.relatedWellnessProducts.filter(
+      (p) => typeof p !== 'object' || isPublishedGatedProduct(p)
+    );
+  }
+  if (Array.isArray(raw.relatedOilsIncense)) {
+    raw.relatedOilsIncense = raw.relatedOilsIncense.filter(
+      (p) => typeof p !== 'object' || isPublishedGatedProduct(p)
+    );
+  }
+
+  return post;
+}
+
+// publishOnline is the human curation gate for wellness/oils products (Square's
+// feed includes miscategorized and unvetted items). The collection-level access
+// control already restricts anonymous reads to published docs, but a populated
+// relationship on this event doc could still surface an unpublished one if this
+// server-side fetch ever carries an authenticated PAYLOAD_API_KEY — filter here
+// too as belt-and-braces.
+function isPublishedGatedProduct(product: any): boolean {
+  return Boolean(product) && typeof product === 'object' && product.publishOnline === true;
 }
 
 export async function getEventBySlug(slug: string) {
   const response = await payloadGet<PayloadCollectionResponse<Event>>(`/api/events?where[slug][equals]=${encodeURIComponent(slug)}&where[status][equals]=published&limit=1&depth=2`);
-  return response.docs[0] || null;
+  const event = response.docs[0] || null;
+  if (!event) return null;
+
+  if (Array.isArray(event.relatedWellnessProducts)) {
+    event.relatedWellnessProducts = event.relatedWellnessProducts.filter(
+      (p) => typeof p !== 'object' || isPublishedGatedProduct(p)
+    );
+  }
+  if (Array.isArray(event.relatedOilsIncense)) {
+    event.relatedOilsIncense = event.relatedOilsIncense.filter(
+      (p) => typeof p !== 'object' || isPublishedGatedProduct(p)
+    );
+  }
+
+  return event;
 }
 
 export async function getBusinessBySlug(slug: string) {

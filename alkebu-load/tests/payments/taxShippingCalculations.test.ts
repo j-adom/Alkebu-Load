@@ -129,6 +129,73 @@ test('non-placeholder top-level book weights are preserved', () => {
   assert.strictEqual(totalWeight, 9);
 });
 
+test('wellness cart item resolves weight from the selected variation, not the 4oz default', () => {
+  const totalWeight = calculateTotalWeight([
+    {
+      product: {
+        variations: [
+          { sku: 'SOAP-SMALL', weight: 6 },
+          { sku: 'SOAP-LARGE', weight: 18 },
+        ],
+      },
+      productType: 'wellness-lifestyle',
+      quantity: 1,
+      unitPrice: 1200,
+      sku: 'SOAP-LARGE',
+    },
+  ] as any);
+
+  assert.strictEqual(totalWeight, 18);
+});
+
+test('wellness cart item with no sku match falls back to the 4oz default', () => {
+  const totalWeight = calculateTotalWeight([
+    {
+      product: {
+        variations: [{ sku: 'SOAP-LARGE', weight: 18 }],
+      },
+      productType: 'wellness-lifestyle',
+      quantity: 1,
+      unitPrice: 1200,
+      // no sku on the cart item — can't identify which variation was selected
+    },
+  ] as any);
+
+  assert.strictEqual(totalWeight, 4);
+});
+
+test('wellness cart item whose matched variation has no weight set falls back to the default (not 0)', () => {
+  const totalWeight = calculateTotalWeight([
+    {
+      product: {
+        variations: [{ sku: 'SOAP-UNWEIGHED' }],
+      },
+      productType: 'wellness-lifestyle',
+      quantity: 1,
+      unitPrice: 1200,
+      sku: 'SOAP-UNWEIGHED',
+    },
+  ] as any);
+
+  assert.strictEqual(totalWeight, 4);
+});
+
+test('oils cart item resolves weight from the selected variation, not the 3oz default', () => {
+  const totalWeight = calculateTotalWeight([
+    {
+      product: {
+        variations: [{ sku: 'OIL-2OZ', weight: 5 }],
+      },
+      productType: 'oils-incense',
+      quantity: 1,
+      unitPrice: 800,
+      sku: 'OIL-2OZ',
+    },
+  ] as any);
+
+  assert.strictEqual(totalWeight, 5);
+});
+
 test('tennessee addresses tax book-only orders', () => {
   const tax = calculateTax([
     {
