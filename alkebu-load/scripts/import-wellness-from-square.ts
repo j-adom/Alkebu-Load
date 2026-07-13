@@ -23,15 +23,38 @@
  * Square's wellness tree also contains a djembe drum, a bucket hat, and a line item
  * named "Shipping", so the category tree cannot be trusted as a publish signal.
  *
- * Defaults to --dry-run; pass --commit to write. Every skipped item is printed in
- * full (never truncated) -- a silently-dropped sellable product would look identical
- * to full coverage otherwise.
+ * UPDATE PATH IS A MERGE, NOT A REPLACE. Payload array fields do not row-reconcile on
+ * update -- setting `variations` in `data` replaces the ENTIRE stored array. Rebuilding
+ * it fresh from Square on every run would silently reset `stock` (kept live by the
+ * Square inventory webhook), drop `weight` (Shippo mis-rates shipping without it), and
+ * wipe any staff `isAvailable` toggle. `mergeVariations()` (src/app/utils/
+ * wellnessVariationMerge.ts) fixes this: it starts from the EXISTING row for every
+ * variation Square still carries and only overwrites the fields Square owns (price,
+ * sku, scent, squareItemId). Variations gone from Square are kept (never deleted) and
+ * reported for human review, never silently dropped.
+ *
+ * Defaults to --dry-run; pass --commit to write. Every skipped item and every orphaned
+ * (in Payload, gone from Square) variation is printed in full (never truncated) -- a
+ * silently-dropped sellable product or a silently-discarded row would look identical to
+ * full coverage otherwise. A failing line is caught, recorded, and does not stop the
+ * rest of the run or suppress the summary.
  */
 
 import dotenv from 'dotenv'
 import { getPayload } from 'payload'
 import { SquareClient, type CatalogObject } from 'square'
 import { matchProductLine, type ProductLineMatch } from '../src/app/utils/wellnessProductLines'
+import { mergeVariations } from '../src/app/utils/wellnessVariationMerge'
+
+// Deliberately NOT importing src/payload-types.ts here. That file's `declare module
+// 'payload'` augmentation is ambient/global: once any file in this tsc program
+// imports it, Payload's generated collection types apply to EVERY payload.find /
+// .create / .update call in every script under scripts/ -- not just this one. Several
+// other scripts (e.g. import-square-to-payload.ts) build Lexical `description` objects
+// that don't structurally match the strict generated type and would newly fail
+// `pnpm check:scripts` as a side effect of a change scoped to this file. The row
+// shapes below are hand-written to match the two collections' variations[] schemas
+// (WellnessLifestyle.ts / OilsIncense.ts) instead.
 
 dotenv.config({ path: './.env' })
 
@@ -94,6 +117,34 @@ interface PendingLine {
   variations: PendingVariation[]
 }
 
+// Matches WellnessLifestyle.ts's variations[] fields that this importer reads or
+// writes. Other schema fields (size, packaging, concentration, color) are never
+// touched by this script -- mergeVariations() preserves them via `...match` untyped.
+interface WellnessVariation {
+  sku: string
+  scent?: string
+  price: number
+  stock?: number
+  squareItemId?: string
+  squareVariationId?: string
+  weight?: number
+  isAvailable?: boolean
+  id?: string
+}
+
+// Matches OilsIncense.ts's variations[] fields. No squareItemId -- that field does not
+// exist on this collection's schema.
+interface OilsIncenseVariation {
+  sku: string
+  scent?: string
+  price: number
+  stock?: number
+  squareVariationId?: string
+  weight?: number
+  isAvailable?: boolean
+  id?: string
+}
+
 async function fetchWellnessItems(): Promise<CatalogItemObject[]> {
   const items: CatalogItemObject[] = []
   let cursor: string | undefined
@@ -115,39 +166,48 @@ async function fetchWellnessItems(): Promise<CatalogItemObject[]> {
   return items
 }
 
-// Builds the Payload document for a wellness-lifestyle line. squareItemId is stored
-// per-variation because that field exists on WellnessLifestyle.variations[].
-function buildWellnessLifestyleDoc(lineKey: string, line: PendingLine) {
+// Incoming (Square-sourced) variation rows for a wellness-lifestyle line. `stock: 0`
+// and no `weight` here are only ever used for a genuinely NEW row -- mergeVariations()
+// preserves the existing row's stock/weight/isAvailable/etc. for everything else.
+function buildWellnessLifestyleVariations(line: PendingLine): WellnessVariation[] {
+  return line.variations.map((v) => ({
+    sku: v.sku,
+    scent: v.scent,
+    price: v.price,
+    stock: v.stock,
+    squareItemId: v.squareItemId,
+    squareVariationId: v.squareVariationId,
+  }))
+}
+
+function buildWellnessLifestyleDoc(lineKey: string, line: PendingLine, variations: WellnessVariation[]) {
   return {
     name: line.match.lineName,
     slug: lineKey,
-    productType: line.match.productType as 'body-butter' | 'soap',
-    variations: line.variations.map((v) => ({
-      sku: v.sku,
-      scent: v.scent,
-      price: v.price,
-      stock: v.stock,
-      squareItemId: v.squareItemId,
-      squareVariationId: v.squareVariationId,
-    })),
+    productType: line.match.productType,
+    variations,
   }
 }
 
-// Builds the Payload document for an oils-incense line. squareItemId is deliberately
-// NOT included: OilsIncense.variations[] has no such field in the schema (only
-// squareVariationId). squareVariationId alone is sufficient for the Task 5 stock sync.
-function buildOilsIncenseDoc(lineKey: string, line: PendingLine) {
+// OilsIncense.variations[] has no squareItemId field in the schema (only
+// squareVariationId) -- deliberately omitted here so the merge's `'squareItemId' in
+// inc` check correctly leaves it untouched.
+function buildOilsIncenseVariations(line: PendingLine): OilsIncenseVariation[] {
+  return line.variations.map((v) => ({
+    sku: v.sku,
+    scent: v.scent,
+    price: v.price,
+    stock: v.stock,
+    squareVariationId: v.squareVariationId,
+  }))
+}
+
+function buildOilsIncenseDoc(lineKey: string, line: PendingLine, variations: OilsIncenseVariation[]) {
   return {
     name: line.match.lineName,
     slug: lineKey,
-    productType: line.match.productType as 'fragrance-oil',
-    variations: line.variations.map((v) => ({
-      sku: v.sku,
-      scent: v.scent,
-      price: v.price,
-      stock: v.stock,
-      squareVariationId: v.squareVariationId,
-    })),
+    productType: line.match.productType,
+    variations,
   }
 }
 
@@ -160,21 +220,29 @@ async function main() {
   console.log(`Fetched ${items.length} items from the Square wellness tree.\n`)
 
   const lines = new Map<string, PendingLine>()
-  const skipped: string[] = []
+
+  // Categorized rather than one flat list -- a bare "Skipped: N" header conflated three
+  // very different situations. Each list below is still printed in FULL, never truncated.
+  const skipped = {
+    unmatched: [] as string[], // Square item name didn't match any Phase 1 line
+    noPrice: [] as string[], // a matched item's variation carried no price
+    noPricedVariation: [] as string[], // matched line, but every variation on it lacked a price
+    malformed: [] as string[], // defensive: item/variation with no id from Square (should be rare/never)
+  }
 
   for (const item of items) {
     const itemId = item.id
     const name = (item.itemData?.name ?? '').trim()
 
     if (!itemId) {
-      skipped.push(`(item with no id, name: "${name}")`)
+      skipped.malformed.push(`(item with no id, name: "${name}")`)
       continue
     }
 
     const match = matchProductLine(name)
 
     if (!match) {
-      skipped.push(name || `(unnamed item ${itemId})`)
+      skipped.unmatched.push(name || `(unnamed item ${itemId})`)
       continue
     }
 
@@ -185,13 +253,13 @@ async function main() {
 
       const variationId = variationObj.id
       if (!variationId) {
-        skipped.push(`${name} (a variation with no id)`)
+        skipped.malformed.push(`${name} (a variation with no id)`)
         continue
       }
 
       const price = centsVerbatim(variationObj.itemVariationData?.priceMoney?.amount)
       if (price === undefined) {
-        skipped.push(`${name} (variation ${variationId}: no price)`)
+        skipped.noPrice.push(`${name} (variation ${variationId}: no price)`)
         continue
       }
 
@@ -203,7 +271,7 @@ async function main() {
           `${match.lineKey}-${slugify(match.variantLabel)}-${slugify(sizeLabel)}`.replace(/-+$/, ''),
         scent: match.variantAxis === 'scent' ? match.variantLabel : undefined,
         price,
-        stock: 0, // The inventory webhook (Task 5) is the live source of truth.
+        stock: 0, // Only used for a genuinely new row -- see mergeVariations().
         squareItemId: itemId,
         squareVariationId: variationId,
       })
@@ -216,12 +284,20 @@ async function main() {
   let updated = 0
   let variationCount = 0
 
+  const orphanedReport: Array<{
+    lineKey: string
+    lineName: string
+    orphaned: Array<{ sku: string; scent?: string | null; squareVariationId?: string | null }>
+  }> = []
+
+  const failures: Array<{ lineKey: string; lineName: string; error: string }> = []
+
   for (const [lineKey, line] of lines) {
     if (line.variations.length === 0) {
       // Matched a Phase 1 line, but every variation on every Square item for that
       // line lacked a price. minRows: 1 on variations[] would reject this document
       // anyway -- surface it as a skip instead of a create/update failure.
-      skipped.push(
+      skipped.noPricedVariation.push(
         `${line.match.lineName} (lineKey "${lineKey}"): matched but zero priced variations -- no document written`,
       )
       continue
@@ -236,55 +312,136 @@ async function main() {
       continue
     }
 
-    if (line.match.collection === 'wellness-lifestyle') {
-      const data = buildWellnessLifestyleDoc(lineKey, line)
-      const existing = await payload.find({
-        collection: 'wellness-lifestyle',
-        where: { slug: { equals: lineKey } },
-        limit: 1,
-        depth: 0,
-      })
+    // Each line's write is isolated: one failing line (a Payload validation error, a
+    // transient DB hiccup) must not throw out of main() and suppress the summary/skip
+    // list for every other line. Record it and keep going.
+    try {
+      if (line.match.collection === 'wellness-lifestyle') {
+        const incomingVariations = buildWellnessLifestyleVariations(line)
+        const existing = await payload.find({
+          collection: 'wellness-lifestyle',
+          where: { slug: { equals: lineKey } },
+          limit: 1,
+          depth: 0,
+        })
 
-      if (existing.docs.length > 0) {
-        await payload.update({ collection: 'wellness-lifestyle', id: existing.docs[0].id, data })
-        updated++
+        if (existing.docs.length > 0) {
+          // payload.find()'s return type is only as strict as GeneratedTypes -- which
+          // this file deliberately does not import (see the comment above). Casting at
+          // this one boundary point to the hand-written row shape keeps the merge logic
+          // itself fully typed without pulling that augmentation into the whole program.
+          const existingDoc = existing.docs[0] as { id: string | number; variations?: WellnessVariation[] }
+          const { merged, orphaned } = mergeVariations(
+            existingDoc.variations ?? [],
+            incomingVariations,
+          )
+          const data = buildWellnessLifestyleDoc(lineKey, line, merged)
+          await payload.update({ collection: 'wellness-lifestyle', id: existingDoc.id, data })
+          updated++
+          if (orphaned.length > 0) {
+            orphanedReport.push({ lineKey, lineName: line.match.lineName, orphaned })
+          }
+        } else {
+          const data = buildWellnessLifestyleDoc(lineKey, line, incomingVariations)
+          await payload.create({ collection: 'wellness-lifestyle', data })
+          created++
+        }
       } else {
-        await payload.create({ collection: 'wellness-lifestyle', data })
-        created++
+        const incomingVariations = buildOilsIncenseVariations(line)
+        const existing = await payload.find({
+          collection: 'oils-incense',
+          where: { slug: { equals: lineKey } },
+          limit: 1,
+          depth: 0,
+        })
+
+        if (existing.docs.length > 0) {
+          const existingDoc = existing.docs[0] as { id: string | number; variations?: OilsIncenseVariation[] }
+          const { merged, orphaned } = mergeVariations(
+            existingDoc.variations ?? [],
+            incomingVariations,
+          )
+          const data = buildOilsIncenseDoc(lineKey, line, merged)
+          await payload.update({ collection: 'oils-incense', id: existingDoc.id, data })
+          updated++
+          if (orphaned.length > 0) {
+            orphanedReport.push({ lineKey, lineName: line.match.lineName, orphaned })
+          }
+        } else {
+          const data = buildOilsIncenseDoc(lineKey, line, incomingVariations)
+          await payload.create({ collection: 'oils-incense', data })
+          created++
+        }
       }
-    } else {
-      const data = buildOilsIncenseDoc(lineKey, line)
-      const existing = await payload.find({
-        collection: 'oils-incense',
-        where: { slug: { equals: lineKey } },
-        limit: 1,
-        depth: 0,
+    } catch (err) {
+      failures.push({
+        lineKey,
+        lineName: line.match.lineName,
+        error: err instanceof Error ? err.message : String(err),
       })
+    }
+  }
 
-      if (existing.docs.length > 0) {
-        await payload.update({ collection: 'oils-incense', id: existing.docs[0].id, data })
-        updated++
-      } else {
-        await payload.create({ collection: 'oils-incense', data })
-        created++
+  const totalSkipped =
+    skipped.unmatched.length +
+    skipped.noPrice.length +
+    skipped.noPricedVariation.length +
+    skipped.malformed.length
+
+  console.log(`\n${'='.repeat(60)}`)
+  console.log(`Lines:      ${lines.size}  (created ${created}, updated ${updated}, failed ${failures.length})`)
+  console.log(`Variations: ${variationCount}`)
+  console.log(
+    `Skipped:    ${totalSkipped} (${skipped.unmatched.length} unmatched items, ` +
+      `${skipped.noPrice.length} variations with no price, ` +
+      `${skipped.noPricedVariation.length} lines with no priced variation` +
+      `${skipped.malformed.length ? `, ${skipped.malformed.length} malformed/no id` : ''})`,
+  )
+  const totalOrphaned = orphanedReport.reduce((sum, entry) => sum + entry.orphaned.length, 0)
+  console.log(
+    `Orphaned:   ${totalOrphaned} variation(s) across ${orphanedReport.length} line(s) — in Payload but gone from Square`,
+  )
+  console.log(`${'='.repeat(60)}\n`)
+
+  // Never truncate any of these lists -- a silently-dropped sellable product, a
+  // silently-discarded variation, or a silently-suppressed write failure would look
+  // identical to full coverage otherwise.
+  console.log('UNMATCHED ITEMS (read this list — any sellable product here is a Task 3 bug):')
+  for (const name of skipped.unmatched) console.log(`  - ${name}`)
+
+  console.log('\nVARIATIONS WITH NO PRICE:')
+  for (const name of skipped.noPrice) console.log(`  - ${name}`)
+
+  console.log('\nLINES WITH NO PRICED VARIATION:')
+  for (const name of skipped.noPricedVariation) console.log(`  - ${name}`)
+
+  if (skipped.malformed.length > 0) {
+    console.log('\nMALFORMED (missing id from Square):')
+    for (const name of skipped.malformed) console.log(`  - ${name}`)
+  }
+
+  if (orphanedReport.length > 0) {
+    console.log('\nIN PAYLOAD BUT GONE FROM SQUARE (review — possibly discontinued):')
+    for (const entry of orphanedReport) {
+      console.log(`  ${entry.lineKey} (${entry.lineName}):`)
+      for (const v of entry.orphaned) {
+        console.log(
+          `    - sku ${v.sku}${v.scent ? `, scent ${v.scent}` : ''} (squareVariationId ${v.squareVariationId ?? 'none'})`,
+        )
       }
     }
   }
 
-  console.log(`\n${'='.repeat(60)}`)
-  console.log(`Lines:      ${lines.size}  (created ${created}, updated ${updated})`)
-  console.log(`Variations: ${variationCount}`)
-  console.log(`Skipped:    ${skipped.length}`)
-  console.log(`${'='.repeat(60)}\n`)
-
-  // Never truncate this silently -- a sellable product hiding in the skip list is
-  // a mapping-table bug, and printing only a count would conceal it.
-  console.log('SKIPPED ITEMS (read this list — any sellable product here is a Task 3 bug):')
-  for (const name of skipped) console.log(`  - ${name}`)
+  if (failures.length > 0) {
+    console.log('\nFAILED LINES (write error — NOT imported, fix and re-run):')
+    for (const f of failures) {
+      console.log(`  - ${f.lineKey} (${f.lineName}): ${f.error}`)
+    }
+  }
 
   if (!COMMIT) console.log('\nDry run. Nothing was written. Re-run with --commit to persist.')
 
-  process.exit(0)
+  process.exit(failures.length > 0 ? 1 : 0)
 }
 
 main().catch((err) => {

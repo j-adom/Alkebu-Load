@@ -1,11 +1,17 @@
-export interface ProductLineMatch {
+interface ProductLineMatchBase {
   lineKey: string;
   lineName: string;
-  collection: 'wellness-lifestyle' | 'oils-incense';
   variantLabel: string;
   variantAxis: 'scent' | 'size' | 'none';
-  productType: string;
 }
+
+// Discriminated on `collection` so a caller that has already checked
+// `match.collection === 'oils-incense'` gets `productType` narrowed to exactly the
+// values that collection's schema accepts (and likewise for wellness-lifestyle),
+// with no unsafe `as` assertion required on either side.
+export type ProductLineMatch =
+  | (ProductLineMatchBase & { collection: 'wellness-lifestyle'; productType: 'body-butter' | 'soap' })
+  | (ProductLineMatchBase & { collection: 'oils-incense'; productType: 'fragrance-oil' });
 
 /**
  * Phase 1 covers four house-made lines only. Everything else — bulk supply SKUs,
