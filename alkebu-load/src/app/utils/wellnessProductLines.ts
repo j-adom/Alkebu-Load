@@ -55,7 +55,9 @@ const SIZE_LABELS: Record<string, string> = {
 // rule as the rest of this file -- without duplicating this list.
 export const SOAPS: Array<{ key: string; name: string; pattern: RegExp }> = [
   { key: 'raw-black-soap', name: 'Raw Black Soap', pattern: /^raw black soap\b/i },
-  { key: 'yadain-bar-soap', name: 'Yadain Bar Soap', pattern: /^yadain bar soap$/i },
+  // Yadain Bar Soap deliberately omitted (2026-07-13): the maker appears to have gone out of
+  // business. It was the #4 line by revenue ($4,990/yr), so its absence here is intentional —
+  // do not "restore" it as a missing-soap bug. If they reopen, add the entry back.
   { key: 'turmeric-kojic-facial-bar', name: 'Turmeric, Lemon, Honey & Kojic Facial Bar', pattern: /^turmeric, lemon, honey & kojic facial bar$/i },
   { key: 'sunaroma-shea-vitamin-e', name: 'Sunaroma Shea Butter & Vitamin E Soap Bar', pattern: /^sunaroma with shea butter/i },
   { key: 'gye-nyame-blackseed-soap', name: 'Gye Nyame Blackseed Soap', pattern: /^gye nyame blackseed soap$/i },

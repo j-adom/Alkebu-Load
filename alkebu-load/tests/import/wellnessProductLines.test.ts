@@ -28,12 +28,18 @@ test('scented oils collapse to one line, including the "type" naming convention'
 });
 
 test('soaps are distinct products, not scent variants of one soap', () => {
-  const yadain = matchProductLine('Yadain Bar Soap');
+  const gyeNyame = matchProductLine('Gye Nyame Blackseed Soap');
   const sunaroma = matchProductLine('Sunaroma with Shea Butter & Vitamin E Oil Soap Bar 8 oz');
 
-  assert.strictEqual(yadain?.variantAxis, 'none');
-  assert.strictEqual(yadain?.productType, 'soap');
-  assert.notStrictEqual(yadain?.lineKey, sunaroma?.lineKey);
+  assert.strictEqual(gyeNyame?.variantAxis, 'none');
+  assert.strictEqual(gyeNyame?.productType, 'soap');
+  assert.notStrictEqual(gyeNyame?.lineKey, sunaroma?.lineKey);
+});
+
+test('Yadain Bar Soap is excluded — the maker appears to be out of business', () => {
+  // It was the #4 line by revenue ($4,990/yr), so a future reader will notice it missing from
+  // the sales data and may assume the table has a gap. It does not. This is deliberate.
+  assert.strictEqual(matchProductLine('Yadain Bar Soap'), null);
 });
 
 test('same soap in two sizes is one product with a size variant', () => {

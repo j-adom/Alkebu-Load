@@ -87,8 +87,8 @@ test('wellness cart details resolve the chosen scent variation and keep cents', 
 test('single-variation wellness products need no explicit selection', () => {
   const product = {
     id: 'wl_2',
-    name: 'Yadain Bar Soap',
-    variations: [{ sku: 'YADAIN-BAR', price: 899, squareVariationId: 'SQ_Y' }],
+    name: 'Gye Nyame Blackseed Soap',
+    variations: [{ sku: 'GYENYAME-BAR', price: 899, squareVariationId: 'SQ_Y' }],
   };
 
   assert.strictEqual(resolveCartProductUnitPrice(product, 'wellness-lifestyle'), 899);

@@ -154,8 +154,8 @@ test('updating a wellness cart line above the variation stock is rejected', asyn
   const limitedSoap = {
     id: 'wl_soap_1',
     publishOnline: true,
-    name: 'Yadain Bar Soap',
-    variations: [{ sku: 'YADAIN-BAR', price: 899, stock: 3 }],
+    name: 'Gye Nyame Blackseed Soap',
+    variations: [{ sku: 'GYENYAME-BAR', price: 899, stock: 3 }],
   };
   const mock = makeCartPayloadMock({ 'wellness-lifestyle:wl_soap_1': limitedSoap });
 
