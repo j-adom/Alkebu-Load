@@ -469,6 +469,16 @@ export async function getRelatedProducts(
   const relatedProducts: any[] = [];
   const seenIds = new Set<string>([currentProductId]);
 
+  // wellness-lifestyle / oils-incense are gated behind a human-reviewed
+  // publishOnline flag (Square carries bulk supply SKUs and miscategorized
+  // items). A "related products" rail must honor the same gate the detail
+  // page and grid do, or an unreviewed product's name/price leaks onto a
+  // live product page even though its own detail URL still 404s.
+  const publishFilter =
+    collection === 'wellness-lifestyle' || collection === 'oils-incense'
+      ? '&where[publishOnline][equals]=true'
+      : '';
+
   try {
     // Query by category
     if (categories && categories.length > 0) {
@@ -476,7 +486,7 @@ export async function getRelatedProducts(
 
       try {
         const response = await payloadGet<PayloadCollectionResponse<any>>(
-          `/api/${collection}?${categoriesQuery}&where[isActive][equals]=true&limit=${limit * 2}&depth=1`
+          `/api/${collection}?${categoriesQuery}&where[isActive][equals]=true${publishFilter}&limit=${limit * 2}&depth=1`
         );
 
         response.docs.forEach(product => {
@@ -494,7 +504,7 @@ export async function getRelatedProducts(
     if (relatedProducts.length < limit) {
       try {
         const response = await payloadGet<PayloadCollectionResponse<any>>(
-          `/api/${collection}?where[isActive][equals]=true&limit=${limit * 2}&depth=1&sort=-createdAt`
+          `/api/${collection}?where[isActive][equals]=true${publishFilter}&limit=${limit * 2}&depth=1&sort=-createdAt`
         );
 
         response.docs.forEach(product => {

@@ -38,7 +38,7 @@
             subtitle: "& Beauty",
             href: "/shop/health-and-beauty",
             image: sectionImages?.[2],
-            enabled: false,
+            enabled: true,
         },
         {
             title: "African Art",

@@ -21,7 +21,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       page: page.toString(),
       limit: Math.ceil(limit / 2).toString(),
       depth: '2',
-      sort: sort
+      sort: sort,
+      'where[publishOnline][equals]': 'true' // Curation gate: only human-approved products
     });
 
     if (category && category !== 'oils') {
@@ -29,7 +30,12 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
     }
 
     const wellnessProducts = await payloadGet<any>(`/api/wellness-lifestyle?${wellnessParams.toString()}`);
-    allProducts = [...(wellnessProducts.docs || [])];
+    // Tag each doc with its origin collection — the grid mixes two collections,
+    // and downstream (ProductCard, add-to-cart) needs to know which one to
+    // resolve pricing/inventory against.
+    allProducts = [
+      ...(wellnessProducts.docs || []).map((doc: any) => ({ ...doc, productType: 'wellness-lifestyle' }))
+    ];
     totalDocs += wellnessProducts.totalDocs || 0;
 
     // Get scented oils (excluding incense) from oils-incense collection
@@ -38,7 +44,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       limit: Math.ceil(limit / 2).toString(),
       depth: '2',
       sort: sort,
-      'where[productType][equals]': 'fragrance-oil' // Only get fragrance oils
+      'where[productType][equals]': 'fragrance-oil', // Only get fragrance oils
+      'where[publishOnline][equals]': 'true' // Curation gate: only human-approved products
     });
 
     if (category === 'oils' || (category && category !== 'wellness')) {
@@ -46,7 +53,10 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
     }
 
     const oilProducts = await payloadGet<any>(`/api/oils-incense?${oilsParams.toString()}`);
-    allProducts = [...allProducts, ...(oilProducts.docs || [])];
+    allProducts = [
+      ...allProducts,
+      ...(oilProducts.docs || []).map((doc: any) => ({ ...doc, productType: 'oils-incense' }))
+    ];
     totalDocs += oilProducts.totalDocs || 0;
     
     // Build categories list from Payload field options (no categories collection)

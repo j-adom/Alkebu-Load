@@ -1,4 +1,4 @@
-import { getProductBySlug, payloadGet, getRelatedProducts } from '$lib/server/payload';
+import { payloadGet, getRelatedProducts } from '$lib/server/payload';
 import { buildProductJsonLd, buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -13,13 +13,28 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     let product = null;
     let productType: 'wellness-lifestyle' | 'oils-incense' = 'wellness-lifestyle';
 
+    // Curation gate: publishOnline must be true, or the product must be
+    // unreachable — including by direct slug URL. Square carries bulk supply
+    // SKUs and miscategorized items, so nothing reaches customers without a
+    // human ticking the box in the admin.
     try {
-      product = await getProductBySlug(slug, 'wellness-lifestyle');
-      productType = 'wellness-lifestyle';
+      const wellnessResult = await payloadGet<any>(
+        `/api/wellness-lifestyle?where[slug][equals]=${encodeURIComponent(slug)}&where[publishOnline][equals]=true&limit=1&depth=2`
+      );
+      if (wellnessResult.docs?.length > 0) {
+        product = wellnessResult.docs[0];
+        productType = 'wellness-lifestyle';
+      }
     } catch (err) {
+      // Product not found in wellness-lifestyle; fall through to oils-incense
+    }
+
+    if (!product) {
       // Try oils-incense collection for fragrance oils
       try {
-        const searchResult = await payloadGet<any>(`/api/oils-incense?where[slug][equals]=${slug}&where[productType][in]=fragrance-oil&limit=1`);
+        const searchResult = await payloadGet<any>(
+          `/api/oils-incense?where[slug][equals]=${encodeURIComponent(slug)}&where[productType][in]=fragrance-oil&where[publishOnline][equals]=true&limit=1&depth=2`
+        );
         if (searchResult.docs?.length > 0) {
           product = searchResult.docs[0];
           productType = 'oils-incense';
@@ -34,8 +49,10 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
     }
 
     // Fetch related products based on category
-    const categories = product.category ? [product.category] : (product.categories || []);
+    const categories = product.categories || [];
     const relatedProducts = await getRelatedProducts(product.id, productType, categories, 6);
+
+    const productName = product.name || product.title || 'Product';
 
     // Build breadcrumbs based on product type
     const categoryName = productType === 'wellness-lifestyle' ? 'Wellness & Lifestyle' : 'Essential Oils & Aromatherapy';
@@ -43,7 +60,7 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       { name: 'Home', url: `${PUBLIC_SITE_URL}/` },
       { name: 'Health & Beauty', url: `${PUBLIC_SITE_URL}/shop/health-and-beauty` },
       { name: categoryName, url: `${PUBLIC_SITE_URL}/shop/health-and-beauty?collection=${productType === 'wellness-lifestyle' ? 'wellness' : 'oils'}` },
-      { name: product.title, url: `${PUBLIC_SITE_URL}/shop/health-and-beauty/${slug}` }
+      { name: productName, url: `${PUBLIC_SITE_URL}/shop/health-and-beauty/${slug}` }
     ];
 
     // Set strong edge caching (24 hours) with long stale window (7 days)
@@ -51,28 +68,28 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
       'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=86400',
       'Vary': 'Accept-Encoding',
       // Surrogate keys for targeted purge
-      'x-key': `product:${product.id},collection:${productType}${product.brand ? `,brand:${product.brand.id}` : ''}${product.categories?.length ? `,categories:${product.categories.map((c: any) => c.id).join(',')}` : ''}`
+      'x-key': `product:${product.id},collection:${productType}${product.brand ? `,brand:${product.brand}` : ''}${product.categories?.length ? `,categories:${product.categories.join(',')}` : ''}`
     });
 
     // Build structured data
     const jsonLd = buildProductJsonLd(product, slug);
 
     // Build SEO data
-    let description = product.seoDescription || product.description;
+    let description = product.seo?.description || product.shortDescription;
     if (!description) {
       if (productType === 'wellness-lifestyle') {
-        description = `${product.title} - Wellness and lifestyle product promoting natural health and wellbeing.`;
+        description = `${productName} - Wellness and lifestyle product promoting natural health and wellbeing.`;
       } else {
-        description = `${product.title} - Premium essential oil featuring authentic scents for aromatherapy and therapeutic relaxation.`;
+        description = `${productName} - Premium essential oil featuring authentic scents for aromatherapy and therapeutic relaxation.`;
       }
     }
 
     const seoData = buildSEOData({
-      title: product.titleLong || product.title,
+      title: product.seo?.title || productName,
       description,
       canonical: `${PUBLIC_SITE_URL}/shop/health-and-beauty/${slug}`,
-      image: product.images?.[0]?.url,
-      imageAlt: `Image of ${product.title}`,
+      image: product.heroImage?.url || product.images?.[0]?.image?.url,
+      imageAlt: `Image of ${productName}`,
       jsonLd,
       breadcrumbs
     });
