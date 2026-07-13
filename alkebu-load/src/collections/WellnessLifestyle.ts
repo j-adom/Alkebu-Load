@@ -905,7 +905,16 @@ const WellnessLifestyle: CollectionConfig = {
   // Public read access is restricted to published docs; logged-in staff
   // (admin UI, Local API without overrideAccess) see everything.
   access: {
-    read: ({ req }) => (req.user ? true : { publishOnline: { equals: true } }),
+    // The curation gate, enforced structurally rather than at each of the ~19 query sites
+    // (four leaks were found relying on the latter). Only back-office roles see unpublished
+    // docs. Gating on ROLE, not merely on `req.user`, matters: the storefront authenticates
+    // with PAYLOAD_API_KEY when that env var is set, which would populate req.user and hand
+    // the public site every unpublished product.
+    read: ({ req }) => {
+      const role = (req.user as { role?: string } | undefined)?.role
+      if (role === 'admin' || role === 'staff' || role === 'editor') return true
+      return { publishOnline: { equals: true } }
+    },
   },
 
   hooks: {
