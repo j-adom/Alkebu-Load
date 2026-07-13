@@ -504,8 +504,16 @@ export interface ProductLineMatch {
   collection: 'wellness-lifestyle' | 'oils-incense';
   variantLabel: string;   // e.g. 'Black Woman' — the scent, or the size, or '' for single-variant
   variantAxis: 'scent' | 'size' | 'none';
+  productType: string;    // REQUIRED on both collections — the importer must supply it
 }
 ```
+
+`productType` is `required: true` on both collections and the importer cannot invent it, so the mapping table carries it. **Only these exact values are valid** (verified against the live schema — do not invent others):
+
+- `wellness-lifestyle` accepts `body-butter` and `soap` (among 33 options).
+- `oils-incense` accepts `fragrance-oil` (among only 4 options: `fragrance-oil`, `incense-pack`, `sage-bundle`, `palo-santo`).
+
+Assign: Whipped Shea Butter and all Raw Butters → `body-butter`. All Soaps → `soap`. Scented Oil → `fragrance-oil`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -524,6 +532,7 @@ test('whipped shea butter SKUs collapse to one line with the scent as the varian
   assert.strictEqual(match?.variantAxis, 'scent');
   assert.strictEqual(match?.variantLabel, 'Black Woman');
 
+  assert.strictEqual(match?.productType, 'body-butter'); // required on the collection; importer needs it
   assert.strictEqual(matchProductLine('Whipped Shea Butter Mango Butter')?.lineKey, 'whipped-shea-butter');
   assert.strictEqual(matchProductLine('Whipped Shea Butter Pink Sugar')?.variantLabel, 'Pink Sugar');
 });
@@ -536,6 +545,8 @@ test('scented oils collapse to one line, including the "type" naming convention'
   // The top seller (2,259 units) uses the bare "<scent> type" convention.
   assert.strictEqual(matchProductLine('Mr. Obama type')?.lineKey, 'scented-oil');
   assert.strictEqual(matchProductLine('Mr. Obama type')?.variantLabel, 'Mr. Obama');
+  // oils-incense.productType has only 4 valid options; fragrance-oil is the only fit.
+  assert.strictEqual(matchProductLine('Egyptian Musk Scented Oil')?.productType, 'fragrance-oil');
 });
 
 test('soaps are distinct products, not scent variants of one soap', () => {
@@ -543,6 +554,7 @@ test('soaps are distinct products, not scent variants of one soap', () => {
   const sunaroma = matchProductLine('Sunaroma with Shea Butter & Vitamin E Oil Soap Bar 8 oz');
 
   assert.strictEqual(yadain?.variantAxis, 'none');
+  assert.strictEqual(yadain?.productType, 'soap');
   assert.notStrictEqual(yadain?.lineKey, sunaroma?.lineKey);
 });
 
@@ -688,6 +700,7 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
         collection: 'wellness-lifestyle',
         variantLabel: half ? SIZE_LABELS['1/2 lb'] : SIZE_LABELS.lb,
         variantAxis: 'size',
+        productType: 'soap',
       };
     }
 
@@ -697,6 +710,7 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
       collection: 'wellness-lifestyle',
       variantLabel: '',
       variantAxis: 'none',
+      productType: 'soap',
     };
   }
 
@@ -709,6 +723,7 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
         collection: 'wellness-lifestyle',
         variantLabel: '',
         variantAxis: 'none',
+        productType: 'body-butter',
       };
     }
   }
@@ -725,6 +740,7 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
       collection: 'wellness-lifestyle',
       variantLabel: shea[1].trim(),
       variantAxis: 'scent',
+      productType: 'body-butter',
     };
   }
 
@@ -740,6 +756,7 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
       collection: 'oils-incense',
       variantLabel: oilScent.trim(),
       variantAxis: 'scent',
+      productType: 'fragrance-oil',
     };
   }
 
