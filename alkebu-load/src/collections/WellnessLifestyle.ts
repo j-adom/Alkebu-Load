@@ -18,6 +18,65 @@ const WellnessLifestyle: CollectionConfig = {
       }
     },
     {
+      name: 'slug',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        description: 'URL slug, e.g. "whipped-shea-butter". Auto-generated from name if blank.',
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value, data }) =>
+            value ||
+            (data?.name || '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, ''),
+        ],
+      },
+    },
+    {
+      name: 'publishOnline',
+      type: 'checkbox',
+      defaultValue: false,
+      index: true,
+      admin: {
+        position: 'sidebar',
+        description:
+          'OFF by default. Square carries bulk supply SKUs and miscategorized items ' +
+          '(a djembe drum and a line item named "Shipping" are both filed under wellness). ' +
+          'A human must confirm each product before it reaches the storefront.',
+      },
+    },
+    {
+      name: 'heroImage',
+      type: 'upload',
+      relationTo: 'media',
+      admin: {
+        description: 'Primary product photo. Pre-optimize before upload — Media has no imageSizes.',
+      },
+    },
+    {
+      name: 'scentFamily',
+      type: 'select',
+      options: [
+        { label: 'Floral', value: 'floral' },
+        { label: 'Woody', value: 'woody' },
+        { label: 'Citrus', value: 'citrus' },
+        { label: 'Herbal', value: 'herbal' },
+        { label: 'Spicy', value: 'spicy' },
+        { label: 'Earthy', value: 'earthy' },
+        { label: 'Sweet', value: 'sweet' },
+        { label: 'Fresh', value: 'fresh' },
+        { label: 'Exotic', value: 'exotic' },
+        { label: 'Sacred', value: 'sacred' }
+      ],
+      admin: {
+        description: 'General scent category'
+      }
+    },
+    {
       name: 'productType',
       type: 'select',
       required: true,
@@ -422,11 +481,30 @@ const WellnessLifestyle: CollectionConfig = {
           }
         },
         {
-          name: 'medusaVariantId',
-          type: 'text',
+          name: 'price',
+          type: 'number',
+          required: true,
+          min: 0,
           admin: {
-            description: 'MedusaJS variant ID for ecommerce'
-          }
+            description: 'Price in CENTS (matches Square price_money.amount). 1499 = $14.99.',
+          },
+        },
+        {
+          name: 'stock',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          admin: {
+            description: 'On-hand count. Overwritten by the Square inventory webhook.',
+          },
+        },
+        {
+          name: 'weight',
+          type: 'number',
+          min: 0,
+          admin: {
+            description: 'Shipped weight in OUNCES, including packaging. Shippo mis-rates without it.',
+          },
         },
         {
           name: 'isAvailable',

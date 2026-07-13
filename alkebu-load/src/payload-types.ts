@@ -1808,6 +1808,24 @@ export interface WellnessLifestyle {
    */
   name: string;
   /**
+   * URL slug, e.g. "whipped-shea-butter". Auto-generated from name if blank.
+   */
+  slug?: string | null;
+  /**
+   * OFF by default. Square carries bulk supply SKUs and miscategorized items (a djembe drum and a line item named "Shipping" are both filed under wellness). A human must confirm each product before it reaches the storefront.
+   */
+  publishOnline?: boolean | null;
+  /**
+   * Primary product photo. Pre-optimize before upload — Media has no imageSizes.
+   */
+  heroImage?: (number | null) | Media;
+  /**
+   * General scent category
+   */
+  scentFamily?:
+    | ('floral' | 'woody' | 'citrus' | 'herbal' | 'spicy' | 'earthy' | 'sweet' | 'fresh' | 'exotic' | 'sacred')
+    | null;
+  /**
    * Type of wellness/lifestyle product
    */
   productType:
@@ -2051,9 +2069,17 @@ export interface WellnessLifestyle {
      */
     squareItemId?: string | null;
     /**
-     * MedusaJS variant ID for ecommerce
+     * Price in CENTS (matches Square price_money.amount). 1499 = $14.99.
      */
-    medusaVariantId?: string | null;
+    price: number;
+    /**
+     * On-hand count. Overwritten by the Square inventory webhook.
+     */
+    stock?: number | null;
+    /**
+     * Shipped weight in OUNCES, including packaging. Shippo mis-rates without it.
+     */
+    weight?: number | null;
     isAvailable?: boolean | null;
     id?: string | null;
   }[];
@@ -2945,6 +2971,18 @@ export interface OilsIncense {
    */
   name: string;
   /**
+   * URL slug, e.g. "whipped-shea-butter". Auto-generated from name if blank.
+   */
+  slug?: string | null;
+  /**
+   * OFF by default. Square carries bulk supply SKUs and miscategorized items (a djembe drum and a line item named "Shipping" are both filed under wellness). A human must confirm each product before it reaches the storefront.
+   */
+  publishOnline?: boolean | null;
+  /**
+   * Primary product photo. Pre-optimize before upload — Media has no imageSizes.
+   */
+  heroImage?: (number | null) | Media;
+  /**
    * Type of product
    */
   productType: 'fragrance-oil' | 'incense-pack' | 'sage-bundle' | 'palo-santo';
@@ -3010,9 +3048,17 @@ export interface OilsIncense {
      */
     squareVariationId?: string | null;
     /**
-     * MedusaJS variant ID for ecommerce
+     * Price in CENTS (matches Square price_money.amount). 1499 = $14.99.
      */
-    medusaVariantId?: string | null;
+    price: number;
+    /**
+     * On-hand count. Overwritten by the Square inventory webhook.
+     */
+    stock?: number | null;
+    /**
+     * Shipped weight in OUNCES, including packaging. Shippo mis-rates without it.
+     */
+    weight?: number | null;
     isAvailable?: boolean | null;
     id?: string | null;
   }[];
@@ -6474,6 +6520,10 @@ export interface BooksSelect<T extends boolean = true> {
  */
 export interface WellnessLifestyleSelect<T extends boolean = true> {
   name?: T;
+  slug?: T;
+  publishOnline?: T;
+  heroImage?: T;
+  scentFamily?: T;
   productType?: T;
   description?: T;
   shortDescription?: T;
@@ -6527,7 +6577,9 @@ export interface WellnessLifestyleSelect<T extends boolean = true> {
         color?: T;
         squareVariationId?: T;
         squareItemId?: T;
-        medusaVariantId?: T;
+        price?: T;
+        stock?: T;
+        weight?: T;
         isAvailable?: T;
         id?: T;
       };
@@ -6750,6 +6802,9 @@ export interface FashionJewelrySelect<T extends boolean = true> {
  */
 export interface OilsIncenseSelect<T extends boolean = true> {
   name?: T;
+  slug?: T;
+  publishOnline?: T;
+  heroImage?: T;
   productType?: T;
   description?: T;
   shortDescription?: T;
@@ -6762,7 +6817,9 @@ export interface OilsIncenseSelect<T extends boolean = true> {
         size?: T;
         packaging?: T;
         squareVariationId?: T;
-        medusaVariantId?: T;
+        price?: T;
+        stock?: T;
+        weight?: T;
         isAvailable?: T;
         id?: T;
       };
