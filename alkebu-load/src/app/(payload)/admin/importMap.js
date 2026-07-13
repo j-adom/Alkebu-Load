@@ -28,6 +28,7 @@ import { OverviewComponent as OverviewComponent_a8a977ebc872c5d5ea7ee689724c0860
 import { MetaTitleComponent as MetaTitleComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { MetaDescriptionComponent as MetaDescriptionComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { PreviewComponent as PreviewComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
+import { default as default_d332efdb223a279bb2176e68fc22c417 } from '@/app/components/admin/cells/HeroImageStatusCell'
 import { default as default_950b25dead4eeff48d3139bb1fe8e71c } from '../../../app/components/OrderDashboardNavLink'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 import { default as default_846aa68adb78999624f0876d04284df0 } from '../../../app/components/OrderDashboardView'
@@ -64,6 +65,7 @@ export const importMap = {
   "@payloadcms/plugin-seo/client#MetaTitleComponent": MetaTitleComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@payloadcms/plugin-seo/client#MetaDescriptionComponent": MetaDescriptionComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@payloadcms/plugin-seo/client#PreviewComponent": PreviewComponent_a8a977ebc872c5d5ea7ee689724c0860,
+  "@/app/components/admin/cells/HeroImageStatusCell#default": default_d332efdb223a279bb2176e68fc22c417,
   "/app/components/OrderDashboardNavLink#default": default_950b25dead4eeff48d3139bb1fe8e71c,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24,
   "/app/components/OrderDashboardView#default": default_846aa68adb78999624f0876d04284df0,

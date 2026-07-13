@@ -4,7 +4,8 @@ const OilsIncense: CollectionConfig = {
   slug: 'oils-incense',
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'productType', 'baseScent', 'isActive'],
+    defaultColumns: ['name', 'publishOnline', 'heroImage', 'updatedAt'],
+    listSearchableFields: ['name', 'slug', 'baseScent'],
     group: 'Inventory'
   },
   fields: [
@@ -55,6 +56,9 @@ const OilsIncense: CollectionConfig = {
       relationTo: 'media',
       admin: {
         description: 'Primary product photo. Pre-optimize before upload — Media has no imageSizes.',
+        components: {
+          Cell: '@/app/components/admin/cells/HeroImageStatusCell',
+        },
       },
     },
     {

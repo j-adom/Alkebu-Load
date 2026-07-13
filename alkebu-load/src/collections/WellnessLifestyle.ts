@@ -4,7 +4,8 @@ const WellnessLifestyle: CollectionConfig = {
   slug: 'wellness-lifestyle',
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'productType', 'vendor', 'primaryIngredient', 'isActive'],
+    defaultColumns: ['name', 'publishOnline', 'heroImage', 'updatedAt'],
+    listSearchableFields: ['name', 'slug', 'primaryIngredient'],
     group: 'Inventory'
   },
   fields: [
@@ -55,6 +56,9 @@ const WellnessLifestyle: CollectionConfig = {
       relationTo: 'media',
       admin: {
         description: 'Primary product photo. Pre-optimize before upload — Media has no imageSizes.',
+        components: {
+          Cell: '@/app/components/admin/cells/HeroImageStatusCell',
+        },
       },
     },
     {
