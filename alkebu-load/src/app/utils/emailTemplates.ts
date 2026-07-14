@@ -3,7 +3,7 @@ import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNoti
 // ─── Security helper ───────────────────────────────────────────────────────────
 // Escape user-controlled values before interpolating them into HTML.
 // `&` MUST be replaced first to avoid double-escaping other entities.
-const escapeHtml = (s: unknown): string =>
+export const escapeHtml = (s: unknown): string =>
   String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

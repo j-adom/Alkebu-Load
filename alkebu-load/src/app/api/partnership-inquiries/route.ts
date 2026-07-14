@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { submitPartnershipInquiry } from '@/app/utils/partnershipInquirySubmission';
 import { sendPartnershipStaffNotification, sendPartnershipAcknowledgement } from '@/app/utils/emailService';
+import { createPartnershipInquiryWithFailureAlert } from '@/app/utils/partnershipInquiryFailureAlert';
 import { getClientIp, verifyTurnstileToken } from '@/app/utils/turnstile';
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -68,11 +69,29 @@ export async function POST(request: NextRequest) {
       createInquiry: async (data) => {
         const payload = await getPayloadClient();
         const { id: _id, ...createData } = data;
-        const created = await payload.create({
-          collection: 'partnership-inquiries',
-          data: createData,
-          overrideAccess: true,
-        });
+
+        // If the save fails (e.g. the collection's table is missing — see the
+        // July 8, 2026 PartnershipInquiries incident), alert staff with the
+        // submitted lead data BEFORE the original error propagates, so a lost
+        // DB write doesn't also mean a lost lead. The alert can never mask
+        // the original error: createPartnershipInquiryWithFailureAlert always
+        // rethrows it, even if the alert email itself fails.
+        const created = await createPartnershipInquiryWithFailureAlert(
+          () =>
+            payload.create({
+              collection: 'partnership-inquiries',
+              data: createData,
+              overrideAccess: true,
+            }),
+          {
+            inquiryType: data.inquiryType,
+            name: data.name,
+            email: data.email,
+            organizationName: data.organizationName,
+            message: data.message,
+            sourcePath: data.sourcePath,
+          },
+        );
 
         return { ...data, id: created.id };
       },

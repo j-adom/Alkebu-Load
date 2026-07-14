@@ -17,6 +17,8 @@ import { ShopPage } from './globals/ShopPage'
 import { SiteSettings } from './globals/SiteSettings'
 
 import { searchEngine } from './app/utils/searchEngine'
+import { checkSchemaDrift } from './app/utils/schemaDrift'
+import { sendRawEmail } from './app/utils/emailService'
 
 import Users from './collections/Users'
 import Media from './collections/Media'
@@ -42,6 +44,7 @@ import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
 import { PartnershipInquiries } from './collections/PartnershipInquiries'
 import { getEmailRuntimeConfig, getEmailTransportOptions, shouldSkipEmailTransportVerify } from './app/utils/emailConfig'
+// (getEmailRuntimeConfig also backs the schema-drift boot alert below)
 
 
 const filename = fileURLToPath(import.meta.url)
@@ -94,6 +97,38 @@ export default buildConfig({
     searchEngine.initializeWithData(payload).catch((err) => {
       payload.logger.error({ err }, 'Failed to initialize search index')
     })
+
+    // Schema drift check — catches the failure mode that took B2B lead forms
+    // down for six days on July 8, 2026: a collection registered in the
+    // running app whose Postgres table was never created. Loud log + staff
+    // alert, but NEVER a boot crash — a hard crash here would take the whole
+    // site down, which is worse than drift going briefly unnoticed.
+    checkSchemaDrift(payload)
+      .then(async (result) => {
+        if (result.ok) return
+
+        payload.logger.error(
+          `SCHEMA DRIFT DETECTED on boot — the following collection(s) are registered in the app but their database probe failed, meaning writes to them are likely being silently lost: ${result.missing.join(', ')}`,
+        )
+
+        try {
+          const staffEmail = getEmailRuntimeConfig().staffNotificationEmail
+          await sendRawEmail({
+            to: staffEmail,
+            subject: `URGENT: schema drift detected on boot — ${result.missing.length} collection(s) broken`,
+            html: `<p>The following collections are registered in the running app, but a database probe against each failed on startup:</p>
+<ul>${result.missing.map((slug) => `<li>${slug}</li>`).join('')}</ul>
+<p>Writes to these collections are most likely failing silently right now. Investigate immediately — check that a migration was applied to the correct database.</p>`,
+            text: `Schema drift detected on boot.\n\nThe following collections are registered in the running app, but a database probe against each failed on startup:\n${result.missing.join('\n')}\n\nWrites to these collections are most likely failing silently right now. Investigate immediately — check that a migration was applied to the correct database.`,
+          })
+        } catch (err) {
+          // Alerting must never crash boot.
+          payload.logger.error({ err }, 'Failed to send schema drift alert email')
+        }
+      })
+      .catch((err) => {
+        payload.logger.error({ err }, 'Schema drift check itself failed')
+      })
   },
   serverURL,
   cors: [
