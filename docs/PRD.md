@@ -267,11 +267,21 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - Blog content creation & publishing workflow
 - Advanced search features (voice, barcode)
 - Customer loyalty integration
-- Listmonk email marketing campaigns (newsletter signup is already live)
+- Listmonk email marketing campaigns (newsletter signup is already live; B2B lead list is
+  staff-gated — see [b2b-email-strategy.md](b2b-email-strategy.md))
 - Consignment vendor reports
 
 ### Phase 3: Business Intelligence
-- NocoDB for B2B sales pipeline, event planning, resource tracking
+- **Twenty CRM** (self-hosted, open source) for the B2B sales pipeline. Adoption trigger:
+  when the pipeline outgrows the PartnershipInquiries admin — roughly 25+ active leads or a
+  dedicated sales/outreach staff member. Until then, the Payload collection (status,
+  follow-up date, notes, assignment) *is* the CRM. Integration path is already in place:
+  `crmExternalId` / `crmSyncStatus` fields on PartnershipInquiries, and Twenty's
+  GraphQL/REST API fits the same hook pattern as the listmonk sync. Ops note: Twenty adds
+  Postgres + Redis + worker containers to the Coolify host — budget for backups/patching
+  before adopting.
+- NocoDB remains an option for event planning and resource tracking (no longer earmarked
+  for the sales pipeline)
 - n8n for workflow automation (inventory alerts, marketing triggers, social scheduling)
 
 ### Phase 4: Growth
