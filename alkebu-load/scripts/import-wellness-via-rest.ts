@@ -214,11 +214,11 @@ async function main() {
     if (envToken) {
       token = envToken
     } else {
-      const email = process.env.PAYLOAD_EMAIL
-      const password = process.env.PAYLOAD_PASSWORD
+      const email = process.env.PAYLOAD_ADMIN_EMAIL
+      const password = process.env.PAYLOAD_ADMIN_PASSWORD
       if (!email || !password) {
         console.error(
-          'Missing credentials: set PAYLOAD_EMAIL and PAYLOAD_PASSWORD (or PAYLOAD_TOKEN) in the environment. Nothing was written.',
+          'Missing credentials: set PAYLOAD_ADMIN_EMAIL and PAYLOAD_ADMIN_PASSWORD (or PAYLOAD_TOKEN) in the environment. Nothing was written.',
         )
         process.exit(1)
         return
