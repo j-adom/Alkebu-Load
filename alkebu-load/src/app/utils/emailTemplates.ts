@@ -136,14 +136,24 @@ function ctaButton(text: string, url: string): string {
   </div>`;
 }
 
-function itemsTable(items: Array<{ productTitle: string; quantity: number; unitPrice: number; totalPrice: number }>): string {
-  const rows = items.map(item => `
+function itemsTable(items: Array<{ productTitle: string; quantity: number; unitPrice: number; totalPrice: number; isbn?: string | null; productUrl?: string | null }>): string {
+  const rows = items.map(item => {
+    // Same http(s)-only guard as ctaButton: never emit a non-web protocol in an href.
+    const safeUrl = item.productUrl && /^https?:\/\//i.test(item.productUrl) ? escapeHtml(item.productUrl) : null;
+    const title = safeUrl
+      ? `<a href="${safeUrl}" style="color: ${BRAND.forest}; text-decoration: underline;">${escapeHtml(item.productTitle)}</a>`
+      : escapeHtml(item.productTitle);
+    const isbnLine = item.isbn
+      ? `<br><span style="color: ${BRAND.mutedText}; font-size: 12px;">ISBN: ${escapeHtml(item.isbn)}</span>`
+      : '';
+    return `
     <tr>
-      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${escapeHtml(item.productTitle)}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${title}${isbnLine}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; color: ${BRAND.mutedText};">${formatCents(item.unitPrice)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.totalPrice)}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return `<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
     <thead>
@@ -229,7 +239,12 @@ Date: ${new Date().toLocaleDateString()}
 ${data.estimatedDelivery ? `Estimated Delivery: ${data.estimatedDelivery}` : ''}
 
 Items Ordered:
-${data.items.map(item => `  ${item.productTitle} (Qty: ${item.quantity}) - ${formatCents(item.totalPrice)}`).join('\n')}
+${data.items.map(item => {
+    const lines = [`  ${item.productTitle} (Qty: ${item.quantity}) - ${formatCents(item.totalPrice)}`];
+    if (item.isbn) lines.push(`    ISBN: ${item.isbn}`);
+    if (item.productUrl) lines.push(`    ${item.productUrl}`);
+    return lines.join('\n');
+  }).join('\n')}
 
 Subtotal: ${formatCents(data.subtotal)}
 Tax: ${formatCents(data.tax)}

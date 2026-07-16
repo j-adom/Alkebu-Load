@@ -8,6 +8,7 @@ import {
   type StaffNotificationData,
 } from './emailService';
 import { getCartItems } from './cartOperations';
+import { buildProductPageUrl, resolveRelatedProductDoc } from './productUrls';
 import { isShippingQuoteExpired } from './shippingQuotes';
 import {
   calculateTaxFromSubtotal,
@@ -504,11 +505,15 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
           orderNumber: orderData.orderNumber,
           customerName: session.customer_details?.name || 'Customer',
           customerEmail,
-          items: orderData.items.map((item: any) => ({
+          // Map from cartItems (not orderData.items): the cart items still hold
+          // the populated product doc needed to build the storefront link.
+          items: cartItems.map((item: any) => ({
             productTitle: item.productTitle,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
+            totalPrice: item.quantity * item.unitPrice,
+            isbn: item.identifiers?.isbn || undefined,
+            productUrl: buildProductPageUrl(item.productType, resolveRelatedProductDoc(item.product)),
           })),
           subtotal: orderData.subtotalAmount,
           tax: orderData.taxAmount,

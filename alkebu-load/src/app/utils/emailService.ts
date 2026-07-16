@@ -41,6 +41,8 @@ export interface OrderConfirmationData {
     quantity: number;
     unitPrice: number;
     totalPrice: number;
+    isbn?: string | null;
+    productUrl?: string | null;
   }>;
   subtotal: number;
   tax: number;

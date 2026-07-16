@@ -17,6 +17,8 @@ type OrderEmailPayload = {
     quantity: number
     unitPrice: number
     totalPrice: number
+    isbn?: string
+    productUrl?: string
   }>
   subtotal: number
   tax: number
