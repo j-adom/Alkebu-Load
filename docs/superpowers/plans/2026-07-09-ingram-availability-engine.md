@@ -8,11 +8,20 @@
 
 **Tech Stack:** Payload CMS 3.x (Next.js 15, backend, `pnpm`), SvelteKit/Svelte 5 (storefront, `npm`), PostgreSQL (prod) / SQLite (dev), `fast-xml-parser` (new dep, SOAP/XML responses), Cloudflare Turnstile (already integrated on the contact form), Node test runner (`pnpm test`).
 
+## Amendments (2026-07-16)
+
+After reviewing the Ingram FTP inventory onboarding package (`Ingram Inventory Info/` at repo root, gitignored — Implementation Guide v2.14, 2,099-record StockV2 sample, code tables):
+
+1. **Availability is code-first** — `isIngramAvailable` (Task 3) gates on the On-Sale-Date (Ingram shows pre-order on-hand up to 14 days before street date), then trusts the Product Availability Code (`20`/`21`/`22` fulfillable, `31`/`40` not), and uses the quantity threshold only when the code is absent.
+2. **New Task 2b** — pure StockV2 fixed-width parser + fixture cut from the vendor sample, emitting the same `IngramStock` shape as the Task-2 XML parser so all downstream consumers work with either transport.
+3. **Task 12 is transport-agnostic** — the refresh cron consumes `Map<ean, IngramStock>` from either the Web Service `checkStock` or an FTP StockV2 stream-filter (FTP licensing permits persistence; Web Service forbids mirroring). If FTP credentials activate before Web Service certification, Stage 1 can go live on FTP alone; Tasks 13–14 still wait on the Web Service.
+4. Spec updated in lockstep: `docs/superpowers/specs/2026-07-09-ingram-availability-engine-design.md`.
+
 ## Global Constraints
 
 - **Ingram Web Service:** REST + Basic Auth (base64 `user:password`). Test endpoint `https://idswebtest.ingramcontent.com/cws/companion.asmx`; production URL supplied on contract approval. Config via env: `INGRAM_WS_URL`, `INGRAM_WS_USER`, `INGRAM_WS_PASSWORD`.
-- **No DB mirroring of Ingram data** — the `ingram*` edition fields are a TTL cache, refreshed on schedule; long-tail results are never persisted or indexed. (Web Service license term.)
-- **Stock threshold:** default **10**, env `INGRAM_STOCK_THRESHOLD`. Keyed on the **LaVergne** DC `OnHand` (primary), other DCs as fallback.
+- **No DB mirroring of Web Service data** — the `ingram*` edition fields are a TTL cache, refreshed on schedule; long-tail results are never persisted or indexed. (Web Service license term. The **FTP feed** is the inverse — licensed for DB load — so any *persistent* Ingram data sources from FTP.)
+- **Stock threshold:** default **10**, env `INGRAM_STOCK_THRESHOLD`. Keyed on the **LaVergne** DC `OnHand` (primary), other DCs as fallback. *Fallback signal only* — resolution is code-first with an On-Sale-Date gate (Task 3).
 - **Batch size:** ≤ **25** ISBNs per Query Type 9 call (`query=BN="isbn" or "isbn" …`).
 - **Ship promise copy:** "Ships in 3–8 days" (unchanged from today).
 - **Long-tail results/pages:** `<meta name="robots" content="noindex">`, absent from sitemap.
@@ -99,7 +108,8 @@ git commit -m "fix(inventory): clamp negative Square stock counts to zero"
     ean: string;
     ingramPrice?: number;
     pubListPrice?: number;
-    productAvailability?: string;
+    productAvailability?: string;   // normalized to the 2-char prodstat code ('21' etc.) when present
+    onSaleDate?: string;            // YYYYMMDD street date; '00010101'/unset = sellable on receipt
     backorder: boolean;
     mediaMail: boolean;
     dcs: Record<string, DcStock>;   // keyed by DC name, e.g. "LaVergne"
@@ -114,6 +124,8 @@ Run: `cd alkebu-load && pnpm add fast-xml-parser`
 - [ ] **Step 2: Add the fixture**
 
 Create `alkebu-load/tests/ingram/fixtures/queryType9-stock.xml` containing the full QueryType9 response from the Implementation Guide (EAN `9780545392556`, LaVergne `OnHand` 101, Chambersburg 129, FtWayne OnHand 0/OnOrder 112, etc.).
+
+While cutting the fixture, check whether the response carries an availability status and/or on-sale/street date element — if so, populate `productAvailability` (normalized to the 2-char prodstat code) and `onSaleDate` in the parser. The Task-2b StockV2 parser always populates both.
 
 - [ ] **Step 3: Write the failing test**
 
@@ -154,7 +166,8 @@ export interface IngramStock {
   ean: string;
   ingramPrice?: number;
   pubListPrice?: number;
-  productAvailability?: string;
+  productAvailability?: string;   // 2-char prodstat code when present
+  onSaleDate?: string;            // YYYYMMDD; populate if the response carries a street date
   backorder: boolean;
   mediaMail: boolean;
   dcs: Record<string, DcStock>;
@@ -216,6 +229,119 @@ git commit -m "feat(ingram): parse Query Type 9 stock XML into per-DC on-hand"
 
 ---
 
+### Task 2b: StockV2 fixed-width parser (pure) *(added 2026-07-16)*
+
+The Ingram FTP inventory package makes the FTP feed a viable Stage-1 source (see plan Amendments + spec "FTP inventory feed"). This parser emits the **same `IngramStock` shape as Task 2**, so Tasks 3/6/12 work with either transport. Positions are 1-based inclusive per the IDS Implementation Guide v2.14; the assertions below were **verified against record 1 of the vendor sample file** on 2026-07-16.
+
+**Files:**
+- Create: `alkebu-load/src/app/utils/ingram/parseStockV2.ts`
+- Create: `alkebu-load/tests/ingram/parseStockV2.test.ts`
+- Create: `alkebu-load/tests/ingram/fixtures/stockv2-sample.dat` — first 5 lines of `Ingram Inventory Info/IDS_Inventory/Inventory_Files/stockv2@ingram.dat` (a 5-line excerpt for tests is fine; never commit the full vendor file)
+
+**Interfaces:**
+- Consumes: nothing (pure).
+- Produces:
+  ```ts
+  export interface StockV2Record extends IngramStock {
+    weightLbs: number;        // pos 239–244, two implied decimals
+    discountLevel: string;    // pos 166–168, e.g. '20%', 'REG'
+    publisherStatus: string;  // pos 179–180, e.g. 'IP' (see pubstatus.txt)
+  }
+  export function parseStockV2Line(line: string): StockV2Record;
+  ```
+
+- [ ] **Step 1: Cut the fixture** — `head -5 "Ingram Inventory Info/IDS_Inventory/Inventory_Files/stockv2@ingram.dat" > alkebu-load/tests/ingram/fixtures/stockv2-sample.dat`
+
+- [ ] **Step 2: Write the failing test**
+
+```ts
+// alkebu-load/tests/ingram/parseStockV2.test.ts
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { parseStockV2Line } from '../../src/app/utils/ingram/parseStockV2';
+
+const [line] = readFileSync(fileURLToPath(new URL('./fixtures/stockv2-sample.dat', import.meta.url)), 'utf8').split(/\r?\n/);
+
+test('parseStockV2Line slices the vendor sample record correctly', () => {
+  const rec = parseStockV2Line(line);
+  assert.equal(rec.ean, '9781171177340');
+  assert.equal(rec.dcs.LaVergne.onHand, 147);
+  assert.equal(rec.dcs.LaVergne.stockStatus, true);
+  assert.equal(rec.dcs.Roseburg.onHand, 0);
+  assert.equal(rec.pubListPrice, 21.75);
+  assert.equal(rec.discountLevel, '20%');
+  assert.equal(rec.publisherStatus, 'IP');
+  assert.equal(rec.productAvailability, '21');  // prodstat: in stock
+  assert.equal(rec.onSaleDate, '00010101');     // no street date set → sellable on receipt
+  assert.equal(rec.mediaMail, true);
+  assert.equal(rec.backorder, false);
+  assert.equal(rec.weightLbs, 0.69);
+});
+```
+
+- [ ] **Step 3: Run test to verify it fails** — `cd alkebu-load && pnpm test -- --test-name-pattern="parseStockV2Line"`. Expected: FAIL — module not found.
+
+- [ ] **Step 4: Implement the parser**
+
+```ts
+// alkebu-load/src/app/utils/ingram/parseStockV2.ts
+import type { IngramStock } from './parseStockResponse';
+
+export interface StockV2Record extends IngramStock {
+  weightLbs: number;
+  discountLevel: string;
+  publisherStatus: string;
+}
+
+// 1-based inclusive positions per IDS Inventory Implementation Guide v2.14 (Feb 2022).
+const f = (line: string, start: number, end: number) => line.slice(start - 1, end).trim();
+const n = (s: string) => (s === '' ? 0 : Number(s));
+
+const DCS: Record<string, { onHand: [number, number]; onOrder: [number, number]; flag: number }> = {
+  LaVergne:     { onHand: [39, 45], onOrder: [95, 101],  flag: 181 },
+  Roseburg:     { onHand: [46, 52], onOrder: [102, 108], flag: 182 },
+  FtWayne:      { onHand: [53, 59], onOrder: [109, 115], flag: 183 },
+  Chambersburg: { onHand: [60, 66], onOrder: [116, 122], flag: 184 },
+  Allentown:    { onHand: [67, 73], onOrder: [123, 129], flag: 185 },
+};
+
+export function parseStockV2Line(line: string): StockV2Record {
+  const dcs: IngramStock['dcs'] = {};
+  for (const [name, p] of Object.entries(DCS)) {
+    dcs[name] = {
+      onHand: n(f(line, ...p.onHand)),
+      onOrder: n(f(line, ...p.onOrder)),
+      stockStatus: f(line, p.flag, p.flag) === 'Y',
+    };
+  }
+  return {
+    ean: f(line, 2, 14),
+    pubListPrice: n(f(line, 151, 157)) / 100,   // two implied decimals
+    productAvailability: f(line, 272, 273),
+    onSaleDate: f(line, 197, 204),
+    backorder: f(line, 219, 219) === 'Y',
+    mediaMail: f(line, 220, 220) === 'Y',
+    dcs,
+    weightLbs: n(f(line, 239, 244)) / 100,
+    discountLevel: f(line, 166, 168),
+    publisherStatus: f(line, 179, 180),
+  };
+}
+```
+
+- [ ] **Step 5: Run tests to verify they pass** — `cd alkebu-load && pnpm test`. Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add alkebu-load/src/app/utils/ingram/parseStockV2.ts alkebu-load/tests/ingram/parseStockV2.test.ts alkebu-load/tests/ingram/fixtures/stockv2-sample.dat
+git commit -m "feat(ingram): StockV2 fixed-width parser (FTP feed, same IngramStock shape)"
+```
+
+---
+
 ### Task 3: ISBN batching + availability derivation helpers (pure)
 
 **Files:**
@@ -228,7 +354,8 @@ git commit -m "feat(ingram): parse Query Type 9 stock XML into per-DC on-hand"
   ```ts
   export function batchIsbns(isbns: string[], size?: number): string[][];   // default size 25
   export function ingramOnHand(stock: IngramStock, primaryDc?: string): number; // LaVergne first, else max across DCs
-  export function isIngramAvailable(stock: IngramStock, threshold: number, primaryDc?: string): boolean;
+  export function isIngramAvailable(stock: IngramStock, threshold: number, opts?: { today?: Date; primaryDc?: string }): boolean;
+  // Code-first (amended 2026-07-16): On-Sale-Date gate → Product Availability Code (20/21/22 yes, 31/40 no) → threshold fallback
   ```
 
 - [ ] **Step 1: Write the failing test**
@@ -253,10 +380,25 @@ test('ingramOnHand prefers LaVergne, falls back to max DC', () => {
   assert.equal(ingramOnHand(noLv), 200);
 });
 
-test('isIngramAvailable applies threshold', () => {
+test('isIngramAvailable applies threshold when no availability code present', () => {
   const s = { ean: 'x', backorder: false, mediaMail: true, dcs: { LaVergne: { onHand: 8, onOrder: 0, stockStatus: true } } } as any;
   assert.equal(isIngramAvailable(s, 10), false);
   assert.equal(isIngramAvailable({ ...s, dcs: { LaVergne: { onHand: 40, onOrder: 0, stockStatus: true } } }, 10), true);
+});
+
+test('isIngramAvailable trusts the availability code over quantity', () => {
+  const low = { ean: 'x', backorder: false, mediaMail: true, dcs: { LaVergne: { onHand: 5, onOrder: 0, stockStatus: true } } } as any;
+  assert.equal(isIngramAvailable({ ...low, productAvailability: '21' }, 10), true);   // stocked → orderable despite sub-threshold qty
+  const high = { ...low, dcs: { LaVergne: { onHand: 500, onOrder: 0, stockStatus: true } } };
+  assert.equal(isIngramAvailable({ ...high, productAvailability: '40' }, 10), false); // gone from Ingram → stale qty never overrides
+  assert.equal(isIngramAvailable({ ...high, productAvailability: '31' }, 10), false); // temporarily out of stock
+});
+
+test('isIngramAvailable gates on the On-Sale-Date (pre-orders show on-hand up to 14 days early)', () => {
+  const s = { ean: 'x', backorder: false, mediaMail: true, productAvailability: '21', onSaleDate: '29990101', dcs: { LaVergne: { onHand: 40, onOrder: 0, stockStatus: true } } } as any;
+  assert.equal(isIngramAvailable(s, 10), false);
+  assert.equal(isIngramAvailable({ ...s, onSaleDate: '20200101' }, 10), true);
+  assert.equal(isIngramAvailable({ ...s, onSaleDate: '00010101' }, 10), true); // no street date set → sellable on receipt
 });
 ```
 
@@ -284,8 +426,25 @@ export function ingramOnHand(stock: IngramStock, primaryDc = 'LaVergne'): number
   return values.length ? Math.max(...values) : 0;
 }
 
-export function isIngramAvailable(stock: IngramStock, threshold: number, primaryDc = 'LaVergne'): boolean {
-  return ingramOnHand(stock, primaryDc) > threshold;
+// prodstat codes (reference file prodstat.txt): 20 available / 21 in stock / 22 special order;
+// 31 temporarily out of stock / 40 not available from Ingram.
+const FULFILLABLE_CODES = new Set(['20', '21', '22']);
+const UNAVAILABLE_CODES = new Set(['31', '40']);
+
+export function isIngramAvailable(stock: IngramStock, threshold: number, opts: { today?: Date; primaryDc?: string } = {}): boolean {
+  // On-Sale-Date gate: Ingram shows pre-order on-hand up to 14 days before street date — never sell early.
+  if (!isOnSale(stock.onSaleDate, opts.today ?? new Date())) return false;
+  const code = stock.productAvailability?.trim();
+  if (code && UNAVAILABLE_CODES.has(code)) return false;
+  if (code && FULFILLABLE_CODES.has(code)) return true;
+  return ingramOnHand(stock, opts.primaryDc) > threshold; // code absent → quantity threshold fallback
+}
+
+function isOnSale(onSaleDate: string | undefined, today: Date): boolean {
+  // YYYYMMDD; unset / '00010101' / '000000…' = no street date → sellable on receipt.
+  if (!onSaleDate || !/^\d{8}$/.test(onSaleDate) || onSaleDate <= '00010101') return true;
+  const todayStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  return onSaleDate <= todayStr;
 }
 ```
 
@@ -365,7 +524,8 @@ function seededStock(ean: string): IngramStock {
   const last = Number(ean.replace(/\D/g, '').slice(-1)) || 0;
   const onHand = last === 0 ? 0 : last * 15; // 0 → out; others → 15..135
   return { ean, backorder: false, mediaMail: true, ingramPrice: 18.99, pubListPrice: 18.99,
-    productAvailability: onHand ? 'Available' : 'Not Available',
+    productAvailability: onHand ? '21' : '40', // prodstat codes, matching real feeds (see Task 3)
+    onSaleDate: '00010101',                    // no street date set → sellable on receipt
     dcs: { LaVergne: { onHand, onOrder: 0, stockStatus: onHand > 0 } } };
 }
 
@@ -697,6 +857,8 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 
 ## Phase 2 — Ingram-live (unblock when contract/credentials land)
 
+> *Amended 2026-07-16:* the FTP and Web Service halves of the contract may activate at different times. If **FTP lands first**, Stage 1 can go live early — implement Task 12's FTP alternative source and run Task 15's rollout for catalog availability; Tasks 11/13/14 (live client, checkout confirm, long-tail) still wait on Web Service credentials.
+
 ### Task 11: Live Ingram Web Service client + provider wiring
 
 **Files:**
@@ -732,6 +894,8 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 - [ ] **Step 1: Write the failing test** — with the mock provider + a fake payload (stub `find`/`update`), assert editions get `ingramAvailable` set per threshold and `ingramCheckedAt` stamped. Confirm FAIL.
 
 - [ ] **Step 2: Implement** `refreshIngramAvailability`, then register the cron following the existing `jobs.tasks` pattern (default `schedule: [{ cron: '0 8 * * *', queue: 'default' }]` — nightly 08:00 UTC; note cadence is tunable). Log `{scanned, updated}` for volume monitoring.
+
+> **Transport note (2026-07-16):** keep the write path transport-agnostic — it consumes `Map<ean, IngramStock>`, nothing more. If FTP credentials activate before Web Service certification, add the alternative source instead of waiting: download the books part file (`stkv2pt1@ingram.zip`) from the Ingram FTP, stream lines through `parseStockV2Line` (Task 2b), keep only catalog EANs (in-memory set — no universe mirror needed, and FTP licensing permits persistence anyway), and feed the same write path. `isIngramAvailable` (Task 3) already handles both transports' availability codes and On-Sale-Date. Stage 2 long-tail stays Web-Service-only.
 
 - [ ] **Step 3: Run tests + build** — `cd alkebu-load && pnpm test && pnpm build`. Expected: exit 0.
 
@@ -780,7 +944,7 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 ### Task 15: Go-live configuration, volume monitoring, rollout
 
 **Files:**
-- Modify: `alkebu-load/.env.example` (`INGRAM_WS_URL`, `INGRAM_WS_USER`, `INGRAM_WS_PASSWORD`, `INGRAM_STOCK_THRESHOLD`)
+- Modify: `alkebu-load/.env.example` (`INGRAM_WS_URL`, `INGRAM_WS_USER`, `INGRAM_WS_PASSWORD`, `INGRAM_STOCK_THRESHOLD`; plus `INGRAM_FTP_HOST`/`INGRAM_FTP_USER`/`INGRAM_FTP_PASSWORD` if the FTP source is in play)
 - Modify: `docs/launch.md` (add an Ingram availability readiness section)
 - Create: a lightweight volume counter/log in the refresh cron + long-tail route
 
@@ -799,3 +963,5 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 **Placeholder scan:** pure-logic tasks (1, 2, 3, 4, 6, 7, 8) carry full code + tests. Integration/UI tasks (9, 10, 11–15) give exact files, interfaces (signatures), and test intent; their internal code follows the cited existing patterns (jobs.tasks, Turnstile verify, OrderDashboard tabs) rather than inventing unverifiable markup — acceptable because they are credential-gated and pattern-bound, not logic placeholders.
 
 **Type consistency:** `IngramStock`/`DcStock` (Task 2) consumed unchanged in Tasks 3/11/12; `AvailabilityProvider`/`LongTailResult` (Task 4) consumed in Tasks 10/11/14; `ResolvedAvailability` (Task 6) consumed in Tasks 7/13; edition fields (Task 5) consumed in Tasks 6/7/12. Names consistent across tasks.
+
+**Amendments 2026-07-16** (after reviewing the Ingram FTP inventory package — see the Amendments section up top): Task 2b added (StockV2 fixed-width parser; test assertions verified against record 1 of the vendor sample); `IngramStock` gained `onSaleDate` (Task 2); Task 3's `isIngramAvailable` is now code-first with an On-Sale-Date gate; the mock provider emits prodstat codes; Task 12 documented as transport-agnostic with an FTP stream-filter alternative; Phase 2 may split go-live if FTP credentials land first. `StockV2Record` (Task 2b) extends `IngramStock`, so all existing consumers are unaffected.

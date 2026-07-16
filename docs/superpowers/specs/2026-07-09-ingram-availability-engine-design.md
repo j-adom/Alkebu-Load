@@ -3,6 +3,9 @@
 **Date:** 2026-07-09
 **Status:** Approved design; implementation gated on Ingram contract/credentials
 **Branch:** `feat/ingram-availability-engine`
+**Amended:** 2026-07-16 — Ingram FTP inventory package reviewed; folded in the On-Sale-Date
+gate, Product-Availability-Code resolution, and the FTP feed as a Stage-1 fallback source
+(see "FTP inventory feed (StockV2)").
 
 ## Context
 
@@ -38,9 +41,12 @@ pointless: a title Ingram can't fulfill, Bookshop can't either.
 
 ## Non-goals (explicitly deferred or rejected)
 
-- **FTP feed ingestion for availability** — rejected as the backbone (heavy 15GB/day ETL over
-  Ingram's full ~18.9M-title universe to answer a question a single cached API call answers).
-  The FTP feed is retained *only* as an optional future **metadata/cover enrichment** phase.
+- **FTP feed ingestion as the backbone** — rejected (heavy full-universe ETL over Ingram's
+  ~18.9M titles to answer a question a single cached API call answers). *Amended 2026-07-16:*
+  no longer enrichment-only, though — the FTP feed is an approved **Stage-1 fallback/alternative
+  source** (stream-filtered against the catalog, never a universe mirror) and the licensed home
+  for any *persistent* Ingram data. See "FTP inventory feed (StockV2)" below. Stage 2 long-tail
+  search remains Web-Service-only (FTP cannot answer interactive queries).
 - **12-month Square sales-history engine** — replaced by a simple manual "available to order" flag.
 - **Affiliate (Bookshop.org) fallback** — redundant (Bookshop = Ingram).
 - **Automated Ingram order placement** — Phase 1 fulfillment is manual via iPage.
@@ -61,8 +67,17 @@ source of truth; the whole storefront reads only this (extends existing
 
 A book is **In Stock** if **any** edition satisfies **any** of:
 1. **Square on-hand > 0** — physical, from the existing Square `inventory.count.updated` webhook.
-2. **Ingram available** — cached `ingramOnHand > threshold` (default **10**, config
-   `INGRAM_STOCK_THRESHOLD`), keyed on **LaVergne** `OnHand` (primary) with other DCs as fallback.
+2. **Ingram available** — cached `ingramAvailable`, computed at refresh/confirm time
+   (*amended 2026-07-16* — code-first, not quantity-first):
+   - **On-Sale-Date gate (hard):** requires `onSaleDate ≤ today`. Ingram's own FAQ warns
+     pre-order titles can show on-hand up to **14 days before street date** — quantity alone
+     would sell titles Ingram can't ship yet. (`00010101`/unset = sellable on receipt.)
+   - **Product Availability Code primary** (`prodstat` codes): `20`/`21`/`22` → fulfillable
+     (a stocked title below the quantity threshold is still orderable); `31`/`40` → not
+     available (a stale cached quantity never overrides `40` "gone from Ingram").
+   - **Quantity fallback** only when the code is absent: `ingramOnHand > threshold` (default
+     **10**, config `INGRAM_STOCK_THRESHOLD`), keyed on **LaVergne** `OnHand` (primary) with
+     other DCs as fallback.
 3. **Available to order** — manual owner-set checkbox (for non-Ingram vendor titles, e.g.
    Afrikan World Books).
 
@@ -98,9 +113,44 @@ refresh interval**. Therefore: the `ingram*` fields on editions are a **TTL cach
 schedule — not an authoritative mirror. Long-tail results are **never persisted or indexed**.
 Confirm the nightly catalog-refresh volume is within subscription limits with the Ingram rep.
 
+## FTP inventory feed (StockV2) — Stage-1 alternative + enrichment *(added 2026-07-16)*
+
+Ingram's FTP onboarding package arrived and was reviewed 2026-07-16. It lives (gitignored) in
+`Ingram Inventory Info/` at the repo root: Implementation Guide PDF (v2.14, Feb 2022), a
+2,099-record StockV2 sample, SQL load scripts (reference only — MS SQL, outdated layout),
+and the code translation tables (`prodstat`, `pubstatus`, `disctabl`, `retrnflg`, restrictions).
+
+**Key facts:** StockV2 is fixed-width (301-char records + CRLF) keyed on **EAN**; carries per-DC
+on-hand/on-order (La Vergne TN first), list + publisher price, **our discount level (= our cost)**,
+publisher status, **Product Availability Code**, publication/on-sale dates, returnability,
+backorder-only, **Media Mail eligibility**, product type, and **weight**. Delivery: FTP full file
+(~4 GB, regenerated 6×/day, books-only part file ~1 GB) + delta/daily/weekly variants; removals
+arrive as "zero records" in deltas, with `stockv2remove*.zip` catch-up files. Supplemental files:
+per-DC restock **ETA**, country exclusions, sales rights, Prop 65.
+
+**Why it matters here:**
+- **Licensing asymmetry:** the Web Service *forbids* DB mirroring (TTL cache only); the FTP feed
+  is *explicitly licensed to load into your DB*. Persistent Ingram data (enrichment, inventory
+  history for Merchandising Intelligence) must come from FTP, not the API.
+- **Stage-1 fallback:** at our scale no ETL is needed — stream the books part file line-by-line,
+  keep only the ~5,000 catalog EANs (in-memory hash join), discard the rest, and write the same
+  `ingram*` cache fields the Web Service refresh would. If FTP access activates before Web
+  Service certification, **Stage 1 can go live on FTP alone**; the Web Service then adds
+  checkout-time live confirm and Stage 2.
+- **Enrichment (one-time pass + periodic):** Media Mail eligibility and authoritative weights
+  feed the Shippo/Media-Mail logic directly; discount level gives true per-title cost (the data
+  the Merchandising Intelligence phase assumed it would have to derive).
+
+**Skip:** SQL Server scripts, universe mirroring, data-slice subscriptions, international files
+(country exclusions / sales rights / international prices — we ship domestically).
+
+**Contacts:** `integrate@ingramcontent.com` (setup/dev/prod), `ids@ingramcontent.com` (data admin).
+
 ## Stage 1 — scheduled availability refresh
 
-Payload cron `refresh-ingram-availability`:
+Payload cron `refresh-ingram-availability` — **transport-agnostic**: it consumes
+`Map<ean, IngramStock>` and writes cache fields, regardless of whether the map came from the
+Web Service (`checkStock`) or an FTP StockV2 stream-filter (see section above):
 - Iterate catalog editions with ISBNs → batch 25 → `checkStock` → write cache fields.
 - **Cadence configurable** (default nightly; dial back if volume limits require — Ingram trade
   stock is stable, so daily is likely more than enough).
@@ -247,10 +297,13 @@ Own spec when pursued.
 
 - Production Web Service URL + credentials (post-contract).
 - Confirm nightly catalog-refresh volume is within subscription limits.
-- Inventory FTP file spec + cadence (only needed if/when the FTP enrichment phase is pursued).
+- ~~Inventory FTP file spec + cadence~~ — **received & reviewed 2026-07-16** (`Ingram Inventory
+  Info/`, gitignored). Remaining ask: FTP server credentials + which files our account gets
+  (books part file? CSV option?), and whether FTP access activates ahead of Web Service certification.
 - Confirm permission to display Ingram availability + real-time search results publicly.
 
 ## Related docs
 
 - `docs/launch.md` — production readiness board (GSC duplicate-canonical item relates to consolidation).
 - Ingram Web Service Implementation Guide (Version 16, Release 9) + Titles Basic FTP spec — vendor docs on file.
+- IDS FTP Inventory package (StockV2 guide v2.14, sample file, code tables) — `Ingram Inventory Info/` at repo root (gitignored; Ingram-copyrighted, do not commit).
