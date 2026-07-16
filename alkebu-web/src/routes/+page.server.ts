@@ -19,13 +19,13 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       ),
     );
 
-    // Get new books with cover images — the Oct 2025 batch has scraped images,
-    // the Mar 2026 batch does not, so sort oldest-first from the Oct batch
-    // by fetching books sorted by createdAt ascending (original import)
+    // Get the newest books that have cover images. Some import batches lack
+    // covers (e.g. Mar 2026), so over-fetch newest-first and keep the first
+    // 8 with an image rather than trusting the newest 8 outright.
     const newBooksRaw = await payloadGet<any>(
       buildBookStorefrontPath(
         new URLSearchParams({
-          sort: 'createdAt',
+          sort: '-createdAt',
           limit: '100',
           depth: '2',
         }),
@@ -34,9 +34,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     const booksWithImages = (newBooksRaw.docs || []).filter(
       (b: any) => b.images?.length > 0 || b.scrapedImageUrls?.length > 0
     );
-    // Shuffle to show variety rather than always the same 8
-    const shuffled = booksWithImages.sort(() => Math.random() - 0.5);
-    const newBooks = { docs: shuffled.slice(0, 8) };
+    const newBooks = { docs: booksWithImages.slice(0, 8) };
 
     // Get recent blog posts
     const blogPosts = await payloadGet<any>('/api/blogPosts?sort=-publishedDate&limit=4&depth=2');
