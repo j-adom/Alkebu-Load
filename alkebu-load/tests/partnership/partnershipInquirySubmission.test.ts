@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import test from 'node:test';
 
 import { submitPartnershipInquiry } from '../../src/app/utils/partnershipInquirySubmission';
-import type { PartnershipInquiryData } from '../../src/app/utils/emailService';
+import type { EmailSendResult, PartnershipInquiryData } from '../../src/app/utils/emailService';
 
 const validBody = {
   renderedAt: Date.now() - 5000, // 5 seconds ago — passes the min-time check
@@ -21,7 +21,7 @@ const validBody = {
   },
 };
 
-const okEmailResult = { success: true, provider: 'ses' as const, host: '', port: 587, secure: false, from: '', to: '', subject: '' };
+const okEmailResult: EmailSendResult = { success: true, provider: 'amazon-ses-smtp', host: '', port: 587, secure: false, from: '', to: '', subject: '' };
 const failEmailResult = (msg: string) => ({ ...okEmailResult, success: false, error: msg });
 
 const deps = (overrides: Partial<any> = {}) => {

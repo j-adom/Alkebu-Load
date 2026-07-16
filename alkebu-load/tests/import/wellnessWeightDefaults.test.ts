@@ -1,10 +1,10 @@
 import assert from 'node:assert';
 import test from 'node:test';
 
-import { applyWeightsToVariations, resolveVariationWeight } from '../../src/app/utils/wellnessWeightDefaults';
+import { applyWeightsToVariations, resolveVariationWeight, type WeightableVariation } from '../../src/app/utils/wellnessWeightDefaults';
 
 test('a variation with an existing weight is NOT overwritten, even if it looks wrong', () => {
-  const variations = [
+  const variations: WeightableVariation[] = [
     { id: 'row-1', sku: 'SKU-1', price: 1499, stock: 10, weight: 999, scent: 'Peppermint' },
   ];
 
@@ -20,7 +20,7 @@ test('a variation with an existing weight is NOT overwritten, even if it looks w
 });
 
 test('other fields on the row (price, stock, sku, isAvailable, scent, size, packaging, variantName) survive the weight write', () => {
-  const variations = [
+  const variations: WeightableVariation[] = [
     {
       id: 'row-1',
       sku: 'SKU-SOAP-1',
@@ -53,7 +53,7 @@ test('other fields on the row (price, stock, sku, isAvailable, scent, size, pack
 test('other rows in the array are untouched (same reference) when only one row needs a weight', () => {
   const alreadyWeighted = { id: 'row-a', sku: 'SKU-A', price: 500, weight: 4 };
   const needsWeight = { id: 'row-b', sku: 'SKU-B', price: 500 };
-  const variations = [alreadyWeighted, needsWeight];
+  const variations: WeightableVariation[] = [alreadyWeighted, needsWeight];
 
   const { variations: next, filled, alreadySet } = applyWeightsToVariations(variations, 'neem-soap');
 
@@ -165,7 +165,7 @@ test('raw shea butter gets its own 18oz default, distinct from the 10oz cocoa/ma
 });
 
 test('a mixed batch: unresolved rows are reported by sku and the resolved rows still get their weight', () => {
-  const variations = [
+  const variations: WeightableVariation[] = [
     { id: 'row-1', sku: 'SKU-RESOLVED', price: 500 }, // neem-soap -> 6oz
     { id: 'row-2', sku: 'SKU-ALREADY', price: 500, weight: 7 }, // untouched
   ];

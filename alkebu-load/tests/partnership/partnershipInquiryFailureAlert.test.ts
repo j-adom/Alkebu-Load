@@ -6,10 +6,11 @@ import {
   buildPartnershipInquiryFailureAlertEmail,
   createPartnershipInquiryWithFailureAlert,
 } from '../../src/app/utils/partnershipInquiryFailureAlert';
+import type { EmailSendResult } from '../../src/app/utils/emailService';
 
-const okEmailResult = {
+const okEmailResult: EmailSendResult = {
   success: true,
-  provider: 'ses' as const,
+  provider: 'amazon-ses-smtp',
   host: '',
   port: 587,
   secure: false,

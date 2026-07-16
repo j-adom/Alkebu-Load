@@ -1,10 +1,10 @@
 import assert from 'node:assert';
 import test from 'node:test';
 
-import { mergeVariations } from '../../src/app/utils/wellnessVariationMerge';
+import { mergeVariations, type MergeableVariation } from '../../src/app/utils/wellnessVariationMerge';
 
 test('an existing row keeps synced stock and a backfilled weight when Square resends it with a changed price', () => {
-  const existing = [
+  const existing: MergeableVariation[] = [
     {
       id: 'row-1',
       sku: 'SKU-1',
@@ -17,7 +17,7 @@ test('an existing row keeps synced stock and a backfilled weight when Square res
       isAvailable: true,
     },
   ];
-  const incoming = [
+  const incoming: MergeableVariation[] = [
     {
       sku: 'SKU-1',
       price: 1200,
@@ -40,7 +40,7 @@ test('an existing row keeps synced stock and a backfilled weight when Square res
 });
 
 test('variantName is Square-owned: it is overwritten on merge, never preserved from the existing row', () => {
-  const existing = [
+  const existing: MergeableVariation[] = [
     {
       id: 'row-1',
       sku: 'SKU-1',
@@ -54,7 +54,7 @@ test('variantName is Square-owned: it is overwritten on merge, never preserved f
       isAvailable: true,
     },
   ];
-  const incoming = [
+  const incoming: MergeableVariation[] = [
     {
       sku: 'SKU-1',
       price: 1500,
@@ -73,8 +73,8 @@ test('variantName is Square-owned: it is overwritten on merge, never preserved f
 });
 
 test('a brand-new Square variation is inserted fresh with stock: 0', () => {
-  const existing: ReturnType<typeof Array> = [];
-  const incoming = [
+  const existing: MergeableVariation[] = [];
+  const incoming: MergeableVariation[] = [
     {
       sku: 'SKU-NEW',
       price: 500,
@@ -96,7 +96,7 @@ test('a brand-new Square variation is inserted fresh with stock: 0', () => {
 });
 
 test('a row present in Payload but absent from Square is preserved (not deleted) and reported as orphaned', () => {
-  const existing = [
+  const existing: MergeableVariation[] = [
     {
       id: 'row-gone',
       sku: 'SKU-GONE',
@@ -124,7 +124,7 @@ test('a row present in Payload but absent from Square is preserved (not deleted)
 });
 
 test('a staff-set isAvailable: false survives a re-import', () => {
-  const existing = [
+  const existing: MergeableVariation[] = [
     {
       id: 'row-off',
       sku: 'SKU-OFF',
@@ -136,7 +136,7 @@ test('a staff-set isAvailable: false survives a re-import', () => {
       isAvailable: false,
     },
   ];
-  const incoming = [
+  const incoming: MergeableVariation[] = [
     {
       sku: 'SKU-OFF',
       price: 850,
@@ -153,7 +153,7 @@ test('a staff-set isAvailable: false survives a re-import', () => {
 });
 
 test('a mixed run updates one row, adds one row, and orphans one row -- nothing deleted', () => {
-  const existing = [
+  const existing: MergeableVariation[] = [
     {
       id: 'row-keep',
       sku: 'SKU-KEEP',
@@ -175,7 +175,7 @@ test('a mixed run updates one row, adds one row, and orphans one row -- nothing 
       isAvailable: true,
     },
   ];
-  const incoming = [
+  const incoming: MergeableVariation[] = [
     { sku: 'SKU-KEEP', price: 1100, scent: 'Vanilla', squareVariationId: 'SQ-KEEP', stock: 0 },
     { sku: 'SKU-NEW', price: 400, scent: 'Mango', squareVariationId: 'SQ-NEW', stock: 0 },
   ];
@@ -194,10 +194,10 @@ test('a mixed run updates one row, adds one row, and orphans one row -- nothing 
 });
 
 test('a row missing squareVariationId on both sides is never matched, treated as new and never orphaned into a false match', () => {
-  const existing = [
+  const existing: MergeableVariation[] = [
     { id: 'row-legacy', sku: 'SKU-LEGACY-NO-ID', price: 300, stock: 7, weight: 1, isAvailable: true },
   ];
-  const incoming = [{ sku: 'SKU-LEGACY-NO-ID', price: 350, stock: 0 }];
+  const incoming: MergeableVariation[] = [{ sku: 'SKU-LEGACY-NO-ID', price: 350, stock: 0 }];
 
   const { merged, added, updated, orphaned } = mergeVariations(existing, incoming);
 
