@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 
 import { getCustomerEmail, getCustomerName } from './orderDashboard/customerDisplay'
 
@@ -844,8 +845,26 @@ export const OrderDashboardV2: React.FC = () => {
               Review live checkout orders, see whether Amazon SES confirmations actually sent, and move fulfillment forward without digging through raw fields.
             </p>
           </div>
-          <div style={{ color: '#f4eadf', fontSize: 13 }}>
-            Last refreshed {new Date().toLocaleTimeString()}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+            <Link
+              href="/admin"
+              style={{
+                display: 'inline-block',
+                padding: '10px 18px',
+                borderRadius: 999,
+                border: '1px solid rgba(255, 248, 236, 0.45)',
+                backgroundColor: 'rgba(255, 248, 236, 0.12)',
+                color: '#fff8ec',
+                fontSize: 14,
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              ← Back to Admin
+            </Link>
+            <div style={{ color: '#f4eadf', fontSize: 13 }}>
+              Last refreshed {new Date().toLocaleTimeString()}
+            </div>
           </div>
         </div>
       </div>
