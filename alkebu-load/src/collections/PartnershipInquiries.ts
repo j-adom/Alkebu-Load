@@ -1,5 +1,7 @@
 import type { CollectionConfig } from 'payload';
 
+import { partnershipListmonkSyncHook } from '../app/utils/partnershipListmonkSync';
+
 const isPartnershipStaff = (user: unknown): boolean => {
   const role = (user as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'staff';
@@ -27,6 +29,11 @@ export const PartnershipInquiries: CollectionConfig = {
     create: ({ req: { user } }) => isPartnershipStaff(user),
     update: ({ req: { user } }) => isPartnershipStaff(user),
     delete: ({ req: { user } }) => isAdmin(user),
+  },
+  hooks: {
+    // Staff marking an inquiry qualified/won subscribes the lead to the
+    // "B2B Partners" listmonk list. Best-effort: never throws into the save.
+    afterChange: [partnershipListmonkSyncHook],
   },
   fields: [
     {
