@@ -8,7 +8,7 @@ import {
   type StaffNotificationData,
 } from './emailService';
 import { getCartItems } from './cartOperations';
-import { buildProductPageUrl, resolveRelatedProductDoc } from './productUrls';
+import { buildOrderEmailLineItems, toCustomerLineItems } from './orderEmailItems';
 import { isShippingQuoteExpired } from './shippingQuotes';
 import {
   calculateTaxFromSubtotal,
@@ -507,14 +507,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
           customerEmail,
           // Map from cartItems (not orderData.items): the cart items still hold
           // the populated product doc needed to build the storefront link.
-          items: cartItems.map((item: any) => ({
-            productTitle: item.productTitle,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.quantity * item.unitPrice,
-            isbn: item.identifiers?.isbn || undefined,
-            productUrl: buildProductPageUrl(item.productType, resolveRelatedProductDoc(item.product)),
-          })),
+          items: toCustomerLineItems(buildOrderEmailLineItems(cartItems)),
           subtotal: orderData.subtotalAmount,
           tax: orderData.taxAmount,
           shipping: orderData.shippingAmount,
@@ -557,12 +550,9 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         orderId: String(order.id),
         customerName: session.customer_details?.name || 'Guest',
         customerEmail: customerEmail || 'Not provided',
-        items: orderData.items.map((item: any) => ({
-          productTitle: item.productTitle,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-        })),
+        // Full line-item detail (ISBN, SKU, edition, publisher, link) so staff
+        // can pick the exact edition from the email alone.
+        items: buildOrderEmailLineItems(cartItems),
         subtotal: orderData.subtotalAmount || 0,
         tax: orderData.taxAmount || 0,
         shipping: orderData.shippingAmount || 0,

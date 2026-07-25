@@ -1,4 +1,4 @@
-import type { EmailTemplate, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData, PartnershipInquiryData } from './emailService';
+import type { EmailTemplate, EmailLineItem, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData, PartnershipInquiryData } from './emailService';
 
 // ─── Security helper ───────────────────────────────────────────────────────────
 // Escape user-controlled values before interpolating them into HTML.
@@ -136,19 +136,32 @@ function ctaButton(text: string, url: string): string {
   </div>`;
 }
 
-function itemsTable(items: Array<{ productTitle: string; quantity: number; unitPrice: number; totalPrice: number; isbn?: string | null; productUrl?: string | null }>): string {
+// Detail parts shown under an item title, in receipt order. Rendered joined
+// with " · " in both the HTML and plain-text bodies.
+function itemDetailParts(item: EmailLineItem): string[] {
+  const parts: string[] = [];
+  if (item.author) parts.push(`by ${item.author}`);
+  if (item.edition) parts.push(item.edition);
+  if (item.isbn) parts.push(`ISBN: ${item.isbn}`);
+  if (item.sku) parts.push(`SKU: ${item.sku}`);
+  if (item.publisher) parts.push(item.publisher);
+  return parts;
+}
+
+function itemsTable(items: EmailLineItem[]): string {
   const rows = items.map(item => {
     // Same http(s)-only guard as ctaButton: never emit a non-web protocol in an href.
     const safeUrl = item.productUrl && /^https?:\/\//i.test(item.productUrl) ? escapeHtml(item.productUrl) : null;
     const title = safeUrl
       ? `<a href="${safeUrl}" style="color: ${BRAND.forest}; text-decoration: underline;">${escapeHtml(item.productTitle)}</a>`
       : escapeHtml(item.productTitle);
-    const isbnLine = item.isbn
-      ? `<br><span style="color: ${BRAND.mutedText}; font-size: 12px;">ISBN: ${escapeHtml(item.isbn)}</span>`
+    const detailParts = itemDetailParts(item);
+    const detailLine = detailParts.length
+      ? `<br><span style="color: ${BRAND.mutedText}; font-size: 12px;">${detailParts.map(escapeHtml).join(' &middot; ')}</span>`
       : '';
     return `
     <tr>
-      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${title}${isbnLine}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; color: ${BRAND.darkText};">${title}${detailLine}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center; color: ${BRAND.mutedText};">${item.quantity}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; color: ${BRAND.mutedText};">${formatCents(item.unitPrice)}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right; font-weight: 600; color: ${BRAND.darkText};">${formatCents(item.totalPrice)}</td>
@@ -241,7 +254,8 @@ ${data.estimatedDelivery ? `Estimated Delivery: ${data.estimatedDelivery}` : ''}
 Items Ordered:
 ${data.items.map(item => {
     const lines = [`  ${item.productTitle} (Qty: ${item.quantity}) - ${formatCents(item.totalPrice)}`];
-    if (item.isbn) lines.push(`    ISBN: ${item.isbn}`);
+    const detail = itemDetailParts(item);
+    if (detail.length) lines.push(`    ${detail.join(' · ')}`);
     if (item.productUrl) lines.push(`    ${item.productUrl}`);
     return lines.join('\n');
   }).join('\n')}
@@ -455,13 +469,6 @@ export function generateStaffNotificationTemplate(data: StaffNotificationData): 
 
   const subject = `New Order: ${data.orderNumber} - ${formatCents(data.total)} - ${data.customerName}`;
 
-  const itemsList = data.items.map(item =>
-    `<tr>
-      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight};">${escapeHtml(item.productTitle)}</td>
-      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: center;">${item.quantity}</td>
-      <td style="padding: 6px 8px; border-bottom: 1px solid ${BRAND.borderLight}; text-align: right;">${formatCents(item.totalPrice)}</td>
-    </tr>`).join('');
-
   // Staff emails are information-dense, not marketing-styled
   const content = `
     <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 4px;">New Online Order</h2>
@@ -491,9 +498,7 @@ export function generateStaffNotificationTemplate(data: StaffNotificationData): 
     </table>
 
     <h3 style="color: ${BRAND.forest}; font-size: 14px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px;">Items (${data.items.length})</h3>
-    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-      ${itemsList}
-    </table>
+    ${itemsTable(data.items)}
 
     <div style="margin-top: 16px;">
       <table style="width: 100%; font-size: 13px;">
@@ -520,7 +525,12 @@ Customer: ${data.customerName} (${data.customerEmail})
 Payment: ${(data.paymentMethod || 'card').toUpperCase()} via ${data.source || 'website'}
 
 Items:
-${data.items.map(item => `  ${item.productTitle} x${item.quantity} - ${formatCents(item.totalPrice)}`).join('\n')}
+${data.items.map(item => {
+    const lines = [`  ${item.productTitle} x${item.quantity} - ${formatCents(item.totalPrice)}`];
+    const detail = itemDetailParts(item);
+    if (detail.length) lines.push(`    ${detail.join(' · ')}`);
+    return lines.join('\n');
+  }).join('\n')}
 
 Subtotal: ${formatCents(data.subtotal)}
 Tax: ${formatCents(data.tax)}

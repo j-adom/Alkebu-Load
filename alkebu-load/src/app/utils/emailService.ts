@@ -32,18 +32,30 @@ export interface EmailSendResult {
   error?: string;
 }
 
+/**
+ * One line item as it appears in order emails. The template renders whatever
+ * detail fields are present, so the caller controls what each audience sees:
+ * customer confirmations carry author/edition/isbn, staff notifications add
+ * sku/publisher for shelf-picking the exact edition.
+ */
+export interface EmailLineItem {
+  productTitle: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  isbn?: string | null;
+  productUrl?: string | null;
+  author?: string | null;
+  edition?: string | null;
+  sku?: string | null;
+  publisher?: string | null;
+}
+
 export interface OrderConfirmationData {
   orderNumber: string;
   customerName: string;
   customerEmail: string;
-  items: Array<{
-    productTitle: string;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-    isbn?: string | null;
-    productUrl?: string | null;
-  }>;
+  items: EmailLineItem[];
   subtotal: number;
   tax: number;
   shipping: number;
@@ -71,12 +83,7 @@ export interface StaffNotificationData {
   orderId?: string;
   customerName: string;
   customerEmail: string;
-  items: Array<{
-    productTitle: string;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-  }>;
+  items: EmailLineItem[];
   subtotal: number;
   tax: number;
   shipping: number;
