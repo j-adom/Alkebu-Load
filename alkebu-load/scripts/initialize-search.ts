@@ -4,7 +4,7 @@
  * Search Index Initialization Script
  * 
  * This script initializes the FlexSearch indices with existing data from the database.
- * Run this script after setting up the new collections to populate the search indices.
+ * This is a diagnostic for this process only; the running server builds its own indices.
  * 
  * Usage: tsx scripts/initialize-search.ts
  */
@@ -29,7 +29,7 @@ async function initializeSearchIndices() {
     const stats = await getCollectionStats(payload);
     console.log('\n📊 Search Index Statistics:');
     Object.entries(stats).forEach(([collection, count]) => {
-      console.log(`   ${collection}: ${count} documents indexed`);
+      console.log(`   ${collection}: ${count} documents in collection`);
     });
 
     // Test search functionality

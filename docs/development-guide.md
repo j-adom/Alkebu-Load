@@ -509,7 +509,7 @@ GET /api/graphql (GraphQL endpoint)
 / (homepage - SSR)
 /shop/* (product catalog - SSR with caching)
 /blog/* (content - SSR with caching)  
-/search (client-side search)
+/search (server-rendered search via Payload /api/search)
 
 # Product Filtering Routes
 /shop/books/authors/:slug

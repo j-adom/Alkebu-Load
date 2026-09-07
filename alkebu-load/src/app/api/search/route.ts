@@ -1,47 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { searchEngine } from '../../utils/searchEngine'
-
-// Determine best edition: in-stock → most recently published → first
-function bestEditionSlug(doc: any): string {
-  const editions: any[] = doc.editions || []
-  const inStock = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0)
-  const mostRecent = editions
-    .filter((e: any) => e.datePublished)
-    .sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0]
-  const best = inStock || mostRecent || editions[0]
-  const isbn = best?.isbn || best?.isbn10 || ''
-  return isbn ? `${doc.slug || doc.id}/${isbn}` : (doc.slug || doc.id)
-}
+import { filterVisibleSearchResults, productSearchPrice, searchEngine } from '../../utils/searchEngine'
 
 const ISBN_RE = /^[\d\-X]{9,13}$/i
 
-async function filterDiscontinuedBookResults(payload: any, results: any[]) {
-  const bookIds = results
-    .filter((result) => result?.type === 'books' && result?.id !== undefined && result?.id !== null)
-    .map((result) => String(result.id));
-
-  if (bookIds.length === 0) {
-    return results;
-  }
-
-  const allowedBooks = await payload.find({
-    collection: 'books',
-    where: {
-      and: [
-        { id: { in: bookIds } },
-        { availabilityStatus: { not_equals: 'discontinued' } },
-      ],
-    },
-    limit: bookIds.length,
-    depth: 0,
-  });
-
-  const allowedIds = new Set((allowedBooks.docs || []).map((doc: any) => String(doc.id)));
-
-  return results.filter((result) => result?.type !== 'books' || allowedIds.has(String(result.id)));
-}
 
 async function payloadSearch(payload: any, query: string, types: string[], limit: number) {
   const results: any[] = []
@@ -80,7 +43,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           depth: 2,
         })
         for (const doc of res.docs || []) {
-          const slug = bestEditionSlug(doc)
+          const slug = doc.slug || String(doc.id)
           const editions: any[] = doc.editions || []
           const best = editions.find((e: any) => (e.inventory?.stockLevel ?? 0) > 0) ||
             editions.filter((e: any) => e.datePublished).sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0] ||
@@ -131,7 +94,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             type: 'wellnessLifestyle',
             excerpt: doc.shortDescription || '',
             imageUrl: doc.images?.[0]?.url || null,
-            price: doc.price || null,
+            price: productSearchPrice('wellnessLifestyle', doc),
             slug: doc.slug || doc.id,
             score: 1,
           })
@@ -157,7 +120,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             type: 'fashionJewelry',
             excerpt: doc.shortDescription || '',
             imageUrl: doc.images?.[0]?.url || null,
-            price: doc.price || null,
+            price: productSearchPrice('fashionJewelry', doc),
             slug: doc.slug || doc.id,
             score: 1,
           })
@@ -189,7 +152,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             type: 'oilsIncense',
             excerpt: doc.shortDescription || '',
             imageUrl: doc.images?.[0]?.url || null,
-            price: doc.price || null,
+            price: productSearchPrice('oilsIncense', doc),
             slug: doc.slug || doc.id,
             score: 1,
             // OilsIncense spans two storefront sections (fragrance-oil ->
@@ -308,13 +271,22 @@ export async function GET(req: NextRequest) {
   let internalResults: any[] = []
   let source: 'flexsearch' | 'postgresql' = 'flexsearch'
 
-  // Try FlexSearch first (in-memory, fast)
-  try {
-    const flexResponse = await searchEngine.search(query, {
-      limit,
-      types: types.length > 0 ? types : undefined,
+  // Never serve a partially loaded or expired catalog. Rebuild is single-flight.
+  if (!searchEngine.isReady) {
+    void searchEngine.initializeWithData(payload).catch(err => {
+      console.warn('Search index rebuild failed:', err)
     })
-    internalResults = flexResponse.internal || []
+  }
+
+  // Try FlexSearch only when a complete, fresh snapshot is available.
+  try {
+    if (searchEngine.isReady) {
+      const flexResponse = await searchEngine.search(query, {
+        limit,
+        types: types.length > 0 ? types : undefined,
+      })
+      internalResults = flexResponse.internal || []
+    }
   } catch (err) {
     console.warn('FlexSearch error:', err)
   }
@@ -325,7 +297,7 @@ export async function GET(req: NextRequest) {
     internalResults = await payloadSearch(payload, query, types, limit)
   }
 
-  internalResults = await filterDiscontinuedBookResults(payload, internalResults)
+  internalResults = await filterVisibleSearchResults(payload, internalResults)
 
   const searchTime = Date.now() - start
 

@@ -91,7 +91,7 @@ Create a modern, scalable digital platform that serves as the cornerstone for Al
 - **Hosting**: Payload-hosted backend at `payload.alkebulanimages.com`, Cloudflare storefront at `alkebulanimages.com`
 - **Payments**: Stripe hosted Checkout (primary), Square POS inventory sync, Square hosted checkout adapter under validation
 - **Email**: Amazon SES SMTP for transactional emails (nodemailer)
-- **Search**: FlexSearch + PostgreSQL FTS + ISBNdb/Google Books/Open Library
+- **Search**: server-side FlexSearch + Payload database fallback + ISBNdb/Google Books/Open Library
 - **Authentication**: Payload JWT tokens (OAuth future phase)
 - **CDN**: Cloudflare (static assets + R2-backed image delivery)
 - **Events & Ticketing**: hi.events (external instance at tickets.alkebulanimages.com)
@@ -233,11 +233,15 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 
 ## Search Implementation
 
-### Three-Tier Search System
+### Current search flow
 
-1. **Client-Side (0-50ms)** - FlexSearch with pre-indexed catalog, typo tolerance, phonetic matching
-2. **Server-Side (50-200ms)** - PostgreSQL Full-Text Search, complex filters, cross-collection
-3. **External APIs (500ms-3s)** - ISBNdb, Google Books, Open Library; auto-create products, quote request system
+1. **Server-side FlexSearch** — `/search` is server-rendered and calls Payload's `/api/search`. Each backend process holds an in-memory index, built in 500-document pages and swapped in only after all eligible collections load. The API uses it only while ready and less than five minutes old; cold/expired requests start a shared background rebuild and use the database fallback.
+2. **Payload database fallback** — literal `contains` queries (exact equality for ISBNs), backed by PostgreSQL in production and SQLite locally. This route does not implement PostgreSQL full-text search. Catalog visibility is rechecked against Payload before returning results.
+3. **External discovery** — ISBNdb, Google Books, and Open Library helpers and separate endpoints exist. The storefront `/api/search` flow does not automatically invoke them.
+
+Book author/title matching supplements the original fields with normalized hyphenation and doubled consonants. Display names stay unchanged; there is no general edit-distance correction or “did you mean” system. Search prices are dollars across all collection types, and book links use canonical slugs.
+
+Freshness is bounded by the process snapshot plus storefront HTTP caching; catalog writes do not push live index updates. The separate initialization script exercises its own process and cannot populate a running server's memory. Browser autocomplete/offline search, database FTS, and broader typo recovery remain future work.
 
 ## Development Phases
 
@@ -257,10 +261,10 @@ Square POS --> Payload CMS (inventory sync via webhooks)
 - [x] Per-item dashboard refunds (admin-only POST, prorated tax + incremental shipping, customer email)
 - [x] Customer consolidation (Customers collection + rollups, orders auto-linked)
 - [x] Frontend-backend checkout integration
-- [ ] Data import from Square
+- [x] Data import from Square
 - [x] Production deployment
-- [ ] End-to-end checkout/browser QA
-- [ ] Staff training
+- [x] End-to-end checkout/browser QA
+- [x] Staff training
 
 ### Phase 2: Enhanced Features (Post-Launch)
 - Operational Shippo label automation (when volume justifies cost)

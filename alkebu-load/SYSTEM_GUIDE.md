@@ -32,7 +32,7 @@ This comprehensive PayloadCMS-based e-commerce and inventory management system s
 - **POS Integration**: Square (inventory sync only)
 - **Email**: Resend SMTP with Nodemailer
 - **Authentication**: Payload JWT with OAuth (Google/Facebook)
-- **Search**: FlexSearch + PostgreSQL FTS + External APIs
+- **Search**: server-side FlexSearch + Payload database fallback + External APIs
 
 ### Data Flow Architecture
 ```
@@ -474,7 +474,7 @@ transferGuestCartToUser(payload, sessionId, userId)   // Login migration
 SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
 SMTP_USER=resend
-SMTP_PASSWORD=re_4WuQbiy1_L6aUDzuAYhigDhYED6THVyvM
+SMTP_PASSWORD=<your-resend-api-key>
 FROM_EMAIL=updates@alkebulanimages.com
 FROM_NAME=Alkebu-Lan Images
 ```
@@ -497,27 +497,15 @@ FROM_NAME=Alkebu-Lan Images
 
 ## Search & Discovery
 
-### Three-Tier Search System
-**Location**: `/src/app/utils/searchEngine.ts`
+### Current search flow
 
-#### Tier 1: Client-Side FlexSearch (0-50ms)
-- Pre-indexed product catalog
-- Instant search as you type
-- Typo tolerance (2 character difference)
-- Phonetic matching for names
-- Field boosting: Title/Author (3x) > ISBN/Tags (2x) > Description (1x)
+1. **Server-side FlexSearch** — `/search` is server-rendered and calls Payload's `/api/search`. Each backend process holds an in-memory index, built in 500-document pages and swapped in only after all eligible collections load. The API uses it only while ready and less than five minutes old; cold/expired requests start a shared background rebuild and use the database fallback.
+2. **Payload database fallback** — literal `contains` queries (exact equality for ISBNs), backed by PostgreSQL in production and SQLite locally. This route does not implement PostgreSQL full-text search. Catalog visibility is rechecked against Payload before returning results.
+3. **External discovery** — ISBNdb, Google Books, and Open Library helpers and separate endpoints exist. The storefront `/api/search` flow does not automatically invoke them.
 
-#### Tier 2: Server Database Search (50-200ms)
-- PostgreSQL Full-Text Search
-- Complex filtering (price, availability, location)
-- Cross-collection search (products, articles, events, businesses)
-- Advanced query operators
+Book author/title matching supplements the original fields with normalized hyphenation and doubled consonants. Display names stay unchanged; there is no general edit-distance correction or “did you mean” system. Search prices are dollars across all collection types, and book links use canonical slugs.
 
-#### Tier 3: External API Search (500ms-3s)
-- Triggered when no internal results found
-- Parallel API calls to ISBNdb, Google Books, Open Library
-- Automatic product creation from external data
-- Quote request system for unavailable books
+Freshness is bounded by the process snapshot plus storefront HTTP caching; catalog writes do not push live index updates. The separate initialization script exercises its own process and cannot populate a running server's memory. Browser autocomplete/offline search, database FTS, and broader typo recovery remain future work.
 
 ### External Book APIs
 **Location**: `/src/app/utils/externalBookAPI.ts`

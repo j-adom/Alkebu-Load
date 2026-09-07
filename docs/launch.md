@@ -149,7 +149,7 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
   the sitemap). Cards, related-books, and search results link slug-only;
   `/<slug>/<isbn>` pages still resolve but canonicalize to the slug URL. Note: the
   FlexSearch index stores book slugs as `slug/isbn`; the storefront normalizes on
-  render — fix the index shape whenever search is next touched.
+  render — the local September 7 search repair normalizes the index shape; production verification is pending.
 - [x] Book covers as og:image + Product JSON-LD image (July 3) — JSON-LD now reads the
   populated `images[0].image.url` Media shape; hosted covers preferred over scraped URLs.
 - [x] Meta descriptions from synopsis (July 3) — the rich Lexical `description` object
@@ -182,7 +182,7 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
 
 ## P2 - UX and Content Polish
 
-- [ ] Activate FlexSearch as a real cache tier, with bootstrap timing, index freshness, and memory footprint handled together.
+- [ ] Deploy and smoke-test the search repair (local implementation September 7, 2026): supported Map retrieval, full-catalog pagination, ready-state gating, five-minute snapshot expiry, dollar prices, normalized author/title fields, unique cards, and canonical links. Validate warm/cold behavior, index build time/memory, and both `jochannan`/`jochanan` in production before checking this off.
 - [x] Implement real newsletter signup.
   - Footer form POSTs to `/api/newsletter`, which proxies to the listmonk instance with
     server-only credentials; 409 (already subscribed) treated as success. Working in production.

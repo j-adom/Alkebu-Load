@@ -12,7 +12,7 @@ This single Payload instance handles:
 - **Catalog** — Books with auto-categorization + auto-enrichment (ISBNdb / Google Books / Open Library)
 - **Content** — blog posts, events, business directory, comments, reviews
 - **Order operations** — staff dashboard, branded emails (SES SMTP), daily digest, refund API
-- **Search** — three-tier: FlexSearch client-side, PostgreSQL FTS server-side, external book APIs
+- **Search** — server-side FlexSearch, Payload database fallback, separate external book APIs
 
 > **Note**: Older docs may mention "MedusaJS in a separate repository" — that plan was dropped. All commerce lives in this Payload instance.
 
@@ -88,10 +88,14 @@ This single Payload instance handles:
 - Stripe reconciliation cron: `recover-stripe-orders` hourly at :15 — recreates orders the webhook missed (`stripeRecovery.ts`), emails staff via `sendRecoveryAlert`; recovery skips customer emails by design
 - Quote-request emails (customer confirmation / staff notification / follow-up) send for real via `emailService.sendRawEmail` as of July 3, 2026 — they were `console.log` stubs before
 
-### Search (three tiers)
-1. **FlexSearch** (client-side, 0–50 ms) — pre-indexed; bootstrap is fragile, see Gotchas
-2. **PostgreSQL FTS** (server-side, 50–200 ms) — `src/app/api/search/route.ts`
-3. **External book APIs** (500 ms–3 s) — ISBNdb → Google Books → Open Library; quote-request workflow when no purchasable record exists
+### Search
+- Server-side FlexSearch in `/api/search`; no browser index. Uses the supported `Document.get(id)` API. Stored results are dollar-priced; Books and wellness/oils source prices are cents, fashion prices are dollars.
+- Paginated atomic bootstrap (500 docs/page), explicit ready state, and request-triggered rebuild after five minutes. During cold/expired rebuilds or on no matches, Payload uses literal `contains` queries, not PostgreSQL FTS.
+- Additional normalized book title/author fields handle hyphens and doubled consonants; no general spelling correction. Search returns unique collection/document cards and canonical book slugs.
+- Every result is rechecked for current catalog visibility. Snapshot freshness and storefront HTTP caching still apply; no push-based updates exist.
+- External book discovery exists separately; storefront search does not automatically invoke it.
+- `initialize-search.ts` only exercises the calling process; it cannot warm a running server's in-memory index.
+- Regression tests: `tests/search/searchEngine.test.ts`. See `docs/architecture.md` for the current flow.
 
 ### Storage
 - **Cloudflare R2** via `@payloadcms/storage-s3` (S3-compatible). Recent enrichment scripts upload covers directly to R2.

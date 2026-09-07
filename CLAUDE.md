@@ -74,12 +74,14 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
 **Content**: `BlogPosts`, `Events`, `Businesses` (directory with `businessType` and `directoryCategory` distinctions), `Comments`, `Reviews`.
 **System**: `Authors`, `Publishers`, `Vendors`, `Media`, `Users` (roles: admin / staff / editor / customer), `BookQuotes`, `SearchAnalytics`.
 
-### Search (three tiers)
-1. **Client-side** — FlexSearch pre-indexed catalog (0–50 ms)
-2. **Server-side** — PostgreSQL FTS via `/api/search` (50–200 ms)
-3. **External** — ISBNdb → Google Books → Open Library (500 ms–3 s), with quote-request fallback
-
-Search bootstrap is fragile — see "Gotchas" below before touching it.
+### Search
+- Server-side FlexSearch in `/api/search`; no browser index. Uses the supported `Document.get(id)` API. Stored results are dollar-priced; Books and wellness/oils source prices are cents, fashion prices are dollars.
+- Paginated atomic bootstrap (500 docs/page), explicit ready state, and request-triggered rebuild after five minutes. During cold/expired rebuilds or on no matches, Payload uses literal `contains` queries, not PostgreSQL FTS.
+- Additional normalized book title/author fields handle hyphens and doubled consonants; no general spelling correction. Search returns unique collection/document cards and canonical book slugs.
+- Every result is rechecked for current catalog visibility. Snapshot freshness and storefront HTTP caching still apply; no push-based updates exist.
+- External book discovery exists separately; storefront search does not automatically invoke it.
+- `initialize-search.ts` only exercises the calling process; it cannot warm a running server's in-memory index.
+- Regression tests: `tests/search/searchEngine.test.ts`. See `docs/architecture.md` for the current flow.
 
 ### Order Operations
 - **Order Dashboard**: tablet-friendly UI at `/admin/order-dashboard` (tabs: "Needs Attention" / "Shipped" / "All Orders").

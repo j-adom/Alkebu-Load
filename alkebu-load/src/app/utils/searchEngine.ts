@@ -1,4 +1,4 @@
-import FlexSearch, { Document } from 'flexsearch';
+import { Document } from 'flexsearch';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 // Types for search results
@@ -68,6 +68,22 @@ export const SEARCH_INDEX_BOOTSTRAP_TARGETS: SearchBootstrapTarget[] = [
     where: { publishOnline: { equals: true } },
   },
 ];
+
+// Validate visibility against Payload even while an in-memory snapshot is fresh.
+export async function filterVisibleSearchResults(payload: any, results: any[]) {
+  const allowed = new Set<string>();
+  await Promise.all(SEARCH_INDEX_BOOTSTRAP_TARGETS.map(async ({ collection, type, where }) => {
+    const ids = results.filter(result => result.type === type).map(result => result.id);
+    if (!ids.length) return;
+    const response = await payload.find({
+      collection, where: { and: [{ id: { in: ids } }, ...(where ? [where] : [])] },
+      limit: ids.length, depth: 0, select: { id: true },
+    });
+    for (const doc of response.docs) allowed.add(`${type}:${doc.id}`);
+  }));
+  return results.filter(result => allowed.has(`${result.type}:${result.id}`));
+}
+
 
 export function getSearchBootstrapTargets(availableCollectionSlugs?: string[]): SearchBootstrapTarget[] {
   if (!availableCollectionSlugs || availableCollectionSlugs.length === 0) {
@@ -149,14 +165,37 @@ export function toSearchText(value: unknown): string {
   return '';
 }
 
+// Search responses use dollars, matching the storefront currency formatter.
+export function productSearchPrice(type: string, doc: any): number {
+  if (type === 'fashionJewelry') return doc.price ?? 0;
+  const prices = (doc.variations ?? []).map((v: any) => v.price)
+    .filter((price: unknown): price is number => typeof price === 'number' && price > 0);
+  return (prices.length ? Math.min(...prices) : (doc.pricing?.retailPrice ?? doc.price ?? 0)) / 100;
+}
+
+// Preserve display text; this extra field only handles common spelling variants.
+export function normalizeSearchText(value: string): string {
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\s*[-\u2010-\u2015]\s*/g, '')
+    .replace(/([bcdfghjklmnpqrstvwxyz])\1+/g, '$1').trim();
+}
+
+export const SEARCH_INDEX_MAX_AGE_MS = 5 * 60 * 1000;
+
 // FlexSearch indices for different content types
-class SearchEngine {
+export class SearchEngine {
   private bookIndex!: Document<any>;
   private blogIndex!: Document<any>;
   private eventIndex!: Document<any>;
   private businessIndex!: Document<any>;
   private productIndex!: Document<any>;
   private isInitialized = false;
+  private loadedAt: number | null = null;
+  private initialization: Promise<void> | null = null;
+
+  get isReady(): boolean {
+    return this.loadedAt !== null && Date.now() - this.loadedAt < SEARCH_INDEX_MAX_AGE_MS;
+  }
   private rateLimiter: RateLimiterMemory;
 
   constructor() {
@@ -173,7 +212,7 @@ class SearchEngine {
     // Books index
     this.bookIndex = new Document({
       id: 'id',
-      index: ['title', 'author', 'description', 'tags', 'categories', 'subjects', 'isbns'],
+      index: ['title', 'author', 'description', 'tags', 'categories', 'subjects', 'isbns', 'normalizedTitle', 'normalizedAuthor'],
       store: ['title', 'author', 'description', 'imageUrl', 'slug', 'price', 'isbn', 'isbns'],
       tag: ['category', 'availability', 'collection'],
       tokenize: 'forward',
@@ -259,8 +298,8 @@ class SearchEngine {
             .sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0];
           const bestEdition = inStock || mostRecent || editions[0];
           const isbn = bestEdition?.isbn || bestEdition?.isbn10 || '';
-          const bookSlug = isbn ? `${doc.slug || doc.id}/${isbn}` : (doc.slug || doc.id);
-          const isbns = editions.map((e: any) => e.isbn || e.isbn10 || '').filter(Boolean).join(' ');
+          const bookSlug = doc.slug || String(doc.id);
+          const isbns = editions.flatMap((e: any) => [e.isbn, e.isbn10]).filter(Boolean).join(' ');
           // authorsText (denormalized array of {name}) is the populated source
           // for imported books; authors relationship is mostly empty.
           const authorNamesForIndex = [
@@ -270,13 +309,15 @@ class SearchEngine {
           await this.bookIndex.addAsync(doc.id, {
             title: toSearchText(doc.title),
             author: toSearchText(authorNamesForIndex),
+            normalizedTitle: normalizeSearchText(toSearchText(doc.title)),
+            normalizedAuthor: normalizeSearchText(toSearchText(authorNamesForIndex)),
             description: toSearchText(doc.description ?? doc.synopsis ?? doc.excerpt),
             tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
             categories: toSearchText(doc.categories),
             subjects: toSearchText(doc.subjects?.map((s: any) => s.subject) || ''),
-            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
+            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || doc.scrapedImageUrls?.[0]?.url || ''),
             slug: bookSlug,
-            price: bestEdition?.pricing?.retailPrice || 0,
+            price: (bestEdition?.pricing?.retailPrice ?? 0) / 100,
             isbn,
             isbns,
           });
@@ -318,7 +359,7 @@ class SearchEngine {
             owner: toSearchText(doc.owner?.name || ''),
             address: toSearchText(`${doc.address?.street || ''} ${doc.address?.city || ''}`),
             phone: toSearchText(doc.contact?.phone || ''),
-            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
+            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || doc.scrapedImageUrls?.[0]?.url || ''),
             slug: doc.slug
           });
           break;
@@ -326,14 +367,14 @@ class SearchEngine {
         case 'wellnessLifestyle':
         case 'fashionJewelry':
         case 'oilsIncense':
-          await this.productIndex.addAsync(doc.id, {
+          await this.productIndex.addAsync(`${type}:${doc.id}`, {
             name: toSearchText(doc.name || doc.title),
             description: toSearchText(doc.description),
             brand: toSearchText(doc.brand?.name || doc.brand || ''),
             tags: toSearchText(doc.tags?.map((t: any) => t.tag) || ''),
             scent: toSearchText(doc.scent || doc.baseScent || ''),
-            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || ''),
-            price: doc.variants?.[0]?.price || doc.variations?.[0]?.price || 0,
+            imageUrl: toSearchText(doc.images?.[0]?.image?.url || doc.images?.[0]?.url || doc.scrapedImageUrls?.[0]?.url || ''),
+            price: productSearchPrice(type, doc),
             type: type,
             slug: doc.slug,
             // OilsIncense-only field; undefined for wellnessLifestyle/fashionJewelry.
@@ -345,7 +386,7 @@ class SearchEngine {
           break;
       }
     } catch (error) {
-      console.error(`Error adding document to ${type} index:`, error);
+      throw new Error(`Error adding document to ${type} index`, { cause: error });
     }
   }
 
@@ -359,18 +400,27 @@ class SearchEngine {
     const startTime = Date.now();
     const { types = ['books', 'blogPosts', 'events', 'businesses', 'products'], limit = 20, filters = {}, includeExternal = false } = options;
 
-    const results: SearchResult[] = [];
+    let results: SearchResult[] = [];
     const suggestions: string[] = [];
 
     try {
       // Search books
       if (types.includes('books')) {
-        const bookResults = await this.bookIndex.searchAsync(query, { limit: Math.floor(limit / types.length) + 5 });
+        const isISBN = /^[\d\-X]{9,13}$/i.test(query);
+        const bookResults = await this.bookIndex.searchAsync(query, { limit, ...(isISBN ? { index: ['isbns'] } : {}) });
+        // Supplement with normalized names/titles; keep ordinary matches first.
+        if (!isISBN) {
+          const normalized = normalizeSearchText(query);
+          if (normalized) bookResults.push(...await this.bookIndex.searchAsync(normalized, {
+            limit, index: ['normalizedTitle', 'normalizedAuthor'],
+          }));
+        }
         for (const result of bookResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await (this.bookIndex as any).store[id as any];
-              if (doc) {
+              const doc = this.bookIndex.get(id);
+              if (doc && (!isISBN || doc.isbns.split(' ').some((isbn: string) =>
+                isbn.replace(/-/g, '').toUpperCase() === query.replace(/-/g, '').toUpperCase()))) {
                 results.push({
                   id: id as string,
                   type: 'books',
@@ -391,11 +441,11 @@ class SearchEngine {
 
       // Search blog posts
       if (types.includes('blogPosts')) {
-        const blogResults = await this.blogIndex.searchAsync(query, { limit: Math.floor(limit / types.length) + 5 });
+        const blogResults = await this.blogIndex.searchAsync(query, { limit });
         for (const result of blogResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await (this.blogIndex as any).store[id as any];
+              const doc = this.blogIndex.get(id);
               if (doc) {
                 results.push({
                   id: id as string,
@@ -416,11 +466,11 @@ class SearchEngine {
 
       // Search events
       if (types.includes('events')) {
-        const eventResults = await this.eventIndex.searchAsync(query, { limit: Math.floor(limit / types.length) + 5 });
+        const eventResults = await this.eventIndex.searchAsync(query, { limit });
         for (const result of eventResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await (this.eventIndex as any).store[id as any];
+              const doc = this.eventIndex.get(id);
               if (doc) {
                 results.push({
                   id: id as string,
@@ -440,11 +490,11 @@ class SearchEngine {
 
       // Search businesses
       if (types.includes('businesses')) {
-        const businessResults = await this.businessIndex.searchAsync(query, { limit: Math.floor(limit / types.length) + 5 });
+        const businessResults = await this.businessIndex.searchAsync(query, { limit });
         for (const result of businessResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await (this.businessIndex as any).store[id as any];
+              const doc = this.businessIndex.get(id);
               if (doc) {
                 results.push({
                   id: id as string,
@@ -463,15 +513,19 @@ class SearchEngine {
       }
 
       // Search products
-      if (types.includes('products')) {
-        const productResults = await this.productIndex.searchAsync(query, { limit: Math.floor(limit / types.length) + 5 });
+      if (types.some(type => ['products', 'wellnessLifestyle', 'fashionJewelry', 'oilsIncense'].includes(type))) {
+        const productResults = types.includes('products')
+          ? await this.productIndex.searchAsync(query, { limit })
+          : (await Promise.all(types
+              .filter(type => ['wellnessLifestyle', 'fashionJewelry', 'oilsIncense'].includes(type))
+              .map(type => this.productIndex.searchAsync(query, { limit, tag: { type } })))).flat();
         for (const result of productResults) {
           if (Array.isArray(result.result)) {
             for (const id of result.result) {
-              const doc = await (this.productIndex as any).store[id as any];
-              if (doc) {
+              const doc = this.productIndex.get(id);
+              if (doc && (types.includes('products') || types.includes(doc.type))) {
                 results.push({
-                  id: id as string,
+                  id: String(id).slice(String(id).indexOf(':') + 1),
                   type: doc.type as any,
                   title: doc.name,
                   excerpt: doc.description?.substring(0, 200) + '...',
@@ -487,6 +541,8 @@ class SearchEngine {
         }
       }
 
+      // One card per collection/document, even when multiple fields match.
+      results = [...new Map(results.map(result => [`${result.type}:${result.id}`, result])).values()];
       // Sort results by score
       results.sort((a, b) => b.score - a.score);
 
@@ -710,34 +766,43 @@ class SearchEngine {
     return facets;
   }
 
-  // Initialize search index with existing data
-  async initializeWithData(payload: any) {
-    try {
-      const availableCollections = getAvailableCollectionSlugs(payload);
-      const bootstrapTargets = getSearchBootstrapTargets(availableCollections);
-
-      const results = await Promise.all(
-        bootstrapTargets.map(async ({ collection, type, where }) => ({
-          type,
-          result: await payload.find({
-            collection,
-            limit: 1000,
-            ...(where ? { where } : {}),
-          }),
-        })),
-      );
-
-      for (const { type, result } of results) {
-        for (const doc of result.docs) {
-          await this.addDocument(type, doc);
-        }
-      }
-
-      console.log('Search indices initialized with existing data');
-    } catch (error) {
-      console.error('Error initializing search indices:', error);
-    }
+  // Build a complete replacement, then swap atomically. Requests use the
+  // database while cold/stale; no timers or extra infrastructure are required.
+  initializeWithData(payload: any): Promise<void> {
+    if (this.initialization) return this.initialization;
+    this.initialization = this.rebuild(payload).finally(() => { this.initialization = null; });
+    return this.initialization;
   }
+
+  private async rebuild(payload: any): Promise<void> {
+    const startedAt = Date.now();
+    const replacement = new SearchEngine();
+    const targets = getSearchBootstrapTargets(getAvailableCollectionSlugs(payload));
+    let count = 0;
+    for (const { collection, type, where } of targets) {
+      let page = 1;
+      while (true) {
+        const result = await payload.find({
+          collection, limit: 500, page, sort: 'id', depth: 1,
+          ...(where ? { where } : {}),
+        });
+        for (const doc of result.docs) {
+          await replacement.addDocument(type, doc);
+          count++;
+        }
+        if (!result.hasNextPage) break;
+        page++;
+      }
+    }
+    this.bookIndex = replacement.bookIndex;
+    this.blogIndex = replacement.blogIndex;
+    this.eventIndex = replacement.eventIndex;
+    this.businessIndex = replacement.businessIndex;
+    this.productIndex = replacement.productIndex;
+    this.loadedAt = Date.now();
+    console.log(`Search index ready: ${count} documents in ${Date.now() - startedAt}ms`);
+  }
+
 }
 
 // Export singleton instance
