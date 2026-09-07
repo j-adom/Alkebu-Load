@@ -157,7 +157,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
     }
 
     setHeaders({
-      'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600',
+      'Cache-Control': 'no-store',
       'Vary': 'Accept-Encoding',
     });
 
@@ -187,7 +187,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
     console.error('Error performing search:', error);
 
     setHeaders({
-      'Cache-Control': 'public, s-maxage=300',
+      'Cache-Control': 'no-store',
     });
 
     return {

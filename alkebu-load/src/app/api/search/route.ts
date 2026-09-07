@@ -271,15 +271,9 @@ export async function GET(req: NextRequest) {
   let internalResults: any[] = []
   let source: 'flexsearch' | 'postgresql' = 'flexsearch'
 
-  // Never serve a partially loaded or expired catalog. Rebuild is single-flight.
-  if (!searchEngine.isReady) {
-    void searchEngine.initializeWithData(payload).catch(err => {
-      console.warn('Search index rebuild failed:', err)
-    })
-  }
-
-  // Try FlexSearch only when a complete, fresh snapshot is available.
+  // Wait on cold startup; retain a complete snapshot during background refresh.
   try {
+    await searchEngine.prepareForSearch(payload)
     if (searchEngine.isReady) {
       const flexResponse = await searchEngine.search(query, {
         limit,

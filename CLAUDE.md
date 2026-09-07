@@ -76,9 +76,9 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
 
 ### Search
 - Server-side FlexSearch in `/api/search`; no browser index. Uses the supported `Document.get(id)` API. Stored results are dollar-priced; Books and wellness/oils source prices are cents, fashion prices are dollars.
-- Paginated atomic bootstrap (500 docs/page), explicit ready state, and request-triggered rebuild after five minutes. During cold/expired rebuilds or on no matches, Payload uses literal `contains` queries, not PostgreSQL FTS.
+- Paginated atomic bootstrap (500 docs/page), explicit ready state, and request-triggered rebuild after five minutes. Cold requests await initialization; refreshes retain the complete prior snapshot. On initialization failure or no matches, Payload uses literal `contains` queries, not PostgreSQL FTS.
 - Additional normalized book title/author fields handle hyphens and doubled consonants; no general spelling correction. Search returns unique collection/document cards and canonical book slugs.
-- Every result is rechecked for current catalog visibility. Snapshot freshness and storefront HTTP caching still apply; no push-based updates exist.
+- Every result is rechecked for current catalog visibility. Search pages use `no-store`; snapshots refresh in the background and there are no push-based updates.
 - External book discovery exists separately; storefront search does not automatically invoke it.
 - `initialize-search.ts` only exercises the calling process; it cannot warm a running server's in-memory index.
 - Regression tests: `tests/search/searchEngine.test.ts`. See `docs/architecture.md` for the current flow.

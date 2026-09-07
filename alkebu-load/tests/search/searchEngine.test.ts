@@ -171,15 +171,17 @@ test('failed bootstrap stays unready and a successful retry replaces the snapsho
   assert.strictEqual((await engine.search('newtitle')).internal.length, 1);
 });
 
-test('ready snapshots expire so requests can fall back and refresh', async (t) => {
+test('aging snapshots remain usable while requesting a refresh', async (t) => {
   t.mock.timers.enable({ apis: ['Date'], now: 1000 });
   const engine = new SearchEngine();
   await engine.initializeWithData({
     collections: { books: {} }, find: async () => ({ docs: [], hasNextPage: false }),
   });
   assert.strictEqual(engine.isReady, true);
+  assert.strictEqual(engine.needsRefresh, false);
   t.mock.timers.tick(SEARCH_INDEX_MAX_AGE_MS);
-  assert.strictEqual(engine.isReady, false);
+  assert.strictEqual(engine.isReady, true);
+  assert.strictEqual(engine.needsRefresh, true);
 });
 
 
@@ -219,4 +221,32 @@ test('a failure after a loaded page never exposes the partial replacement', asyn
   }), /second page failed/);
   assert.strictEqual(engine.isReady, false);
   assert.strictEqual((await engine.search('partialbook')).internal.length, 0);
+});
+
+
+test('search preparation waits for a cold index and retains author matches during refresh', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1000 });
+  const engine = new SearchEngine();
+  let finishPage!: (page: any) => void;
+  let calls = 0;
+  const payload = { collections: { books: {} }, find: () => {
+    calls++;
+    return new Promise(resolve => { finishPage = resolve; });
+  } };
+  let prepared = false;
+  const first = engine.prepareForSearch(payload).then(() => { prepared = true; });
+  await Promise.resolve();
+  assert.strictEqual(prepared, false);
+  const page = { docs: [{ id: 1, title: 'Book', author: 'Yosef Ben-Jochannan' }], hasNextPage: false };
+  finishPage(page);
+  await first;
+  t.mock.timers.tick(SEARCH_INDEX_MAX_AGE_MS);
+  await engine.prepareForSearch(payload);
+  await engine.prepareForSearch(payload);
+  assert.strictEqual(calls, 2, 'only one refresh starts');
+  assert.strictEqual((await engine.search('jochanan')).internal.length, 1);
+  const refresh = engine.initializeWithData(payload);
+  finishPage(page);
+  await refresh;
+  assert.strictEqual(engine.needsRefresh, false);
 });

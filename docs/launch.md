@@ -182,7 +182,7 @@ Use this file for launch readiness, smoke tests, and near-term operational prior
 
 ## P2 - UX and Content Polish
 
-- [ ] Deploy and smoke-test the search repair (local implementation September 7, 2026): supported Map retrieval, full-catalog pagination, ready-state gating, five-minute snapshot expiry, dollar prices, normalized author/title fields, unique cards, and canonical links. Validate warm/cold behavior, index build time/memory, and both `jochannan`/`jochanan` in production before checking this off.
+- [ ] Deploy and smoke-test the search repair (local implementation September 7, 2026): supported Map retrieval, full-catalog pagination, ready-state gating, five-minute background refresh with the previous snapshot retained, dollar prices, normalized author/title fields, unique cards, and canonical links. Validate warm/cold behavior, index build time/memory, and both `jochannan`/`jochanan` in production before checking this off.
 - [x] Implement real newsletter signup.
   - Footer form POSTs to `/api/newsletter`, which proxies to the listmonk instance with
     server-only credentials; 409 (already subscribed) treated as success. Working in production.

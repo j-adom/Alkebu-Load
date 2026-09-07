@@ -194,7 +194,23 @@ export class SearchEngine {
   private initialization: Promise<void> | null = null;
 
   get isReady(): boolean {
-    return this.loadedAt !== null && Date.now() - this.loadedAt < SEARCH_INDEX_MAX_AGE_MS;
+    return this.loadedAt !== null;
+  }
+
+  get needsRefresh(): boolean {
+    return this.loadedAt === null || Date.now() - this.loadedAt >= SEARCH_INDEX_MAX_AGE_MS;
+  }
+
+  async prepareForSearch(payload: any): Promise<void> {
+    if (!this.isReady) {
+      // Cold requests share and await the first complete catalog.
+      await this.initializeWithData(payload);
+    } else if (this.needsRefresh) {
+      // Continue using the last complete snapshot while its replacement loads.
+      void this.initializeWithData(payload).catch(error => {
+        console.warn('Search index refresh failed; retaining complete snapshot:', error);
+      });
+    }
   }
   private rateLimiter: RateLimiterMemory;
 
@@ -767,7 +783,7 @@ export class SearchEngine {
   }
 
   // Build a complete replacement, then swap atomically. Requests use the
-  // database while cold/stale; no timers or extra infrastructure are required.
+  // last complete snapshot while refreshing; no timers are required.
   initializeWithData(payload: any): Promise<void> {
     if (this.initialization) return this.initialization;
     this.initialization = this.rebuild(payload).finally(() => { this.initialization = null; });

@@ -252,7 +252,7 @@ Dynamic Pages (2h cache, 6h stale):
 - Homepage (featured products)
 - Blog index
 
-Search Results (10min cache):
+Search Results (no-store):
 - Search API responses
 - External book data
 
@@ -285,13 +285,13 @@ SEO Optimization:
 
 ### Current search flow
 
-1. **Server-side FlexSearch** — `/search` is server-rendered and calls Payload's `/api/search`. Each backend process holds an in-memory index, built in 500-document pages and swapped in only after all eligible collections load. The API uses it only while ready and less than five minutes old; cold/expired requests start a shared background rebuild and use the database fallback.
+1. **Server-side FlexSearch** — `/search` is server-rendered and calls Payload's `/api/search`. Each backend process holds an in-memory index, built in 500-document pages and swapped in only after all eligible collections load. Cold requests await the shared initial build. After five minutes, requests trigger a background rebuild while continuing to use the last complete snapshot. Database fallback is used on initialization failure or no matches.
 2. **Payload database fallback** — literal `contains` queries (exact equality for ISBNs), backed by PostgreSQL in production and SQLite locally. This route does not implement PostgreSQL full-text search. Catalog visibility is rechecked against Payload before returning results.
 3. **External discovery** — ISBNdb, Google Books, and Open Library helpers and separate endpoints exist. The storefront `/api/search` flow does not automatically invoke them.
 
 Book author/title matching supplements the original fields with normalized hyphenation and doubled consonants. Display names stay unchanged; there is no general edit-distance correction or “did you mean” system. Search prices are dollars across all collection types, and book links use canonical slugs.
 
-Freshness is bounded by the process snapshot plus storefront HTTP caching; catalog writes do not push live index updates. The separate initialization script exercises its own process and cannot populate a running server's memory. Browser autocomplete/offline search, database FTS, and broader typo recovery remain future work.
+Search pages send `Cache-Control: no-store`. Catalog updates appear after a successful snapshot refresh; failures retain the previous complete snapshot, and catalog writes do not push live index updates. The separate initialization script exercises its own process and cannot populate a running server's memory. Browser autocomplete/offline search, database FTS, and broader typo recovery remain future work.
 
 ## Deployment Architecture
 
