@@ -9,8 +9,8 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install pnpm via npm (avoids corepack signature verification issues)
-RUN npm install -g pnpm
+# Match package.json packageManager; avoid unpinned package-manager upgrades.
+RUN npm install -g pnpm@10.15.0
 
 COPY package.json pnpm-lock.yaml* .npmrc* ./
 RUN pnpm i --frozen-lockfile
@@ -28,8 +28,8 @@ RUN mkdir -p public
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
-# Install pnpm for build stage
-RUN npm install -g pnpm
+# Use the same pinned pnpm version for the build stage
+RUN npm install -g pnpm@10.15.0
 RUN pnpm run build
 
 # Production image, copy all the files and run next
