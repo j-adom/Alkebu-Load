@@ -1,5 +1,6 @@
 <script lang="ts">
   import PayloadImage from '$lib/components/PayloadImage.svelte';
+  import { cartImage } from '$lib/utils/cartImage.js';
   import { cart } from '$lib/stores/cart';
   import { formatCents } from '$lib/utils/currency';
   import { Minus, Plus, Trash2, Loader2 } from 'lucide-svelte';
@@ -32,13 +33,7 @@
     }
   });
 
-  const image = $derived(
-    item?.image ||
-      product?.images?.[0] ||
-      product?.featuredImage ||
-      product?.coverImage ||
-      null,
-  );
+  const image = $derived(cartImage(item));
 
   const unitPrice = $derived(item?.unitPrice || product?.pricing?.retailPrice || 0);
   const quantity = $derived(item?.quantity || 0);

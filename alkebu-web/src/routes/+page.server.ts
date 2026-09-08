@@ -1,4 +1,5 @@
 import { buildBookStorefrontPath, payloadGet } from '$lib/server/payload';
+import { buildHomepageShelves } from '$lib/utils/homepageShelves';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
@@ -8,7 +9,7 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     // Get HomePage global from Payload
     const homePageData = await payloadGet<any>('/api/globals/homePage?depth=2');
 
-    // Get featured books for homepage
+    // Owner-curated shelf (books flagged `isFeatured` in Payload)
     const featuredBooks = await payloadGet<any>(
       buildBookStorefrontPath(
         new URLSearchParams({
@@ -19,9 +20,9 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       ),
     );
 
-    // Get the newest books that have cover images. Some import batches lack
-    // covers (e.g. Mar 2026), so over-fetch newest-first and keep the first
-    // 8 with an image rather than trusting the newest 8 outright.
+    // Newest books. Some import batches lack covers (e.g. Mar 2026), so
+    // over-fetch newest-first; buildHomepageShelves keeps the first 8 with an
+    // image and drops anything already on the featured shelf.
     const newBooksRaw = await payloadGet<any>(
       buildBookStorefrontPath(
         new URLSearchParams({
@@ -31,10 +32,11 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
         }),
       ),
     );
-    const booksWithImages = (newBooksRaw.docs || []).filter(
-      (b: any) => b.images?.length > 0 || b.scrapedImageUrls?.length > 0
-    );
-    const newBooks = { docs: booksWithImages.slice(0, 8) };
+    const shelves = buildHomepageShelves({
+      featured: featuredBooks.docs || [],
+      fresh: newBooksRaw.docs || [],
+      limit: 8,
+    });
 
     // Get recent blog posts
     const blogPosts = await payloadGet<any>('/api/blogPosts?sort=-publishedDate&limit=4&depth=2');
@@ -63,8 +65,8 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
       section3: homePageData?.section3 || {},
       section4: homePageData?.section4 || {},
       // Book data
-      featured: featuredBooks.docs || [],
-      newBooks: newBooks.docs || [],
+      featured: shelves.featured,
+      newBooks: shelves.newBooks,
       // Content data
       blogPosts: blogPosts.docs || [],
       events: events.docs || [],

@@ -1,28 +1,21 @@
 <script>
-	import { fly, fade } from "svelte/transition";
-	import { page } from "$app/stores";
+	import { fly } from "svelte/transition";
+	import { expoOut } from "svelte/easing";
+	import { prefersReducedMotion } from "svelte/motion";
+	import { ArrowRight } from "lucide-svelte";
 
 	import { urlFor } from "$lib/payload";
-	import {
-		ArrowRight,
-		BookOpen,
-		Shirt,
-		Sparkles,
-		Home as HomeIcon,
-	} from "lucide-svelte";
-
 	import ProductCard from "$lib/components/Shop/ProductCard.svelte";
-	import { PUBLIC_SITE_URL } from "$env/static/public";
-
 	import Meta from "$lib/components/Meta.svelte";
+	import { PUBLIC_SITE_URL } from "$env/static/public";
 
 	let { data } = $props();
 	const banner = $derived(data.banner);
 	const section2 = $derived(data.section2);
 	const section3 = $derived(data.section3);
 	const section4 = $derived(data.section4);
-	const featured = $derived(data.featured);
-	const newBooks = $derived(data.newBooks);
+	const featured = $derived(data.featured ?? []);
+	const newBooks = $derived(data.newBooks ?? []);
 
 	// Hero image URLs at responsive widths (LCP element)
 	const heroImageMobile = $derived(
@@ -32,7 +25,7 @@
 		urlFor(banner?.bannerImages?.[0]).width(1920).auto("format").url(),
 	);
 	const heroAlt = $derived(
-		banner?.bannerImages?.[0]?.alt || "Alkebu-Lan Images storefront",
+		banner?.bannerImages?.[0]?.alt || "Bookshelves inside Alkebu-Lan Images",
 	);
 
 	const metadata = {
@@ -43,7 +36,15 @@
 		url: `${PUBLIC_SITE_URL}/`,
 	};
 
-	const categoryIcons = [BookOpen, Shirt, Sparkles, HomeIcon];
+	// The hero is the page's one authored motion moment: the copy rises once,
+	// staggered, from an already-visible default. Reduced-motion visitors get
+	// the settled state immediately.
+	const rise = (delay) => ({
+		y: prefersReducedMotion.current ? 0 : 24,
+		duration: prefersReducedMotion.current ? 0 : 700,
+		delay,
+		easing: expoOut,
+	});
 
 	// Shop categories data
 	const shopCategories = [
@@ -55,48 +56,49 @@
 		},
 		{
 			title: "Apparel",
-			desc: "Clothing and Accessories for the Black esthetic",
+			desc: "Clothing and accessories for the Black esthetic.",
 			href: "/shop/apparel",
 			imageIndex: 1,
 		},
 		{
 			title: "Health & Beauty",
-			desc: "All-natural products for your skin, hair, and health",
+			desc: "All-natural products for your skin, hair, and health.",
 			href: "/shop/health-and-beauty",
 			imageIndex: 2,
 		},
 		{
 			title: "Art & Imports",
-			desc: "Decorate your home with unique African imports and prints",
+			desc: "Decorate your home with unique African imports and prints.",
 			href: "/shop/home-goods",
 			imageIndex: 3,
 		},
 	];
 
-	// Business services data
+	// Bulk and partner ordering tracks. Each card names its destination and
+	// the action the visitor is taking there; the routes are unchanged.
 	const businessServices = $derived.by(() =>
 		section4?.images
 			? [
 					{
 						title: "Wholesale",
-						subtitle: "solutions",
 						href: "/wholesale",
 						image: section4.images[0],
-						desc: "Partner with us for bulk orders and wholesale pricing for retailers and distributors.",
+						desc: "Bulk pricing on books and cultural products for retailers and distributors.",
+						cta: "See wholesale terms",
 					},
 					{
-						title: "Institutional",
-						subtitle: "Contracts",
+						title: "Schools & Libraries",
 						href: "/institutional-contracts",
 						image: section4.images[1],
-						desc: "Libraries, schools, and organizations can benefit from our institutional partnerships.",
+						desc: "Bulk book orders for classrooms, libraries, and organizations, on institutional terms.",
+						cta: "Request a bulk quote",
 					},
 					{
-						title: "Non-profit",
-						subtitle: "projects",
+						title: "Non-profit Projects",
 						href: "/non-profit-projects",
 						image: section4.images[2],
-						desc: "We support community initiatives and non-profit organizations with special programs.",
+						desc: "Books for community programs and mission-driven projects.",
+						cta: "Start a project inquiry",
 					},
 				]
 			: [],
@@ -118,76 +120,186 @@
 	{/if}
 </svelte:head>
 
-<!-- Banner Section -->
-<section class="banner-section banner-one">
-	<div class="banner-carousel">
-		<!-- Slide Item -->
-		<div class="slide-item">
-			<img
-				class="image-layer"
-				style="object-fit: cover;"
-				src={heroImageMobile}
-				srcset="{heroImageMobile} 768w, {heroImageDesktop} 1920w"
-				sizes="100vw"
-				alt={heroAlt}
-				width="1920"
-				height="780"
-				fetchpriority="high"
-				decoding="async"
-			/>
-			<div class="container mx-auto">
-				<div class="content-box">
-					<div class="content">
-						<div class="inner">
-							<div
-								class="sub-title"
-								in:fly={{ y: 200, delay: 1500, duration: 1500 }}
-							>
-								Elevating Black Lifestyles
-							</div>
-							<h1
-								in:fly={{ y: 200, delay: 1000, duration: 1500 }}
-							>
-								Welcome to<br /> Alkebu-Lan Images
-							</h1>
-							<div class="link-box">
-								<a
-									href="/shop"
-									class="btn-primary btn-lg"
-									in:fly={{
-										y: 200,
-										delay: 2000,
-										duration: 1500,
-									}}>Shop Now</a
-								>
-							</div>
-						</div>
-					</div>
-				</div>
+<!-- Hero -->
+<section class="relative isolate overflow-hidden bg-[#111111] text-white">
+	<img
+		class="absolute inset-0 h-full w-full object-cover"
+		src={heroImageMobile}
+		srcset="{heroImageMobile} 768w, {heroImageDesktop} 1920w"
+		sizes="100vw"
+		alt={heroAlt}
+		width="1920"
+		height="780"
+		fetchpriority="high"
+		decoding="async"
+	/>
+	<!-- Legibility scrim, heaviest where the copy sits -->
+	<div
+		class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/25"
+		aria-hidden="true"
+	></div>
+	<div
+		class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/50 to-transparent"
+		aria-hidden="true"
+	></div>
+
+	<div class="container relative mx-auto px-4">
+		<div class="max-w-3xl py-24 md:py-32 lg:py-40">
+			<h1
+				class="hero-title font-display font-bold uppercase text-white"
+				in:fly={rise(0)}
+			>
+				Nashville's <span class="whitespace-nowrap">Black-owned</span> bookstore, since 1986
+			</h1>
+			<p
+				class="mt-6 max-w-xl text-lg leading-relaxed text-white/90 md:text-xl"
+				in:fly={rise(90)}
+			>
+				Elevating Black lifestyles with books by Black authors, plus
+				apparel, wellness, and African art. Visit us on Jefferson
+				Street or shop online.
+			</p>
+			<div
+				class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4"
+				in:fly={rise(180)}
+			>
+				<a href="/shop" class="btn-primary btn-lg">Shop Now</a>
+				<a
+					href="/institutional-contracts"
+					class="inline-flex items-center gap-2 font-semibold text-white underline decoration-primary/70 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
+				>
+					Ordering for a school or organization?
+					<ArrowRight class="h-4 w-4" />
+				</a>
 			</div>
 		</div>
 	</div>
 </section>
-<!--End Banner Section -->
 
-<!-- About Section -->
-<section class="section bg-background">
+<!-- Featured shelf: the first thing after the door is books -->
+{#if featured.length > 0}
+	<section class="section bg-background" aria-labelledby="featured-heading">
+		<div class="container mx-auto px-4">
+			<div class="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 md:mb-10">
+				<div>
+					<h2
+						id="featured-heading"
+						class="font-display text-3xl font-bold md:text-4xl"
+					>
+						Featured Titles
+					</h2>
+					<div class="mt-4 h-1 w-20 bg-primary"></div>
+				</div>
+				<a
+					href="/shop/books"
+					class="inline-flex items-center gap-2 font-semibold text-primary-strong transition-all hover:gap-3"
+				>
+					All books
+					<ArrowRight class="h-4 w-4" />
+				</a>
+			</div>
+
+			<ul
+				class="shelf -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 scrollbar-hide md:mx-0 md:grid md:grid-cols-4 md:gap-6 md:overflow-visible md:px-0 md:pb-0"
+			>
+				{#each featured as book (book.id)}
+					<li class="w-[58vw] max-w-[240px] flex-none snap-start md:w-auto md:max-w-none">
+						<ProductCard
+							product={book}
+							productType="books"
+							basePath="/shop/books"
+						/>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	</section>
+{/if}
+
+<!-- Shop Categories -->
+<section class="section bg-muted/30" aria-labelledby="categories-heading">
 	<div class="container mx-auto px-4">
-		<div
-			class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center"
-		>
-			<!-- Image Composition -->
-			<div class="relative pb-16">
+		<div class="mb-12 text-center">
+			<h2
+				id="categories-heading"
+				class="font-display text-3xl font-bold md:text-4xl lg:text-5xl"
+			>
+				Shop the Store
+			</h2>
+			<div class="mx-auto mt-4 h-1 w-20 bg-primary"></div>
+		</div>
+
+		<div class="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
+			{#each shopCategories as cat}
+				<a href={cat.href} class="group">
+					<div class="card-modern h-full overflow-hidden">
+						<div class="relative aspect-[4/3] overflow-hidden">
+							{#if section3.images?.[cat.imageIndex]}
+								<img
+									loading="lazy"
+									width="400"
+									height="300"
+									src={urlFor(section3.images[cat.imageIndex])
+										.width(400)
+										.height(300)
+										.auto("format")
+										.url()}
+									alt={section3.images[cat.imageIndex]?.alt ||
+										cat.title}
+									class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+								/>
+							{:else}
+								<img
+									loading="lazy"
+									width="400"
+									height="300"
+									src="/assets/images/resources/placeholder.jpg"
+									alt={cat.title}
+									class="h-full w-full object-cover"
+								/>
+							{/if}
+							<div
+								class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+							></div>
+							<h3
+								class="absolute bottom-4 left-4 right-4 text-xl font-bold text-white"
+							>
+								{cat.title}
+							</h3>
+						</div>
+						<div class="p-4 md:p-5">
+							<p class="mb-4 text-sm text-muted-foreground">
+								{cat.desc}
+							</p>
+							<span
+								class="inline-flex items-center gap-2 text-sm font-semibold text-primary-strong transition-all group-hover:gap-3"
+							>
+								Browse {cat.title}
+								<ArrowRight class="h-4 w-4" />
+							</span>
+						</div>
+					</div>
+				</a>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- About: a short proof of who we are, now that the books have led -->
+<section class="section overflow-hidden bg-background" aria-labelledby="about-heading">
+	<div class="container mx-auto px-4">
+		<div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+			<!-- Image composition -->
+			<div class="relative pb-12 md:pb-16">
 				<!-- Decorative background circle -->
 				<div
-					class="absolute -bottom-4 -left-8 w-72 h-72 rounded-full bg-muted/60 -z-10"
+					class="absolute -bottom-4 -left-8 -z-10 h-48 w-48 rounded-full bg-muted/60 md:h-72 md:w-72"
 				></div>
 
 				<!-- Tall main image (mask) -->
 				<div class="relative w-[65%]">
 					<img
-						class="w-full rounded-2xl shadow-medium object-cover"
-						style="height: 520px;"
+						class="aspect-[3/4] w-full rounded-2xl object-cover shadow-medium"
 						loading="lazy"
 						width="480"
 						height="640"
@@ -203,8 +315,7 @@
 				<!-- Smaller overlapping mudcloth image -->
 				<div class="absolute bottom-0 right-0 w-[52%]">
 					<img
-						class="w-full rounded-2xl shadow-strong border-4 border-background object-cover"
-						style="height: 220px;"
+						class="aspect-[19/13] w-full rounded-2xl border-4 border-background object-cover shadow-strong"
 						loading="lazy"
 						width="380"
 						height="260"
@@ -217,13 +328,13 @@
 					/>
 				</div>
 
-				<!-- Yellow circle with Sankofa icon at image junction -->
+				<!-- Gold circle with Sankofa at the image junction -->
 				<div
-					class="absolute bottom-[140px] left-[52%] -translate-x-1/2 w-36 h-36 bg-primary rounded-full flex items-center justify-center shadow-glow border-4 border-background z-10"
+					class="absolute bottom-[23%] left-[52%] z-10 flex h-24 w-24 -translate-x-1/2 items-center justify-center rounded-full border-4 border-background bg-primary shadow-glow md:h-36 md:w-36"
 				>
 					<img
 						loading="lazy"
-						class="w-24 h-24"
+						class="h-16 w-16 md:h-24 md:w-24"
 						width="96"
 						height="96"
 						src="/assets/images/alkebulan/sankofa.svg"
@@ -234,360 +345,183 @@
 
 			<!-- Content -->
 			<div class="lg:pl-8">
-				<p
-					class="text-primary-strong font-semibold uppercase tracking-wide mb-2"
-				>
-					About Alkebu-lan
-				</p>
 				<h2
-					class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6"
+					id="about-heading"
+					class="mb-6 font-display text-3xl font-bold md:text-4xl lg:text-5xl"
 				>
 					We curate the whole Black experience: mind, body, and soul
 				</h2>
-				<div class="w-20 h-1 bg-primary mb-8"></div>
+				<div class="mb-8 h-1 w-20 bg-primary"></div>
 
-				<p class="text-lg text-muted-foreground mb-8">
-					Over the last 35 years, Alkebu-Lan Images has created a
-					shopping experience found in few places around the world.
-					Our goal is to bring all the accoutrements of the Black
-					esthetic under one roof to promote positive Black lifestyles
-					for our customers.
+				<p class="mb-8 text-lg text-muted-foreground">
+					Since 1986, Alkebu-Lan Images has gathered the accoutrements
+					of the Black esthetic under one roof on Jefferson Street:
+					books, apparel, wellness, and art that promote positive
+					Black lifestyles.
 				</p>
 
-				<!-- Feature Icons -->
-				<div class="grid grid-cols-2 gap-6 mb-8">
+				<!-- Adinkra values -->
+				<div class="mb-8 grid grid-cols-2 gap-6">
 					<div class="flex items-center gap-4">
 						<div
-							class="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"
+							class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10"
 						>
 							<img
 								loading="lazy"
-								class="w-10 h-10"
+								class="h-10 w-10"
 								width="40"
 								height="40"
 								src="/assets/images/alkebulan/sankofa.svg"
-								alt="SANKOFA"
+								alt="Sankofa"
 							/>
 						</div>
-						<p class="font-medium text-sm">
+						<p class="text-sm font-medium">
 							Connecting our present to our past
 						</p>
 					</div>
 					<div class="flex items-center gap-4">
 						<div
-							class="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"
+							class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10"
 						>
 							<img
 								loading="lazy"
-								class="w-10 h-10"
+								class="h-10 w-10"
 								width="40"
 								height="40"
 								src="/assets/images/alkebulan/crocs.svg"
-								alt="FUNTUNFUNEFU-DENKYEMFUNEFU"
+								alt="Funtunfunefu-Denkyemfunefu"
 							/>
 						</div>
-						<p class="font-medium text-sm">
+						<p class="text-sm font-medium">
 							Strength and unity through knowledge
 						</p>
 					</div>
 				</div>
 
-				<p class="text-muted-foreground mb-8">
-					As mainstream retailers provide less and less service to
-					customers while at the same time making it more and more
-					difficult to find quality products, Alkebu-Lan Images
-					strives to empower our customers in their search for
-					products that amplify diverse, Afrocentric lifestyles.
-				</p>
-
 				<a
 					href="/about"
 					class="btn-outline inline-flex items-center gap-2"
 				>
-					Learn More
-					<ArrowRight class="w-4 h-4" />
+					Our story
+					<ArrowRight class="h-4 w-4" />
 				</a>
 			</div>
 		</div>
 	</div>
 </section>
 
-<!-- Shop Categories -->
-<section class="py-20 bg-muted/30">
-	<div class="container mx-auto px-4">
-		<div class="text-center mb-12">
-			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
-				Shop Our Store Online
-			</p>
-			<h2
-				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
-			>
-				Products We Offer
-			</h2>
-			<div class="w-20 h-1 bg-primary mx-auto"></div>
+<!-- New arrivals -->
+{#if newBooks.length > 0}
+	<section class="section bg-muted/30" aria-labelledby="new-heading">
+		<div class="container mx-auto px-4">
+			<div class="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 md:mb-10">
+				<div>
+					<h2
+						id="new-heading"
+						class="font-display text-3xl font-bold md:text-4xl"
+					>
+						New Arrivals
+					</h2>
+					<div class="mt-4 h-1 w-20 bg-primary"></div>
+				</div>
+				<a
+					href="/shop/books"
+					class="inline-flex items-center gap-2 font-semibold text-primary-strong transition-all hover:gap-3"
+				>
+					All books
+					<ArrowRight class="h-4 w-4" />
+				</a>
+			</div>
+			<div class="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+				{#each newBooks as book (book.id)}
+					<ProductCard
+						product={book}
+						productType="books"
+						basePath="/shop/books"
+					/>
+				{/each}
+			</div>
 		</div>
+	</section>
+{/if}
 
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-			{#each shopCategories as cat, i}
-				<a href={cat.href} class="group">
-					<div class="card-modern overflow-hidden h-full">
-						<div class="relative aspect-[4/3] overflow-hidden">
-							{#if section3.images?.[cat.imageIndex]}
+<!-- Bulk and partner ordering -->
+{#if businessServices.length > 0}
+	<section class="section bg-background" aria-labelledby="business-heading">
+		<div class="container mx-auto px-4">
+			<div class="mb-12 text-center">
+				<h2
+					id="business-heading"
+					class="font-display text-3xl font-bold md:text-4xl lg:text-5xl"
+				>
+					Order for Your Store, School, or Organization
+				</h2>
+				<div class="mx-auto mt-4 h-1 w-20 bg-primary"></div>
+				<p class="section-subtitle mt-6 !mb-0">
+					Bulk pricing, institutional terms, and community projects,
+					each with its own inquiry and a real person on the other end.
+				</p>
+			</div>
+			<div class="grid grid-cols-1 gap-8 md:grid-cols-3">
+				{#each businessServices as service}
+					<a href={service.href || "/contact"} class="group">
+						<div class="card-modern h-full overflow-hidden">
+							<div class="relative aspect-[3/4] overflow-hidden">
 								<img
 									loading="lazy"
-									width="400"
-									height="300"
-									src={urlFor(section3.images[cat.imageIndex])
-										.width(400)
-										.height(300)
+									width="370"
+									height="484"
+									src={urlFor(service.image)
+										.width(370)
+										.height(484)
 										.auto("format")
 										.url()}
-									alt={section3.images[cat.imageIndex]?.alt ||
-										cat.title}
-									class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+									alt={service.image?.alt || service.title}
+									class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
 								/>
-							{:else}
-								<img
-									loading="lazy"
-									width="400"
-									height="300"
-									src="/assets/images/resources/placeholder.jpg"
-									alt={cat.title}
-									class="w-full h-full object-cover"
-								/>
-							{/if}
-							<div
-								class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
-							></div>
-							<div
-								class="absolute bottom-4 left-4 right-4 text-white"
-							>
-								<h3 class="text-xl font-bold mb-1">
-									Shop {cat.title}
-								</h3>
+								<div
+									class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent"
+								></div>
+								<div
+									class="absolute bottom-0 left-0 right-0 p-6 text-white"
+								>
+									<h3
+										class="mb-2 font-display text-2xl font-bold"
+									>
+										{service.title}
+									</h3>
+									<p class="mb-4 text-sm text-white/85">
+										{service.desc}
+									</p>
+									<span
+										class="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-all group-hover:gap-3"
+									>
+										{service.cta}
+										<ArrowRight class="h-4 w-4" />
+									</span>
+								</div>
 							</div>
 						</div>
-						<div class="p-5">
-							<p class="text-muted-foreground text-sm mb-4">
-								{cat.desc}
-							</p>
-							<span
-								class="inline-flex items-center gap-2 text-primary-strong font-semibold text-sm group-hover:gap-3 transition-all"
-							>
-								Browse {cat.title}
-								<ArrowRight class="w-4 h-4" />
-							</span>
-						</div>
-					</div>
-				</a>
-			{/each}
-		</div>
-	</div>
-</section>
-
-<!-- Featured products -->
-<section class="section bg-background">
-	<div class="container mx-auto px-4">
-		<div class="text-center mb-12">
-			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
-				Keep Shopping
-			</p>
-			<h2
-				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
-			>
-				Our Featured Titles
-			</h2>
-			<div class="w-20 h-1 bg-primary mx-auto"></div>
-		</div>
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-			{#each featured.slice(0, 8) as book (book.id)}
-				<ProductCard product={book} productType="books" basePath="/shop/books" />
-			{/each}
-		</div>
-	</div>
-</section>
-
-<!-- Recent products -->
-<section class="section bg-muted/30">
-	<div class="container mx-auto px-4">
-		<div class="text-center mb-12">
-			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
-				Fresh Arrivals
-			</p>
-			<h2
-				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
-			>
-				Newly Added Books
-			</h2>
-			<div class="w-20 h-1 bg-primary mx-auto"></div>
-		</div>
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-			{#each newBooks.slice(0, 8) as book (book.id)}
-				<ProductCard product={book} productType="books" basePath="/shop/books" />
-			{/each}
-		</div>
-	</div>
-</section>
-
-<!-- Business Lines -->
-<section class="section bg-background">
-	<div class="container mx-auto px-4">
-		<div class="text-center mb-12">
-			<p class="text-primary-strong font-semibold uppercase tracking-wide mb-2">
-				Let's Work Together
-			</p>
-			<h2
-				class="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-4"
-			>
-				More than just Retail
-			</h2>
-			<div class="w-20 h-1 bg-primary mx-auto"></div>
-		</div>
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-			{#each businessServices as service, i}
-				<a href={service.href || "/contact"} class="group">
-					<div class="card-modern overflow-hidden h-full">
-						<div class="relative aspect-[3/4] overflow-hidden">
-							<img
-								loading="lazy"
-								width="370"
-								height="484"
-								src={urlFor(service.image)
-									.width(370)
-									.height(484)
-									.auto("format")
-									.url()}
-								alt={service.image?.alt ||
-									`${service.title} ${service.subtitle}`}
-								class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-							/>
-							<div
-								class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
-							></div>
-							<div
-								class="absolute bottom-0 left-0 right-0 p-6 text-white"
-							>
-								<h3
-									class="text-2xl font-bold font-display mb-2"
-								>
-									{service.title}<br />{service.subtitle}
-								</h3>
-								<p
-									class="text-white/80 text-sm mb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-								>
-									{service.desc}
-								</p>
-								<span
-									class="inline-flex items-center gap-2 text-primary font-semibold text-sm group-hover:gap-3 transition-all"
-								>
-									Contact Us
-									<ArrowRight class="w-4 h-4" />
-								</span>
-							</div>
-						</div>
-					</div>
-				</a>
-			{/each}
-		</div>
-	</div>
-</section>
-
-<!-- Blog component -->
-<!-- <div class="blog_two">
-	<div class="container">
-		<div class="row">
-			<div class="col-xl-12">
-				<div class="block-title">
-					<p>check out our blog</p>
-					<h3>latest news and articles</h3>
-					<div class="leaf">
-						<img loading="lazy" src="/assets/images/resources/leaf.png" alt="">
-					</div>
-				</div>
-				<div class="all_posts_btn">
-					<a href="/blog" class="btn-outline">View All Posts</a>
-				</div>
+					</a>
+				{/each}
 			</div>
 		</div>
-		<div class="row">
-			<div class="col-xl-4 col-lg-6">
-				<div class="blog_two_single wow fadeInLeft" data-wow-delay="300ms">
-					<div class="blog_two_image">
-						<img loading="lazy" src="/assets/images/blog/blog-2-img-1.jpg" alt="">
-						<div class="blog_two_date_box">
-							<p>30 Oct, 2019</p>
-						</div>
-					</div>
-					<div class="blog-two_content">
-						<ul class="list-unstyled blog-two_meta">
-							<li><a href="news_detail.html"><i class="far fa-user-circle"></i> Admin</a></li>
-							<li><a href="news_detail.html"><i class="far fa-comments"></i> 2 Comments</a></li>
-						</ul>
-						<h3><a href="news_detail.html" class="blog_two_title">Agriculture Miracle you<br>Don't
-								Know About</a></h3>
-						<div class="blog_two_text">
-							<p>There are lorem ipsum is simply free text available in the market to use it many
-								variations of ipsum the majority suffered.</p>
-						</div>
-						<div class="blog_two_read_more_btn">
-							<a href="news_detail.html"><i class="fa fa-angle-right"></i>Read More</a>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="col-xl-4  col-lg-6">
-				<div class="blog_two_single wow fadeInLeft" data-wow-delay="600ms">
-					<div class="blog_two_image">
-						<img loading="lazy" src="/assets/images/blog/blog-2-img-2.jpg" alt="">
-						<div class="blog_two_date_box">
-							<p>30 Oct, 2019</p>
-						</div>
-					</div>
-					<div class="blog-two_content">
-						<ul class="list-unstyled blog-two_meta">
-							<li><a href="news_detail.html"><i class="far fa-user-circle"></i> Admin</a></li>
-							<li><a href="news_detail.html"><i class="far fa-comments"></i> 2 Comments</a></li>
-						</ul>
-						<h3><a href="news_detail.html" class="blog_two_title">Winter Wheat Harvest
-								Gathering<br>Momentum</a></h3>
-						<div class="blog_two_text">
-							<p>There are lorem ipsum is simply free text available in the market to use it many
-								variations of ipsum the majority suffered.</p>
-						</div>
-						<div class="blog_two_read_more_btn">
-							<a href="news_detail.html"><i class="fa fa-angle-right"></i>Read More</a>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="col-xl-4">
-				<div class="blog_two_right wow fadeInRight" data-wow-delay="300ms">
-					<div class="blog_three_single">
-						<ul class="list-unstyled blog-three_meta">
-							<li><a href="news_detail.html"><i class="far fa-user-circle"></i> Admin</a></li>
-							<li><a href="news_detail.html"><i class="far fa-comments"></i> 2 Comments</a></li>
-						</ul>
-						<h3><a href="news_detail.html" class="blog_three_title">Amount of Freak Bread or Other
-								Fruits</a></h3>
-					</div>
-					<div class="blog_three_single">
-						<ul class="list-unstyled blog-three_meta">
-							<li><a href="news_detail.html"><i class="far fa-user-circle"></i> Admin</a></li>
-							<li><a href="news_detail.html"><i class="far fa-comments"></i> 2 Comments</a></li>
-						</ul>
-						<h3><a href="news_detail.html" class="blog_three_title">Learn 10 Best Tips for New
-								Formers</a></h3>
-					</div>
-					<div class="blog_three_single blgo_three_last">
-						<ul class="list-unstyled blog-three_meta">
-							<li><a href="news_detail.html"><i class="far fa-user-circle"></i> Admin</a></li>
-							<li><a href="news_detail.html"><i class="far fa-comments"></i> 2 Comments</a></li>
-						</ul>
-						<h3><a href="news_detail.html" class="blog_three_title">Winter Wheat Harvest Gathering
-								Momentum</a></h3>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</div> -->
+	</section>
+{/if}
+
+<style>
+	.hero-title {
+		font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+		line-height: 1.02;
+		letter-spacing: -0.01em;
+		text-wrap: balance;
+	}
+
+	h2 {
+		text-wrap: balance;
+	}
+
+	.shelf {
+		scroll-padding-inline: 1rem;
+	}
+</style>

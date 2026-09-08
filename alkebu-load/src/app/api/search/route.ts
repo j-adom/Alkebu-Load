@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { filterVisibleSearchResults, productSearchPrice, searchEngine } from '../../utils/searchEngine'
+import { filterVisibleSearchResults, getBookAuthorNames, productSearchPrice, searchEngine } from '../../utils/searchEngine'
 
 const ISBN_RE = /^[\d\-X]{9,13}$/i
 
 
 async function payloadSearch(payload: any, query: string, types: string[], limit: number) {
   const results: any[] = []
+  let attempted = 0
+  let succeeded = 0
+  let hasMore = false
 
   const wantAll = types.length === 0
   const want = (t: string) => wantAll || types.includes(t)
@@ -15,6 +18,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
   await Promise.all([
     // Books — synopsis and excerpt are textarea (plain text); description is richText (jsonb)
     want('books') && (async () => {
+      attempted++
       try {
         const contentWhere: any = ISBN_RE.test(query)
           ? { or: [{ 'editions.isbn': { equals: query } }, { 'editions.isbn10': { equals: query } }] }
@@ -42,6 +46,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 2,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           const slug = doc.slug || String(doc.id)
           const editions: any[] = doc.editions || []
@@ -49,8 +55,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             editions.filter((e: any) => e.datePublished).sort((a: any, b: any) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime())[0] ||
             editions[0]
           // authorsText is [{name}], authors is relationship to Authors collection
-          const authorNames = (doc.authorsText || []).map((a: any) => a.name).filter(Boolean)
-            || (doc.authors || []).map((a: any) => a.name || a).filter(Boolean)
+          const authorNames = getBookAuthorNames(doc)
           // images[0].image is a Media doc (depth:2), scrapedImageUrls is fallback
           const imageUrl = doc.images?.[0]?.image?.url || doc.scrapedImageUrls?.[0]?.url || null
           results.push({
@@ -58,11 +63,19 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
             title: doc.title,
             type: 'books',
             excerpt: doc.synopsis || doc.excerpt || '',
-            author: authorNames.join(', '),
+            author: authorNames,
             imageUrl,
             price: best?.pricing?.retailPrice ? best.pricing.retailPrice / 100 : null,
             slug,
             score: 1,
+            metadata: {
+              isbn: best?.isbn || best?.isbn10,
+              binding: best?.binding,
+              stockLevel: best?.inventory?.stockLevel ?? 0,
+              allowBackorders: Boolean(best?.inventory?.allowBackorders),
+              availabilityStatus: doc.availabilityStatus || 'available',
+              isAvailable: best?.isAvailable !== false,
+            },
           })
         }
       } catch (err) {
@@ -72,6 +85,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
     // Wellness Lifestyle
     want('wellnessLifestyle') && (async () => {
+      attempted++
       try {
         const res = await payload.find({
           collection: 'wellness-lifestyle',
@@ -87,6 +101,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 1,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           results.push({
             id: doc.id,
@@ -106,6 +122,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
     // Fashion Jewelry
     want('fashionJewelry') && (async () => {
+      attempted++
       try {
         const res = await payload.find({
           collection: 'fashion-jewelry',
@@ -113,6 +130,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 1,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           results.push({
             id: doc.id,
@@ -132,6 +151,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
     // Oils Incense
     want('oilsIncense') && (async () => {
+      attempted++
       try {
         const res = await payload.find({
           collection: 'oils-incense',
@@ -145,6 +165,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 1,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           results.push({
             id: doc.id,
@@ -170,6 +192,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
     // Blog Posts
     want('blogPosts') && (async () => {
+      attempted++
       try {
         const res = await payload.find({
           collection: 'blogPosts',
@@ -177,6 +200,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 1,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           results.push({
             id: doc.id,
@@ -195,6 +220,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
     // Events
     want('events') && (async () => {
+      attempted++
       try {
         const res = await payload.find({
           collection: 'events',
@@ -202,6 +228,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 1,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           results.push({
             id: doc.id,
@@ -220,6 +248,7 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
 
     // Businesses
     want('businesses') && (async () => {
+      attempted++
       try {
         const res = await payload.find({
           collection: 'businesses',
@@ -227,6 +256,8 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
           limit,
           depth: 1,
         })
+        succeeded++
+        hasMore ||= Boolean(res.hasNextPage)
         for (const doc of res.docs || []) {
           results.push({
             id: doc.id,
@@ -244,7 +275,11 @@ async function payloadSearch(payload: any, query: string, types: string[], limit
     })(),
   ].filter(Boolean))
 
-  return results
+  if (attempted > 0 && succeeded === 0) {
+    throw new Error('All Payload search collections failed')
+  }
+
+  return { results, hasMore }
 }
 
 export async function GET(req: NextRequest) {
@@ -253,7 +288,8 @@ export async function GET(req: NextRequest) {
 
   const query = (searchParams.get('q') || '').trim()
   const typesParam = searchParams.get('types') || ''
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50)
+  const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
+  const limit = Math.min(Number.isFinite(parsedLimit) ? Math.max(parsedLimit, 1) : 20, 241)
 
   const types = typesParam ? typesParam.split(',').map((t) => t.trim()).filter(Boolean) : []
 
@@ -270,6 +306,7 @@ export async function GET(req: NextRequest) {
 
   let internalResults: any[] = []
   let source: 'flexsearch' | 'postgresql' = 'flexsearch'
+  let hasMore = false
 
   // Wait on cold startup; retain a complete snapshot during background refresh.
   try {
@@ -280,6 +317,7 @@ export async function GET(req: NextRequest) {
         types: types.length > 0 ? types : undefined,
       })
       internalResults = flexResponse.internal || []
+      hasMore = flexResponse.totalResults > limit
     }
   } catch (err) {
     console.warn('FlexSearch error:', err)
@@ -288,10 +326,14 @@ export async function GET(req: NextRequest) {
   // Fall back to Payload Local API if FlexSearch returned nothing
   if (internalResults.length === 0) {
     source = 'postgresql'
-    internalResults = await payloadSearch(payload, query, types, limit)
+    const fallbackResponse = await payloadSearch(payload, query, types, limit)
+    internalResults = fallbackResponse.results
+    hasMore = fallbackResponse.hasMore
   }
 
   internalResults = await filterVisibleSearchResults(payload, internalResults)
+  hasMore ||= internalResults.length > limit
+  internalResults = internalResults.slice(0, limit)
 
   const searchTime = Date.now() - start
 
@@ -331,5 +373,6 @@ export async function GET(req: NextRequest) {
     totalResults: internalResults.length,
     searchTime,
     source,
+    hasMore,
   })
 }

@@ -45,10 +45,11 @@
         
         <!-- Newsletter Signup -->
         <div class="mt-6">
-          <p class="text-sm text-foreground font-medium mb-3">Join our newsletter</p>
+          <p class="text-sm text-foreground font-medium mb-1">Get new arrivals by email</p>
+          <p class="text-xs text-muted-foreground mb-3">New books, author events, and store news. Unsubscribe anytime.</p>
           {#if submitted}
             <div class="bg-accent/10 text-accent rounded-xl p-3 text-sm animate-fade-in">
-              ✓ Thanks for subscribing!
+              ✓ You're on the list. New arrivals will land in your inbox.
             </div>
           {:else}
             <form onsubmit={handleNewsletterSubmit} class="flex gap-2">

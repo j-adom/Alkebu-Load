@@ -12,8 +12,25 @@ function stripHtml(str: string | null | undefined): string {
   }).trim();
 }
 
+function compactSearchDescription(value: string, author?: string): string {
+  let description = value.replace(/\s+/g, ' ').trim();
+
+  if (author) {
+    const authorPrefix = author.trim();
+    if (authorPrefix && description.toLocaleLowerCase().startsWith(authorPrefix.toLocaleLowerCase())) {
+      description = description.slice(authorPrefix.length).replace(/^\s*[-:|–—]\s*/, '').trim();
+    }
+  }
+
+  if (description.length <= 180) return description;
+  return `${description.slice(0, 177).replace(/\s+\S*$/, '')}…`;
+}
+
 type DisplayType = 'books' | 'apparel' | 'health' | 'home' | 'blog' | 'directory' | 'events';
 type SearchType = DisplayType | 'all';
+
+const PAGE_SIZE = 24;
+const MAX_PAGE = 10;
 
 function isDisplayType(value: string | null): value is DisplayType {
   return value === 'books'
@@ -49,17 +66,11 @@ const FLEXSEARCH_TO_DISPLAY: Record<string, DisplayType> = {
 
 // Map types to URL patterns
 const TYPE_URL_PREFIX: Partial<Record<string, (slug: string, result?: FlexSearchResult) => string>> = {
-  // FlexSearch indexes book slugs as "slug/isbn"; keep only the canonical slug
+  // FlexSearch indexes book slugs as "slug/isbn"; keep only the canonical slug.
   books: (slug) => `/shop/books/${slug.split('/')[0]}`,
   fashionJewelry: (slug) => `/shop/apparel/${slug}`,
   wellnessLifestyle: (slug) => `/shop/health-and-beauty/${slug}`,
-  // OilsIncense spans two storefront sections: fragrance oils live under
-  // health-and-beauty, incense/sage/palo-santo under home-goods. FlexSearch's
-  // product index doesn't currently carry productType in its metadata (only
-  // the collection-level 'oilsIncense' tag), so resolveOilsIncenseShopSection
-  // falls back to health-and-beauty when it's absent -- this branch mainly
-  // matters once tier-1 indexing carries productType; the tier-2 fallback
-  // below always has the full doc and resolves it correctly per item.
+  // OilsIncense spans two storefront sections; productType selects the route.
   oilsIncense: (slug, result) =>
     `/shop/${resolveOilsIncenseShopSection(result?.metadata?.productType)}/${slug}`,
   blogPosts: (slug) => `/blog/${slug}`,
@@ -88,9 +99,6 @@ interface FlexSearchResult {
   price?: number;
   slug?: string;
   score: number;
-  // `productType` isn't populated by the current FlexSearch index (see
-  // TYPE_URL_PREFIX.oilsIncense above) but is typed here so the URL-mapping
-  // logic keeps working once it is.
   metadata?: Record<string, any> & { productType?: string };
 }
 
@@ -101,22 +109,29 @@ interface FlexSearchResponse {
   searchTime: number;
   suggestions?: string[];
   facets?: Record<string, Array<{ value: string; count: number }>>;
+  hasMore?: boolean;
 }
 
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
   const searchQuery = (url.searchParams.get('q') || '').trim();
   const rawTypeFilter = url.searchParams.get('type');
   const typeFilter: SearchType = isDisplayType(rawTypeFilter) ? rawTypeFilter : 'all';
+  const rawPage = Number.parseInt(url.searchParams.get('page') || '1', 10);
+  const page = Number.isFinite(rawPage) ? Math.min(Math.max(rawPage, 1), MAX_PAGE) : 1;
+  const visibleLimit = page * PAGE_SIZE;
+  const requestLimit = Math.min(visibleLimit + 1, (MAX_PAGE * PAGE_SIZE) + 1);
 
   try {
     let combinedResults: any[] = [];
     let searchTime = 0;
+    let hasMore = false;
+    let searchStatus: 'idle' | 'success' | 'error' = searchQuery ? 'success' : 'idle';
 
     if (searchQuery) {
       // Build FlexSearch API query
       const params = new URLSearchParams({
         q: searchQuery,
-        limit: '30',
+        limit: String(requestLimit),
       });
 
       // Map frontend type filter to FlexSearch types
@@ -133,7 +148,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
         searchTime = searchResponse.searchTime || 0;
 
         // Transform FlexSearch results to frontend format
-        combinedResults = searchResponse.internal.map((result) => {
+        const mappedResults = searchResponse.internal.map((result) => {
           const displayType = FLEXSEARCH_TO_DISPLAY[result.type] || result.type;
           const urlBuilder = TYPE_URL_PREFIX[result.type];
           const resultUrl = urlBuilder && result.slug ? urlBuilder(result.slug, result) : '#';
@@ -141,18 +156,25 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
           return {
             type: displayType,
             title: result.title,
-            description: stripHtml(result.excerpt),
+            description: compactSearchDescription(stripHtml(result.excerpt), result.author),
             image: result.imageUrl,
             url: resultUrl,
             author: result.author,
             price: result.price,
             score: result.score,
+            metadata: result.metadata || {},
           };
         });
+        searchStatus = 'success';
+        hasMore = page < MAX_PAGE && (Boolean(searchResponse.hasMore) || mappedResults.length > visibleLimit);
+        combinedResults = mappedResults.slice(0, visibleLimit);
       } catch (searchErr) {
         // Fallback: query Payload REST API directly if FlexSearch is unavailable
         console.warn('FlexSearch API unavailable, falling back to Payload REST:', searchErr);
-        combinedResults = await fallbackSearch(searchQuery, typeFilter);
+        const fallbackResponse = await fallbackSearch(searchQuery, typeFilter, visibleLimit, requestLimit);
+        combinedResults = fallbackResponse.results;
+        hasMore = page < MAX_PAGE && fallbackResponse.hasMore;
+        searchStatus = 'success';
       }
     }
 
@@ -176,10 +198,12 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       availableTypes: AVAILABLE_TYPES,
       results: combinedResults,
       searchTime,
+      searchStatus,
       pagination: {
-        page: 1,
-        totalPages: 1,
-        totalDocs: combinedResults.length,
+        page,
+        pageSize: PAGE_SIZE,
+        hasMore,
+        totalDocs: hasMore ? null : combinedResults.length,
       },
       seo: seoData,
     };
@@ -196,7 +220,8 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
       availableTypes: AVAILABLE_TYPES,
       results: [],
       searchTime: 0,
-      pagination: { page: 1, totalPages: 1, totalDocs: 0 },
+      searchStatus: searchQuery ? 'error' : 'idle',
+      pagination: { page, pageSize: PAGE_SIZE, hasMore: false, totalDocs: 0 },
       seo: buildSEOData({
         title: 'Search - Alkebulan Images',
         description: 'Search our collection of books and cultural items.',
@@ -207,7 +232,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 };
 
 // Fallback: direct Payload REST queries when FlexSearch isn't available
-async function fallbackSearch(query: string, typeFilter: SearchType) {
+async function fallbackSearch(query: string, typeFilter: SearchType, visibleLimit: number, requestLimit: number) {
   const collections = [
     // Canonical slug-only book URLs; the detail page picks the best edition itself.
     { type: 'books' as DisplayType, path: '/api/books', titleField: 'title', descField: 'description', imgField: 'images', urlFn: (i: any) => `/shop/books/${i.slug}` },
@@ -226,7 +251,7 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
   ].filter((c) => typeFilter === 'all' || c.type === typeFilter);
 
   const queries = collections.map(async (col) => {
-    const params = new URLSearchParams({ page: '1', limit: '6', depth: '2' });
+    const params = new URLSearchParams({ page: '1', limit: String(requestLimit), depth: '2' });
     params.append(`where[or][0][${col.titleField}][contains]`, query);
     params.append(`where[or][1][${col.descField}][contains]`, query);
     if (col.type === 'books') {
@@ -244,17 +269,25 @@ async function fallbackSearch(query: string, typeFilter: SearchType) {
     }
     try {
       const resp = await payloadGet<any>(`${col.path}?${params}`);
-      return (resp.docs || []).map((item: any) => ({
+      return { ok: true, hasMore: Boolean(resp.hasNextPage), results: (resp.docs || []).map((item: any) => ({
         type: col.type,
         title: item[col.titleField],
-        description: stripHtml(item[col.descField]),
+        description: compactSearchDescription(stripHtml(item[col.descField]), item.author),
         image: item[col.imgField]?.[0]?.url || item[col.imgField]?.url || item.scrapedImageUrls?.[0]?.url || item.images?.[0]?.url || null,
         url: col.urlFn(item),
-      }));
+      })) };
     } catch {
-      return [];
+      return { ok: false, hasMore: false, results: [] };
     }
   });
 
-  return (await Promise.all(queries)).flat();
+  const responses = await Promise.all(queries);
+  if (responses.length > 0 && responses.every((response) => !response.ok)) {
+    throw new Error('Search is temporarily unavailable');
+  }
+  const results = responses.flatMap((response) => response.results);
+  return {
+    results: results.slice(0, visibleLimit),
+    hasMore: responses.some((response) => response.hasMore) || results.length > visibleLimit,
+  };
 }

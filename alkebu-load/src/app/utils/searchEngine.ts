@@ -180,6 +180,28 @@ export function normalizeSearchText(value: string): string {
     .replace(/([bcdfghjklmnpqrstvwxyz])\1+/g, '$1').trim();
 }
 
+export function getBookAuthorNames(doc: any): string {
+  const candidates = [
+    ...(Array.isArray(doc?.authors)
+      ? doc.authors.map((author: any) => typeof author === 'string' ? author : author?.name)
+      : []),
+    ...(Array.isArray(doc?.authorsText) ? doc.authorsText.map((author: any) => author?.name) : []),
+    doc?.author,
+  ];
+  const seen = new Set<string>();
+
+  return candidates
+    .map((name) => toSearchText(name).replace(/\s+/g, ' ').trim())
+    .filter((name) => {
+      if (!name) return false;
+      const key = name.toLocaleLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(', ');
+}
+
 export const SEARCH_INDEX_MAX_AGE_MS = 5 * 60 * 1000;
 
 // FlexSearch indices for different content types
@@ -229,7 +251,7 @@ export class SearchEngine {
     this.bookIndex = new Document({
       id: 'id',
       index: ['title', 'author', 'description', 'tags', 'categories', 'subjects', 'isbns', 'normalizedTitle', 'normalizedAuthor'],
-      store: ['title', 'author', 'description', 'imageUrl', 'slug', 'price', 'isbn', 'isbns'],
+      store: ['title', 'author', 'description', 'imageUrl', 'slug', 'price', 'isbn', 'isbns', 'binding', 'stockLevel', 'allowBackorders', 'availabilityStatus', 'isAvailable'],
       tag: ['category', 'availability', 'collection'],
       tokenize: 'forward',
       resolution: 3,
@@ -316,12 +338,7 @@ export class SearchEngine {
           const isbn = bestEdition?.isbn || bestEdition?.isbn10 || '';
           const bookSlug = doc.slug || String(doc.id);
           const isbns = editions.flatMap((e: any) => [e.isbn, e.isbn10]).filter(Boolean).join(' ');
-          // authorsText (denormalized array of {name}) is the populated source
-          // for imported books; authors relationship is mostly empty.
-          const authorNamesForIndex = [
-            ...(Array.isArray(doc.authors) ? doc.authors.map((a: any) => a?.name).filter(Boolean) : []),
-            ...(Array.isArray(doc.authorsText) ? doc.authorsText.map((a: any) => a?.name).filter(Boolean) : []),
-          ].filter(Boolean).join(' ') || doc.author || ''
+          const authorNamesForIndex = getBookAuthorNames(doc);
           await this.bookIndex.addAsync(doc.id, {
             title: toSearchText(doc.title),
             author: toSearchText(authorNamesForIndex),
@@ -336,6 +353,11 @@ export class SearchEngine {
             price: (bestEdition?.pricing?.retailPrice ?? 0) / 100,
             isbn,
             isbns,
+            binding: bestEdition?.binding || '',
+            stockLevel: bestEdition?.inventory?.stockLevel ?? 0,
+            allowBackorders: Boolean(bestEdition?.inventory?.allowBackorders),
+            availabilityStatus: doc.availabilityStatus || 'available',
+            isAvailable: bestEdition?.isAvailable !== false,
           });
           break;
         }
@@ -442,12 +464,19 @@ export class SearchEngine {
                   type: 'books',
                   title: doc.title,
                   author: doc.author,
-                  excerpt: doc.description?.substring(0, 200) + '...',
+                  excerpt: doc.description ? `${doc.description.substring(0, 200)}${doc.description.length > 200 ? '…' : ''}` : '',
                   imageUrl: doc.imageUrl,
                   slug: doc.slug,
                   price: doc.price,
                   score: 1.0,
-                  metadata: { isbn: doc.isbn }
+                  metadata: {
+                    isbn: doc.isbn,
+                    binding: doc.binding,
+                    stockLevel: doc.stockLevel,
+                    allowBackorders: doc.allowBackorders,
+                    availabilityStatus: doc.availabilityStatus,
+                    isAvailable: doc.isAvailable,
+                  }
                 });
               }
             }
