@@ -19,6 +19,7 @@ import { SiteSettings } from './globals/SiteSettings'
 import { searchEngine } from './app/utils/searchEngine'
 import { checkSchemaDrift } from './app/utils/schemaDrift'
 import { sendRawEmail } from './app/utils/emailService'
+import { resolveJobAutoRunConfig } from './app/utils/jobRunnerConfig'
 
 import Users from './collections/Users'
 import Media from './collections/Media'
@@ -236,6 +237,10 @@ export default buildConfig({
     skipVerify: shouldSkipEmailTransportVerify(),
   }),
   jobs: {
+    // Runs the queue. Without this, the `schedule` entries on the tasks below
+    // are inert -- Payload registers them but nothing ever queues or executes
+    // them. Opt-in per environment; see jobRunnerConfig.ts for why.
+    autoRun: resolveJobAutoRunConfig(),
     tasks: [
       {
         slug: 'cleanup-abandoned-carts',
