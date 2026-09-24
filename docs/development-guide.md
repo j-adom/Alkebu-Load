@@ -51,6 +51,13 @@ npm run dev  # Runs on :5173
 
 **Note**: No database setup required for local development - SQLite is used automatically.
 
+> **Warning (2026-09-23):** that is the *intended* default, not necessarily what your checkout is
+> configured to do. The `.env` on the primary dev machine currently points `DATABASE_URI` at the
+> PRODUCTION Postgres over Tailscale. Check with
+> `cd alkebu-load && grep -o '^DATABASE_URI=[a-z]*' .env` before starting a dev server or running
+> any `tsx scripts/*.ts`, because a dev server also pushes schema to whatever database it reaches
+> (see the Gotchas in the root `CLAUDE.md`).
+
 ### Step-by-Step Local Development Setup
 
 #### 1. Clone and Navigate to Project

@@ -152,6 +152,17 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
 
 ### Local Development
 - **Database**: SQLite by default (`alkebu-load/alkebulanimages.db`). PostgreSQL for production via `DATABASE_URI`.
+  - **Verify this before running anything local.** As of 2026-09-23 the working `alkebu-load/.env`
+    has `DATABASE_URI=postgresql://100.108.178.32:5432/...` — a Tailscale address for the
+    PRODUCTION database — not the SQLite default. `cd alkebu-load && grep -o '^DATABASE_URI=[a-z]*' .env`
+    tells you which adapter you are actually about to use. Never `source` the file.
+  - **`pnpm dev` can push schema to whatever it connects to.**
+    `@payloadcms/db-postgres/dist/connect.js:109` runs `pushDevSchema()` whenever
+    `NODE_ENV !== 'production' && PAYLOAD_MIGRATING !== 'true' && push !== false`, and
+    `src/payload.config.ts:67-71` sets no `push: false`. With the URI above, a dev server started
+    from a session where Tailscale is up will reconcile production's schema against the current
+    branch. From a WSL shell with Tailscale down it fails at connect instead — that is luck, not
+    a safeguard.
 - **Setup**: `cd alkebu-load && pnpm install && cp .env.example .env && pnpm dev` → create admin at `/admin` → `tsx scripts/initialize-search.ts`. Then `cd alkebu-web && npm install && cp .env.example .env.local && npm run dev`.
 - See [docs/development-guide.md](docs/development-guide.md) for the full walkthrough.
 
