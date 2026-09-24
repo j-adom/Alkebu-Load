@@ -34,8 +34,13 @@ valid for the select and already present in the data (`manual` or `csv-import`);
 value intact, so a successful update is indistinguishable from no update. Updates must
 therefore be treated as *possibly having run and silently replaced edition arrays*.
 
-**What is unresolved:** whether `catalog.version.updated` is subscribed and delivering at
-all. Not determinable from the database. See Acceptance Gates.
+**Delivery is probably not the problem.** The subscription was repaired on 2026-06-03: it had
+been pointing at a dead ngrok dev tunnel and was disabled. It was re-pointed at production,
+enabled, the signature key was matched, and `inventory.count.updated` was added *alongside*
+`catalog.version.updated`, which was the original and only event. Since the inventory path on
+that same endpoint is demonstrably healthy, catalog events are reaching a reachable,
+signature-valid handler. The working hypothesis is therefore **events arrive and every item
+fails validation**, not non-delivery. Still confirmed at deploy — see Acceptance Gates.
 
 ### Root causes
 
@@ -262,9 +267,10 @@ Existing suites must stay green: `pnpm test` (alkebu-load), `npm run check` + `n
 
 ## Acceptance gates
 
-- [ ] `catalog.version.updated` confirmed subscribed in the Square dashboard, with recent
-      delivery attempts inspected. Runs alongside implementation; a **deployment** gate, not a
-      prerequisite for writing the mapper and tests.
+- [ ] `catalog.version.updated` delivery attempts inspected in the Square dashboard and showing
+      `200`. Expected to pass given the 2026-06-03 subscription repair; confirms the
+      "arrives and fails validation" hypothesis rather than testing it. A **deployment** gate,
+      not a prerequisite for writing the mapper and tests.
 - [ ] Job runner confirmed executing in production — a queued job demonstrably transitions to
       complete, with retry and failure reporting observed.
 - [ ] Reconciliation dry run reviewed before any real run.
