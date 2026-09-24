@@ -10,9 +10,18 @@
 warning below), `node:test` runner, pnpm.
 
 > **This machine's `.env` currently points local dev at PRODUCTION Postgres.**
-> `alkebu-load/.env` has `DATABASE_URI=postgresql://...` pointing at the production database
-> (reachable over Tailscale), and live SES credentials (`SES_SMTP_USER` is set). "Local dev uses
-> SQLite" is the intended default, not what this machine is actually configured to do right now.
+> `alkebu-load/.env` has `DATABASE_URI=postgresql://...` pointing at the production database, and
+> live SES credentials (`SES_SMTP_USER` is set). "Local dev uses SQLite" is the intended default,
+> not what this machine is actually configured to do right now.
+>
+> **Reachability is session-dependent, and that is the whole hazard.** The URI's host
+> (`100.108.178.32`) is a Tailscale-range address (100.64.0.0/10). Whether it resolves depends on
+> whether Tailscale is active in the session running the command — verified 2026-09-23, a TCP
+> connect from this WSL shell times out, so `pnpm dev` here fails at connect and `pushDevSchema()`
+> never runs. Do not read that as safety: on any machine or session where Tailscale IS up, the
+> same command connects and pushes schema to production. Treat the hazard as live and guard for
+> it every time, rather than testing reachability and trusting the answer.
+>
 > Every step below that says "local" or "dev database" must be read with that in mind — see
 > Task 3 for the concrete guard.
 
@@ -27,8 +36,9 @@ warning below), `node:test` runner, pnpm.
 - Never `source` the `.env` file. A password fragment leaked to a transcript that way in July
   and the rotation is still pending.
 - Pushing `main` triggers a Coolify auto-deploy. The push **is** the deploy.
-- The prod database is not reachable over Tailscale from WSL. Any DDL goes through the Coolify
-  Postgres terminal.
+- The prod database sits on a Tailscale address and is not reachable from this WSL shell as of
+  2026-09-23 (connect times out) — but that is a property of the session, not of WSL. It becomes
+  reachable whenever Tailscale is up. Any DDL goes through the Coolify Postgres terminal.
 - Shell in this environment runs as root. `chown -R jadom:jadom` any file created or modified
   before handing back, or the user's git breaks.
 
