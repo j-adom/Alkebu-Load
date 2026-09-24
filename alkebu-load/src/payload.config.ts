@@ -20,6 +20,7 @@ import { searchEngine } from './app/utils/searchEngine'
 import { checkSchemaDrift } from './app/utils/schemaDrift'
 import { sendRawEmail } from './app/utils/emailService'
 import { resolveJobAutoRunConfig } from './app/utils/jobRunnerConfig'
+import { shouldEnableDevSchemaPush } from './app/utils/devSchemaPush'
 
 import Users from './collections/Users'
 import Media from './collections/Media'
@@ -68,6 +69,11 @@ const resolveDatabaseAdapter = async () => {
       pool: {
         connectionString: databaseURI,
       },
+      // Drizzle's dev push reconciles the target database's schema against this
+      // branch whenever NODE_ENV !== 'production'. Harmless for a local throwaway
+      // DB, destructive for a remote one -- so it is allowed only for local hosts.
+      // See app/utils/devSchemaPush.ts.
+      push: shouldEnableDevSchemaPush(databaseURI),
     })
   }
 
