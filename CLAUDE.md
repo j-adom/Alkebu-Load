@@ -86,10 +86,12 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
 ### Order Operations
 - **Order Dashboard**: tablet-friendly UI at `/admin/order-dashboard` (tabs: "Needs Attention" / "Shipped" / "All Orders").
 - **Email**: SES SMTP (Nodemailer). Afrocentric branded templates for order confirmation, staff notification, status updates, daily digest, abandoned cart.
-- **Scheduled jobs** (Payload cron):
+- **Scheduled jobs** (Payload cron; registered in `src/payload.config.ts`, four tasks):
   - `cleanup-abandoned-carts` — every 2 hours
   - `daily-order-digest` — 12:00 UTC (7 AM CT)
+  - `quote-followups` — daily at 15:00 UTC; emails customers about quote requests idle >7 days
   - `recover-stripe-orders` — hourly at :15; reconciles paid Stripe sessions with no matching order and emails staff on recovery
+  - Gated behind `ENABLE_JOB_AUTORUN` (opt-in, production-only — see `alkebu-load/src/app/utils/jobRunnerConfig.ts`). As of this commit the flag has not been set in any environment, so none of these four tasks currently execute in production; they are registered but inert until it is.
 - **Refund API**: admin-only POST, admin+staff GET. Phase 1 staff use the Stripe Dashboard for actual refunds.
 
 ## Key Files
@@ -155,7 +157,7 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
 
 ### Environment Variables (alkebu-load/.env)
 **Required**: `DATABASE_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PUBLIC_SERVER_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SQUARE_ACCESS_TOKEN`, `SQUARE_WEBHOOK_SIGNATURE_KEY`, `SES_SMTP_USER`, `SES_SMTP_PASSWORD`, `FROM_EMAIL`, `STAFF_NOTIFICATION_EMAIL`.
-**Optional**: `ISBNDB_API_KEY`, `GOOGLE_BOOKS_API_KEY`, Shippo creds, R2/S3 bucket creds, `TENNESSEE_STATE_TAX_RATE`, `FREE_SHIPPING_THRESHOLD`, `ORDER_ADMIN_BASE_URL`.
+**Optional**: `ISBNDB_API_KEY`, `GOOGLE_BOOKS_API_KEY`, Shippo creds, R2/S3 bucket creds, `TENNESSEE_STATE_TAX_RATE`, `FREE_SHIPPING_THRESHOLD`, `ORDER_ADMIN_BASE_URL`, `ENABLE_JOB_AUTORUN` (opt-in, production-only; enables the four scheduled jobs above, two of which email customers — not currently set anywhere).
 
 ## Gotchas
 

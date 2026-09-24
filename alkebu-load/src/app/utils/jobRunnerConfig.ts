@@ -28,7 +28,10 @@ export function resolveJobAutoRunConfig(
 
   return [
     {
-      // Every minute. Cheap: a tick with nothing due is one global read.
+      // Every minute. Not "one global read": each tick is one db.findGlobal on
+      // payload-jobs-stats, plus one db.count on payload_jobs per scheduled
+      // task (defaultBeforeSchedule.js -> countRunnableOrActiveJobsForQueue.js),
+      // plus the runJobs() find -- roughly 6 queries/minute with 4 tasks.
       cron: '* * * * *',
       // All four registered tasks schedule onto `default`. A task added to
       // another queue needs its own entry here or it will never run.

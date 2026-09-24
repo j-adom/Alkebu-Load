@@ -84,8 +84,11 @@ This single Payload instance handles:
 ### Email (SES SMTP)
 - Transport: `@payloadcms/email-nodemailer` → Amazon SES SMTP, with generic SMTP fallback
 - Templates (`src/app/utils/emailTemplates.ts`) — Afrocentric branded (Kente Gold, Forest Green): order confirmation, staff notification, status updates, daily digest, abandoned cart
-- Daily order digest cron: `daily-order-digest` at 12:00 UTC (7 AM CT)
-- Stripe reconciliation cron: `recover-stripe-orders` hourly at :15 — recreates orders the webhook missed (`stripeRecovery.ts`), emails staff via `sendRecoveryAlert`; recovery skips customer emails by design
+- Four scheduled tasks registered in `src/payload.config.ts` (all gated behind `ENABLE_JOB_AUTORUN` — not currently set anywhere, so none of these run in production yet):
+  - `cleanup-abandoned-carts` every 2 hours — emails customers about carts idle
+  - `daily-order-digest` at 12:00 UTC (7 AM CT) — emails staff a digest
+  - `quote-followups` daily at 15:00 UTC — emails customers about quote requests idle >7 days
+  - `recover-stripe-orders` hourly at :15 — recreates orders the webhook missed (`stripeRecovery.ts`), emails staff via `sendRecoveryAlert`; recovery skips customer emails by design
 - Quote-request emails (customer confirmation / staff notification / follow-up) send for real via `emailService.sendRawEmail` as of July 3, 2026 — they were `console.log` stubs before
 
 ### Search
@@ -182,6 +185,11 @@ This single Payload instance handles:
 ### Optional
 - `ISBNDB_API_KEY`, `GOOGLE_BOOKS_API_KEY` — book enrichment & external search
 - Perspective API key — comment moderation
+- `ENABLE_JOB_AUTORUN` — opt-in, production-only. Set to exactly `"true"` to enable Payload's
+  job queue runner (`autoRun`, resolved by `src/app/utils/jobRunnerConfig.ts`), which queues and
+  executes the four scheduled tasks below. Two of those tasks email customers, so never set this
+  on a dev machine. As of this commit the flag has not been set anywhere and the jobs do not run
+  in production.
 
 ## Gotchas
 

@@ -6,7 +6,15 @@
 
 **Architecture:** Payload 3.79's `jobs.autoRun` cron does two things per tick — calls `handleSchedules()` to *queue* any task whose `schedule` cron is due, then calls `runJobs()` to *execute* queued jobs. Neither happens today because `autoRun` is absent. We add it, gated behind an env flag resolved by a pure, tested function so the default is off everywhere except production.
 
-**Tech Stack:** Payload CMS 3.79.0, Next.js 15.3.0, PostgreSQL (prod) / SQLite (dev), `node:test` runner, pnpm.
+**Tech Stack:** Payload CMS 3.79.0, Next.js 15.3.0, PostgreSQL (prod), SQLite (dev — but see the
+warning below), `node:test` runner, pnpm.
+
+> **This machine's `.env` currently points local dev at PRODUCTION Postgres.**
+> `alkebu-load/.env` has `DATABASE_URI=postgresql://...` pointing at the production database
+> (reachable over Tailscale), and live SES credentials (`SES_SMTP_USER` is set). "Local dev uses
+> SQLite" is the intended default, not what this machine is actually configured to do right now.
+> Every step below that says "local" or "dev database" must be read with that in mind — see
+> Task 3 for the concrete guard.
 
 **Spec:** [`docs/superpowers/specs/2026-09-23-square-catalog-staging-design.md`](../specs/2026-09-23-square-catalog-staging-design.md) — section "Blocking dependency: no job runner". This plan implements that section only; the catalog staging work is a separate plan written after this one is verified in production.
 
@@ -37,7 +45,11 @@ queue:
 | `recover-stripe-orders` | `15 * * * *` | recreates orders for paid-but-orderless Stripe sessions; staff alert only |
 
 There is no `autoRun` in the repo, no worker process (`Dockerfile` ends at
-`CMD ["node", "server.js"]`), and nothing calls `/api/payload-jobs/run`. So none of them have
+`CMD ["node", "server.js"]`), and the repo contains no caller of `/api/payload-jobs/run`; the
+endpoint itself exists and is mounted — it just has nothing hitting it. It also requires an
+authenticated user: Payload defaults `jobs.access.run` to `({req}) => Boolean(req.user)` via
+`config/defaults.js:138-143`, and this is unmodified here. Verified against production on
+2026-09-23: an anonymous request to it returns 401. So none of the four scheduled tasks have
 ever run.
 
 ### Two safety facts established before writing this plan
@@ -329,7 +341,18 @@ going further. This is the guard that keeps customer email off a dev machine.
 
 Stop the dev server.
 
-- [ ] **Step 2: Prove the runner works when enabled, without sending mail**
+- [ ] **Step 2: Prove the runner works when enabled, without sending mail and without touching production**
+
+> **Do not run `ENABLE_JOB_AUTORUN=true pnpm dev` with whatever `DATABASE_URI` happens to be in
+> `.env`.** On this machine that variable currently points at production Postgres. Running the
+> command below without the inline override would enable the job runner **against production** —
+> `cleanup-abandoned-carts` would mutate real carts and `recover-stripe-orders` would create real
+> `Orders` rows using the live `STRIPE_SECRET_KEY`. Unsetting `SES_SMTP_USER` does not prevent
+> either of those; it only silences the email that would otherwise accompany them. Treat the SES
+> unset as a secondary precaution, never as the thing that makes this safe.
+>
+> **Also see the schema-push warning immediately below** — even a scratch SQLite override is not
+> automatically safe if you skip it.
 
 Temporarily add a scratch task that does nothing observable but complete. In
 `src/payload.config.ts`, add to the `tasks` array:
@@ -345,27 +368,66 @@ Temporarily add a scratch task that does nothing observable but complete. In
       },
 ```
 
-Then run with the flag on, against the **local SQLite** database:
+Then run with the flag on, forcing an explicit scratch SQLite file via an inline override —
+**do not rely on whatever `DATABASE_URI` is already in `.env`**:
 
 ```bash
-cd alkebu-load && ENABLE_JOB_AUTORUN=true pnpm dev
+cd alkebu-load && DATABASE_URI=file:./scratch-jobtest.db ENABLE_JOB_AUTORUN=true pnpm dev
 ```
+
+The inline `DATABASE_URI=` on the command line overrides the value loaded from `.env` for that
+process only. Confirm the startup log shows the SQLite adapter, not Postgres, before proceeding.
+
+> **Schema-push hazard.** `@payloadcms/db-postgres/dist/connect.js:109` runs `pushDevSchema()`
+> whenever `NODE_ENV !== 'production' && PAYLOAD_MIGRATING !== 'true' && this.push !== false`.
+> `src/payload.config.ts:67-71` (`resolveDatabaseAdapter`) constructs the Postgres adapter with
+> no `push: false`. That means **any** `pnpm dev` run against a Postgres `DATABASE_URI` — the
+> scratch override above is a SQLite file specifically to avoid this — pushes the local branch's
+> schema straight into whatever database that URI names. Adding the `job-runner-smoke-test` task
+> in this step introduces a brand-new task slug, and `enum_payload_jobs_task_slug` is a Postgres
+> enum (see `alkebu-load/src/migrations/20260705_174837_add_mcp_api_keys.ts:10-11`, which adds
+> values to that exact enum via `ALTER TYPE`). So running this step against production Postgres
+> would not just write test rows — it would **ALTER a production enum** to add
+> `job-runner-smoke-test` as a value. The SQLite override in the command above is the only thing
+> preventing that on this machine.
 
 Expected within ~2 minutes: the `✅ job-runner-smoke-test executed at ...` line appears, and
 repeats roughly once a minute.
 
-The other four tasks may also fire against local data. That is safe here only because the local
-database is a throwaway SQLite snapshot — but **confirm `.env` does not carry live SES
-credentials** before running this step. If it does, unset `SES_SMTP_USER` for the duration.
+The other four tasks may also fire, but only against `scratch-jobtest.db` — a throwaway file
+created fresh by the override above, not the `.env` database. Delete `scratch-jobtest.db` when
+done; it is not a fixture anything else depends on.
 
-- [ ] **Step 3: Confirm a job row reached completion**
+- [ ] **Step 3: Confirm the job actually executed**
 
-With the dev server still running, open `http://localhost:3000/admin`, log in, and find the
-`payload-jobs` collection. Confirm at least one `job-runner-smoke-test` row exists with
-`completedAt` populated and no `error`.
+**Do not rely on finding a `payload-jobs` row with `completedAt` populated.** Payload's
+`deleteJobOnComplete` defaults to `true` (`node_modules/payload/dist/config/defaults.js:64` and
+`:135`) and this repo does not override it, so `runJobs()` **deletes** a job row the moment it
+completes successfully. Looking for a completed row after the fact will find nothing on success
+and can misread "row missing" as failure. Use one of the following instead:
 
-This is the actual acceptance signal: registration plus execution plus completion, which is
-exactly the chain that was broken.
+- **Console output (simplest for this smoke test).** The task handler's own
+  `console.log('✅ job-runner-smoke-test executed at ...')` line is the direct evidence — it only
+  prints from inside the handler, so seeing it repeat roughly once a minute *is* proof of
+  execution, not just queueing.
+- **`payload-jobs-stats` global — proves queueing, not execution.** The
+  `stats.scheduledRuns.queues.default.tasks.<slug>.lastScheduledRun` field (written by
+  `defaultAfterSchedule.js`) advances whenever `handleSchedules()` queues the task. It confirms
+  the schedule fired but does **not** by itself prove `runJobs()` executed it — use it alongside
+  the console output, not instead of it.
+- **Temporarily set `deleteJobOnComplete: false`.** If you want to inspect a completed
+  `payload-jobs` row directly (e.g. to check its `log` or timing), add
+  `deleteJobOnComplete: false` to the `jobs:` block for the duration of this test only, then
+  revert it before Step 4. This preserves rows for the verification window but changes behavior
+  slightly (completed jobs pile up until cleaned), so treat it as a temporary diagnostic, not a
+  permanent config choice.
+
+Pick whichever of these gives you confidence; the console-log line is the cheapest and does not
+require touching config.
+
+This is the actual acceptance signal: registration plus execution, which is exactly the chain
+that was broken. A `payload-jobs` row surviving to be inspected is not part of that signal on
+the success path.
 
 - [ ] **Step 4: Remove the scratch task**
 
@@ -422,20 +484,41 @@ Expected: healthy.
 
 - [ ] **Step 4: Observe the first real job**
 
-The soonest scheduled task is `recover-stripe-orders` at `:15` past the hour. Within the hour,
-check Coolify logs for its execution, and check the `payload-jobs` collection in `/admin` for a
-row with `taskSlug: recover-stripe-orders` and `completedAt` populated.
+Which task fires first depends on deploy time, not a fixed ordering — `cleanup-abandoned-carts`
+runs on `0 */2 * * *` and can land before `recover-stripe-orders` at `:15` past the hour if the
+deploy lands shortly before an even hour. Don't assume `recover-stripe-orders` is first; check
+logs for whichever task's cron time is soonest from the actual deploy timestamp.
 
-Expected behavior on this first run: it lists the **40 most recent** Stripe Checkout sessions
-(`src/app/utils/stripeRecovery.ts:311-316`), skips any younger than 30 minutes, and compares
-against the 200 newest orders. It will not sweep months of history. If it recovers anything, it
-emails staff only — customer emails are skipped by design.
+**Do not look for a `payload-jobs` row with `completedAt` populated as your success signal** —
+`deleteJobOnComplete` defaults to `true` and is not overridden in this repo
+(`node_modules/payload/dist/config/defaults.js:64`, `:135`), so a successfully completed job row
+is deleted, not left with `completedAt` set. A missing row after the expected run time is
+consistent with success, not failure. Use instead:
+- Coolify logs for the task's own output/side effects at the expected cron time.
+- The `payload-jobs-stats` global's `stats.scheduledRuns.queues.default.tasks.<slug>.lastScheduledRun`
+  to confirm the task was *queued* at the right time (this proves queueing, not execution).
+- The task's real side effect — for `recover-stripe-orders`, a staff alert email if it recovered
+  anything; for `daily-order-digest` (Step 6), the digest email itself.
+- If you need to see a completed row directly, temporarily set `deleteJobOnComplete: false` for
+  the observation window, then revert it — see Task 3 Step 3 for the same tradeoff discussion.
+
+Expected behavior on this first run of `recover-stripe-orders`: it lists the **40 most recent**
+Stripe Checkout sessions (`src/app/utils/stripeRecovery.ts:311-316`), skips any younger than 30
+minutes, and compares against the 200 newest orders. It will not sweep months of history. If it
+recovers anything, it emails staff only — customer emails are skipped by design.
 
 - [ ] **Step 5: Confirm the two-hourly cart job is harmless**
 
 Within two hours, confirm `cleanup-abandoned-carts` ran and that **no abandoned-cart email was
-sent**. The suppression from Step 1 should make it a no-op over history. If any customer email
-went out, disable `ENABLE_JOB_AUTORUN` in Coolify immediately and report before continuing.
+sent**. The suppression from Step 1 should make it a no-op over history. `runJobs()` processes
+at most `limit: 10` jobs per tick (see `jobRunnerConfig.ts`), so if the first run processes
+exactly 10 carts, that is the limit being hit, **not** proof the suppression worked — check the
+carts it touched, not just the count. If any customer email went out, disable
+`ENABLE_JOB_AUTORUN` in Coolify immediately and report before continuing. That disable requires
+a **container restart** to take effect — the resolver in `jobRunnerConfig.ts` is evaluated once
+at module load when the process starts, so the existing process keeps its cron ticking on the
+old value until the restart completes. Expect a short window where the cron is still running
+after you flip the flag off.
 
 - [ ] **Step 6: Confirm the daily digest**
 

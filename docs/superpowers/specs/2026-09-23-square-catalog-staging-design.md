@@ -75,8 +75,11 @@ Three systemic defects beyond field mapping:
 
 `jobs.tasks` in `src/payload.config.ts:238` registers four tasks with `schedule` entries.
 There is no `autoRun` in the repo, no worker process (`Dockerfile` ends at
-`CMD ["node", "server.js"]`), and nothing invokes `/api/payload-jobs/run`. Registration
-without a runner means the schedules are inert.
+`CMD ["node", "server.js"]`), and the repo contains no caller of `/api/payload-jobs/run`; the
+endpoint itself exists and is mounted, and requires an authenticated user (Payload defaults
+`jobs.access.run` to `({req}) => Boolean(req.user)` via `config/defaults.js:138-143`) — verified
+against production returning 401 to an anonymous request. Registration without a runner means
+the schedules are inert.
 
 If confirmed, this means `recover-stripe-orders`, `cleanup-abandoned-carts`,
 `daily-order-digest`, and `quote-followups` have never executed in production. The first is
@@ -242,7 +245,11 @@ Recovers the ~6.5 month backlog. Fixing forward delivery does not import what wa
 ## Test plan
 
 Pure mapper unit tests are necessary but insufficient. Integration tests run against the real
-Books schema (local SQLite dev DB), per review requirement:
+Books schema in a local dev database, per review requirement. **Do not assume that database is
+SQLite** — confirm `DATABASE_URI` in `alkebu-load/.env` before running these tests; on at least
+one developer machine as of 2026-09-23 it points at production Postgres, not a local SQLite
+file. Use an explicit inline override (e.g. `DATABASE_URI=file:./scratch-test.db`) if there is
+any doubt, rather than trusting whatever `.env` currently has:
 
 1. **Incomplete creation** — item with no ISBN produces a staging row, not a Book, and not a
    fabricated ISBN. Item with no price likewise; price is not zero.
