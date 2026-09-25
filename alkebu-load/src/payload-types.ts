@@ -166,6 +166,8 @@ export interface Config {
       'daily-order-digest': TaskDailyOrderDigest;
       'quote-followups': TaskQuoteFollowups;
       'recover-stripe-orders': TaskRecoverStripeOrders;
+      'square-catalog-sync': TaskSquareCatalogSync;
+      'square-inventory-sync': TaskSquareInventorySync;
       inline: {
         input: unknown;
         output: unknown;
@@ -5437,7 +5439,9 @@ export interface PayloadJob {
           | 'cleanup-abandoned-carts'
           | 'daily-order-digest'
           | 'quote-followups'
-          | 'recover-stripe-orders';
+          | 'recover-stripe-orders'
+          | 'square-catalog-sync'
+          | 'square-inventory-sync';
         taskID: string;
         input?:
           | {
@@ -5471,7 +5475,15 @@ export interface PayloadJob {
       }[]
     | null;
   taskSlug?:
-    | ('inline' | 'cleanup-abandoned-carts' | 'daily-order-digest' | 'quote-followups' | 'recover-stripe-orders')
+    | (
+        | 'inline'
+        | 'cleanup-abandoned-carts'
+        | 'daily-order-digest'
+        | 'quote-followups'
+        | 'recover-stripe-orders'
+        | 'square-catalog-sync'
+        | 'square-inventory-sync'
+      )
     | null;
   queue?: string | null;
   waitUntil?: string | null;
@@ -8175,6 +8187,22 @@ export interface TaskQuoteFollowups {
  * via the `definition` "TaskRecover-stripe-orders".
  */
 export interface TaskRecoverStripeOrders {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSquare-catalog-sync".
+ */
+export interface TaskSquareCatalogSync {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSquare-inventory-sync".
+ */
+export interface TaskSquareInventorySync {
   input?: unknown;
   output?: unknown;
 }

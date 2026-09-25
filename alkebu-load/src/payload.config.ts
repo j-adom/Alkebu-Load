@@ -297,6 +297,28 @@ export default buildConfig({
         },
         schedule: [{ cron: '15 * * * *', queue: 'default' }], // Hourly at :15
       },
+      {
+        slug: 'square-catalog-sync',
+        retries: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        // Every book write -- catalog and inventory -- shares this key, and
+        // exclusive defaults to true, so they cannot interleave. This is what
+        // actually prevents a stale editions array clobbering a stock write;
+        // the pure merge alone cannot.
+        concurrency: { key: () => 'books-write', supersedes: true },
+        handler: async ({ req }) => {
+          const { runSquareCatalogSync } = await import('./app/utils/squareCatalogSync');
+          return { output: await runSquareCatalogSync(req.payload) };
+        },
+      },
+      {
+        slug: 'square-inventory-sync',
+        retries: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        concurrency: { key: () => 'books-write' },
+        handler: async ({ req, input }) => {
+          const { runSquareInventorySync } = await import('./app/utils/squareCatalogSync');
+          return { output: await runSquareInventorySync(req.payload, (input as any).counts) };
+        },
+      },
     ],
   },
 })
