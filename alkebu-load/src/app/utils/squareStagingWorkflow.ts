@@ -78,7 +78,7 @@ type PayloadLike = {
   }) => Promise<unknown>;
 };
 
-const isCatalogStaff = (user: unknown): boolean => {
+export const isCatalogStaff = (user: unknown): boolean => {
   const role = (user as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'staff';
 };
@@ -122,7 +122,7 @@ export async function promoteStagedItem(
       throw new Error(`Staging row ${String(stagingId)} not found.`);
     }
 
-    if (row.promotedBook) {
+    if (row.promotedBook != null) {
       throw new Error(`Staging row ${String(stagingId)} was already promoted.`);
     }
 
@@ -156,7 +156,16 @@ export async function promoteStagedItem(
     return { bookId: book.id };
   } catch (err) {
     if (transactionID !== null) {
-      await payload.db.rollbackTransaction(transactionID);
+      // A failed rollback must never mask the original refusal reason
+      // (already promoted / not ready / no longer maps to a complete Book)
+      // -- that reason is the entire diagnostic value of this function for
+      // a staff member clicking promote. Log the rollback failure instead
+      // of throwing it.
+      try {
+        await payload.db.rollbackTransaction(transactionID);
+      } catch (rollbackErr) {
+        console.error('promoteStagedItem: rollbackTransaction failed after an earlier error', rollbackErr);
+      }
     }
     throw err;
   }

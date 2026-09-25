@@ -1,9 +1,7 @@
 import type { CollectionConfig } from 'payload';
 
-const isCatalogStaff = (user: unknown): boolean => {
-  const role = (user as { role?: string } | undefined)?.role;
-  return role === 'admin' || role === 'staff';
-};
+import { isCatalogStaff } from '../app/utils/squareStagingWorkflow';
+
 const isAdmin = (user: unknown): boolean =>
   (user as { role?: string } | undefined)?.role === 'admin';
 
