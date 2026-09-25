@@ -254,7 +254,7 @@ Small, but Task 3 and Task 5 both depend on it, and getting it wrong means every
 
 **Files:** create `src/app/utils/jsonSafe.ts`, create `tests/import/jsonSafe.test.ts`.
 
-**Interfaces produced:** `toJsonSafe<T>(value: unknown): unknown` and `fromJsonSafe(value: unknown): unknown`.
+**Interfaces produced:** `toJsonSafe(value: unknown): unknown` and `fromJsonSafe(value: unknown): unknown`.
 
 - [ ] **Step 1: Write the failing test**
 
