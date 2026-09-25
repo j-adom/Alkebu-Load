@@ -41,3 +41,8 @@ next-env.d.ts
 .env
 
 /media
+
+# disposable DB created/deleted by tests/import/squareCatalogIntegration.test.ts -- a
+# crash between creation and its after() cleanup must not leave this one `git add -A`
+# away from a commit.
+.tmp-integration-square-catalog.db*
