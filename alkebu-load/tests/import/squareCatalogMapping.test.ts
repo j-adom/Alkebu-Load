@@ -118,6 +118,58 @@ test('importSource is always a valid Books select option', () => {
     .includes(r.data.importSource as string));
 });
 
+test('missing name: incomplete with an item-level title/missing issue', () => {
+  const r = mapSquareItemToBook({
+    id: 'ITEM1',
+    updatedAt: '2026-09-20T10:00:00Z',
+    itemData: { variations: [varn('V1', VALID_A, 2299n)] },
+  });
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.field === 'title' && i.code === 'missing' && i.variationId === undefined));
+  assert.strictEqual(r.proposed.proposedTitle, undefined);
+});
+
+test('empty-string name: incomplete with an item-level title/missing issue', () => {
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, 2299n)], ''));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.field === 'title' && i.code === 'missing' && i.variationId === undefined));
+  assert.strictEqual(r.proposed.proposedTitle, undefined);
+});
+
+test('whitespace-only name: incomplete with an item-level title/missing issue', () => {
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, 2299n)], '   '));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.field === 'title' && i.code === 'missing' && i.variationId === undefined));
+  assert.strictEqual(r.proposed.proposedTitle, undefined);
+});
+
+test('non-string name: incomplete with an item-level title/missing issue', () => {
+  const r = mapSquareItemToBook({
+    id: 'ITEM1',
+    updatedAt: '2026-09-20T10:00:00Z',
+    itemData: { name: 12345, variations: [varn('V1', VALID_A, 2299n)] },
+  });
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.field === 'title' && i.code === 'missing' && i.variationId === undefined));
+  assert.strictEqual(r.proposed.proposedTitle, undefined);
+});
+
+test('missing title AND an unusable variation reports both issues', () => {
+  const r = mapSquareItemToBook({
+    id: 'ITEM1',
+    updatedAt: '2026-09-20T10:00:00Z',
+    itemData: { variations: [varn('BAD', 'SHELF-TAG-7', 1500n)] },
+  });
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.field === 'title' && i.code === 'missing'));
+  assert.ok(r.issues.some((i) => i.variationId === 'BAD' && i.field === 'editions.isbn'));
+});
+
 test('malformed input is incomplete, never a throw', () => {
   for (const bad of [null, undefined, {}, { id: 'X' }, { itemData: {} }, { itemData: { variations: 'nope' } }]) {
     assert.strictEqual(mapSquareItemToBook(bad).kind, 'incomplete');

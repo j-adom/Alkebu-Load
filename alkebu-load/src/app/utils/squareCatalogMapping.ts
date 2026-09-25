@@ -144,7 +144,15 @@ export function mapSquareItemToBook(item: unknown, now: Date = new Date()): Mapp
   const rec = item as Record<string, unknown>;
   const squareItemId = typeof rec.id === 'string' ? rec.id : undefined;
   const itemData = (rec.itemData ?? {}) as Record<string, unknown>;
-  const title = typeof itemData.name === 'string' ? itemData.name : undefined;
+
+  const rawName = itemData.name;
+  const hasUsableTitle = typeof rawName === 'string' && rawName.trim().length > 0;
+  const title = hasUsableTitle ? (rawName as string) : undefined;
+
+  if (!hasUsableTitle) {
+    // Item-level requirement (Books.title is required), not per-variation.
+    issues.push({ field: 'title', code: 'missing' });
+  }
 
   const rawVariations = itemData.variations;
   const variationsArray = Array.isArray(rawVariations) ? rawVariations : [];
