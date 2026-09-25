@@ -19,8 +19,12 @@ type AutorunCronConfig = Extract<NonNullable<JobsConfig['autoRun']>, unknown[]>[
  * against a local database with real SES credentials would send real mail.
  * Opt-in, never opt-out.
  */
+// Reads one key, so it asks for one key's worth of type. NodeJS.ProcessEnv is
+// over-constrained here: this repo's TS setup makes NODE_ENV required on it, so
+// a test passing `{ ENABLE_JOB_AUTORUN: 'true' }` fails to type-check even though
+// the call is correct. `process.env` remains assignable to this.
 export function resolveJobAutoRunConfig(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, string | undefined> = process.env,
 ): AutorunCronConfig[] {
   if (env.ENABLE_JOB_AUTORUN !== 'true') {
     return [];

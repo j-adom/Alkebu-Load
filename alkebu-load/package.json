@@ -12,6 +12,7 @@
     "generate:importmap": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" payload generate:importmap",
     "generate:types": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" payload generate:types",
     "check:scripts": "tsc --project tsconfig.scripts.json --pretty false",
+    "check:types": "tsc --noEmit -p tsconfig.json",
     "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start -p 3000",
