@@ -304,7 +304,16 @@ export default buildConfig({
         // exclusive defaults to true, so they cannot interleave. This is what
         // actually prevents a stale editions array clobbering a stock write;
         // the pure merge alone cannot.
-        concurrency: { key: () => 'books-write', supersedes: true },
+        //
+        // Deliberately NOT `supersedes: true`: Payload's delete-older-pending
+        // filters only on concurrencyKey + processing:false + no completedAt --
+        // it does not also filter on taskSlug. Since both tasks share this key,
+        // enabling supersedes here would let a catalog.version.updated enqueue
+        // delete an already-queued, not-yet-running square-inventory-sync job,
+        // silently dropping a stock update with no retry (Square doesn't resend).
+        // The sync is checkpoint-driven and idempotent, so paying for an extra
+        // run instead is the correct trade.
+        concurrency: { key: () => 'books-write' },
         handler: async ({ req }) => {
           const { runSquareCatalogSync } = await import('./app/utils/squareCatalogSync');
           return { output: await runSquareCatalogSync(req.payload) };

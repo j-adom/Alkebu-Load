@@ -4,11 +4,21 @@ import { toJsonSafe } from './jsonSafe';
 import { mapSquareItemToBook, type ValidationIssue } from './squareCatalogMapping';
 import { mergeEditions } from './squareEditionMerge';
 import { decideStagingAction } from './squareStagingWorkflow';
+import { matchProductLine } from './wellnessProductLines';
 import {
   applyInventoryCountToEditions,
   applyInventoryCountToVariations,
   type SquareInventoryCount,
 } from './squareInventory';
+
+// Skip Books.tsx's beforeValidate auto-enrichment (ISBNdb / Google Books) on every
+// Books write this sync makes. Without this: (1) mapSquareItemToBook's `data` and
+// mergeEditions' output for `editions`/`pricing` would be fought by
+// buildBookMetadataPatch, which the spec forbids enrichment from touching; and
+// (2) every create/update would fire two external HTTP calls inside a job that
+// retries up to 3x. Same flag used at
+// src/app/api/admin/backfill/author-publisher-links/route.ts:73.
+const SKIP_ENRICHMENT_CONTEXT = { skipEnrichment: true };
 
 // Job-queue bodies for the two Square webhook events. Both share the
 // 'books-write' concurrency key registered in payload.config.ts -- that key,
@@ -78,33 +88,49 @@ function isSquareItemIdUniqueViolation(err: unknown): boolean {
   return Boolean(e.data?.errors?.some((fieldErr) => fieldErr?.path === 'squareItemId'));
 }
 
+// SquareCatalogStaging.squareCatalogVersion is a required text field -- Payload's text
+// validator rejects an empty string, which would abort the whole run (see the per-item
+// try/catch below). When Square omits `version`, fall back to the item's updatedAt
+// (still honest: it identifies which version of the item we saw) rather than ''; only
+// fall back further to the literal 'unknown' if even that is missing.
 function squareCatalogVersionOf(rec: Record<string, unknown>): string {
   const version = rec.version;
   if (typeof version === 'bigint') return version.toString();
   if (typeof version === 'string' || typeof version === 'number') return String(version);
-  return '';
+  const updatedAt = rec.updatedAt;
+  if (typeof updatedAt === 'string' && updatedAt.length > 0) return updatedAt;
+  return 'unknown';
 }
 
 /**
  * Runs one incremental Square catalog sync: fetch changed items, map each
  * one, and either write a Book, stage it for human review, or skip it
- * (rejected rows stay rejected forever). Registered as the 'square-catalog-sync'
- * task in payload.config.ts, sharing the exclusive 'books-write' concurrency
- * key with 'square-inventory-sync'.
+ * (rejected rows stay rejected forever; non-book product lines -- wellness,
+ * oils, fashion -- are skipped too, since they have their own import path
+ * and don't belong in the Books mapper). Registered as the
+ * 'square-catalog-sync' task in payload.config.ts, sharing the exclusive
+ * 'books-write' concurrency key with 'square-inventory-sync'.
  *
  * Never fabricates: mapSquareItemToBook already refuses to invent an ISBN or
  * price, and decideStagingAction never auto-promotes a staged row -- only a
  * human calling promoteStagedItem ever creates a Book from staged data.
  *
- * Throws when any item remains unresolved (still incomplete, still needing
- * review) AFTER persisting the checkpoint and run counters, so Payload
- * retries the job rather than silently completing. Returning a failure count
- * instead of throwing would mean the retry never happens.
+ * "Unresolved" means neither a Book write NOR a staging write succeeded for
+ * an item -- e.g. it has no id at all, or the write/stage attempt itself
+ * threw. Successfully staging an item (including as 'needs-review') IS a
+ * successful outcome: incomplete-but-staged is exactly what staging is for,
+ * and treating it as unresolved would make the steady state throw every run
+ * forever, burning all retry attempts and pinning the watermark. Only a
+ * genuine per-item failure holds the watermark and forces the end-of-run
+ * throw so Payload retries -- persisted checkpoint and counters first, since
+ * returning a failure count instead of throwing would mean the retry never
+ * happens.
  */
 export async function runSquareCatalogSync(payload: Payload): Promise<{
   created: number;
   updated: number;
   staged: number;
+  skippedNonBook: number;
   unresolved: number;
 }> {
   const now = new Date();
@@ -132,6 +158,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
   let created = 0;
   let updated = 0;
   let staged = 0;
+  let skippedNonBook = 0;
   let unresolved = 0;
   let oldestUnresolvedUpdatedAt: Date | null = null;
 
@@ -143,126 +170,169 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
   };
 
   for (const item of changedItems) {
-    const squareItemId = typeof item.id === 'string' ? item.id : undefined;
     const itemUpdatedAt = new Date(item.updatedAt as string);
 
-    if (!squareItemId) {
-      // No id at all -- can't key a staging row or a Book from this item.
-      markUnresolved(itemUpdatedAt);
+    // Wellness/oils/fashion product lines have their own tested import path
+    // (wellnessImportPlan.ts) and don't belong in the Books mapper -- routed
+    // there they fail the ISBN checksum and pile into the review queue as
+    // noise (production has 45 wellness lines / 634 variations). Not written,
+    // not staged, not unresolved: this is a clean, deliberate skip, checked
+    // before anything else so these items never touch staging lookups.
+    const itemData = (item.itemData ?? {}) as Record<string, unknown>;
+    const itemName = typeof itemData.name === 'string' ? itemData.name : '';
+    if (matchProductLine(itemName)) {
+      skippedNonBook++;
+      console.log(`⏭️ square-catalog-sync: skipping non-book product line "${itemName}" (has its own import path)`);
       continue;
     }
 
-    const mapped = mapSquareItemToBook(item, now);
+    // Everything from here writes to the database, so wrap it: any thrown
+    // error (a malformed item, a transient DB failure, anything not the
+    // specific unique-violation race handled below) must land in this item's
+    // own bucket rather than aborting the whole run before the checkpoint
+    // and counters are persisted.
+    try {
+      const squareItemId = typeof item.id === 'string' ? item.id : undefined;
+      if (!squareItemId) {
+        // No id at all -- can't key a staging row or a Book from this item;
+        // neither a write nor a stage is possible.
+        throw new Error('Square catalog item has no id');
+      }
 
-    const stagingResult = await payload.find({
-      collection: 'square-catalog-staging',
-      where: { squareItemId: { equals: squareItemId } },
-      limit: 1,
-      depth: 0,
-    });
-    const stagingRow = stagingResult.docs[0] ?? null;
+      const mapped = mapSquareItemToBook(item, now);
 
-    const decision = decideStagingAction(
-      stagingRow ? { reviewStatus: stagingRow.reviewStatus as string, promotedBook: stagingRow.promotedBook } : null,
-      mapped,
-    );
-
-    if (decision.action === 'write-book') {
-      if (mapped.kind !== 'complete') continue; // decideStagingAction guarantees this, but keep TS honest.
-
-      const existingBookResult = await payload.find({
-        collection: 'books',
+      const stagingResult = await payload.find({
+        collection: 'square-catalog-staging',
         where: { squareItemId: { equals: squareItemId } },
         limit: 1,
         depth: 0,
       });
-      const existingBook = existingBookResult.docs[0] ?? null;
+      const stagingRow = stagingResult.docs[0] ?? null;
 
-      if (existingBook) {
-        const bookData = {
-          ...mapped.data,
-          editions: mergeEditions((existingBook.editions as any[]) || [], mapped.data.editions as any[]),
-        };
-        await payload.update({ collection: 'books', id: existingBook.id, data: bookData });
-        updated++;
-      } else {
-        try {
+      const decision = decideStagingAction(
+        stagingRow ? { reviewStatus: stagingRow.reviewStatus as string, promotedBook: stagingRow.promotedBook } : null,
+        mapped,
+      );
+
+      if (decision.action === 'write-book') {
+        if (mapped.kind !== 'complete') continue; // decideStagingAction guarantees this, but keep TS honest.
+
+        const existingBookResult = await payload.find({
+          collection: 'books',
+          where: { squareItemId: { equals: squareItemId } },
+          limit: 1,
+          depth: 0,
+        });
+        const existingBook = existingBookResult.docs[0] ?? null;
+
+        if (existingBook) {
           const bookData = {
             ...mapped.data,
-            editions: mergeEditions([], mapped.data.editions as any[]),
+            editions: mergeEditions((existingBook.editions as any[]) || [], mapped.data.editions as any[]),
           };
-          await payload.create({ collection: 'books', data: bookData as any });
-          created++;
-        } catch (err) {
-          if (!isSquareItemIdUniqueViolation(err)) throw err;
-
-          // A concurrent create won the race -- re-read and update rather
-          // than failing this item.
-          const racedResult = await payload.find({
+          await payload.update({
             collection: 'books',
-            where: { squareItemId: { equals: squareItemId } },
-            limit: 1,
-            depth: 0,
+            id: existingBook.id,
+            data: bookData,
+            context: SKIP_ENRICHMENT_CONTEXT,
           });
-          const raced = racedResult.docs[0];
-          if (!raced) throw err;
-
-          const racedData = {
-            ...mapped.data,
-            editions: mergeEditions((raced.editions as any[]) || [], mapped.data.editions as any[]),
-          };
-          await payload.update({ collection: 'books', id: raced.id, data: racedData });
           updated++;
+        } else {
+          try {
+            const bookData = {
+              ...mapped.data,
+              editions: mergeEditions([], mapped.data.editions as any[]),
+            };
+            await payload.create({ collection: 'books', data: bookData as any, context: SKIP_ENRICHMENT_CONTEXT });
+            created++;
+          } catch (err) {
+            if (!isSquareItemIdUniqueViolation(err)) throw err;
+
+            // A concurrent create won the race -- re-read and update rather
+            // than failing this item.
+            const racedResult = await payload.find({
+              collection: 'books',
+              where: { squareItemId: { equals: squareItemId } },
+              limit: 1,
+              depth: 0,
+            });
+            const raced = racedResult.docs[0];
+            if (!raced) throw err;
+
+            const racedData = {
+              ...mapped.data,
+              editions: mergeEditions((raced.editions as any[]) || [], mapped.data.editions as any[]),
+            };
+            await payload.update({
+              collection: 'books',
+              id: raced.id,
+              data: racedData,
+              context: SKIP_ENRICHMENT_CONTEXT,
+            });
+            updated++;
+          }
+        }
+      } else if (decision.action === 'stage') {
+        const issues = mapped.kind === 'incomplete' ? mapped.issues : [];
+        const validationIssues = issues.length > 0 ? issues : [RESOLVED_SENTINEL_ISSUE];
+
+        const stagingData: Record<string, unknown> = {
+          squareItemId,
+          squareCatalogVersion: squareCatalogVersionOf(item),
+          squareUpdatedAt: item.updatedAt,
+          rawItem: toJsonSafe(item),
+          validationIssues,
+          reviewStatus: decision.status,
+          lastSeenAt: now.toISOString(),
+        };
+
+        if (mapped.kind === 'incomplete') {
+          const { proposedTitle, proposedIsbn, proposedPriceCents } = mapped.proposed;
+          if (proposedTitle !== undefined) stagingData.proposedTitle = proposedTitle;
+          if (proposedIsbn !== undefined) stagingData.proposedIsbn = proposedIsbn;
+          if (proposedPriceCents !== undefined) stagingData.proposedPriceCents = proposedPriceCents;
+        }
+
+        if (stagingRow) {
+          await payload.update({ collection: 'square-catalog-staging', id: stagingRow.id, data: stagingData });
+        } else {
+          await payload.create({ collection: 'square-catalog-staging', data: stagingData as any });
+        }
+
+        // Staged -- including as 'needs-review' -- is a resolved outcome.
+        // Staging IS the resolution path for an incomplete item; it is not
+        // a failure to retry.
+        staged++;
+      } else {
+        // skip: rejected is sticky -- touch lastSeenAt only, never resurrect.
+        if (stagingRow) {
+          await payload.update({
+            collection: 'square-catalog-staging',
+            id: stagingRow.id,
+            data: { lastSeenAt: now.toISOString() },
+          });
         }
       }
-    } else if (decision.action === 'stage') {
-      const issues = mapped.kind === 'incomplete' ? mapped.issues : [];
-      const validationIssues = issues.length > 0 ? issues : [RESOLVED_SENTINEL_ISSUE];
-
-      const stagingData: Record<string, unknown> = {
-        squareItemId,
-        squareCatalogVersion: squareCatalogVersionOf(item),
-        squareUpdatedAt: item.updatedAt,
-        rawItem: toJsonSafe(item),
-        validationIssues,
-        reviewStatus: decision.status,
-        lastSeenAt: now.toISOString(),
-      };
-
-      if (mapped.kind === 'incomplete') {
-        const { proposedTitle, proposedIsbn, proposedPriceCents } = mapped.proposed;
-        if (proposedTitle !== undefined) stagingData.proposedTitle = proposedTitle;
-        if (proposedIsbn !== undefined) stagingData.proposedIsbn = proposedIsbn;
-        if (proposedPriceCents !== undefined) stagingData.proposedPriceCents = proposedPriceCents;
-      }
-
-      if (stagingRow) {
-        await payload.update({ collection: 'square-catalog-staging', id: stagingRow.id, data: stagingData });
-      } else {
-        await payload.create({ collection: 'square-catalog-staging', data: stagingData as any });
-      }
-
-      staged++;
-      if (decision.status === 'needs-review') {
-        markUnresolved(itemUpdatedAt);
-      }
-    } else {
-      // skip: rejected is sticky -- touch lastSeenAt only, never resurrect.
-      if (stagingRow) {
-        await payload.update({
-          collection: 'square-catalog-staging',
-          id: stagingRow.id,
-          data: { lastSeenAt: now.toISOString() },
-        });
-      }
+    } catch (err) {
+      console.error(`❌ square-catalog-sync: failed to resolve item ${String(item.id ?? '(no id)')}:`, err);
+      markUnresolved(itemUpdatedAt);
     }
   }
+
+  console.log(
+    `📦 square-catalog-sync: created=${created} updated=${updated} staged=${staged} skippedNonBook=${skippedNonBook} unresolved=${unresolved}`,
+  );
 
   const checkpoint = computeCatalogCheckpoint(windowEnd, oldestUnresolvedUpdatedAt);
 
   // Persist the checkpoint and counters BEFORE throwing -- a retry must see
   // the same watermark and counts a completed-then-thrown run would have
   // left, not lose them because the process exited via an exception.
+  //
+  // squareSyncState has no field for skippedNonBook -- it's a log/return-value
+  // counter only, not persisted. Adding a field is a schema change out of
+  // scope for this fix; the four persisted counters are the committed
+  // interface from an earlier task.
   await payload.updateGlobal({
     slug: 'squareSyncState',
     data: {
@@ -277,11 +347,11 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
 
   if (unresolved > 0) {
     throw new Error(
-      `square-catalog-sync: ${unresolved} item(s) unresolved (missing or invalid catalog data); checkpoint persisted, retrying`,
+      `square-catalog-sync: ${unresolved} item(s) neither written nor staged; checkpoint persisted, retrying`,
     );
   }
 
-  return { created, updated, staged, unresolved };
+  return { created, updated, staged, skippedNonBook, unresolved };
 }
 
 // Square is the source of truth for stock; each count overwrites the matching
