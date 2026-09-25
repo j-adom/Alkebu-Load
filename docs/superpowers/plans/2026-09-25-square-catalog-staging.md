@@ -2,80 +2,67 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make books added in Square POS reach Payload again — as valid Books when the Square data is complete, and as a staff review queue when it is not — without ever weakening how existing Books validate.
+**Goal:** Make books added in Square POS reach Payload again — as valid Books when Square's data is complete and a human has approved them, and as a staff review queue when it is not — without weakening how existing Books validate and without losing inventory writes.
 
-**Architecture:** The webhook's only job becomes verify-and-enqueue. A durable Payload job reads a persisted checkpoint, pulls changed Square items, and runs them through a pure mapper. Complete items create or update Books with a non-destructive edition merge; incomplete items become rows in a new staff-only `SquareCatalogStaging` collection. The checkpoint advances only when every item in the window is either saved or durably recorded.
+**Architecture:** The webhook verifies and enqueues. A durable job reads a persisted checkpoint, pulls changed Square items, and runs each through a pure mapper. Items that map cleanly *and* have no staging history update existing Books; everything else becomes or refreshes a row in a staff-only `SquareCatalogStaging` collection, from which a human promotes. All book writes — catalog and inventory alike — run through the job queue under one exclusive concurrency key, so they cannot interleave.
 
 **Tech Stack:** Payload CMS 3.79.0, Next.js 15.3.0, PostgreSQL (prod) / SQLite (dev), Square SDK v43, `node:test`, pnpm.
 
-**Spec:** [`docs/superpowers/specs/2026-09-23-square-catalog-staging-design.md`](../specs/2026-09-23-square-catalog-staging-design.md) — read it before Task 1. It carries the evidence, the nine field defects, and the reasoning behind staging-over-drafts.
+**Spec:** [`docs/superpowers/specs/2026-09-23-square-catalog-staging-design.md`](../specs/2026-09-23-square-catalog-staging-design.md). **Read Revision 2 at the end of that file before Task 1** — it supersedes several decisions in the original body, and this plan implements Revision 2.
 
-**Prerequisite — MET.** The spec's blocking dependency (no job runner) was closed by
-[`2026-09-23-payload-job-runner.md`](2026-09-23-payload-job-runner.md) and verified in production
-on 2026-09-25: Coolify logs show `cleanup-abandoned-carts` at `00:00:00` and
-`recover-stripe-orders` at `00:15:00`, both `new: 1, retrying: 0`. **In-process `autoRun` works on
-Coolify**, so Task 4 below uses `payload.jobs.queue()` with the existing runner rather than an
-external trigger.
+**Supersedes:** the first version of this plan (commit `9a1b1ba`), which review found had seven defects. Do not work from it.
+
+**Prerequisite — MET.** The job runner was verified running in production 2026-09-25 (Coolify logs: `cleanup-abandoned-carts` at `00:00:00`, `recover-stripe-orders` at `00:15:00`, both `new: 1, retrying: 0`). In-process `autoRun` works on Coolify.
 
 ## Global Constraints
 
-- Package manager is **pnpm** in `alkebu-load/`. Never `npm`.
-- `pnpm test` runs `node:test` against `tests/**/*.test.ts` and injects `STRIPE_SECRET_KEY=sk_test_dummy`. Standalone `tsx` runs do not.
-- Production builds enforce type and lint errors. `pnpm build` fails on warnings.
-- Never `source` the `.env` file, and never print its contents.
-- Pushing `main` triggers a Coolify auto-deploy. The push **is** the deploy.
-- Local dev is SQLite (`DATABASE_URI=file:./alkebulanimages.db`, corrected 2026-09-24). Confirm with `cd alkebu-load && grep -o '^DATABASE_URI=[a-z]*' .env` before running anything. As of commit `534017e`, drizzle's dev schema push is refused for any non-local host, so a misconfigured URI fails safe.
-- Prod DDL goes through the **Coolify Postgres terminal**, generated and reviewed before the deploy. A plugin schema change took `/admin` down on 2026-07-05.
-- Shell runs as root. `chown -R jadom:jadom` every file created or modified.
-- Run scripts as `tsx --loader ./css-stub-loader.mjs scripts/<name>.ts`. Local-API scripts fail on a transitive `.css` import without it.
-- **Never fabricate catalog data.** A missing ISBN stays missing. A missing price is not zero. An unvalidated SKU never becomes an ISBN.
+- **pnpm** in `alkebu-load/`. Never `npm`.
+- Every task ends by running **`pnpm test` and `pnpm check:types`**. The second is new (`d1ea199`) and exists because `pnpm test` strips types via `tsx` and `next build` excludes `tests/` — four real type errors shipped through that gap.
+- `pnpm lint` **does not** fail the build; it currently emits ~480 warnings. Do not treat a warning as a blocker, and do not "fix" pre-existing ones. (Both `CLAUDE.md` and the superseded plan claimed otherwise. They were wrong.)
+- Never `source` or print `.env`.
+- Pushing `main` triggers a Coolify auto-deploy. The push **is** the deploy. No task pushes.
+- Local dev is SQLite (`DATABASE_URI=file:./alkebulanimages.db`). Confirm with `grep -o '^DATABASE_URI=[a-z]*' .env`. Since `534017e`, drizzle's dev push is refused for non-local hosts.
+- Prod DDL goes through the **Coolify Postgres terminal**, generated against a local throwaway Postgres — never production.
+- Shell runs as root. `chown -R jadom:jadom` everything touched.
+- Scripts run as `tsx --loader ./css-stub-loader.mjs scripts/<name>.ts`.
+- **Never fabricate catalog data.** Missing ISBN stays missing. Missing price is not zero. An unvalidated SKU never becomes an ISBN.
 
-## Decisions already settled (do not re-litigate)
+## Ordering note — why the migration is generated last
 
-| Question | Decision |
-|---|---|
-| Where do incomplete imports live? | A new staff-only collection, not Payload drafts and not a `draft` value on `availabilityStatus`. Books' invariants stay untouched. |
-| Does a staged item auto-promote once Square supplies the missing data? | No. It flips to `reviewStatus: 'ready'` and waits for a human tick, matching the wellness curation gate. Square's catalog carries bulk supply SKUs and miscategorised items. |
-| Add `lastSyncedAt` to Books? | Yes. Its absence is why "have catalog updates ever run?" is currently unanswerable. |
-| Checkpoint storage | **Deviation from the spec.** The spec said the `siteSettings` global. On inspection `siteSettings` is staff-editable SEO content (title, description, keywords, logo, banner) — a sync watermark there is one accidental save away from corruption, and it would show up in an editor's form. Use a dedicated admin-hidden global instead. |
+Everything schema-affecting must be in **one** migration: the staging collection, the sync-state global, `Books.lastSyncedAt`, `Books.squareItemId` uniqueness, `jobs.enableConcurrencyControl` (which adds an indexed `concurrencyKey` to the jobs collection), and **both new task slugs** (task slugs live in the `enum_payload_jobs_task_slug` Postgres enum — see `src/migrations/20260705_174837_add_mcp_api_keys.ts:10-11`).
+
+The task handlers do not exist until Tasks 5 and 6. So Task 1 writes the schema *code*, and **Task 8 generates the migration** once both tasks are registered. Generating earlier produces an incomplete migration — that is defect 4 from the review.
 
 ## File Structure
 
 | File | Responsibility |
 |---|---|
-| `src/collections/SquareCatalogStaging.ts` (create) | The review queue. Staff-gated, own admin group. |
-| `src/globals/SquareSyncState.ts` (create) | Checkpoint watermark + last-run summary. `admin.hidden`. |
-| `src/collections/Books.tsx` (modify) | Add `lastSyncedAt`. No other change. |
-| `src/app/utils/squareCatalogMapping.ts` (create) | Pure: Square item → complete Book data or an issue list. No I/O. |
-| `src/app/utils/squareEditionMerge.ts` (create) | Pure: existing editions + incoming → merged editions. Owns the non-destructive rule. |
-| `src/app/utils/squareCatalogSync.ts` (create) | The job body: checkpoint read, fetch, dispatch to mapper, write, checkpoint advance. |
-| `src/app/api/webhooks/square-catalog/route.ts` (modify) | Replace the inline `processCatalogVersionUpdate` with an enqueue. |
-| `src/payload.config.ts` (modify) | Register the collection, the global, and the `square-catalog-sync` task. |
-| `scripts/reconcile-square-catalog.ts` (create) | Backlog recovery. Dry-run by default. |
-| `tests/import/squareCatalogMapping.test.ts` (create) | Mapper unit tests. |
-| `tests/import/squareEditionMerge.test.ts` (create) | Merge unit tests. |
-| `tests/import/squareCatalogIntegration.test.ts` (create) | The ten integration tests against the real schema. |
-
-Two pure modules rather than one because the mapper answers "is this item usable?" and the merge answers "what survives a write?" — different questions, different test matrices, and the merge is the one with the data-loss risk.
+| `src/collections/SquareCatalogStaging.ts` (create) | Review queue. Staff-gated. |
+| `src/globals/SquareSyncState.ts` (create) | Checkpoint + last-run counters. `admin.hidden`. |
+| `src/collections/Books.tsx` (modify) | Add `lastSyncedAt`; make `squareItemId` unique + indexed. |
+| `src/app/utils/jsonSafe.ts` (create) | BigInt-safe normalization for `rawItem`. |
+| `src/app/utils/squareCatalogMapping.ts` (create) | Pure: Square item → complete Book data or per-variation issues. |
+| `src/app/utils/squareEditionMerge.ts` (create) | Pure: field ownership between Square and Payload. |
+| `src/app/utils/squareStagingWorkflow.ts` (create) | State machine + transactional promotion. |
+| `src/app/utils/squareCatalogSync.ts` (create) | Job body: checkpoint, fetch, dispatch, write, advance, throw-on-unresolved. |
+| `src/app/api/webhooks/square-catalog/route.ts` (modify) | Both events become enqueues. |
+| `src/payload.config.ts` (modify) | Register collection, global, both tasks, concurrency control. |
+| `scripts/reconcile-square-catalog.ts` (create) | Backlog recovery. Dry-run default. |
+| `tests/import/*.test.ts` (create) | Unit + integration. |
 
 ---
 
-### Task 1: Schema — staging collection, sync-state global, and `Books.lastSyncedAt`
+### Task 1: Schema code — staging, sync state, Books fields
 
-All three land together because they are one Postgres DDL event. Splitting them means three prod migrations for one feature.
+No migration is generated here. Code only.
 
-**Files:**
-- Create: `alkebu-load/src/collections/SquareCatalogStaging.ts`
-- Create: `alkebu-load/src/globals/SquareSyncState.ts`
-- Modify: `alkebu-load/src/collections/Books.tsx` (add one field)
-- Modify: `alkebu-load/src/payload.config.ts` (register both)
+**Files:** create `src/collections/SquareCatalogStaging.ts`, create `src/globals/SquareSyncState.ts`, modify `src/collections/Books.tsx`, modify `src/payload.config.ts`.
 
-**Interfaces:**
-- Produces: collection slug `square-catalog-staging`; global slug `squareSyncState`; `Books.lastSyncedAt` (date). Tasks 2, 4, 5 and 6 all depend on these names.
+**Interfaces produced:** collection slug `square-catalog-staging`; global slug `squareSyncState`; `Books.lastSyncedAt`; `Books.squareItemId` unique+indexed. Tasks 4-9 depend on these names.
 
-- [ ] **Step 1: Create the staging collection**
+- [ ] **Step 1: Staging collection**
 
-Follow the `PartnershipInquiries` house pattern — see `src/collections/PartnershipInquiries.ts` for the role-gate helpers and admin block. Create `alkebu-load/src/collections/SquareCatalogStaging.ts`:
+Create `src/collections/SquareCatalogStaging.ts`, following the `PartnershipInquiries` role-gate pattern:
 
 ```ts
 import type { CollectionConfig } from 'payload';
@@ -84,7 +71,6 @@ const isCatalogStaff = (user: unknown): boolean => {
   const role = (user as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'staff';
 };
-
 const isAdmin = (user: unknown): boolean =>
   (user as { role?: string } | undefined)?.role === 'admin';
 
@@ -95,10 +81,10 @@ export const SquareCatalogStaging: CollectionConfig = {
     defaultColumns: ['proposedTitle', 'reviewStatus', 'squareItemId', 'lastSeenAt'],
     group: 'Inventory',
     description:
-      'Square catalog items that could not form a valid Book. Complete the missing data and promote, or reject.',
+      'Square catalog items awaiting review. Complete the missing data and promote, or reject. Rejection is permanent: a rejected item is never re-imported.',
   },
-  // Staff-only on every operation. This collection never reaches the storefront:
-  // it has no public route, no search bootstrap target, and no cart product type.
+  // Staff-only on every operation. No storefront surface: no public route, no
+  // search bootstrap target, no cart product type.
   access: {
     read: ({ req: { user } }) => isCatalogStaff(user),
     create: ({ req: { user } }) => isCatalogStaff(user),
@@ -106,42 +92,32 @@ export const SquareCatalogStaging: CollectionConfig = {
     delete: ({ req: { user } }) => isAdmin(user),
   },
   fields: [
-    {
-      name: 'squareItemId',
-      type: 'text',
-      required: true,
-      unique: true,
-      index: true,
-      admin: { description: 'Square catalog object id. The identity of this review row.' },
-    },
-    {
-      name: 'squareCatalogVersion',
-      type: 'text',
-      required: true,
-      admin: { description: 'Square catalog version that produced this snapshot.' },
-    },
-    {
-      name: 'squareUpdatedAt',
-      type: 'date',
-      required: true,
-      admin: { description: "Square's updated_at for the item, for staleness comparison." },
-    },
+    { name: 'squareItemId', type: 'text', required: true, unique: true, index: true },
+    { name: 'squareCatalogVersion', type: 'text', required: true },
+    { name: 'squareUpdatedAt', type: 'date', required: true },
     {
       name: 'rawItem',
       type: 'json',
       required: true,
-      admin: { description: 'Full Square payload as received. The source of truth for a retry.' },
+      admin: {
+        description:
+          'Square payload, BigInt-normalised by jsonSafe.ts. Storing the raw SDK object throws: JSON.stringify cannot serialise BigInt, and priceMoney.amount is one.',
+      },
     },
     {
       name: 'validationIssues',
       type: 'array',
       required: true,
       minRows: 1,
-      admin: { description: 'Why this could not become a Book.' },
+      admin: {
+        description:
+          'Why this is not a Book. A row that becomes complete records the sentinel {field:"-", code:"resolved"} rather than an empty array, because minRows is 1.',
+      },
       fields: [
         { name: 'field', type: 'text', required: true },
         { name: 'code', type: 'text', required: true },
         { name: 'detail', type: 'text' },
+        { name: 'variationId', type: 'text', admin: { description: 'Set when the issue is per-variation.' } },
       ],
     },
     {
@@ -161,39 +137,26 @@ export const SquareCatalogStaging: CollectionConfig = {
       name: 'promotedBook',
       type: 'relationship',
       relationTo: 'books',
-      admin: { description: 'Set on promotion. Its presence blocks a second promotion.' },
+      admin: { description: 'Set on promotion. Its presence refuses a second promotion.' },
     },
     { name: 'proposedTitle', type: 'text' },
-    {
-      name: 'proposedIsbn',
-      type: 'text',
-      admin: { description: 'Only set when the SKU/UPC passed isValidIsbn. Never a raw SKU.' },
-    },
-    {
-      name: 'proposedPriceCents',
-      type: 'number',
-      admin: { description: 'Cents, unconverted. Absent means Square had no price.' },
-    },
-    {
-      name: 'lastSeenAt',
-      type: 'date',
-      required: true,
-      admin: { description: 'Updated every time a repeat event re-observes this item.' },
-    },
+    { name: 'proposedIsbn', type: 'text', admin: { description: 'Only when the SKU passed the ISBN checksum. Never a raw SKU.' } },
+    { name: 'proposedPriceCents', type: 'number', admin: { description: 'Cents, unconverted.' } },
+    { name: 'lastSeenAt', type: 'date', required: true },
   ],
 };
 ```
 
-- [ ] **Step 2: Create the sync-state global**
+- [ ] **Step 2: Sync-state global**
 
-Create `alkebu-load/src/globals/SquareSyncState.ts`:
+Create `src/globals/SquareSyncState.ts`:
 
 ```ts
 import type { GlobalConfig } from 'payload';
 
-// Deliberately NOT a field on siteSettings: that global is staff-editable SEO
-// content, and a sync watermark living in an editor's form is one accidental
-// save away from silently re-importing or skipping months of catalog.
+// Deliberately not a field on siteSettings: that global is staff-editable SEO
+// content, and a sync watermark sitting in an editor's form is one accidental
+// save away from re-importing or skipping months of catalog.
 export const SquareSyncState: GlobalConfig = {
   slug: 'squareSyncState',
   admin: { hidden: true },
@@ -202,8 +165,7 @@ export const SquareSyncState: GlobalConfig = {
       const role = (user as { role?: string } | undefined)?.role;
       return role === 'admin' || role === 'staff';
     },
-    update: ({ req: { user } }) =>
-      (user as { role?: string } | undefined)?.role === 'admin',
+    update: ({ req: { user } }) => (user as { role?: string } | undefined)?.role === 'admin',
   },
   fields: [
     {
@@ -211,23 +173,32 @@ export const SquareSyncState: GlobalConfig = {
       type: 'date',
       admin: {
         description:
-          'High-water mark. Every Square item changed at or before this instant is either saved or recorded in staging. Empty means never synced.',
+          'High-water mark: every Square item changed at or before this instant is written or staged. Empty means never synced.',
       },
     },
     { name: 'lastRunAt', type: 'date' },
     { name: 'lastRunCreated', type: 'number', defaultValue: 0 },
     { name: 'lastRunUpdated', type: 'number', defaultValue: 0 },
     { name: 'lastRunStaged', type: 'number', defaultValue: 0 },
-    { name: 'lastRunFailed', type: 'number', defaultValue: 0 },
+    { name: 'lastRunUnresolved', type: 'number', defaultValue: 0 },
   ],
 };
 ```
 
-- [ ] **Step 3: Add `lastSyncedAt` to Books**
+- [ ] **Step 3: Books — add `lastSyncedAt`, make `squareItemId` unique**
 
-In `src/collections/Books.tsx`, next to the existing `importSource` / `importDate` fields (around line 552-570), add:
+In `src/collections/Books.tsx`, replace the existing `squareItemId` field (around line 544) with:
 
 ```tsx
+    {
+      name: 'squareItemId',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: {
+        description: 'Square POS item ID. Unique: upsert-by-square-id is only repeat-safe with a DB constraint.'
+      }
+    },
     {
       name: 'lastSyncedAt',
       type: 'date',
@@ -238,258 +209,308 @@ In `src/collections/Books.tsx`, next to the existing `importSource` / `importDat
     },
 ```
 
-The webhook has been writing this field since before it existed, so Payload has been silently dropping it — which is precisely why nobody could tell whether catalog updates were running. Add the field; change nothing else in this file.
+Verified safe: production has 5,157 books with a `squareItemId`, **all distinct**, and 19 with none. Postgres treats NULLs as distinct, so the constraint applies cleanly.
 
-- [ ] **Step 4: Register both in the config**
+- [ ] **Step 4: Register, and enable concurrency control**
 
-In `src/payload.config.ts`, add the imports alongside the existing collection and global imports, then add `SquareCatalogStaging` to the `collections` array and `SquareSyncState` to the `globals` array.
+In `src/payload.config.ts`: import and add `SquareCatalogStaging` to `collections` and `SquareSyncState` to `globals`. Do **not** add `squareSyncState` to the `admin.globals` list — it is hidden.
+
+In the `jobs` block, alongside the existing `autoRun` and `tasks`:
 
 ```ts
-import { SquareCatalogStaging } from './collections/SquareCatalogStaging'
-import { SquareSyncState } from './globals/SquareSyncState'
+    // Required for the `concurrency` key on the Square tasks. Adds an indexed
+    // concurrencyKey field to the jobs collection -- schema change, covered by
+    // the single migration generated in Task 8.
+    enableConcurrencyControl: true,
 ```
 
-Do **not** add `squareSyncState` to the `admin.globals` list at line ~225 — it is hidden on purpose.
-
-- [ ] **Step 5: Regenerate types and build**
+- [ ] **Step 5: Verify**
 
 ```bash
-cd alkebu-load && pnpm generate:types && pnpm lint && pnpm build && pnpm test
+cd alkebu-load && pnpm generate:types && pnpm check:types && pnpm test
 ```
 
-Expected: `payload-types.ts` gains `SquareCatalogStaging`, `SquareSyncState`, and `Book.lastSyncedAt`. All four commands pass.
+Expected: types gain `SquareCatalogStaging`, `SquareSyncState`, `Book.lastSyncedAt`. All pass. **Do not run `pnpm payload migrate:create` — Task 8 owns that.**
 
-- [ ] **Step 6: Generate the DDL and hold it**
-
-```bash
-cd alkebu-load && pnpm payload migrate:create square_catalog_staging
-```
-
-Read the generated file in `src/migrations/`. It must create the staging table, its `validationIssues` array table, the `squareSyncState` global table, and add one `last_synced_at` column to `books`. **It must not ALTER or DROP anything else on `books`.** If it touches another books column, stop and report — that is the 2026-07-05 outage pattern.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 cd /home/jadom/Coding/alkebulanimages2.0
 chown -R jadom:jadom alkebu-load/src
 git add alkebu-load/src
-git commit -m "feat(square): staging collection, sync-state global, Books.lastSyncedAt
+git commit -m "feat(square): staging collection, sync-state global, Books schema
 
-Schema only, no behaviour. Staging is staff-gated on all four operations
-and has no storefront surface. The sync watermark gets its own hidden
-global rather than a field on the staff-editable siteSettings.
-lastSyncedAt has been written by the webhook to a nonexistent field since
-it was added, which is why catalog-update activity was unverifiable."
+Schema code only; the migration is generated in one pass once both jobs
+are registered. squareItemId becomes unique+indexed (verified 5157/5157
+distinct in production) so upsert-by-square-id is actually repeat-safe.
+Concurrency control is enabled for the exclusive book-write key."
 ```
 
 ---
 
-### Task 2: Pure mapper — Square item to Book data or issues
+### Task 2: JSON-safe normalization
 
-**Files:**
-- Create: `alkebu-load/src/app/utils/squareCatalogMapping.ts`
-- Test: `alkebu-load/tests/import/squareCatalogMapping.test.ts`
+Small, but Task 3 and Task 5 both depend on it, and getting it wrong means every staging write throws.
 
-**Interfaces:**
-- Consumes: nothing at runtime. Mirrors the shape of `src/app/utils/wellnessProductLines.ts` — pure, no I/O, exhaustively tested.
-- Produces:
+**Files:** create `src/app/utils/jsonSafe.ts`, create `tests/import/jsonSafe.test.ts`.
+
+**Interfaces produced:** `toJsonSafe<T>(value: unknown): unknown` and `fromJsonSafe(value: unknown): unknown`.
+
+- [ ] **Step 1: Write the failing test**
+
 ```ts
-export type ValidationIssue = { field: string; code: string; detail?: string };
+import assert from 'node:assert';
+import test from 'node:test';
+
+import { toJsonSafe, fromJsonSafe } from '../../src/app/utils/jsonSafe';
+
+test('a raw Square object with BigInt amounts cannot be stringified', () => {
+  assert.throws(() => JSON.stringify({ priceMoney: { amount: 2299n } }), TypeError);
+});
+
+test('toJsonSafe makes it stringifiable', () => {
+  const safe = toJsonSafe({ priceMoney: { amount: 2299n, currency: 'USD' } });
+  assert.doesNotThrow(() => JSON.stringify(safe));
+});
+
+test('BigInt round-trips losslessly, including values beyond Number.MAX_SAFE_INTEGER', () => {
+  const big = 9007199254740993n; // MAX_SAFE_INTEGER + 2
+  const back = fromJsonSafe(JSON.parse(JSON.stringify(toJsonSafe({ v: big }))));
+  assert.strictEqual((back as any).v, big);
+});
+
+test('walks nested arrays and objects', () => {
+  const safe = toJsonSafe({
+    itemData: { variations: [{ itemVariationData: { priceMoney: { amount: 1899n } } }] },
+  });
+  const json = JSON.stringify(safe);
+  const back: any = fromJsonSafe(JSON.parse(json));
+  assert.strictEqual(back.itemData.variations[0].itemVariationData.priceMoney.amount, 1899n);
+});
+
+test('leaves ordinary values untouched', () => {
+  const input = { a: 1, b: 'x', c: true, d: null, e: [1, 2] };
+  assert.deepStrictEqual(fromJsonSafe(JSON.parse(JSON.stringify(toJsonSafe(input)))), input);
+});
+
+test('does not mistake a user string for an encoded bigint', () => {
+  // A Square field could legitimately contain an object shaped like our marker.
+  const tricky = { note: { __bigint: 'not a number' } };
+  const back: any = fromJsonSafe(JSON.parse(JSON.stringify(toJsonSafe(tricky))));
+  assert.strictEqual(typeof back.note.__bigint, 'string');
+});
+
+test('handles undefined and Date without throwing', () => {
+  assert.doesNotThrow(() => JSON.stringify(toJsonSafe({ d: new Date(0), u: undefined })));
+});
+```
+
+- [ ] **Step 2: Run to verify it fails** — `cd alkebu-load && pnpm test`
+
+- [ ] **Step 3: Implement**
+
+`toJsonSafe` recursively replaces every `bigint` with `{ __bigint: value.toString() }`; `fromJsonSafe` reverses it, decoding only when the object has exactly one key `__bigint` whose string value matches `/^-?\d+$/`. That guard is what the "tricky" test pins — a decode that accepts any `__bigint` key would corrupt legitimate data.
+
+- [ ] **Step 4: Verify** — `pnpm test && pnpm check:types`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add alkebu-load/src/app/utils/jsonSafe.ts alkebu-load/tests/import/jsonSafe.test.ts
+git commit -m "feat(square): BigInt-safe JSON normalisation for staged raw items
+
+Square SDK v43 returns priceMoney.amount as BigInt and JSON.stringify
+throws on it, so storing a raw SDK object in a json column fails at
+write time. Round-trips losslessly past Number.MAX_SAFE_INTEGER."
+```
+
+---
+
+### Task 3: Pure mapper with per-edition validity
+
+**Files:** create `src/app/utils/squareCatalogMapping.ts`, create `tests/import/squareCatalogMapping.test.ts`.
+
+**Interfaces produced:**
+```ts
+export type ValidationIssue = { field: string; code: string; detail?: string; variationId?: string };
 export type MappedComplete = { kind: 'complete'; data: Record<string, unknown> };
 export type MappedIncomplete = {
   kind: 'incomplete';
   issues: ValidationIssue[];
   proposed: { proposedTitle?: string; proposedIsbn?: string; proposedPriceCents?: number };
 };
-export function mapSquareItemToBook(item: unknown): MappedComplete | MappedIncomplete;
+export function mapSquareItemToBook(item: unknown, now?: Date): MappedComplete | MappedIncomplete;
 export function isValidIsbn(isbn: string): boolean;
 ```
-Tasks 4, 5 and 6 all call `mapSquareItemToBook`.
 
 - [ ] **Step 1: Write the failing tests**
-
-Create `alkebu-load/tests/import/squareCatalogMapping.test.ts`:
 
 ```ts
 import assert from 'node:assert';
 import test from 'node:test';
 
-import { mapSquareItemToBook } from '../../src/app/utils/squareCatalogMapping';
+import { mapSquareItemToBook, isValidIsbn } from '../../src/app/utils/squareCatalogMapping';
 
-const variation = (over: Record<string, unknown> = {}) => ({
-  id: 'VAR1',
-  itemVariationData: { sku: '9780310180302', priceMoney: { amount: 2299n }, ...over },
+// 9780310180302 and 9780062457714 are checksum-valid ISBN-13s.
+const VALID_A = '9780310180302';
+const VALID_B = '9780062457714';
+
+const varn = (id: string, sku: string | undefined, amount: bigint | undefined) => ({
+  id,
+  itemVariationData: {
+    ...(sku === undefined ? {} : { sku }),
+    ...(amount === undefined ? {} : { priceMoney: { amount } }),
+  },
 });
 
-const item = (over: Record<string, unknown> = {}) => ({
+const item = (variations: unknown[], name = 'A Book') => ({
   id: 'ITEM1',
   updatedAt: '2026-09-20T10:00:00Z',
-  itemData: { name: 'The Gospel and My Black Skin', variations: [variation()] },
-  ...over,
+  itemData: { name, variations },
+});
+
+test('isValidIsbn enforces the checksum, not just the digit count', () => {
+  assert.strictEqual(isValidIsbn(VALID_A), true);
+  assert.strictEqual(isValidIsbn('9780310180303'), false, 'wrong check digit must fail');
+  assert.strictEqual(isValidIsbn('1234567890123'), false, 'an arbitrary 13-digit SKU is not an ISBN');
+  assert.strictEqual(isValidIsbn('0310180309'), true, 'valid ISBN-10');
+  assert.strictEqual(isValidIsbn('043942089X'), true, 'ISBN-10 with X check digit');
+  assert.strictEqual(isValidIsbn('0310180308'), false);
 });
 
 test('maps a complete item with the price in cents, undivided', () => {
-  const result = mapSquareItemToBook(item());
-  assert.strictEqual(result.kind, 'complete');
-  if (result.kind !== 'complete') return;
-  // Square priceMoney.amount is ALREADY cents and Books.pricing.retailPrice is
-  // cents. The old webhook divided by 100 -- a 100x underprice.
-  assert.strictEqual((result.data.pricing as any).retailPrice, 2299);
-  assert.strictEqual(result.data.title, 'The Gospel and My Black Skin');
-  assert.strictEqual(result.data.squareItemId, 'ITEM1');
-  assert.strictEqual(result.data.importSource, 'square-webhook');
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, 2299n)]));
+  assert.strictEqual(r.kind, 'complete');
+  if (r.kind !== 'complete') return;
+  // priceMoney.amount is ALREADY cents; Books.pricing.retailPrice is cents.
+  // The old webhook divided by 100 -- a 100x underprice.
+  assert.strictEqual((r.data.pricing as any).retailPrice, 2299);
+  assert.strictEqual(r.data.squareItemId, 'ITEM1');
+  assert.strictEqual(r.data.importSource, 'square-webhook');
 });
 
-test('writes the publisher name to publisherText, never to the relationship', () => {
-  const result = mapSquareItemToBook(item());
-  assert.strictEqual(result.kind, 'complete');
-  if (result.kind !== 'complete') return;
-  const [edition] = result.data.editions as any[];
-  assert.strictEqual(edition.publisher, undefined,
-    'editions[].publisher is a relationship to publishers and must never receive a string');
-  assert.ok(!('publisher' in result.data) || typeof result.data.publisher !== 'string');
-  assert.strictEqual(edition.pricing.retailPrice, 2299);
+test('publisher name goes to publisherText, never to the relationship', () => {
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, 2299n)]));
+  assert.strictEqual(r.kind, 'complete');
+  if (r.kind !== 'complete') return;
+  const [ed] = r.data.editions as any[];
+  assert.strictEqual(ed.publisher, undefined);
+  assert.strictEqual(ed.pricing.retailPrice, 2299);
+  assert.strictEqual(ed.squareVariationId, 'V1');
 });
 
-test('an item with no valid ISBN is incomplete and no ISBN is invented', () => {
-  const result = mapSquareItemToBook(
-    item({ itemData: { name: 'Mystery Item', variations: [variation({ sku: 'SHELF-TAG-7' })] } }),
-  );
-  assert.strictEqual(result.kind, 'incomplete');
-  if (result.kind !== 'incomplete') return;
-  assert.ok(result.issues.some((i) => i.field === 'editions.isbn'));
-  assert.strictEqual(result.proposed.proposedIsbn, undefined,
-    'an arbitrary SKU must never be surfaced as a proposed ISBN');
-  assert.strictEqual(result.proposed.proposedTitle, 'Mystery Item');
+test('MIXED validity is incomplete: one variation priced, a DIFFERENT one with an ISBN', () => {
+  // The bug this pins: "some variation has a price AND some variation has an
+  // ISBN" would call this complete, then emit an edition that fails the
+  // required-isbn constraint on Books.
+  const r = mapSquareItemToBook(item([
+    varn('PRICED', undefined, 1899n),
+    varn('IDENTIFIED', VALID_A, undefined),
+  ]));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.variationId === 'PRICED' && i.field === 'editions.isbn'));
+  assert.ok(r.issues.some((i) => i.variationId === 'IDENTIFIED' && i.field === 'editions.pricing.retailPrice'));
 });
 
-test('an item with no price is incomplete and the price is not zero', () => {
-  const result = mapSquareItemToBook(
-    item({
-      itemData: {
-        name: 'Unpriced Book',
-        variations: [variation({ priceMoney: undefined })],
-      },
-    }),
-  );
-  assert.strictEqual(result.kind, 'incomplete');
-  if (result.kind !== 'incomplete') return;
-  assert.ok(result.issues.some((i) => i.field === 'pricing.retailPrice'));
-  assert.strictEqual(result.proposed.proposedPriceCents, undefined);
+test('every variation must be usable for the item to be complete', () => {
+  const r = mapSquareItemToBook(item([
+    varn('GOOD', VALID_A, 2299n),
+    varn('BAD', 'SHELF-TAG-7', 1500n),
+  ]));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.variationId === 'BAD'));
 });
 
-test('an item with no variations at all is incomplete (editions requires minRows 1)', () => {
-  const result = mapSquareItemToBook(item({ itemData: { name: 'Bare Item', variations: [] } }));
-  assert.strictEqual(result.kind, 'incomplete');
-  if (result.kind !== 'incomplete') return;
-  assert.ok(result.issues.some((i) => i.field === 'editions'));
+test('two usable variations map to two editions', () => {
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, 3499n), varn('V2', VALID_B, 1899n)]));
+  assert.strictEqual(r.kind, 'complete');
+  if (r.kind !== 'complete') return;
+  assert.strictEqual((r.data.editions as any[]).length, 2);
+  // Book-level price is the LOWEST, not array order.
+  assert.strictEqual((r.data.pricing as any).retailPrice, 1899);
 });
 
-test('book-level price comes from the lowest-priced variation, not array order', () => {
-  const result = mapSquareItemToBook(
-    item({
-      itemData: {
-        name: 'Two Editions',
-        variations: [
-          { id: 'HC', itemVariationData: { sku: '9780310180302', priceMoney: { amount: 3499n } } },
-          { id: 'PB', itemVariationData: { sku: '9780310180319', priceMoney: { amount: 1899n } } },
-        ],
-      },
-    }),
-  );
-  assert.strictEqual(result.kind, 'complete');
-  if (result.kind !== 'complete') return;
-  assert.strictEqual((result.data.pricing as any).retailPrice, 1899);
-  assert.strictEqual((result.data.editions as any[]).length, 2);
+test('no ISBN anywhere: incomplete, and no ISBN is invented', () => {
+  const r = mapSquareItemToBook(item([varn('V1', 'SHELF-TAG-7', 2299n)], 'Mystery Item'));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.strictEqual(r.proposed.proposedIsbn, undefined);
+  assert.strictEqual(r.proposed.proposedTitle, 'Mystery Item');
+  assert.strictEqual(r.proposed.proposedPriceCents, 2299);
 });
 
-test('never emits an importSource outside the Books select options', () => {
-  const result = mapSquareItemToBook(item());
-  assert.strictEqual(result.kind, 'complete');
-  if (result.kind !== 'complete') return;
-  // enrichProductFromIdentifiers can return 'open-library', which is NOT a valid
-  // option on Books.importSource. The mapper owns this field unconditionally.
-  assert.ok(
-    ['manual', 'isbndb', 'google-books', 'csv-import', 'square-webhook'].includes(
-      result.data.importSource as string,
-    ),
-  );
+test('no price: incomplete, and the price is not zero', () => {
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, undefined)]));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.strictEqual(r.proposed.proposedPriceCents, undefined);
+  assert.strictEqual(r.proposed.proposedIsbn, VALID_A);
 });
 
-test('carries squareVariationId onto each edition so inventory sync can match', () => {
-  const result = mapSquareItemToBook(item());
-  assert.strictEqual(result.kind, 'complete');
-  if (result.kind !== 'complete') return;
-  assert.strictEqual((result.data.editions as any[])[0].squareVariationId, 'VAR1');
+test('no variations at all is incomplete (editions has minRows 1)', () => {
+  const r = mapSquareItemToBook(item([], 'Bare'));
+  assert.strictEqual(r.kind, 'incomplete');
+  if (r.kind !== 'incomplete') return;
+  assert.ok(r.issues.some((i) => i.field === 'editions'));
 });
 
-test('a malformed item is incomplete rather than throwing', () => {
-  for (const bad of [null, undefined, {}, { id: 'X' }, { itemData: {} }]) {
-    const result = mapSquareItemToBook(bad);
-    assert.strictEqual(result.kind, 'incomplete', `expected ${JSON.stringify(bad)} to be incomplete`);
+test('importSource is always a valid Books select option', () => {
+  const r = mapSquareItemToBook(item([varn('V1', VALID_A, 2299n)]));
+  assert.strictEqual(r.kind, 'complete');
+  if (r.kind !== 'complete') return;
+  // enrichProductFromIdentifiers can emit 'open-library', which is NOT a valid
+  // option. The mapper owns this field unconditionally.
+  assert.ok(['manual', 'isbndb', 'google-books', 'csv-import', 'square-webhook']
+    .includes(r.data.importSource as string));
+});
+
+test('malformed input is incomplete, never a throw', () => {
+  for (const bad of [null, undefined, {}, { id: 'X' }, { itemData: {} }, { itemData: { variations: 'nope' } }]) {
+    assert.strictEqual(mapSquareItemToBook(bad).kind, 'incomplete');
   }
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
-
-```bash
-cd alkebu-load && pnpm test
-```
-
-Expected: FAIL — `Cannot find module '.../squareCatalogMapping'`.
+- [ ] **Step 2: Run to verify it fails** — `pnpm test`
 
 - [ ] **Step 3: Implement**
 
-Create `alkebu-load/src/app/utils/squareCatalogMapping.ts`. Requirements the tests pin, restated so you implement rather than curve-fit:
+- `isValidIsbn`: strip `-`/spaces. ISBN-13 → sum of digits weighted 1,3,1,3… mod 10 must be 0. ISBN-10 → sum of digit×(10..1) mod 11 must be 0, final `X` = 10. **Do not** copy the existing shape-only helper from `square-catalog/route.ts:737-748`; it is what lets arbitrary 13-digit SKUs through.
+- A variation is **usable** iff it has a `priceMoney.amount` *and* a `sku`/`upc` passing `isValidIsbn`.
+- Item is **complete** iff it has ≥1 variation and **every** variation is usable.
+- Price: `Number(amount)`. Never divide. Book-level = lowest across variations.
+- Editions: `{ isbn, squareVariationId, pricing: { retailPrice }, isAvailable: true }`, plus `publisherText` when Square offers a name. Never `publisher`.
+- `importSource: 'square-webhook'` and `lastSyncedAt: now` set last so nothing overwrites them.
+- Report **all** issues with `variationId` set for per-variation ones. Never throw.
+- No enrichment here — this module is pure.
 
-- `isValidIsbn`: strip `-` and spaces; accept 13 digits, or 9 digits plus a final digit or `X`. Copy the existing implementation from `src/app/api/webhooks/square-catalog/route.ts:737-748` — do not invent a second rule.
-- Price: `Number(variation.itemVariationData.priceMoney.amount)`. Square sends a BigInt; `Number()` it, never divide.
-- Book-level `pricing.retailPrice` = the **lowest** price among variations that have one.
-- Each edition: `{ isbn, squareVariationId, pricing: { retailPrice }, isAvailable: true }` — and `publisherText` when Square offers a publisher name. Never `publisher`.
-- `importSource: 'square-webhook'` set unconditionally and last, so nothing can overwrite it.
-- `lastSyncedAt`: set to the run timestamp (the field now exists, from Task 1).
-- Incomplete when: no variations; no variation has a price; no variation has a SKU/UPC passing `isValidIsbn`. Each condition adds its own `ValidationIssue`. Report **all** issues, not the first.
-- Never throw. A malformed input yields `incomplete` with an issue of code `malformed`.
-- Do not call enrichment here. This module is pure; enrichment is I/O and belongs in Task 4, applied *after* mapping and forbidden from touching `importSource`.
-
-- [ ] **Step 4: Run to verify it passes**
-
-```bash
-cd alkebu-load && pnpm test
-```
-
-Expected: PASS, pre-existing suite still green.
+- [ ] **Step 4: Verify** — `pnpm test && pnpm check:types`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/jadom/Coding/alkebulanimages2.0
-chown -R jadom:jadom alkebu-load/src alkebu-load/tests
 git add alkebu-load/src/app/utils/squareCatalogMapping.ts alkebu-load/tests/import/squareCatalogMapping.test.ts
-git commit -m "feat(square): pure Square-item to Book mapper
+git commit -m "feat(square): pure mapper with per-edition validity and ISBN checksums
 
-Closes the field-contract defects that made every catalog create fail:
-retailPrice in cents undivided, publisher name to publisherText not the
-relationship, ISBN only from a SKU that validates, and importSource
-pinned to square-webhook. Incomplete items return an issue list instead
-of a fabricated Book."
+Completeness is judged per variation, not across the item: a priced
+variation and a DIFFERENT identified variation no longer read as
+complete and then fail Books validation. isValidIsbn now checks the
+checksum, so an arbitrary 13-digit SKU is not mistaken for an ISBN."
 ```
 
 ---
 
-### Task 3: Non-destructive edition merge
+### Task 4: Non-destructive edition merge
 
-**Files:**
-- Create: `alkebu-load/src/app/utils/squareEditionMerge.ts`
-- Test: `alkebu-load/tests/import/squareEditionMerge.test.ts`
+**Files:** create `src/app/utils/squareEditionMerge.ts`, create `tests/import/squareEditionMerge.test.ts`.
 
-**Interfaces:**
-- Produces: `mergeEditions(existing: any[], incoming: any[]): any[]`. Task 4 calls it before every Book update.
+**Interfaces produced:** `mergeEditions(existing: any[], incoming: any[]): any[]`.
+
+Note the scope limit: this function makes a *correct merged array*. It does **not** make concurrent writes safe — that is Task 6's exclusive queue key. Reviewing this as if it solved the race was the original plan's error.
 
 - [ ] **Step 1: Write the failing tests**
-
-Create `alkebu-load/tests/import/squareEditionMerge.test.ts`:
 
 ```ts
 import assert from 'node:assert';
@@ -514,308 +535,446 @@ const curated = {
   isAvailable: true,
 };
 
-test('a thin Square payload never erases curated edition metadata', () => {
-  const [merged] = mergeEditions([curated], [
+test('a thin Square payload never erases curated metadata', () => {
+  const [m] = mergeEditions([curated], [
     { squareVariationId: 'VAR1', isbn: '9780310180302', pricing: { retailPrice: 2499 } },
   ]);
-  assert.strictEqual(merged.isbn10, '0310180309');
-  assert.strictEqual(merged.publisher, 42);
-  assert.strictEqual(merged.datePublished, '2019-03-01T00:00:00Z');
-  assert.strictEqual(merged.pages, 224);
-  assert.strictEqual(merged.dimensions, '8.5 x 5.5');
-  assert.strictEqual(merged.stripePriceId, 'price_abc');
-  assert.strictEqual(merged.pricing.retailPrice, 2499, 'Square owns price and may update it');
+  assert.strictEqual(m.isbn10, '0310180309');
+  assert.strictEqual(m.publisher, 42);
+  assert.strictEqual(m.datePublished, '2019-03-01T00:00:00Z');
+  assert.strictEqual(m.pages, 224);
+  assert.strictEqual(m.dimensions, '8.5 x 5.5');
+  assert.strictEqual(m.stripePriceId, 'price_abc');
+  assert.strictEqual(m.pricing.retailPrice, 2499, 'Square owns price');
 });
 
-test('stock level is never touched by a catalog write', () => {
-  // The inventory webhook owns stockLevel and had just written it. A catalog
-  // sync that carries a stale or absent count must not roll it back.
-  const [merged] = mergeEditions([curated], [
+test('stock level is never touched by a catalog merge', () => {
+  const [m] = mergeEditions([curated], [
     { squareVariationId: 'VAR1', isbn: '9780310180302', inventory: { stockLevel: 0 } },
   ]);
-  assert.strictEqual(merged.inventory.stockLevel, 7);
-  assert.strictEqual(merged.inventory.allowBackorders, false);
+  assert.strictEqual(m.inventory.stockLevel, 7);
+  assert.strictEqual(m.inventory.allowBackorders, false);
 });
 
-test('shippingWeight survives because Square does not carry packaging weight', () => {
-  const [merged] = mergeEditions([curated], [
-    { squareVariationId: 'VAR1', isbn: '9780310180302', pricing: { retailPrice: 2299 } },
-  ]);
-  assert.strictEqual(merged.pricing.shippingWeight, 12);
+test('shippingWeight survives -- Square has no packaging weight', () => {
+  const [m] = mergeEditions([curated], [{ squareVariationId: 'VAR1', isbn: '9780310180302' }]);
+  assert.strictEqual(m.pricing.shippingWeight, 12);
 });
 
-test('a genuinely new variation is appended', () => {
-  const merged = mergeEditions([curated], [
+test('a new variation is appended', () => {
+  const m = mergeEditions([curated], [
     { squareVariationId: 'VAR1', isbn: '9780310180302' },
-    { squareVariationId: 'VAR2', isbn: '9780310180319', pricing: { retailPrice: 3499 } },
+    { squareVariationId: 'VAR2', isbn: '9780062457714', pricing: { retailPrice: 3499 } },
   ]);
-  assert.strictEqual(merged.length, 2);
-  assert.strictEqual(merged[1].squareVariationId, 'VAR2');
+  assert.strictEqual(m.length, 2);
 });
 
 test('an edition missing from Square is marked unavailable, never deleted', () => {
-  const merged = mergeEditions([curated], [
-    { squareVariationId: 'VAR2', isbn: '9780310180319', pricing: { retailPrice: 3499 } },
+  const m = mergeEditions([curated], [
+    { squareVariationId: 'VAR2', isbn: '9780062457714', pricing: { retailPrice: 3499 } },
   ]);
-  assert.strictEqual(merged.length, 2, 'the existing edition must survive');
-  const kept = merged.find((e: any) => e.squareVariationId === 'VAR1');
+  assert.strictEqual(m.length, 2);
+  const kept = m.find((e: any) => e.squareVariationId === 'VAR1');
   assert.strictEqual(kept.isAvailable, false);
-  assert.strictEqual(kept.isbn, '9780310180302', 'its data is retained, only availability flips');
+  assert.strictEqual(kept.isbn, '9780310180302');
 });
 
-test('an existing edition with no squareVariationId is left completely alone', () => {
-  const manual = { id: 'ed9', isbn: '9781234567897', publisherText: 'Hand entered' };
-  const merged = mergeEditions([manual], [
-    { squareVariationId: 'VAR1', isbn: '9780310180302', pricing: { retailPrice: 1000 } },
-  ]);
-  const found = merged.find((e: any) => e.id === 'ed9');
-  assert.deepStrictEqual(found, manual, 'a non-Square edition is not Square\'s to modify');
+test('an existing edition with no squareVariationId is left byte-identical', () => {
+  const manual = { id: 'ed9', isbn: '9780062457714', publisherText: 'Hand entered' };
+  const m = mergeEditions([manual], [{ squareVariationId: 'VAR1', isbn: '9780310180302' }]);
+  assert.deepStrictEqual(m.find((e: any) => e.id === 'ed9'), manual);
 });
 
-test('an incoming field that is undefined does not overwrite a populated one', () => {
-  const [merged] = mergeEditions([curated], [
+test('an incoming undefined never overwrites a populated value', () => {
+  const [m] = mergeEditions([curated], [
     { squareVariationId: 'VAR1', isbn: undefined, pricing: { retailPrice: undefined } },
   ]);
-  assert.strictEqual(merged.isbn, '9780310180302');
-  assert.strictEqual(merged.pricing.retailPrice, 2299);
+  assert.strictEqual(m.isbn, '9780310180302');
+  assert.strictEqual(m.pricing.retailPrice, 2299);
 });
 
-test('empty inputs are handled without throwing', () => {
+test('the existing row id is preserved so Payload updates rather than replaces', () => {
+  const [m] = mergeEditions([curated], [{ squareVariationId: 'VAR1', isbn: '9780310180302' }]);
+  assert.strictEqual(m.id, 'ed1');
+});
+
+test('empty inputs do not throw', () => {
   assert.deepStrictEqual(mergeEditions([], []), []);
   assert.strictEqual(mergeEditions([], [{ squareVariationId: 'V', isbn: '9780310180302' }]).length, 1);
   assert.strictEqual(mergeEditions([curated], []).length, 1);
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
-
-```bash
-cd alkebu-load && pnpm test
-```
-
-Expected: FAIL — module not found.
+- [ ] **Step 2: Run to verify it fails** — `pnpm test`
 
 - [ ] **Step 3: Implement**
 
-Create `alkebu-load/src/app/utils/squareEditionMerge.ts`. The ownership rule, stated once and applied everywhere:
+Ownership, stated once:
+- **Square owns:** variation existence, `squareVariationId`, `isbn`, `pricing.retailPrice`.
+- **Payload owns:** `isbn10`, `publisher`, `publisherText`, `datePublished`, `binding`, `edition`, `pages`, `language`, `dimensions`, `stripePriceId`, `pricing.shippingWeight`, the entire `inventory` group.
+- Match on `squareVariationId`; an existing edition without one is untouched.
+- Incoming `undefined` never overwrites.
+- Square-linked editions absent from `incoming` get `isAvailable: false`, keeping all other fields.
+- Preserve the existing row `id`.
 
-- **Square owns:** the existence of a variation, its `squareVariationId`, `isbn` (only when valid), and `pricing.retailPrice`.
-- **Payload owns everything else:** `isbn10`, `publisher`, `publisherText`, `datePublished`, `binding`, `edition`, `pages`, `language`, `dimensions`, `stripePriceId`, `pricing.shippingWeight`, and the whole `inventory` group.
-- Match on `squareVariationId`. An existing edition without one is never modified.
-- An incoming `undefined` never overwrites a populated value.
-- An existing Square-linked edition absent from `incoming` gets `isAvailable: false` and keeps every other field.
-- Preserve the existing row's `id` so Payload updates the array row rather than replacing it.
-
-- [ ] **Step 4: Run to verify it passes**
-
-```bash
-cd alkebu-load && pnpm test
-```
+- [ ] **Step 4: Verify** — `pnpm test && pnpm check:types`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/jadom/Coding/alkebulanimages2.0
-chown -R jadom:jadom alkebu-load/src alkebu-load/tests
 git add alkebu-load/src/app/utils/squareEditionMerge.ts alkebu-load/tests/import/squareEditionMerge.test.ts
 git commit -m "feat(square): non-destructive edition merge by variation id
 
-The old webhook replaced the whole editions array on update, discarding
-curated metadata and the stock levels the inventory path had just
-written. Square now owns only variation existence, sku, isbn and price;
-everything else is Payload's and survives."
+Square owns variation existence, sku, isbn and price; everything else is
+Payload's and survives a thin catalog payload -- including the stock
+levels the inventory path writes."
 ```
 
 ---
 
-### Task 4: Durable job, checkpoint, and the webhook enqueue
+### Task 5: Staging state machine and transactional promotion
 
-**Files:**
-- Create: `alkebu-load/src/app/utils/squareCatalogSync.ts`
-- Modify: `alkebu-load/src/app/api/webhooks/square-catalog/route.ts`
-- Modify: `alkebu-load/src/payload.config.ts` (register the task)
+This is the human gate. Nothing in the old plan implemented it.
 
-**Interfaces:**
-- Consumes: `mapSquareItemToBook` (Task 2), `mergeEditions` (Task 3), the `square-catalog-staging` collection and `squareSyncState` global (Task 1).
-- Produces: `runSquareCatalogSync(payload): Promise<{created:number; updated:number; staged:number; failed:number}>` and the registered task slug `square-catalog-sync`.
+**Files:** create `src/app/utils/squareStagingWorkflow.ts`, create `tests/import/squareStagingWorkflow.test.ts`.
+
+**Interfaces produced:**
+```ts
+export type StagingDecision =
+  | { action: 'write-book' }                         // promoted row, or no staging history
+  | { action: 'stage'; status: 'needs-review' | 'ready' }
+  | { action: 'skip'; reason: 'rejected' };
+export function decideStagingAction(
+  existing: { reviewStatus: string; promotedBook?: unknown } | null,
+  mapped: { kind: 'complete' | 'incomplete' },
+): StagingDecision;
+export async function promoteStagedItem(payload: any, stagingId: string | number, user: unknown): Promise<{ bookId: string | number }>;
+```
+
+- [ ] **Step 1: Write the failing tests for the pure decision function**
+
+```ts
+import assert from 'node:assert';
+import test from 'node:test';
+
+import { decideStagingAction } from '../../src/app/utils/squareStagingWorkflow';
+
+const complete = { kind: 'complete' as const };
+const incomplete = { kind: 'incomplete' as const };
+
+test('no staging history + complete mapping writes the Book directly', () => {
+  assert.deepStrictEqual(decideStagingAction(null, complete), { action: 'write-book' });
+});
+
+test('no staging history + incomplete mapping stages for review', () => {
+  assert.deepStrictEqual(decideStagingAction(null, incomplete), { action: 'stage', status: 'needs-review' });
+});
+
+test('a needs-review row that is now complete becomes ready and does NOT write a Book', () => {
+  // The human gate. Square supplying the data is not approval.
+  assert.deepStrictEqual(
+    decideStagingAction({ reviewStatus: 'needs-review' }, complete),
+    { action: 'stage', status: 'ready' },
+  );
+});
+
+test('a needs-review row still incomplete stays needs-review', () => {
+  assert.deepStrictEqual(
+    decideStagingAction({ reviewStatus: 'needs-review' }, incomplete),
+    { action: 'stage', status: 'needs-review' },
+  );
+});
+
+test('a ready row is not auto-promoted by a later sync', () => {
+  assert.deepStrictEqual(
+    decideStagingAction({ reviewStatus: 'ready' }, complete),
+    { action: 'stage', status: 'ready' },
+  );
+});
+
+test('rejected is sticky in both directions', () => {
+  assert.deepStrictEqual(decideStagingAction({ reviewStatus: 'rejected' }, complete), { action: 'skip', reason: 'rejected' });
+  assert.deepStrictEqual(decideStagingAction({ reviewStatus: 'rejected' }, incomplete), { action: 'skip', reason: 'rejected' });
+});
+
+test('a promoted row lets the sync update its linked Book', () => {
+  assert.deepStrictEqual(
+    decideStagingAction({ reviewStatus: 'promoted', promotedBook: 7 }, complete),
+    { action: 'write-book' },
+  );
+});
+
+test('a promoted row whose mapping regressed stages rather than writing a broken Book', () => {
+  assert.deepStrictEqual(
+    decideStagingAction({ reviewStatus: 'promoted', promotedBook: 7 }, incomplete),
+    { action: 'stage', status: 'needs-review' },
+  );
+});
+```
+
+- [ ] **Step 2: Run to verify it fails** — `pnpm test`
+
+- [ ] **Step 3: Implement `decideStagingAction` plus `promoteStagedItem`**
+
+`decideStagingAction` is a pure lookup over the Revision 2 transition table.
+
+`promoteStagedItem` is the transactional half. **This repo uses no Payload transactions anywhere yet** (`grep -rn "beginTransaction" src/` returns nothing), so this introduces the pattern:
+
+```ts
+const transactionID = await payload.db.beginTransaction();
+try {
+  // 1. re-read the staging row INSIDE the transaction
+  // 2. refuse if promotedBook is already set, or reviewStatus !== 'ready'
+  // 3. map rawItem (via fromJsonSafe) -> must be complete, else refuse
+  // 4. create the Book
+  // 5. update the staging row: reviewStatus 'promoted', promotedBook = new id
+  await payload.db.commitTransaction(transactionID);
+} catch (err) {
+  await payload.db.rollbackTransaction(transactionID);
+  throw err;
+}
+```
+
+Pass `req: { transactionID, user }` to every `payload.*` call inside. Authorization: refuse unless the user's role is `admin` or `staff`. Idempotency comes from step 2 — a second concurrent promotion re-reads inside the transaction, sees `promotedBook` set, and refuses.
+
+`beginTransaction` returns `null` on adapters without transaction support. Handle that by proceeding without one and say so in the report, since dev is SQLite and prod is Postgres — the two must both be exercised before this ships.
+
+- [ ] **Step 4: Verify** — `pnpm test && pnpm check:types`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add alkebu-load/src/app/utils/squareStagingWorkflow.ts alkebu-load/tests/import/squareStagingWorkflow.test.ts
+git commit -m "feat(square): staging state machine and transactional promotion
+
+Square supplying complete data is not approval: a staged item becomes
+'ready' and waits for a human. Rejection is sticky, so a bulk supply SKU
+rejected once is never re-imported. Promotion is transactional and
+refuses a row that already has a promotedBook, so concurrent promotion
+yields one Book."
+```
+
+---
+
+### Task 6: Catalog sync job, inventory write behind the queue, webhook enqueues
+
+**Files:** create `src/app/utils/squareCatalogSync.ts`, modify `src/app/api/webhooks/square-catalog/route.ts`, modify `src/payload.config.ts`.
+
+**Interfaces produced:** `runSquareCatalogSync(payload)`, `runSquareInventorySync(payload, counts)`, task slugs `square-catalog-sync` and `square-inventory-sync`.
 
 - [ ] **Step 1: Write the sync body**
 
-Create `src/app/utils/squareCatalogSync.ts` implementing, in order:
+`src/app/utils/squareCatalogSync.ts`, in order:
 
-1. Read `squareSyncState.catalogSyncedThrough`. Window start = that value minus a **15-minute overlap**; if unset, fall back to 24 hours ago for the live path (the backlog is Task 6's job, not the webhook's).
-2. Fetch changed Square items. Keep the existing `catalog.list({ types: 'ITEM,IMAGE' })` call from the current route — replacing it with `SearchCatalogObjects` is an explicit non-goal of the spec. Filter client-side on `item.updatedAt >= windowStart`. **Never compute the window from `new Date()` alone** — that is the bug that makes a retried event skip its own change.
-3. For each item: `mapSquareItemToBook`. On `complete`, upsert the Book by `squareItemId`, using `mergeEditions` for the `editions` field on update and never writing `inventory.stockLevel`. On `incomplete`, upsert a staging row by `squareItemId`, updating `lastSeenAt`, `rawItem`, `validationIssues`, and flipping `reviewStatus` from `needs-review` to `ready` when the issue list is now empty — but never to `promoted`.
-4. Optimistic concurrency: re-read the Book inside the job and skip the item (counting it unresolved) if `updatedAt` changed since the read.
-5. Enrichment stays optional and is applied *after* mapping, and must never set `importSource`, `editions`, or `pricing`.
-6. Advance the checkpoint to **`min(window end, oldest unresolved item's updatedAt)`**. An item that is neither saved nor staged holds the watermark. Write the run counters to the global.
-7. Return the counts.
+1. Read `squareSyncState.catalogSyncedThrough`. Window start = that minus **15 minutes** overlap; unset → 24 hours ago. **Never derive the window from `new Date()` alone** — that is what makes a retried event skip its own change.
+2. Fetch via the existing `catalog.list({ types: 'ITEM,IMAGE' })`; filter client-side on `item.updatedAt >= windowStart`. (Replacing this with `SearchCatalogObjects` is an explicit non-goal.)
+3. Per item: `mapSquareItemToBook`, then look up staging by `squareItemId`, then `decideStagingAction`.
+   - `write-book` → upsert Books by `squareItemId`, using `mergeEditions` for `editions`. **Never write `inventory.stockLevel`.** On a unique-violation from a concurrent create, re-read and update instead of failing.
+   - `stage` → upsert the staging row by `squareItemId`, refreshing `rawItem` (through `toJsonSafe`), `validationIssues`, `lastSeenAt`, `squareUpdatedAt`, `squareCatalogVersion`, and setting `reviewStatus` to the decided value. A now-complete row records the sentinel issue `{ field: '-', code: 'resolved', detail: 'Square now supplies all required data' }` — `minRows: 1` forbids an empty array.
+   - `skip` → touch `lastSeenAt` only.
+4. Optional enrichment applies *after* mapping and may never set `importSource`, `editions`, or `pricing`.
+5. Advance `catalogSyncedThrough` to **`min(window end, oldest unresolved item's updatedAt)`** and write the counters.
+6. **If any item is unresolved, throw** after persisting the checkpoint and counters. A handler that returns normally completes successfully and is never retried — returning a failure count is not a retry.
 
-- [ ] **Step 2: Register the task**
+- [ ] **Step 2: Register both tasks with an exclusive key**
 
-In `src/payload.config.ts`, add to `jobs.tasks` (no `schedule` — this one is queued on demand, not cron-driven):
+In `src/payload.config.ts` `jobs.tasks`:
 
 ```ts
       {
         slug: 'square-catalog-sync',
-        retries: { attempts: 3, backoff: { type: 'exponential', maxDelay: 300000 } },
+        retries: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        // Every book write -- catalog and inventory -- shares this key, and
+        // exclusive defaults to true, so they cannot interleave. This is what
+        // actually prevents a stale editions array clobbering a stock write;
+        // the pure merge alone cannot.
+        concurrency: { key: () => 'books-write', deleteOlderPending: true },
         handler: async ({ req }) => {
           const { runSquareCatalogSync } = await import('./app/utils/squareCatalogSync');
-          const summary = await runSquareCatalogSync(req.payload);
-          return { output: summary };
+          return { output: await runSquareCatalogSync(req.payload) };
+        },
+      },
+      {
+        slug: 'square-inventory-sync',
+        retries: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        concurrency: { key: () => 'books-write' },
+        handler: async ({ req, input }) => {
+          const { runSquareInventorySync } = await import('./app/utils/squareCatalogSync');
+          return { output: await runSquareInventorySync(req.payload, (input as any).counts) };
         },
       },
 ```
 
-- [ ] **Step 3: Replace the webhook body with an enqueue**
+`backoff` takes `delay` and `type` only — `maxDelay` is not a field on this type.
 
-In `src/app/api/webhooks/square-catalog/route.ts`, change the `catalog.version.updated` case so the route verifies the signature, enqueues, and only then returns 200:
+- [ ] **Step 3: Move the inventory write behind the queue**
+
+The inventory path is **healthy in production** — change where it runs, not what it does. Keep `applyInventoryCountToEditions` exactly as is; `runSquareInventorySync` wraps the existing loop body from `processInventoryCountUpdate`. In the route, both cases become enqueues:
 
 ```ts
       case 'catalog.version.updated': {
-        // Enqueue durably and ack only once the job row is committed. The old
-        // after() form returned 200 before the work started, so a later failure
-        // could never trigger Square's retry (24h window).
         const payload = await getPayload({ config })
         await payload.jobs.queue({ task: 'square-catalog-sync', input: {} })
         return NextResponse.json({ received: true, queued: 'square-catalog-sync' })
       }
+
+      case 'inventory.count.updated': {
+        const payload = await getPayload({ config })
+        const counts = webhookEvent.data?.object?.inventory_counts || []
+        await payload.jobs.queue({ task: 'square-inventory-sync', input: { counts } })
+        return NextResponse.json({ received: true, queued: 'square-inventory-sync' })
+      }
 ```
 
-If the enqueue throws, let the route 500 so Square retries. Leave the `inventory.count.updated` case exactly as it is — that path is healthy and in production.
+Ack only after the enqueue commits; let the route 500 if it throws so Square retries within its 24h window.
 
-- [ ] **Step 4: Verify**
-
-```bash
-cd alkebu-load && pnpm generate:types && pnpm lint && pnpm build && pnpm test
-```
+- [ ] **Step 4: Verify** — `pnpm generate:types && pnpm check:types && pnpm test && pnpm build`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/jadom/Coding/alkebulanimages2.0
-chown -R jadom:jadom alkebu-load/src
 git add alkebu-load/src
-git commit -m "feat(square): durable catalog sync job with a persisted checkpoint
+git commit -m "feat(square): durable catalog sync and serialised book writes
 
-The webhook now verifies and enqueues, acking only after the job row
-commits, so a processing failure can still trigger Square's retry. The
-change window is read from a persisted watermark with 15m overlap rather
-than wall-clock now, so a delayed or retried event no longer skips its
-own change. The checkpoint advances only past items that are saved or
-durably staged."
+Both webhook events now enqueue and ack only once the job row commits,
+so a processing failure can still trigger Square's retry. Both tasks
+share an exclusive 'books-write' concurrency key, which is what actually
+prevents the catalog path clobbering an inventory write. Unresolved
+items throw so Payload retries rather than silently completing."
 ```
 
 ---
 
-### Task 5: Integration tests against the real Books schema
+### Task 7: Integration tests against the real schema
 
-Pure-unit coverage cannot catch the failures that matter here — every one of the nine original defects was a *schema contract* violation that unit tests on a mapper would have passed.
+Every one of the nine original defects was a schema-contract violation that unit tests would have passed. These assert on documents written and read back.
 
-**Files:**
-- Create: `alkebu-load/tests/import/squareCatalogIntegration.test.ts`
+**Files:** create `tests/import/squareCatalogIntegration.test.ts`.
 
-- [ ] **Step 1: Write all ten tests**
+**Use an explicit disposable database, never the developer's.** Point `DATABASE_URI` at a throwaway file (e.g. `file:./.tmp-integration.db`) created and deleted by the test, and disable enrichment so no external API is called.
 
-Against the local SQLite dev database via the Local API. Each test must assert on a document actually written and read back, not on a mapper return value.
+- [ ] **Step 1: Write all twelve tests**
 
-1. **Incomplete creation** — an item with no ISBN produces a staging row, no Book, and no fabricated ISBN anywhere.
-2. **No price** — produces a staging row; no Book has `pricing.retailPrice === 0`.
-3. **Complete creation** — a valid item produces a Book whose `pricing.retailPrice` is cents, `editions[0].publisherText` is set, `editions[0].publisher` is unset, and `importSource === 'square-webhook'`.
-4. **Edition preservation** — updating an existing book with a thin payload retains `isbn10`, `publisher`, `datePublished`, `pages`, `dimensions`.
-5. **Stock is never clobbered** — a catalog write leaves a previously-written `inventory.stockLevel` intact.
-6. **Repeat delivery** — the same event twice yields exactly one Book and one staging row.
-7. **Concurrent promotion** — two simultaneous promotions of one staging row yield one Book.
-8. **Delayed processing** — an event processed 30 minutes late still covers its own change (checkpoint + overlap).
-9. **Checkpoint holds on failure** — one item neither saved nor staged prevents the watermark advancing past it.
-10. **Staged items are unreachable** — assert against `/api/search`, the book detail loader path, `addItemToCart`, and checkout preview that nothing in staging is reachable.
+1. Incomplete creation — no valid ISBN → staging row, no Book, no fabricated ISBN.
+2. No price → staging row; no Book with `pricing.retailPrice === 0`.
+3. Complete creation → Book with cents price, `publisherText` set, `publisher` unset, `importSource === 'square-webhook'`.
+4. Edition preservation — thin payload retains `isbn10`, `publisher`, `datePublished`, `pages`, `dimensions`.
+5. Stock never clobbered — a catalog write leaves a previously written `stockLevel` intact.
+6. **Interleaving** — queue a catalog sync and an inventory sync for the same book and run the queue; assert the final `stockLevel` is the inventory value. This must exercise the real queue, not two sequential calls.
+7. Repeat delivery — the same event twice yields one Book and one staging row.
+8. **Concurrent creation** — two simultaneous syncs for one unseen `squareItemId` yield exactly one Book (unique constraint + recover-by-update).
+9. Concurrent promotion — two simultaneous promotions of one staging row yield one Book.
+10. Rejected stickiness — a rejected row re-observed as complete stays rejected and creates no Book.
+11. Checkpoint holds on failure — one unresolved item prevents the watermark advancing past it, **and the job throws**.
+12. Staged items unreachable — assert against `/api/search`, the book detail loader, `addItemToCart`, and checkout preview.
 
-- [ ] **Step 2: Run, fix, and re-run until green**
+- [ ] **Step 2: Run, fix, re-run until green** — `pnpm test`
 
-```bash
-cd alkebu-load && pnpm test
-```
-
-If a test fails because the implementation is wrong, fix the implementation, not the test. If it fails because the test misunderstands the schema, fix the test — and say which in the report.
+If a test fails because the implementation is wrong, fix the implementation. If the test misunderstands the schema, fix the test — and say which in the report.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /home/jadom/Coding/alkebulanimages2.0
-chown -R jadom:jadom alkebu-load/tests
 git add alkebu-load/tests/import/squareCatalogIntegration.test.ts
-git commit -m "test(square): integration coverage against the real Books schema
-
-Every one of the nine original defects was a schema-contract violation
-that mapper unit tests would have passed. These assert on documents
-written and read back."
+git commit -m "test(square): integration coverage incl. real interleaving and concurrency"
 ```
 
 ---
 
-### Task 6: Reconciliation backfill script
+### Task 8: Generate the single Postgres migration
 
-**Files:**
-- Create: `alkebu-load/scripts/reconcile-square-catalog.ts`
+Everything schema-affecting is now registered. This is the only task that generates DDL.
+
+- [ ] **Step 1: Start a throwaway local Postgres**
+
+```bash
+cd /home/jadom/Coding/alkebulanimages2.0
+POSTGRES_PASSWORD=devonly docker compose up -d postgres
+```
+
+Never point this at production. As of `534017e` the dev-push guard refuses non-local hosts, but do not rely on that as the only safeguard.
+
+- [ ] **Step 2: Generate against Postgres explicitly**
+
+```bash
+cd alkebu-load
+DATABASE_URI=postgresql://alkebulanimages:devonly@localhost:5432/alkebulanimages \
+  pnpm payload migrate:create square_catalog_staging
+```
+
+The inline override matters: the repo `.env` is `file:`, which would select the SQLite adapter and emit SQLite DDL.
+
+- [ ] **Step 3: Read the migration before trusting it**
+
+It must contain, and contain nothing beyond:
+- create `square_catalog_staging` + its `validation_issues` array table
+- create the `square_sync_state` global table
+- `books`: add `last_synced_at`, add a UNIQUE constraint/index on `square_item_id`
+- `payload_jobs`: add the indexed `concurrency_key` column
+- `enum_payload_jobs_task_slug`: add `square-catalog-sync` and `square-inventory-sync`
+
+**If it ALTERs or DROPs anything else on `books`, stop and report.** That is the 2026-07-05 outage pattern.
+
+- [ ] **Step 4: Apply and verify against the throwaway Postgres**
+
+```bash
+cd alkebu-load
+DATABASE_URI=postgresql://alkebulanimages:devonly@localhost:5432/alkebulanimages pnpm payload migrate
+```
+
+Then re-run the integration suite against that Postgres to exercise real transaction semantics — dev SQLite and prod Postgres differ, and Task 5's promotion is the first transaction in this codebase.
+
+- [ ] **Step 5: Commit** — `git add alkebu-load/src/migrations && git commit -m "feat(square): postgres migration for catalog staging"`
+
+---
+
+### Task 9: Reconciliation backfill
+
+**Files:** create `scripts/reconcile-square-catalog.ts`.
 
 - [ ] **Step 1: Write the script**
 
-Follow the header-comment and structure conventions in `scripts/backfill-wellness-shipping-weights.ts`.
+Follow the header-comment style of `scripts/backfill-wellness-shipping-weights.ts`.
 
-- `--dry-run` is the **default**. Writing requires an explicit `--commit`.
-- Walks the entire Square catalog, not a time window — this is the ~6.5-month backlog.
-- Uses `mapSquareItemToBook` and `mergeEditions`. No parallel logic; a second implementation is how the two drift.
-- Reports **created / updated / staged / failed** with per-item reasons, and prints the ten worst reasons by count so the incomplete bucket can be judged at a glance.
-- Repeat-safe: upsert by `squareItemId`, so a second run creates no duplicates.
-- Does not advance the checkpoint — the live path owns that watermark.
+- `--dry-run` is the **default**; writing requires `--commit`.
+- Walks the whole Square catalog — this is the ~6.5-month backlog, not a window.
+- Uses the same mapper, merge, and `decideStagingAction` as the live path. No parallel logic.
+- Reports **created / updated / staged / skipped / unresolved** with per-item reasons and the ten most common reasons by count.
+- Repeat-safe via the unique `squareItemId`.
+- Does **not** advance the checkpoint — the live path owns that watermark.
 
-- [ ] **Step 2: Type-check**
+- [ ] **Step 2: Type-check** — `pnpm check:scripts`
 
-```bash
-cd alkebu-load && pnpm check:scripts
-```
-
-- [ ] **Step 3: Dry run against the local dev DB**
+- [ ] **Step 3: Dry run locally**
 
 ```bash
 cd alkebu-load && tsx --loader ./css-stub-loader.mjs scripts/reconcile-square-catalog.ts --dry-run
 ```
 
-The `--loader` flag is required; Local-API scripts fail on a transitive `.css` import without it.
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /home/jadom/Coding/alkebulanimages2.0
-chown -R jadom:jadom alkebu-load/scripts
-git add alkebu-load/scripts/reconcile-square-catalog.ts
-git commit -m "feat(square): reconciliation backfill for the catalog gap
-
-Dry-run by default. Recovers the items missed since 2026-03-08 using the
-same mapper and merge as the live path."
-```
+- [ ] **Step 4: Commit** — `git add alkebu-load/scripts/reconcile-square-catalog.ts && git commit -m "feat(square): reconciliation backfill for the catalog gap"`
 
 ---
 
-### Task 7: Deploy and backfill — user-owned
+### Task 10: Deploy and backfill — user-owned
 
-Requires the Coolify Postgres terminal and judgement about the review queue. Not dispatched to an agent.
+Not dispatched to an agent: needs the Coolify Postgres terminal and judgement about the queue.
 
-- [ ] **Step 1** — Review the generated migration from Task 1 Step 6. Confirm it adds `books.last_synced_at` and creates the new tables, and **alters nothing else on `books`**.
-- [ ] **Step 2** — Apply the DDL via the Coolify Postgres terminal, before the deploy.
-- [ ] **Step 3** — `git push origin main`. Watch the build, then `curl -s https://payload.alkebulanimages.com/api/health`.
-- [ ] **Step 4** — Dry-run the reconciliation against production and **read the output before doing anything else**. The `staged` count is the size of the review queue you are about to inherit. If it is in the hundreds, stop and reconsider the mapper's completeness bar before importing.
-- [ ] **Step 5** — Run it with `--commit`.
-- [ ] **Step 6** — Triage the staging queue in `/admin` → Inventory → Square Catalog Staging. Complete and promote what is real; reject bulk supply SKUs and miscategorised items.
-- [ ] **Step 7** — Hit `/api/search` and wait five minutes for the FlexSearch snapshot to rebuild; new books will not appear before that. `initialize-search.ts` will **not** warm the running server.
-- [ ] **Step 8** — Spot-check one newly imported book: detail page renders, price is right (cents, not 100× off), adds to cart. Then confirm one staged item 404s by direct slug.
-- [ ] **Step 9** — Add a book in Square POS and confirm it reaches Payload within one sync. That is the thing that has been broken since March.
+- [ ] **Step 1** — Re-read the Task 8 migration. Confirm it alters nothing unexpected on `books`.
+- [ ] **Step 2** — Apply the DDL via the Coolify Postgres terminal, **before** the deploy.
+- [ ] **Step 3** — `git push origin main`; watch the build; `curl -s https://payload.alkebulanimages.com/api/health`.
+- [ ] **Step 4** — Confirm the inventory path still works after being moved behind the queue. This is the regression risk of the whole change: make a stock change in Square and watch it land. Do this **before** the backfill.
+- [ ] **Step 5** — Dry-run the reconciliation against production. **Read the `staged` count before anything else** — that is the review queue you are inheriting. Hundreds means stop and reconsider the completeness bar.
+- [ ] **Step 6** — Run with `--commit`.
+- [ ] **Step 7** — Triage in `/admin` → Inventory → Square Catalog Staging. Promote what is real; reject bulk supply SKUs and miscategorised items. Rejection is permanent.
+- [ ] **Step 8** — Hit `/api/search`, wait five minutes for the FlexSearch snapshot. `initialize-search.ts` will not warm the running server.
+- [ ] **Step 9** — Spot-check a promoted book: detail page, price (cents, not 100× off), add to cart. Confirm a staged item 404s by direct slug.
+- [ ] **Step 10** — Add a book in Square POS and confirm it reaches staging or Books within one sync. That is the thing broken since March.
 
 ---
 
-## Follow-ups, deliberately out of scope
+## Follow-ups, out of scope
 
-- **`SearchCatalogObjects` + `begin_time`** instead of listing the whole catalog per run. Performance, not correctness.
-- **`isActive` backfill** — false on 5,174 of 5,176 books. Unused by any query, but a loaded gun in the admin UI.
-- **Historical Stripe sweep** — `recover-stripe-orders` has a depth-bounded lookback of 40 sessions, so it cannot catch up on the window when the runner was dormant. One read-only run with a large `limit` would show whether anything was lost.
-- **Local Postgres for migration rehearsal** — see the discussion of 2026-09-23; the same root cause as the `push: false` guard.
+- `SearchCatalogObjects` + `begin_time` instead of listing the whole catalog. Performance only.
+- `isActive` backfill — false on 5,174 of 5,176 books; unused by any query but a loaded gun.
+- Historical Stripe sweep — `recover-stripe-orders` looks back only 40 sessions and cannot catch up on its dormant window.
+- Local Postgres as the standing dev database (Task 8 stands one up transiently; making it permanent is the larger change discussed 2026-09-23).
