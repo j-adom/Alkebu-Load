@@ -278,8 +278,14 @@ Existing suites must stay green: `pnpm test` (alkebu-load), `npm run check` + `n
       `200`. Expected to pass given the 2026-06-03 subscription repair; confirms the
       "arrives and fails validation" hypothesis rather than testing it. A **deployment** gate,
       not a prerequisite for writing the mapper and tests.
-- [ ] Job runner confirmed executing in production — a queued job demonstrably transitions to
-      complete, with retry and failure reporting observed.
+- [x] **Job runner confirmed executing in production (2026-09-25).** `ENABLE_JOB_AUTORUN=true`
+      set in Coolify; deploy at ~23:53 UTC 2026-09-24. Coolify logs show
+      `00:00:00 INFO: Running 1 jobs. new: 1 retrying: 0` (`cleanup-abandoned-carts`, cron
+      `0 */2 * * *`) and `00:15:00 INFO: Running 1 jobs. new: 1 retrying: 0`
+      (`recover-stripe-orders`, cron `15 * * * *`). Crons armed within ~7 minutes of container
+      start. In-process `autoRun` therefore works on Coolify — this settles the open design
+      question and means the durable path below can use `payload.jobs.queue()` with the existing
+      runner rather than an external trigger.
 - [ ] Reconciliation dry run reviewed before any real run.
 - [ ] DDL for the new collection generated and applied via the Coolify PG terminal before the
       deploy, per the established migration workflow.
