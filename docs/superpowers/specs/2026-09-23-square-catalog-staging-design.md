@@ -312,3 +312,160 @@ Existing suites must stay green: `pnpm test` (alkebu-load), `npm run check` + `n
 3. Durable job + checkpoint — catalog path switches over.
 4. Reconciliation dry run → review → real run.
 5. Confirm new Square books appear within one sync interval.
+
+---
+
+# Revision 2 — 2026-09-25
+
+Seven defects were found in the first implementation plan during review. Five were plan-text
+errors and are fixed there. Four required architectural decisions that belong here, because the
+original spec either left them implicit or got them wrong. All were verified against the
+installed packages and production before being written down.
+
+## R2.1 Staging state machine (was implicit, and the plan's version was unsaveable)
+
+The original spec listed a `reviewStatus` enum but never defined its transitions, and the plan
+then proposed flipping a row to `ready` "when the issue list is now empty" — impossible, because
+`validationIssues` is `required` with `minRows: 1`. It also routed every *complete* mapping
+straight into Books, which bypasses the human gate the staging collection exists to provide.
+
+Transitions, exhaustively:
+
+| From | Event | To | Writes a Book? |
+|---|---|---|---|
+| (none) | sync maps an item incomplete | `needs-review` | no |
+| `needs-review` | sync re-observes, still incomplete | `needs-review` (refresh `rawItem`, `validationIssues`, `lastSeenAt`) | no |
+| `needs-review` | sync re-observes, now complete | `ready` | **no** |
+| `ready` | staff promotes | `promoted` (+ `promotedBook`) | yes, once |
+| `needs-review` / `ready` | staff rejects | `rejected` | no |
+| `rejected` | sync re-observes, any state | `rejected` (refresh `lastSeenAt` only) | **no** |
+| `promoted` | sync re-observes | unchanged; the sync updates the linked Book instead | yes, as an update |
+
+Rules the transitions imply:
+
+- **A `squareItemId` that has ever been staged is owned by the staging row, not by the sync.**
+  Before writing a Book, the sync looks up staging by `squareItemId`. A row in `needs-review`,
+  `ready` or `rejected` means *do not create a Book* even when the mapping is complete — set
+  `ready` and stop. Only `promoted` lets the sync write, and then only as an update to
+  `promotedBook`.
+- **`rejected` is sticky.** Re-observing a rejected item never resurrects it. Square's catalog
+  carries bulk supply SKUs that staff will reject once and must not have to reject again.
+- **`ready` does not auto-promote.** Confirmed decision; matches the wellness curation gate.
+- `validationIssues` keeps `minRows: 1`. A row that becomes complete records the sentinel issue
+  `{ field: '-', code: 'resolved', detail: 'Square now supplies all required data' }` rather
+  than an empty array, so the constraint holds and the history stays readable.
+
+## R2.2 Promotion is a first-class operation, not a side effect
+
+Nothing in the original plan implemented promotion, though the rollout and integration tests
+both assumed it. It needs:
+
+- An authorized action — admin or staff only, same gate as the collection.
+- Atomicity — the Book create and the staging row's move to `promoted` + `promotedBook` happen
+  in one Payload transaction, so a crash cannot leave a Book with no staging link or a
+  `promoted` row with no Book.
+- Idempotency — a row with `promotedBook` already set is refused, so a double-click or a
+  concurrent promotion produces one Book.
+
+## R2.3 Identity: a database-level unique constraint on `Books.squareItemId`
+
+"Upsert by `squareItemId`" was assumed repeat-safe. It is not: `Books.squareItemId` has no
+`unique` and no `index`, so two concurrent writers can both find nothing and both create.
+
+Verified against production 2026-09-25: **5,157 of 5,176 books carry a `squareItemId` and all
+5,157 are distinct.** The constraint can therefore be added cleanly; the 19 nulls are fine
+because Postgres treats NULLs as distinct for uniqueness.
+
+Add `unique: true, index: true` to `Books.squareItemId`, and add the same to
+`SquareCatalogStaging.squareItemId` (already specified there). Handle the unique-violation error
+on create by re-reading and updating, so a lost race degrades to an update rather than a 500.
+
+## R2.4 Concurrency: serialize all book writes through the job queue
+
+**This supersedes the optimistic `updatedAt` re-read in the original architecture, which was a
+narrowing of the race, not an elimination.** The re-read leaves a window between the check and
+the write, and — more fundamentally — both writers replace the *entire* `editions` array
+(`squareInventory` via `payload.update({ data: { editions: newEditions } })` at
+`square-catalog/route.ts:588-594`, and the catalog path likewise). A pure merge that preserves
+values cannot prevent a lost update when the array it merged into is already stale.
+
+Decision (user, 2026-09-25): move the inventory webhook's write onto the same job queue as the
+catalog sync and make book writes mutually exclusive.
+
+- Set `jobs.enableConcurrencyControl: true`. **This adds an indexed `concurrencyKey` field to
+  the jobs collection — a schema change that must be in the same migration as everything else.**
+- Both `square-catalog-sync` and a new `square-inventory-sync` task declare
+  `concurrency: { key: () => 'books-write' }`. `exclusive` defaults to `true`, so a second job
+  with that key stays queued until the first completes. Interleaving becomes structurally
+  impossible rather than retried.
+- `square-catalog-sync` additionally sets `deleteOlderPending: true`: several
+  `catalog.version.updated` events in quick succession only need the newest run.
+- The inventory webhook keeps its fast ack and its existing pure helper
+  (`applyInventoryCountToEditions`); only the *write* moves behind the queue. The handler's
+  logic is not rewritten — this path is healthy in production and the change is limited to where
+  it executes.
+
+A single global write key costs throughput. At this catalog's size and change rate that is
+irrelevant, and correctness is worth more than parallelism we do not need.
+
+## R2.5 Failure lifecycle: an unresolved item must fail the job
+
+The original task returned `{ failed: n }` and relied on the checkpoint not advancing. That is
+not a retry: a handler that returns normally **completes successfully**, so nothing reschedules
+it and the failure is invisible except in a counter.
+
+- Items that are neither written nor staged are collected. If any remain at the end of a run,
+  the handler **throws** after persisting the checkpoint and counters, so Payload's retry
+  machinery takes over.
+- `retries` is `{ attempts: 3, backoff: { type: 'exponential', delay: 5000 } }`. The original
+  plan's `backoff.maxDelay` is not a field on this type — `delay` and `type` are the only two.
+- On terminal failure (attempts exhausted) the run emails `STAFF_NOTIFICATION_EMAIL` via
+  `emailService`, matching the `sendRecoveryAlert` pattern. Email supplements durability; it
+  does not provide it.
+
+## R2.6 `rawItem` must be JSON-safe before it is stored
+
+Square SDK v43 returns `priceMoney.amount` as a **BigInt**, and catalog versions likewise.
+`JSON.stringify` throws `TypeError: Do not know how to serialize a BigInt`, so storing the raw
+SDK object in a `json` column fails at write time.
+
+Normalize losslessly before storing: walk the object and convert every `bigint` to a string
+tagged so it round-trips (`{ __bigint: "2299" }`), or to a plain string with the field's unit
+documented. Whichever form is chosen, a persistence test must store and re-read an object built
+from real SDK-shaped values including BigInt amounts.
+
+## R2.7 Completeness is judged per edition, not per item
+
+The mapper rule "some variation has a price and some variation has an ISBN" admits an item where
+those are *different* variations. Emitting every variation as an edition then fails Books
+validation on the unpriced or ISBN-less one.
+
+- A **variation is usable** when it has both a price and a SKU/UPC that validates as an ISBN.
+- An item is **complete** only when *every* variation it would emit is usable. Mixed-validity
+  items go to staging with a per-variation issue list naming which failed and why.
+- `isValidIsbn` gains a **checksum** test (ISBN-13 mod-10 weighted 1/3; ISBN-10 mod-11). The
+  copied helper checks digit-count only, so an arbitrary 13-digit SKU passes as an ISBN today.
+  For a gate deciding Book-versus-staging, a failed checksum should send the item to a human.
+
+## R2.8 Migration procedure
+
+The plan's `pnpm payload migrate:create` step would run against the now-corrected local
+`DATABASE_URI=file:./alkebulanimages.db` and emit **SQLite** DDL. Production needs Postgres.
+
+- Generate with an explicit Postgres URI pointing at a **local throwaway Postgres**, never at
+  production. The `postgres` service in `docker-compose.yml` is usable for this.
+- Register everything schema-affecting *before* generating: the staging collection, the
+  sync-state global, `Books.lastSyncedAt`, `Books.squareItemId` uniqueness, **both job tasks**
+  (task slugs live in the `enum_payload_jobs_task_slug` Postgres enum — see
+  `src/migrations/20260705_174837_add_mcp_api_keys.ts:10-11`), and
+  `jobs.enableConcurrencyControl`. One migration, generated last, covering all of it.
+
+## R2.9 Corrections to the record
+
+- **Lint warnings do not fail the build.** `CLAUDE.md` and the first plan both claimed
+  `pnpm build` fails on warnings. It does not — the build passes with 480 warnings present.
+- **Integration tests get an explicit disposable database** with enrichment disabled, never the
+  developer's working database.
+- **Nothing type-checked the tests.** `pnpm test` runs via `tsx` (types stripped) and
+  `next build` excludes `tests/`, so four real type errors shipped in `jobRunnerConfig.test.ts`.
+  Fixed in `d1ea199`, which also adds `pnpm check:types`. Every task must run it.
