@@ -544,9 +544,19 @@ const Books: CollectionConfig = {
     {
       name: 'squareItemId',
       type: 'text',
+      unique: true,
+      index: true,
       admin: {
-        description: 'Square POS item ID for sync tracking'
+        description: 'Square POS item ID. Unique: upsert-by-square-id is only repeat-safe with a DB constraint.'
       }
+    },
+    {
+      name: 'lastSyncedAt',
+      type: 'date',
+      admin: {
+        description: 'Last time a Square catalog sync wrote to this book',
+        position: 'sidebar',
+      },
     },
     {
       name: 'importSource',

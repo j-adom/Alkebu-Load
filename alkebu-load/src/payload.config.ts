@@ -45,6 +45,8 @@ import { Orders } from './collections/Orders'
 import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
 import { PartnershipInquiries } from './collections/PartnershipInquiries'
+import { SquareCatalogStaging } from './collections/SquareCatalogStaging'
+import { SquareSyncState } from './globals/SquareSyncState'
 import { getEmailRuntimeConfig, getEmailTransportOptions, shouldSkipEmailTransportVerify } from './app/utils/emailConfig'
 // (getEmailRuntimeConfig also backs the schema-drift boot alert below)
 
@@ -165,6 +167,7 @@ export default buildConfig({
     ContactPage,
     ShopPage,
     SiteSettings,
+    SquareSyncState,
   ],
   collections: [
     Users,
@@ -193,7 +196,8 @@ export default buildConfig({
     // System Collections
     SearchAnalytics,
     BookQuotes,
-    ExternalBooks
+    ExternalBooks,
+    SquareCatalogStaging
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
@@ -247,6 +251,10 @@ export default buildConfig({
     // are inert -- Payload registers them but nothing ever queues or executes
     // them. Opt-in per environment; see jobRunnerConfig.ts for why.
     autoRun: resolveJobAutoRunConfig(),
+    // Required for the `concurrency` key on the Square tasks. Adds an indexed
+    // concurrencyKey field to the jobs collection -- schema change, covered by
+    // the single migration generated in Task 8.
+    enableConcurrencyControl: true,
     tasks: [
       {
         slug: 'cleanup-abandoned-carts',

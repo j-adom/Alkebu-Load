@@ -92,6 +92,7 @@ export interface Config {
     searchAnalytics: SearchAnalytic;
     bookQuotes: BookQuote;
     externalBooks: ExternalBook;
+    'square-catalog-staging': SquareCatalogStaging;
     'payload-mcp-api-keys': PayloadMcpApiKey;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -124,6 +125,7 @@ export interface Config {
     searchAnalytics: SearchAnalyticsSelect<false> | SearchAnalyticsSelect<true>;
     bookQuotes: BookQuotesSelect<false> | BookQuotesSelect<true>;
     externalBooks: ExternalBooksSelect<false> | ExternalBooksSelect<true>;
+    'square-catalog-staging': SquareCatalogStagingSelect<false> | SquareCatalogStagingSelect<true>;
     'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -141,6 +143,7 @@ export interface Config {
     contactPage: ContactPage;
     shopPage: ShopPage;
     siteSettings: SiteSetting;
+    squareSyncState: SquareSyncState;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
@@ -149,6 +152,7 @@ export interface Config {
     contactPage: ContactPageSelect<false> | ContactPageSelect<true>;
     shopPage: ShopPageSelect<false> | ShopPageSelect<true>;
     siteSettings: SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    squareSyncState: SquareSyncStateSelect<false> | SquareSyncStateSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
@@ -1123,9 +1127,13 @@ export interface Book {
    */
   relatedBooks?: (number | Book)[] | null;
   /**
-   * Square POS item ID for sync tracking
+   * Square POS item ID. Unique: upsert-by-square-id is only repeat-safe with a DB constraint.
    */
   squareItemId?: string | null;
+  /**
+   * Last time a Square catalog sync wrote to this book
+   */
+  lastSyncedAt?: string | null;
   /**
    * Source of this book data
    */
@@ -5155,6 +5163,60 @@ export interface ExternalBook {
   createdAt: string;
 }
 /**
+ * Square catalog items awaiting review. Complete the missing data and promote, or reject. Rejection is permanent: a rejected item is never re-imported.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "square-catalog-staging".
+ */
+export interface SquareCatalogStaging {
+  id: number;
+  squareItemId: string;
+  squareCatalogVersion: string;
+  squareUpdatedAt: string;
+  /**
+   * Square payload, BigInt-normalised by jsonSafe.ts. Storing the raw SDK object throws: JSON.stringify cannot serialise BigInt, and priceMoney.amount is one.
+   */
+  rawItem:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Why this is not a Book. A row that becomes complete records the sentinel {field:"-", code:"resolved"} rather than an empty array, because minRows is 1.
+   */
+  validationIssues: {
+    field: string;
+    code: string;
+    detail?: string | null;
+    /**
+     * Set when the issue is per-variation.
+     */
+    variationId?: string | null;
+    id?: string | null;
+  }[];
+  reviewStatus: 'needs-review' | 'ready' | 'promoted' | 'rejected';
+  /**
+   * Set on promotion. Its presence refuses a second promotion.
+   */
+  promotedBook?: (number | null) | Book;
+  proposedTitle?: string | null;
+  /**
+   * Only when the SKU passed the ISBN checksum. Never a raw SKU.
+   */
+  proposedIsbn?: string | null;
+  /**
+   * Cents, unconverted.
+   */
+  proposedPriceCents?: number | null;
+  lastSeenAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * API keys control which collections, resources, tools, and prompts MCP clients can access
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5414,6 +5476,10 @@ export interface PayloadJob {
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
+  /**
+   * Used for concurrency control. Jobs with the same key are subject to exclusive/supersedes rules.
+   */
+  concurrencyKey?: string | null;
   meta?:
     | {
         [k: string]: unknown;
@@ -5524,6 +5590,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'externalBooks';
         value: number | ExternalBook;
+      } | null)
+    | ({
+        relationTo: 'square-catalog-staging';
+        value: number | SquareCatalogStaging;
       } | null)
     | ({
         relationTo: 'payload-mcp-api-keys';
@@ -6468,6 +6538,7 @@ export interface BooksSelect<T extends boolean = true> {
       };
   relatedBooks?: T;
   squareItemId?: T;
+  lastSyncedAt?: T;
   importSource?: T;
   importDate?: T;
   lastUpdated?: T;
@@ -7459,6 +7530,33 @@ export interface ExternalBooksSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "square-catalog-staging_select".
+ */
+export interface SquareCatalogStagingSelect<T extends boolean = true> {
+  squareItemId?: T;
+  squareCatalogVersion?: T;
+  squareUpdatedAt?: T;
+  rawItem?: T;
+  validationIssues?:
+    | T
+    | {
+        field?: T;
+        code?: T;
+        detail?: T;
+        variationId?: T;
+        id?: T;
+      };
+  reviewStatus?: T;
+  promotedBook?: T;
+  proposedTitle?: T;
+  proposedIsbn?: T;
+  proposedPriceCents?: T;
+  lastSeenAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-mcp-api-keys_select".
  */
 export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
@@ -7586,6 +7684,7 @@ export interface PayloadJobsSelect<T extends boolean = true> {
   queue?: T;
   waitUntil?: T;
   processing?: T;
+  concurrencyKey?: T;
   meta?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -7807,6 +7906,24 @@ export interface SiteSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "squareSyncState".
+ */
+export interface SquareSyncState {
+  id: number;
+  /**
+   * High-water mark: every Square item changed at or before this instant is written or staged. Empty means never synced.
+   */
+  catalogSyncedThrough?: string | null;
+  lastRunAt?: string | null;
+  lastRunCreated?: number | null;
+  lastRunUpdated?: number | null;
+  lastRunStaged?: number | null;
+  lastRunUnresolved?: number | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
@@ -7990,6 +8107,21 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         title?: T;
         description?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "squareSyncState_select".
+ */
+export interface SquareSyncStateSelect<T extends boolean = true> {
+  catalogSyncedThrough?: T;
+  lastRunAt?: T;
+  lastRunCreated?: T;
+  lastRunUpdated?: T;
+  lastRunStaged?: T;
+  lastRunUnresolved?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
