@@ -1,3 +1,4 @@
+import { getWellnessPhotography } from './wellnessPhotography';
 import { formatCurrency } from '$lib/utils/currency';
 
 export type ProductType = 'books' | 'wellness-lifestyle' | 'fashion-jewelry' | 'oils-incense';
@@ -47,7 +48,8 @@ function resolveImage(product: any): any {
     product?.heroImage ||
     product?.images?.[0]?.image ||
     product?.images?.[0] ||
-    (product?.scrapedImageUrls?.[0]?.url ? { url: product.scrapedImageUrls[0].url } : null)
+    (product?.scrapedImageUrls?.[0]?.url ? { url: product.scrapedImageUrls[0].url } : null) ||
+    getWellnessPhotography(product)[0]
   );
 }
 

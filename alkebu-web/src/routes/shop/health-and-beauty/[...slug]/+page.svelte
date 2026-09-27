@@ -1,6 +1,7 @@
 <script lang="ts">
   import Meta from '$lib/components/Meta.svelte';
-  import PayloadImage from '$lib/components/PayloadImage.svelte';
+  import ProductPhotoGallery from '$lib/components/Shop/ProductPhotoGallery.svelte';
+  import { getWellnessPhotography } from '$lib/utils/wellnessPhotography';
   import LexicalRenderer from '$lib/components/LexicalRenderer.svelte';
   import AddToCartButton from '$lib/components/cart/AddToCartButton.svelte';
   import ProductCard from '$lib/components/Shop/ProductCard.svelte';
@@ -47,10 +48,10 @@
     const images = Array.isArray(product.images)
       ? product.images.map((img: any) => img?.image || img).filter(Boolean)
       : [];
-    return product.heroImage ? [product.heroImage, ...images] : images;
+    const combined = [product.heroImage, ...images, ...getWellnessPhotography(product)];
+    return combined.filter((image, index) => image?.url &&
+      combined.findIndex((other) => other?.url === image.url) === index);
   });
-  const heroImage = $derived(gallery[0]);
-  const secondaryImages = $derived(gallery.slice(1, 5));
 
   const ingredients = $derived(
     Array.isArray(product.ingredients)
@@ -68,50 +69,19 @@
 
 <Meta metadata={seo} />
 
-<!-- Page Header -->
-<section
-  class="page-header"
-  style={heroImage ? `background-image: linear-gradient(90deg, rgba(23,23,23,0.65), rgba(23,23,23,0.45)), url(${heroImage.url});` : ''}
->
-  <div class="container">
-    <h2>{productName}</h2>
-    <ul class="flex items-center gap-2 text-sm text-white/80">
-      <li><a href="/">Home</a></li>
-      <li><a href="/shop">Shop</a></li>
-      <li><a href="/shop/health-and-beauty">Health & Beauty</a></li>
-      <li><span>{productName}</span></li>
-    </ul>
-  </div>
-</section>
+<nav class="product-breadcrumb container mx-auto px-6 lg:px-12" aria-label="Breadcrumb">
+  <a href="/">Home</a><span aria-hidden="true">/</span>
+  <a href="/shop">Shop</a><span aria-hidden="true">/</span>
+  <a href="/shop/health-and-beauty">Health &amp; Beauty</a>
+</nav>
 
 <!-- Product Detail -->
 {#key product.id}
-  <section class="product-detail py-12">
+  <section class="product-detail pb-12">
     <div class="container mx-auto px-6 lg:px-12">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <!-- Product Images -->
-        <div>
-          <div class="sticky top-24">
-            {#if heroImage}
-              <div class="mb-4 rounded-lg overflow-hidden bg-white shadow-lg">
-                <PayloadImage image={heroImage} alt={productName} maxWidth={600} />
-              </div>
-
-              {#if secondaryImages.length}
-                <div class="grid grid-cols-4 gap-2">
-                  {#each secondaryImages as image}
-                    <div class="rounded overflow-hidden cursor-pointer hover:opacity-75 transition-opacity">
-                      <PayloadImage {image} alt={productName} maxWidth={150} />
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-            {:else}
-              <div class="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-                <i class="fas fa-image text-6xl text-gray-400"></i>
-              </div>
-            {/if}
-          </div>
+      <div class="product-layout">
+        <div class="min-w-0">
+          <ProductPhotoGallery images={gallery} {productName} />
         </div>
 
         <!-- Product Info -->
@@ -123,7 +93,7 @@
               </p>
             {/if}
 
-            <h1 class="text-3xl lg:text-4xl font-bold mb-4 text-foreground">
+            <h1 class="text-3xl lg:text-4xl font-display font-bold mb-4 text-foreground">
               {productName}
             </h1>
 
@@ -133,7 +103,7 @@
 
             <!-- Price -->
             <div class="mb-6">
-              <p class="text-4xl font-bold text-primary">{formatCents(displayPriceCents)}</p>
+              <p class="text-3xl font-semibold text-foreground tabular-nums">{formatCents(displayPriceCents)}</p>
             </div>
 
             <!-- Stock Status -->
@@ -155,6 +125,18 @@
           <!-- Variant Picker (scent + size) — omitted entirely for single-variation products -->
           <div class="mb-8">
             <VariantPicker {variations} onchange={(v) => (selectedVariation = v)} />
+          </div>
+
+          <!-- Add to Cart -->
+          <div class="mb-8">
+            <AddToCartButton
+              productId={product.id}
+              {productType}
+              {customization}
+              disabled={!canAddToCart}
+              className="btn-primary w-full text-center text-lg py-4"
+              label={canAddToCart ? 'Add to Cart' : 'Out of Stock'}
+            />
           </div>
 
           <!-- Description -->
@@ -192,18 +174,6 @@
                 </div>
               {/if}
             </dl>
-          </div>
-
-          <!-- Add to Cart -->
-          <div class="mb-8">
-            <AddToCartButton
-              productId={product.id}
-              {productType}
-              {customization}
-              disabled={!canAddToCart}
-              className="btn-primary w-full text-center text-lg py-4"
-              label={canAddToCart ? 'Add to Cart' : 'Out of Stock'}
-            />
           </div>
 
           <!-- Additional Info -->
@@ -249,10 +219,12 @@
 {/key}
 
 <style>
-  .page-header {
-    background-size: cover;
-    background-position: center;
-    color: white;
-    padding: 4rem 0 2.5rem;
-  }
+  .product-breadcrumb { display: flex; flex-wrap: wrap; gap: .75rem; padding-top: 2rem; padding-bottom: 2rem; font-size: .875rem; color: hsl(var(--foreground) / .8); }
+  .product-breadcrumb a:hover { color: hsl(var(--foreground)); text-decoration: underline; text-underline-offset: .25em; }
+  .product-breadcrumb a:focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: 4px; }
+  .product-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
+  .product-layout > div { min-width: 0; }
+  .product-detail :global(h1) { text-wrap: balance; }
+  .product-detail :global(dd) { overflow-wrap: anywhere; }
+  @media (min-width: 1024px) { .product-layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 3.5rem; } }
 </style>

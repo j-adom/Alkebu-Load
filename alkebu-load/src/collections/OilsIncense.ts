@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { collapsedVariations } from '../fields/collapsedVariations';
 
 const OilsIncense: CollectionConfig = {
   slug: 'oils-incense',
@@ -121,7 +122,7 @@ const OilsIncense: CollectionConfig = {
     },
 
     // Product Variations
-    {
+    collapsedVariations({
       name: 'variations',
       type: 'array',
       required: true,
@@ -229,9 +230,13 @@ const OilsIncense: CollectionConfig = {
         }
       ],
       admin: {
-        description: 'Available sizes and formats'
+        // Large scent/size catalogs should not open hundreds of input rows.
+        initCollapsed: true,
+        // Storefront ordering is derived from scent and price, not row order.
+        isSortable: false,
+        description: 'Scent and size variations. Expand a row to edit it; use Collapse All to close previously opened rows.'
       }
-    },
+    }),
 
     // Sage Bundle Specific Fields
     {
