@@ -53,7 +53,7 @@ export const load: PageServerLoad = async ({ url, setHeaders }) => {
 
     // Set strong edge caching (6 hours) with long stale window (24 hours)
     setHeaders({
-      'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400, stale-if-error=86400',
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600, stale-if-error=86400',
       'Vary': 'Accept-Encoding',
       // Surrogate key for targeted purge
       'x-key': `books${category ? `,category:${category}` : ''},page:${page},sort:${sort}`

@@ -78,7 +78,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 
     // Set caching
     setHeaders({
-      'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400, stale-if-error=86400',
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600, stale-if-error=86400',
       'Vary': 'Accept-Encoding',
       'x-key': `author:${authorSlug},books-by-author`
     });
