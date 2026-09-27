@@ -7931,6 +7931,7 @@ export interface SquareSyncState {
   lastRunUpdated?: number | null;
   lastRunStaged?: number | null;
   lastRunUnresolved?: number | null;
+  lastRunSkippedNonBook?: number | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -8134,6 +8135,7 @@ export interface SquareSyncStateSelect<T extends boolean = true> {
   lastRunUpdated?: T;
   lastRunStaged?: T;
   lastRunUnresolved?: T;
+  lastRunSkippedNonBook?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -27,5 +27,6 @@ export const SquareSyncState: GlobalConfig = {
     { name: 'lastRunUpdated', type: 'number', defaultValue: 0 },
     { name: 'lastRunStaged', type: 'number', defaultValue: 0 },
     { name: 'lastRunUnresolved', type: 'number', defaultValue: 0 },
+    { name: 'lastRunSkippedNonBook', type: 'number', defaultValue: 0 },
   ],
 };

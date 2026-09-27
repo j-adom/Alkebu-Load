@@ -329,10 +329,10 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
   // the same watermark and counts a completed-then-thrown run would have
   // left, not lose them because the process exited via an exception.
   //
-  // squareSyncState has no field for skippedNonBook -- it's a log/return-value
-  // counter only, not persisted. Adding a field is a schema change out of
-  // scope for this fix; the four persisted counters are the committed
-  // interface from an earlier task.
+  // lastRunSkippedNonBook makes the non-book allow-list's blast radius
+  // visible beyond a single Coolify log line -- deleteJobOnComplete defaults
+  // to true, so the job record (and its returned counters) is gone the
+  // moment the job succeeds. This global is the only durable record.
   await payload.updateGlobal({
     slug: 'squareSyncState',
     data: {
@@ -342,6 +342,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
       lastRunUpdated: updated,
       lastRunStaged: staged,
       lastRunUnresolved: unresolved,
+      lastRunSkippedNonBook: skippedNonBook,
     },
   });
 
