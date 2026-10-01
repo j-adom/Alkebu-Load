@@ -883,6 +883,12 @@ git commit -m "test(square): integration coverage incl. real interleaving and co
 
 ### Task 8: Generate the single Postgres migration
 
+**Progress update — 2026-09-27:** The original migration-file procedure below was superseded for this release by scoped SQL in `alkebu-load/scripts/add-square-catalog-staging-schema.sql` (committed in `8c09288`). Historical migration snapshots predate manually applied schema changes, so do not run the old generation/apply instructions against production. The scoped SQL also includes both job task/log enums, the locked-document relation column/index/FK, and `last_run_skipped_non_book`.
+
+The SQL was tested on disposable PostgreSQL 14 using a modeled pre-feature schema: initial apply, rerun, duplicate-ID refusal, preservation of book values, and upgrade of an existing non-unique Square ID index passed. This does not establish that the application integration suite was rerun against PostgreSQL. Local corrections to non-unique-index handling and verification are awaiting commit at this checkpoint.
+
+The user's latest production checks against `alkebulan` on PostgreSQL 17.9 confirm the three Square tables, four expected added columns, both Square values in both job enums, an existing UNIQUE book Square ID index, and no duplicate non-null book Square IDs. No additional production database update is needed for this release. See the [release checklist](../../design/wellness-release-checklist.md#progress--2026-09-27) for exact evidence and remaining deployment checks. The unchecked steps below preserve the original proposal, not an outstanding instruction to regenerate the migration.
+
 Everything schema-affecting is now registered. This is the only task that generates DDL.
 
 - [ ] **Step 1: Start a throwaway local Postgres**
@@ -959,8 +965,8 @@ cd alkebu-load && tsx --loader ./css-stub-loader.mjs scripts/reconcile-square-ca
 
 Not dispatched to an agent: needs the Coolify Postgres terminal and judgement about the queue.
 
-- [ ] **Step 1** — Re-read the Task 8 migration. Confirm it alters nothing unexpected on `books`.
-- [ ] **Step 2** — Apply the DDL via the Coolify Postgres terminal, **before** the deploy.
+- [x] **Step 1** — Reviewed the scoped Task 8 SQL. Book changes are limited to `last_synced_at` and the unique Square ID index; existing book values were preserved in local tests.
+- [x] **Step 2** — Database prerequisite verified complete on 2026-09-27 via user-provided production SQL results (see Task 8 update). No further DDL required; this records verified schema state, not an agent-executed production migration.
 - [ ] **Step 3** — `git push origin main`; watch the build; `curl -s https://payload.alkebulanimages.com/api/health`.
 - [ ] **Step 4** — Confirm the inventory path still works after being moved behind the queue. This is the regression risk of the whole change: make a stock change in Square and watch it land. Do this **before** the backfill.
 - [ ] **Step 5** — Dry-run the reconciliation against production. **Read the `staged` count before anything else** — that is the review queue you are inheriting. Hundreds means stop and reconsider the completeness bar.
