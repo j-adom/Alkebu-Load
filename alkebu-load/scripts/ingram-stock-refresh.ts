@@ -18,6 +18,17 @@ dotenv.config({ path: './.env' })
 // Dynamic imports: static ones are hoisted above dotenv.config(), and payload.config reads
 // DATABASE_URI and PAYLOAD_SECRET at module load.
 async function main() {
+  // Only meaningful (and only safe) against Postgres. On a SQLite file:… URI, Payload's
+  // dev-mode schema push rewrites the local database, and the counts would describe a
+  // stale local catalog. For Postgres, the config only allows dev push to local hosts.
+  if (!process.env.DATABASE_URI?.startsWith('postgres')) {
+    console.error(
+      '[refresh] DATABASE_URI is not a Postgres URL. Run against the production database, e.g.\n' +
+        "  DATABASE_URI='postgresql://…' pnpm ingram:stock-refresh",
+    )
+    process.exit(1)
+  }
+
   const { getPayload } = await import('payload')
   const { default: config } = await import('../src/payload.config.js')
   const { applyStockToEditions } = await import('../src/app/utils/ingram/applyIngramStock')
