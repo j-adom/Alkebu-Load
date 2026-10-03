@@ -26,6 +26,7 @@
  */
 import dotenv from 'dotenv'
 import { readFile, writeFile } from 'node:fs/promises'
+import type { StockSnapshotInput } from '../src/app/utils/ingram/refreshCatalogStock'
 import { resolve } from 'node:path'
 dotenv.config({ path: './.env' })
 
@@ -94,7 +95,7 @@ async function main() {
 
   console.log(`[refresh] feed ${feed.name}: ${feed.remotePath} (${apply ? 'APPLY' : 'dry run'})`)
   const started = Date.now()
-  let cached: { savedAt: string; input: any; counts: any } | null = null
+  let cached: { savedAt: string; input: StockSnapshotInput; counts: Record<string, number> } | null = null
   if (!process.argv.includes('--fresh')) {
     try {
       cached = JSON.parse(await readFile(SNAPSHOT_CACHE, 'utf8'))
