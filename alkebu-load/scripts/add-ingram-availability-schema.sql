@@ -15,8 +15,12 @@
 -- add-square-catalog-staging-schema.sql: prod has no prodMigrations configured and the
 -- last migration snapshot predates several hand-applied fixes.
 --
--- Additive only: new nullable/defaulted columns, one enum type and one index. Nothing is
--- dropped, retyped or backfilled. Names and types follow Payload's postgres naming
+-- Additive only: new nullable/defaulted columns, one enum type, two indexes, four job enum
+-- labels, and a NULL-only backfill of books_editions.square_item_id. Nothing is dropped
+-- or retyped.
+--
+-- Applied to production 2026-10-03 (PostgreSQL 17.9): backfilled 4160 editions, matching
+-- the pre-check count; verification passed. Names and types follow Payload's postgres naming
 -- (group prefixes, enum_<table>_<field>, <table>_<column>_idx).
 --
 -- Single transaction, all-or-nothing, idempotent (safe to re-run).
