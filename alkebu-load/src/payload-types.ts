@@ -168,6 +168,8 @@ export interface Config {
       'recover-stripe-orders': TaskRecoverStripeOrders;
       'square-catalog-sync': TaskSquareCatalogSync;
       'square-inventory-sync': TaskSquareInventorySync;
+      'ingram-stock-fetch': TaskIngramStockFetch;
+      'ingram-stock-apply': TaskIngramStockApply;
       inline: {
         input: unknown;
         output: unknown;
@@ -5465,7 +5467,9 @@ export interface PayloadJob {
           | 'quote-followups'
           | 'recover-stripe-orders'
           | 'square-catalog-sync'
-          | 'square-inventory-sync';
+          | 'square-inventory-sync'
+          | 'ingram-stock-fetch'
+          | 'ingram-stock-apply';
         taskID: string;
         input?:
           | {
@@ -5507,6 +5511,8 @@ export interface PayloadJob {
         | 'recover-stripe-orders'
         | 'square-catalog-sync'
         | 'square-inventory-sync'
+        | 'ingram-stock-fetch'
+        | 'ingram-stock-apply'
       )
     | null;
   queue?: string | null;
@@ -8235,6 +8241,22 @@ export interface TaskSquareCatalogSync {
  * via the `definition` "TaskSquare-inventory-sync".
  */
 export interface TaskSquareInventorySync {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-stock-fetch".
+ */
+export interface TaskIngramStockFetch {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-stock-apply".
+ */
+export interface TaskIngramStockApply {
   input?: unknown;
   output?: unknown;
 }

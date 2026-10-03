@@ -1,6 +1,9 @@
--- Ingram Phase 1 schema (plan Tasks 5 and 9)
+-- Ingram availability schema (plan Tasks 5, 9 and 12)
 --   - books_editions: Ingram availability cache + manual vendor flag
 --   - orders / orders_items: needsIngramOrder flag + per-line fulfillmentSource
+--   - payload_jobs task-slug enums: ingram-stock-fetch, ingram-stock-apply
+--
+-- Requires PostgreSQL 12+ (ALTER TYPE ... ADD VALUE inside a transaction).
 --
 -- APPLY TO PRODUCTION POSTGRES *BEFORE* DEPLOYING the branch that adds these fields.
 -- Without the columns, Payload errors when it reads or writes books or orders.
@@ -48,6 +51,11 @@ ALTER TABLE "orders_items" ADD COLUMN IF NOT EXISTS "fulfillment_source" "enum_o
 ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "needs_ingram_order" boolean DEFAULT false;
 CREATE INDEX IF NOT EXISTS "orders_needs_ingram_order_idx" ON "orders" USING btree ("needs_ingram_order");
 
+ALTER TYPE public.enum_payload_jobs_log_task_slug ADD VALUE IF NOT EXISTS 'ingram-stock-fetch';
+ALTER TYPE public.enum_payload_jobs_log_task_slug ADD VALUE IF NOT EXISTS 'ingram-stock-apply';
+ALTER TYPE public.enum_payload_jobs_task_slug     ADD VALUE IF NOT EXISTS 'ingram-stock-fetch';
+ALTER TYPE public.enum_payload_jobs_task_slug     ADD VALUE IF NOT EXISTS 'ingram-stock-apply';
+
 -- 2. Verify ------------------------------------------------------------------------------
 DO $do$
 DECLARE
@@ -71,6 +79,12 @@ BEGIN
    WHERE c.column_name IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'Verification failed, missing or wrong type: %', missing;
+  END IF;
+  -- Enum labels added in this transaction are visible to catalog queries here.
+  IF (SELECT count(*) FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+       WHERE t.typname IN ('enum_payload_jobs_task_slug', 'enum_payload_jobs_log_task_slug')
+         AND e.enumlabel IN ('ingram-stock-fetch', 'ingram-stock-apply')) <> 4 THEN
+    RAISE EXCEPTION 'Verification failed: Ingram job slugs missing from the payload_jobs enums';
   END IF;
 END
 $do$;
