@@ -32,6 +32,9 @@ async function main() {
     process.exit(1)
   }
   process.env.DATABASE_URI = uri
+  // Never let Payload's dev-mode schema push run from this script. It is allowed for
+  // localhost, and an SSH tunnel makes production look like localhost:<port>.
+  ;(process.env as Record<string, string>).NODE_ENV = 'production'
 
   const { getPayload } = await import('payload')
   const { default: config } = await import('../src/payload.config.js')
