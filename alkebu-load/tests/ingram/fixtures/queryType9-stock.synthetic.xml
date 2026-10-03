@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SYNTHETIC fixture: invented values, not Ingram data (agreement §2(c)).
+  Envelope/Basic structure matches the live production response (2026-10-02).
+  The <Ingram><Stock> section is the planned structure and is NOT yet verified;
+  the live account returned no stock section with dataRequest=STK.
+-->
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <SearchRequestTypes12349EnhancedResponse xmlns="http://ingrambook.com/CompDataAccess/companion">
+      <SearchRequestTypes12349EnhancedResult>
+        <IngramSearchResults>
+          <SearchMessage>OK</SearchMessage>
+          <TotalRecs>2</TotalRecs>
+          <Product>
+            <Basic>
+              <ISBN>0000000001</ISBN>
+              <EAN>9780000000002</EAN>
+              <PubListPrice>24.95</PubListPrice>
+            </Basic>
+            <Ingram>
+              <IngramPrice>14.97</IngramPrice>
+              <ProductAvailability>21</ProductAvailability>
+              <OnSaleDate>20250115</OnSaleDate>
+              <Backorder>N</Backorder>
+              <MediaMail>Y</MediaMail>
+              <Stock>
+                <LaVergne><OnHand>57</OnHand><OnOrder>0</OnOrder><StockStatus>Y</StockStatus></LaVergne>
+                <FtWayne><OnHand>0</OnHand><OnOrder>30</OnOrder><StockStatus>N</StockStatus></FtWayne>
+              </Stock>
+            </Ingram>
+          </Product>
+          <Product>
+            <Basic>
+              <EAN>9790000000001</EAN>
+              <PubListPrice>12.00</PubListPrice>
+            </Basic>
+          </Product>
+        </IngramSearchResults>
+      </SearchRequestTypes12349EnhancedResult>
+    </SearchRequestTypes12349EnhancedResponse>
+  </soap:Body>
+</soap:Envelope>
