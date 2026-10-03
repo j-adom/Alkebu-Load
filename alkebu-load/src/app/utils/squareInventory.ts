@@ -13,6 +13,7 @@ export interface SquareInventoryCount {
 /**
  * Return a new editions array with the matching edition's `inventory.stockLevel` set to `quantity`.
  * Square POS is the source of truth for stock, so this overwrites the existing value.
+ * Negative counts (Square reports them when the POS oversells) are clamped to 0.
  * Non-matching editions are returned unchanged (same reference).
  */
 export function applyInventoryCountToEditions(
@@ -22,7 +23,7 @@ export function applyInventoryCountToEditions(
 ): any[] {
   return editions.map((edition) =>
     edition?.squareVariationId === squareVariationId
-      ? { ...edition, inventory: { ...(edition.inventory || {}), stockLevel: quantity } }
+      ? { ...edition, inventory: { ...(edition.inventory || {}), stockLevel: Math.max(0, quantity) } }
       : edition,
   )
 }
@@ -30,7 +31,7 @@ export function applyInventoryCountToEditions(
 /**
  * Return a new variations array (WellnessLifestyle / OilsIncense) with the matching
  * variation's `stock` set to `quantity`. Square POS is the source of truth for stock,
- * so this overwrites the existing value.
+ * so this overwrites the existing value. Negative counts are clamped to 0.
  *
  * Payload does NOT row-reconcile array fields on update -- sending `variations` replaces
  * the entire stored array. This function starts from the EXISTING row for every
@@ -46,7 +47,7 @@ export function applyInventoryCountToVariations(
 ): any[] {
   return variations.map((variation) =>
     variation?.squareVariationId === squareVariationId
-      ? { ...variation, stock: quantity }
+      ? { ...variation, stock: Math.max(0, quantity) }
       : variation,
   )
 }
