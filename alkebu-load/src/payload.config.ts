@@ -343,7 +343,7 @@ export default buildConfig({
           const feed = stockFeedFromEnv();
           const { input, counts } = await fetchStockSnapshot(req.payload, {
             remotePath: feed.remotePath,
-            format: feed.format,
+            format: feed.createFormat(),
             minLines: feed.minLines,
             threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
           });

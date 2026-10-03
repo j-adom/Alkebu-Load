@@ -20,6 +20,7 @@ export function ingramOnHand(stock: IngramStock, primaryDc = 'LaVergne'): number
 // 31 temporarily out of stock, 40 not available from Ingram.
 const FULFILLABLE_CODES = new Set(['20', '21', '22']);
 const UNAVAILABLE_CODES = new Set(['31', '40']);
+export const KNOWN_AVAILABILITY_CODES = new Set([...FULFILLABLE_CODES, ...UNAVAILABLE_CODES]);
 
 /**
  * Code-first: the on-sale-date gate, then the availability code, and the quantity
@@ -46,6 +47,8 @@ const chicagoDate = new Intl.DateTimeFormat('en-CA', {
 });
 
 function isOnSale(onSaleDate: string | undefined, today: Date): boolean {
+  // A date the feed parser couldn't read: never risk selling before street date.
+  if (onSaleDate === 'unrecognized') return false;
   // Unset, '00010101' or malformed means no street date: sellable on receipt.
   if (!onSaleDate || !/^\d{8}$/.test(onSaleDate) || onSaleDate <= '00010101') return true;
   // Street dates are local, so compare against the store's calendar date, not UTC's.

@@ -29,7 +29,7 @@ async function main() {
   const started = Date.now()
   const { input, counts } = await fetchStockSnapshot(payload, {
     remotePath: feed.remotePath,
-    format: feed.format,
+    format: feed.createFormat(),
     minLines: feed.minLines,
     threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
   })

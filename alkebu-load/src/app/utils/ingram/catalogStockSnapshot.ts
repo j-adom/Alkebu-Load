@@ -4,7 +4,7 @@
 import type { CompactStock } from './applyIngramStock';
 import type { IngramStock } from './parseStockResponse';
 import { parseStockV2Line, stockV2Ean } from './parseStockV2';
-import { ingramOnHand, isIngramAvailable } from './stockAvailability';
+import { ingramOnHand, isIngramAvailable, KNOWN_AVAILABILITY_CODES } from './stockAvailability';
 
 export interface FeedFormat {
   /** Called with the first line; returns true if it was a header (not a record). */
@@ -25,6 +25,10 @@ export interface CatalogSnapshot {
   matched: number;
   /** Lines with no readable EAN (blank, truncated, malformed). */
   skippedLines: number;
+  /** Matched records whose on-sale date couldn't be read (treated as not yet on sale). */
+  unrecognizedOnSaleDates: number;
+  /** Matched records with an availability code outside the known set (quantity fallback). */
+  unrecognizedAvailabilityCodes: number;
 }
 
 export async function buildSnapshot(
@@ -36,6 +40,8 @@ export async function buildSnapshot(
   const stock = new Map<string, CompactStock>();
   let scannedLines = 0;
   let skippedLines = 0;
+  let unrecognizedOnSaleDates = 0;
+  let unrecognizedAvailabilityCodes = 0;
   let first = true;
 
   for await (const line of lines) {
@@ -55,11 +61,21 @@ export async function buildSnapshot(
       skippedLines += 1;
       continue;
     }
+    if (record.onSaleDate === 'unrecognized') unrecognizedOnSaleDates += 1;
+    const code = record.productAvailability?.trim();
+    if (code && !KNOWN_AVAILABILITY_CODES.has(code)) unrecognizedAvailabilityCodes += 1;
     stock.set(ean, {
       onHand: ingramOnHand(record),
       available: isIngramAvailable(record, opts.threshold, { today: opts.today }),
     });
   }
 
-  return { stock, scannedLines, matched: stock.size, skippedLines };
+  return {
+    stock,
+    scannedLines,
+    matched: stock.size,
+    skippedLines,
+    unrecognizedOnSaleDates,
+    unrecognizedAvailabilityCodes,
+  };
 }

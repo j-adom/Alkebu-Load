@@ -40,3 +40,28 @@ test('an empty catalog set matches nothing', async () => {
   const snapshot = await buildSnapshot(lines(record('9780000000002', 57)), new Set(), stockV2Format, { threshold: 10, today });
   assert.equal(snapshot.stock.size, 0);
 });
+
+test('the CSV feed end to end: header, catalog filter, and format-surprise counters', async () => {
+  const { createCatalogCsvFormat } = await import('../../src/app/utils/ingram/parseCatalogStockCsv');
+  const header = 'EAN,On Sale Date,Product Availability Code,LaVergne TN On Hand,LaVergne TN On Order';
+  const snapshot = await buildSnapshot(
+    lines(
+      header,
+      '9780000000002,20250115,21,57,0',
+      '9790000000001,next spring,21,40,0',
+      '9781111111113,20250115,21,99,0',
+      '9780306406157,,ZZ,40,0',
+    ),
+    new Set(['9780000000002', '9790000000001', '9780306406157']),
+    createCatalogCsvFormat(),
+    { threshold: 10, today },
+  );
+  assert.deepEqual(Object.fromEntries(snapshot.stock), {
+    '9780000000002': { onHand: 57, available: true },
+    '9790000000001': { onHand: 40, available: false },
+    '9780306406157': { onHand: 40, available: true },
+  });
+  assert.equal(snapshot.scannedLines, 4, 'the header is not counted as a record');
+  assert.equal(snapshot.unrecognizedOnSaleDates, 1);
+  assert.equal(snapshot.unrecognizedAvailabilityCodes, 1);
+});

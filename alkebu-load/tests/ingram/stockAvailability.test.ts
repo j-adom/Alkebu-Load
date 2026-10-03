@@ -47,3 +47,7 @@ test('isIngramAvailable gates on the on-sale date', () => {
   assert.equal(isIngramAvailable({ ...s, onSaleDate: '00010101' }, 10, { today }), true);
   assert.equal(isIngramAvailable({ ...s, onSaleDate: undefined }, 10, { today }), true);
 });
+
+test('isIngramAvailable never sells when the on-sale date could not be read', () => {
+  assert.equal(isIngramAvailable(stock({ productAvailability: '21', onSaleDate: 'unrecognized', dcs: onHand(40) }), 10, { today }), false);
+});

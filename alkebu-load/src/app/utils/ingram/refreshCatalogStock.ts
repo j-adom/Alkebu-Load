@@ -58,6 +58,7 @@ export function snapshotIsTrustworthy(
 
 export interface FetchOptions {
   remotePath: string;
+  /** Fresh per run: header-driven formats hold the column layout they read. */
   format: FeedFormat;
   threshold: number;
   minLines: number;
@@ -83,6 +84,8 @@ export async function fetchStockSnapshot(
       scannedLines: snapshot.scannedLines,
       matched: snapshot.matched,
       skippedLines: snapshot.skippedLines,
+      unrecognizedOnSaleDates: snapshot.unrecognizedOnSaleDates,
+      unrecognizedAvailabilityCodes: snapshot.unrecognizedAvailabilityCodes,
     };
     if (!snapshotIsTrustworthy(snapshot, opts.minLines)) {
       throw new Error(`Ingram stock file looks incomplete or unreadable: ${JSON.stringify(counts)}`);
