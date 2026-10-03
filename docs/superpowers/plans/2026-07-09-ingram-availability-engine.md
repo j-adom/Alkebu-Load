@@ -866,6 +866,21 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 
 ---
 
+## Phase 1 status (2026-10-02)
+
+Tasks 1–10 are implemented on `feat/ingram-availability-engine`. Each was committed with tests, and the backend suite passes. Deviations from the task text:
+
+- **Fixtures are synthetic** (Tasks 2, 2b): invented values in the real SOAP envelope, and fixed-width records built at the documented positions. No vendor sample files.
+- **Task 2:** EANs and codes are parsed as strings (`parseTagValue: false`); products with no `<Stock>` parse with empty `dcs`.
+- **Task 3:** the on-sale date is compared against the **America/Chicago** calendar date, not UTC.
+- **Tasks 6/7, transition rule:** a book becomes "Request" only after Ingram has been checked for it (`ingramCheckedAt` set) and nothing can fulfill it. Unchecked books keep today's rule (purchasable at zero stock), so the catalog doesn't flip before the refresh runs. Staff `request-only`/`discontinued` statuses always win. Resolver source `unchecked` was added.
+- **Task 7:** storefront tests use Node's test runner (`tests/bookAvailability.test.mjs`), not vitest.
+- **Task 8:** the count is computed in `beforeChange` on create (one write), replacing the log-only `afterChange`.
+- **Task 9:** line `fulfillmentSource` is classified in an Orders `beforeChange` hook, read before the Stripe webhook decrements stock, and never throws. The dashboard gets a badge, a per-line label and an "Ingram Orders" metric.
+- **Task 10:** the storefront uses a `?/lookWider` form action that forwards the visitor IP (`x-client-ip`, trusted only with the storefront API key). Rate limits are per visitor (10 per 10 min) and global (`LONG_TAIL_HOURLY_CAP`, default 120/h), checked before the Turnstile check. Results show **Request this title** until Task 14 makes them buyable. Look-wider searches are logged as `searchEngine: 'combined'` with `externalResultCount`, which avoids a schema change.
+- **Production DDL:** `alkebu-load/scripts/add-ingram-availability-schema.sql` covers Tasks 5 and 9 (edition columns, order flag, line enum). **It has not been run against a disposable Postgres yet** (no local server was available). Do that before applying it to prod.
+- **Deploy prerequisites:** apply the SQL first; set `TURNSTILE_SECRET_KEY` on the backend (already used by contact) and `PUBLIC_TURNSTILE_SITE_KEY` on the storefront. The provider is still the mock, so look-wider returns a sample result until Task 11. **Don't deploy Task 10 to production while the mock is active.**
+
 ## Phase 2 — Ingram-live (unblock when contract/credentials land)
 
 > *Amended 2026-07-16:* the FTP and Web Service halves of the contract may activate at different times. If **FTP lands first**, Stage 1 can go live early — implement Task 12's FTP alternative source and run Task 15's rollout for catalog availability; Tasks 11/13/14 (live client, checkout confirm, long-tail) still wait on Web Service credentials.
