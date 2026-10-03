@@ -21,13 +21,17 @@ async function main() {
   // Only meaningful (and only safe) against Postgres. On a SQLite file:… URI, Payload's
   // dev-mode schema push rewrites the local database, and the counts would describe a
   // stale local catalog. For Postgres, the config only allows dev push to local hosts.
-  if (!process.env.DATABASE_URI?.startsWith('postgres')) {
+  const uri = (process.env.DATABASE_URI ?? '').trim().replace(/^(['"])(.*)\1$/, '$2')
+  if (!uri.startsWith('postgres')) {
+    // Report only what kind of value arrived, never the value itself.
+    const seen = uri === '' ? 'empty' : `scheme "${uri.split(':')[0]}"`
     console.error(
-      '[refresh] DATABASE_URI is not a Postgres URL. Run against the production database, e.g.\n' +
+      `[refresh] DATABASE_URI is not a Postgres URL (got: ${seen}). Run against the production database, e.g.\n` +
         "  DATABASE_URI='postgresql://…' pnpm ingram:stock-refresh",
     )
     process.exit(1)
   }
+  process.env.DATABASE_URI = uri
 
   const { getPayload } = await import('payload')
   const { default: config } = await import('../src/payload.config.js')
