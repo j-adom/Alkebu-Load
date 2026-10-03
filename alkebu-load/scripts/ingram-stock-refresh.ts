@@ -4,8 +4,10 @@
  * filters it to our EANs and reports what WOULD change. Prints counts only, never
  * Ingram data, so the output can be shared.
  *
- *   tsx scripts/ingram-stock-refresh.ts            # dry run
- *   tsx scripts/ingram-stock-refresh.ts --apply    # write changed books
+ *   pnpm ingram:stock-refresh                # dry run
+ *   pnpm ingram:stock-refresh -- --apply     # write changed books
+ *
+ * (Run through the pnpm script: it adds the CSS stub loader the Payload config needs.)
  *
  * Reads the database in alkebu-load/.env (production, as of 2026-09-23). The dry run
  * only reads it.
@@ -13,13 +15,15 @@
 import dotenv from 'dotenv'
 dotenv.config({ path: './.env' })
 
-import { getPayload } from 'payload'
-import config from '../src/payload.config.js'
-import { applyStockToEditions } from '../src/app/utils/ingram/applyIngramStock'
-import { applyStockSnapshot, fetchStockSnapshot } from '../src/app/utils/ingram/refreshCatalogStock'
-import { stockFeedFromEnv } from '../src/app/utils/ingram/stockFeeds'
-
+// Dynamic imports: static ones are hoisted above dotenv.config(), and payload.config reads
+// DATABASE_URI and PAYLOAD_SECRET at module load.
 async function main() {
+  const { getPayload } = await import('payload')
+  const { default: config } = await import('../src/payload.config.js')
+  const { applyStockToEditions } = await import('../src/app/utils/ingram/applyIngramStock')
+  const { applyStockSnapshot, fetchStockSnapshot } = await import('../src/app/utils/ingram/refreshCatalogStock')
+  const { stockFeedFromEnv } = await import('../src/app/utils/ingram/stockFeeds')
+
   const apply = process.argv.includes('--apply')
   const payload = await getPayload({ config })
   const feed = stockFeedFromEnv()
