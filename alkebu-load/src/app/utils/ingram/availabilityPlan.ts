@@ -23,14 +23,25 @@ export interface BookAvailabilityPlan {
   transition: Transition;
   reason?: FlipReason;
   lastSoldAt?: string;
+  saleSource?: 'in-store' | 'online' | 'both';
 }
+
+/** Website sales per book id: when it last sold, and which ISBNs were bought. */
+export type OnlineSales = Map<string, { lastSoldAt: string; isbns: Set<string> }>;
 
 const PROTECTED_STATUSES = new Set(['request-only', 'discontinued']);
 
 export function planBookAvailability(
   book: any,
   stockByEan: Map<string, CompactStock>,
-  opts: { checkedAt: string; fullCoverage: boolean; soldVariationIds?: Map<string, string> },
+  opts: {
+    checkedAt: string;
+    fullCoverage: boolean;
+    /** In-store (Square) sales: variation id -> last sold. */
+    soldVariationIds?: Map<string, string>;
+    /** Website sales by book id. */
+    onlineSales?: OnlineSales;
+  },
 ): BookAvailabilityPlan {
   const editions: any[] = Array.isArray(book?.editions) ? book.editions : [];
   const before = resolveAvailability(book).state;
@@ -41,18 +52,41 @@ export function planBookAvailability(
 
   let { editions: next, changed } = applyStockToEditions(editions, stockByEan, opts);
   let after = resolveAvailability({ ...book, editions: next }).state;
-  let lastSoldAt: string | undefined;
 
-  if (before === 'in_stock' && after === 'request' && opts.soldVariationIds) {
-    const soldAt = (edition: any) => opts.soldVariationIds!.get(edition?.squareVariationId);
-    if (next.some(soldAt)) {
+  if (before === 'in_stock' && after === 'request' && (opts.soldVariationIds || opts.onlineSales)) {
+    const inStoreAt = (edition: any) => opts.soldVariationIds?.get(edition?.squareVariationId);
+    const online = opts.onlineSales?.get(String(book?.id));
+    // The edition(s) bought online, else the primary (or first) edition.
+    const boughtOnline = online
+      ? next.filter((edition) => online.isbns.has(edition?.isbn) || online.isbns.has(edition?.isbn10))
+      : [];
+    const onlineTargets = online
+      ? boughtOnline.length > 0
+        ? boughtOnline
+        : [next.find((edition) => edition?.isPrimary) ?? next[0]].filter(Boolean)
+      : [];
+    const soldInStore = next.some(inStoreAt);
+
+    if (soldInStore || onlineTargets.length > 0) {
       next = next.map((edition) =>
-        soldAt(edition) ? { ...edition, inventory: { ...(edition.inventory ?? {}), availableToOrder: true } } : edition,
+        inStoreAt(edition) || onlineTargets.includes(edition)
+          ? { ...edition, inventory: { ...(edition.inventory ?? {}), availableToOrder: true } }
+          : edition,
       );
       changed = true;
-      lastSoldAt = next.map(soldAt).filter(Boolean).sort().pop();
+      const dates = [...next.map(inStoreAt), online?.lastSoldAt].filter((d): d is string => !!d).sort();
+      const saleSource = soldInStore && online ? 'both' : soldInStore ? 'in-store' : 'online';
       after = resolveAvailability({ ...book, editions: next }).state;
-      return { protected: false, changed, editions: next, before, after, transition: 'rescued-by-sales', lastSoldAt };
+      return {
+        protected: false,
+        changed,
+        editions: next,
+        before,
+        after,
+        transition: 'rescued-by-sales',
+        lastSoldAt: dates.pop(),
+        saleSource,
+      };
     }
   }
 

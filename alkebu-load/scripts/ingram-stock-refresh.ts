@@ -11,8 +11,9 @@
  *
  * Rules (src/app/utils/ingram/availabilityPlan.ts):
  *   - request-only / discontinued books are never touched;
- *   - a book that would go from buyable to "Request" but sold in store (Square) within the
- *     window is kept buyable by flagging its sold edition(s) available-to-order.
+ *   - a book that would go from buyable to "Request" but sold in store (Square) or on the
+ *     website within the window is kept buyable by flagging its sold edition(s)
+ *     available-to-order.
  *
  * The review CSV lists every book that would change, from our own catalog plus a reason.
  *
@@ -60,6 +61,7 @@ async function main() {
   const { stockFeedFromEnv } = await import('../src/app/utils/ingram/stockFeeds')
   const { planBookAvailability } = await import('../src/app/utils/ingram/availabilityPlan')
   const { fetchSoldVariationIds } = await import('../src/app/utils/ingram/squareSales')
+  const { fetchOnlineSales } = await import('../src/app/utils/ingram/onlineSales')
 
   const apply = process.argv.includes('--apply')
   const soldSinceYears = Number(argValue('--sold-since-years') ?? 4)
@@ -81,6 +83,7 @@ async function main() {
   console.log(`[refresh] matched EANs: ${counts.matched} (${available} available, ${counts.matched - available} not)`)
 
   let soldVariationIds: Map<string, string> | undefined
+  let onlineSales: Awaited<ReturnType<typeof fetchOnlineSales>>['sales'] | undefined
   if (soldSinceYears > 0) {
     const since = new Date()
     since.setFullYear(since.getFullYear() - soldSinceYears)
@@ -92,6 +95,9 @@ async function main() {
       `[refresh] Square sales since ${since.toISOString().slice(0, 10)}: ${sales.orders} orders, ` +
         `${sales.sold.size} distinct variations, ${sales.locations} location(s)`,
     )
+    const web = await fetchOnlineSales(payload, since.toISOString())
+    onlineSales = web.sales
+    console.log(`[refresh] website sales since ${since.toISOString().slice(0, 10)}: ${web.orders} orders, ${web.sales.size} distinct books`)
   }
 
   const tally: Record<string, number> = {}
@@ -106,7 +112,12 @@ async function main() {
     const result = await payload.find({ collection: 'books', page, limit: 200, depth: 0, sort: 'id' })
     for (const book of result.docs as any[]) {
       books += 1
-      const plan = planBookAvailability(book, stock, { checkedAt, fullCoverage: input.fullCoverage, soldVariationIds })
+      const plan = planBookAvailability(book, stock, {
+        checkedAt,
+        fullCoverage: input.fullCoverage,
+        soldVariationIds,
+        onlineSales,
+      })
       tally[plan.transition] = (tally[plan.transition] ?? 0) + 1
       if (plan.reason) reasons[plan.reason] = (reasons[plan.reason] ?? 0) + 1
 
@@ -120,6 +131,7 @@ async function main() {
           plan.transition,
           plan.reason ?? '',
           plan.lastSoldAt?.slice(0, 10) ?? '',
+          plan.saleSource ?? '',
           `https://payload.alkebulanimages.com/admin/collections/books/${book.id}`,
         ])
       }
@@ -143,7 +155,7 @@ async function main() {
     if (!result.hasNextPage) break
   }
 
-  const header = ['book_id', 'title', 'isbns', 'store_stock', 'change', 'reason', 'last_in_store_sale', 'admin_url']
+  const header = ['book_id', 'title', 'isbns', 'store_stock', 'change', 'reason', 'last_sale', 'sale_source', 'admin_url']
   await writeFile(reportPath, [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n')
 
   console.log(`[refresh] books: ${books}`)

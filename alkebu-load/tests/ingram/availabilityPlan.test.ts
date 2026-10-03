@@ -92,3 +92,45 @@ test('a book already flagged available-to-order by staff stays buyable', () => {
   });
   assert.equal(plan.transition, 'stays-buyable');
 });
+
+test('a website sale rescues the edition with the ISBN that was bought', () => {
+  const editions = [
+    { isbn: '9780000000002', isPrimary: true },
+    { isbn: '9790000000001' },
+  ];
+  const plan = planBookAvailability({ id: 7, availabilityStatus: 'available', editions }, stock({}), {
+    checkedAt: NOW,
+    fullCoverage: true,
+    onlineSales: new Map([['7', { lastSoldAt: '2025-02-01T00:00:00Z', isbns: new Set(['9790000000001']) }]]),
+  });
+  assert.equal(plan.transition, 'rescued-by-sales');
+  assert.equal(plan.saleSource, 'online');
+  assert.equal(plan.editions[0].inventory?.availableToOrder, undefined);
+  assert.equal(plan.editions[1].inventory.availableToOrder, true);
+});
+
+test('a website sale with no matching ISBN flags the primary edition', () => {
+  const editions = [{ isbn: '9790000000001' }, { isbn: '9780000000002', isPrimary: true }];
+  const plan = planBookAvailability({ id: 8, availabilityStatus: 'available', editions }, stock({}), {
+    checkedAt: NOW,
+    fullCoverage: true,
+    onlineSales: new Map([['8', { lastSoldAt: '2025-02-01T00:00:00Z', isbns: new Set() }]]),
+  });
+  assert.equal(plan.editions[1].inventory.availableToOrder, true);
+  assert.equal(plan.editions[0].inventory?.availableToOrder, undefined);
+});
+
+test('in-store and website sales together report "both" and the latest date', () => {
+  const plan = planBookAvailability(
+    { id: 9, availabilityStatus: 'available', editions: [{ isbn: '9780000000002', squareVariationId: 'V' }] },
+    stock({}),
+    {
+      checkedAt: NOW,
+      fullCoverage: true,
+      soldVariationIds: new Map([['V', '2023-01-01T00:00:00Z']]),
+      onlineSales: new Map([['9', { lastSoldAt: '2025-06-01T00:00:00Z', isbns: new Set(['9780000000002']) }]]),
+    },
+  );
+  assert.equal(plan.saleSource, 'both');
+  assert.equal(plan.lastSoldAt, '2025-06-01T00:00:00Z');
+});
