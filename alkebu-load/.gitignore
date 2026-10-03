@@ -52,3 +52,5 @@ next-env.d.ts
 
 # Owner review list for scripts/author-merge.ts
 /author-duplicates-review*.csv
+# Owner review list from scripts/ingram-stock-refresh.ts (our catalog + Ingram-derived reasons)
+/ingram-availability-review*.csv

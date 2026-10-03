@@ -46,7 +46,7 @@ test('applyStockSnapshot writes only changed books, with the refresh context', a
     { stock: { '9780000000002': { onHand: 40, available: true } }, fullCoverage: true },
     { checkedAt: NOW },
   );
-  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 0 });
+  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 0, protected: 0 });
   assert.equal(updates[0].id, 'a');
   assert.equal(updates[0].data.editions[0].inventory.ingramOnHand, 40);
   assert.equal(updates[0].context.ingramStockRefresh, true);
@@ -60,7 +60,7 @@ test('applyStockSnapshot counts per-book failures and keeps going', async () => 
   ];
   const { payload, updates } = fakePayload(books);
   const summary = await applyStockSnapshot(payload, { stock: {}, fullCoverage: true }, { checkedAt: NOW });
-  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 1 });
+  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 1, protected: 0 });
   assert.equal(updates.length, 1);
 });
 
@@ -69,4 +69,19 @@ test('snapshotIsTrustworthy rejects a suspiciously short full file', () => {
   assert.equal(snapshotIsTrustworthy({ scannedLines: 2_000_000, matched: 900, skippedLines: 5 }, 500_000), true);
   // Mostly unreadable lines means the format changed under us.
   assert.equal(snapshotIsTrustworthy({ scannedLines: 2_000_000, matched: 0, skippedLines: 1_500_000 }, 500_000), false);
+});
+
+test('applyStockSnapshot never writes request-only or discontinued books', async () => {
+  const books = [
+    { id: 'ro', availabilityStatus: 'request-only', editions: [{ isbn: '9780000000002' }] },
+    { id: 'dc', availabilityStatus: 'discontinued', editions: [{ isbn: '9780000000002' }] },
+  ];
+  const { payload, updates } = fakePayload(books);
+  const summary = await applyStockSnapshot(
+    payload,
+    { stock: { '9780000000002': { onHand: 40, available: true } }, fullCoverage: true },
+    { checkedAt: NOW },
+  );
+  assert.deepEqual(summary, { scanned: 2, updated: 0, failed: 0, protected: 2 });
+  assert.equal(updates.length, 0);
 });

@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Payload } from 'payload';
 
-import { applyStockToEditions, editionEan, type CompactStock } from './applyIngramStock';
+import { editionEan, type CompactStock } from './applyIngramStock';
+import { planBookAvailability } from './availabilityPlan';
 import { buildSnapshot, type CatalogSnapshot, type FeedFormat } from './catalogStockSnapshot';
 import { downloadIngramFile } from './sftp';
 import { zipLines } from './zipLines';
@@ -103,18 +104,19 @@ export async function applyStockSnapshot(
   payload: BookPager & Pick<Payload, 'update'>,
   input: StockSnapshotInput,
   opts: { checkedAt: string },
-): Promise<{ scanned: number; updated: number; failed: number }> {
+): Promise<{ scanned: number; updated: number; failed: number; protected: number }> {
   const stock = new Map(Object.entries(input.stock));
   let scanned = 0;
   let updated = 0;
   let failed = 0;
+  let protectedBooks = 0;
 
   for await (const book of allBooks(payload)) {
     scanned += 1;
-    const { editions, changed } = applyStockToEditions(book.editions ?? [], stock, {
-      checkedAt: opts.checkedAt,
-      fullCoverage: input.fullCoverage,
-    });
+    // Request-only / discontinued books are staff decisions: never written by the refresh.
+    const plan = planBookAvailability(book, stock, { checkedAt: opts.checkedAt, fullCoverage: input.fullCoverage });
+    if (plan.protected) protectedBooks += 1;
+    const { editions, changed } = plan;
     if (!changed) continue;
     try {
       await payload.update({
@@ -131,5 +133,5 @@ export async function applyStockSnapshot(
     }
   }
 
-  return { scanned, updated, failed };
+  return { scanned, updated, failed, protected: protectedBooks };
 }
