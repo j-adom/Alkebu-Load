@@ -443,6 +443,10 @@ export interface User {
 export interface Order {
   id: number;
   /**
+   * At least one line must be ordered from Ingram (Direct-to-Home) in iPage
+   */
+  needsIngramOrder?: boolean | null;
+  /**
    * Unique order identifier
    */
   orderNumber: string;
@@ -499,6 +503,10 @@ export interface Order {
      */
     totalPrice: number;
     stripePriceId?: string | null;
+    /**
+     * Where to fulfill this line from, set when the order is created. Staff can correct it.
+     */
+    fulfillmentSource?: ('in-store' | 'ingram' | 'vendor') | null;
     customization?: {
       giftWrap?: boolean | null;
       giftMessage?: string | null;
@@ -5893,6 +5901,7 @@ export interface CartItemsSelect<T extends boolean = true> {
  * via the `definition` "orders_select".
  */
 export interface OrdersSelect<T extends boolean = true> {
+  needsIngramOrder?: T;
   orderNumber?: T;
   customer?: T;
   guestEmail?: T;
@@ -5920,6 +5929,7 @@ export interface OrdersSelect<T extends boolean = true> {
         unitPrice?: T;
         totalPrice?: T;
         stripePriceId?: T;
+        fulfillmentSource?: T;
         customization?:
           | T
           | {

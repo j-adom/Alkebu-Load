@@ -1,12 +1,44 @@
-import type { CollectionConfig } from 'payload';
+import type { CollectionBeforeChangeHook as BeforeChangeHook, CollectionConfig } from 'payload';
 import { sendOrderStatusUpdate } from '../app/utils/emailService';
 import { upsertCustomerForOrder } from '../app/utils/customerUpsert';
 import { computeCustomerRollups } from '../app/utils/customerRollups';
 import { blockMcpFieldUpdate } from '../plugins/mcp/access';
+import {
+  classifyLineFulfillment,
+  orderNeedsIngram,
+  pickOrderedEdition,
+} from '../app/utils/orders/needsIngramOrder';
 
 const isCommerceStaff = (user: unknown): boolean => {
   const role = (user as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'staff';
+};
+
+/**
+ * Tags new book lines with a fulfillment source (read before the Stripe webhook
+ * decrements stock) and keeps `needsIngramOrder` in step with the lines. Never throws:
+ * this runs inside order creation, and a lookup failure must not lose a paid order.
+ */
+const setFulfillmentSources: BeforeChangeHook = async ({ data, operation, req }) => {
+  if (!Array.isArray(data?.items)) return data;
+
+  if (operation === 'create') {
+    for (const item of data.items) {
+      if (item?.fulfillmentSource || item?.productType !== 'books') continue;
+      try {
+        const bookId = typeof item.product === 'object' ? item.product?.value : item.product;
+        if (bookId === undefined || bookId === null) continue;
+        const book = await req.payload.findByID({ collection: 'books', id: bookId, depth: 0 });
+        const source = classifyLineFulfillment(pickOrderedEdition(book, item.identifiers), item.quantity || 1);
+        if (source) item.fulfillmentSource = source;
+      } catch (error) {
+        console.warn(`Could not classify fulfillment for "${item?.productTitle}":`, error);
+      }
+    }
+  }
+
+  data.needsIngramOrder = orderNeedsIngram(data);
+  return data;
 };
 
 export const Orders: CollectionConfig = {
@@ -27,6 +59,17 @@ export const Orders: CollectionConfig = {
     delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },
   fields: [
+    {
+      name: 'needsIngramOrder',
+      type: 'checkbox',
+      defaultValue: false,
+      index: true,
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'At least one line must be ordered from Ingram (Direct-to-Home) in iPage',
+      },
+    },
     {
       name: 'orderNumber',
       type: 'text',
@@ -137,6 +180,18 @@ export const Orders: CollectionConfig = {
         {
           name: 'stripePriceId',
           type: 'text',
+        },
+        {
+          name: 'fulfillmentSource',
+          type: 'select',
+          options: [
+            { label: 'In store', value: 'in-store' },
+            { label: 'Order from Ingram', value: 'ingram' },
+            { label: 'Other vendor', value: 'vendor' },
+          ],
+          admin: {
+            description: 'Where to fulfill this line from, set when the order is created. Staff can correct it.',
+          },
         },
         {
           name: 'customization',
@@ -578,6 +633,7 @@ export const Orders: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
+      setFulfillmentSources,
       ({ data }) => {
         // Generate order number if not exists
         if (!data.orderNumber) {

@@ -14,6 +14,7 @@ interface OrderItem {
   productType: string
   refundedQuantity?: number
   doNotShip?: boolean
+  fulfillmentSource?: 'in-store' | 'ingram' | 'vendor' | null
   identifiers?: {
     isbn?: string
     isbn10?: string
@@ -31,6 +32,7 @@ interface Order {
   id: string
   orderNumber: string
   status: string
+  needsIngramOrder?: boolean
   customer?: { displayName?: string; email?: string; firstName?: string; lastName?: string } | string
   guestEmail?: string
   items: OrderItem[]
@@ -573,6 +575,24 @@ function EmailBadge({ label, value }: { label: string; value?: EmailNotification
   )
 }
 
+function IngramOrderBadge() {
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '7px 10px',
+      borderRadius: 999,
+      backgroundColor: '#fff4dc',
+      border: '1px solid #e2b85c',
+      color: '#7a5410',
+      fontSize: 12,
+      fontWeight: 700,
+    }}>
+      Order from Ingram · Direct-to-Home
+    </div>
+  )
+}
+
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
     <div style={{
@@ -812,6 +832,9 @@ export const OrderDashboardV2: React.FC = () => {
     const actionable = order.status === 'paid' || order.status === 'processing'
     return actionable && getOrderAgeHours(order) >= 24
   }).length
+  const ingramOrderCount = orders.filter((order) =>
+    order.needsIngramOrder && (order.status === 'paid' || order.status === 'processing'),
+  ).length
   const missingCustomerEmailCount = orders.filter((order) => order.emailNotifications?.customerConfirmation?.status === 'failed').length
   const visibleRevenue = visibleOrders.reduce((sum, order) => sum + order.totalAmount, 0)
   const unmatchedStripeOrders = stripeOrders.filter((session) => session.paymentStatus === 'paid' && !session.matchedOrderId)
@@ -873,6 +896,7 @@ export const OrderDashboardV2: React.FC = () => {
         <MetricCard label="Visible Orders" value={String(visibleOrders.length)} detail="Current list after filters" />
         <MetricCard label="Visible Revenue" value={formatCents(visibleRevenue)} detail="Total of visible orders" />
         <MetricCard label="Stale Attention" value={String(staleCount)} detail="Paid or processing for 24h+" />
+        <MetricCard label="Ingram Orders" value={String(ingramOrderCount)} detail="Paid or processing, needs placing in iPage" />
         <MetricCard label="Email Failures" value={String(missingCustomerEmailCount)} detail="Customer confirmations marked failed" />
         <MetricCard label="Stripe Unmatched" value={String(stripeSummary.unmatchedCount)} detail="Paid in Stripe, missing in Payload" />
       </div>
@@ -1184,6 +1208,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
           </div>
 
           <div style={{ flex: '1 1 320px', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {order.needsIngramOrder && <IngramOrderBadge />}
             <EmailBadge label="Customer email" value={order.emailNotifications?.customerConfirmation} />
             <EmailBadge label="Staff email" value={order.emailNotifications?.staffNotification} />
           </div>
@@ -1256,6 +1281,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, isExpanded, onToggle, onSt
                     <tr key={`${order.id}-${index}`} style={{ borderTop: '1px solid #efe5d8' }}>
                       <td style={{ padding: '12px 0', fontWeight: 700 }}>
                         {item.productTitle}
+                        {item.fulfillmentSource === 'ingram' && (
+                          <div style={{ marginTop: 4, color: '#7a5410', fontSize: 12, fontWeight: 700 }}>
+                            Order from Ingram
+                          </div>
+                        )}
                         {item.identifiers?.isbn10 && (
                           <div style={{ marginTop: 4, color: '#6e6259', fontSize: 12, fontWeight: 600 }}>
                             ISBN-10 {item.identifiers.isbn10}
