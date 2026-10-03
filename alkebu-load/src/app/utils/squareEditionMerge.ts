@@ -10,8 +10,16 @@
  * that: it starts from the EXISTING row for every edition Square still carries, and
  * overwrites only the fields Square actually owns.
  *
- * Square owns: whether a variation exists, `squareVariationId`, `isbn`, and
- * `pricing.retailPrice`.
+ * Square owns: whether a variation exists, `squareVariationId`, `squareItemId`, `isbn`,
+ * and `pricing.retailPrice`.
+ *
+ * One Payload book can hold editions from SEVERAL Square items (each binding is its own
+ * Square item; editions of the same work are consolidated in Payload only). Pass
+ * `opts.squareItemId` -- the item being synced -- and only that item's editions are
+ * reconciled: another item's editions are never flagged unavailable just because they
+ * aren't in this item's payload. An edition with no `squareItemId` yet (before the
+ * backfill) belongs to the book-level `squareItemId`. Without `opts`, every Square-linked
+ * edition is treated as this item's (single-item behavior).
  *
  * Payload owns everything else on an edition -- `isbn10`, `publisher`, `publisherText`,
  * `datePublished`, `binding`, `edition`, `pages`, `language`, `dimensions`,
@@ -37,7 +45,17 @@
  * (an exclusive job-queue key), out of scope here.
  */
 
-export function mergeEditions(existing: any[], incoming: any[]): any[] {
+export function mergeEditions(
+  existing: any[],
+  incoming: any[],
+  opts?: { squareItemId?: string; bookSquareItemId?: string | null },
+): any[] {
+  const belongsToSyncedItem = (row: any): boolean => {
+    if (!opts?.squareItemId) return true;
+    if (row?.squareItemId) return row.squareItemId === opts.squareItemId;
+    return !opts.bookSquareItemId || opts.bookSquareItemId === opts.squareItemId;
+  };
+
   const existingByVariationId = new Map<string, any>();
   for (const row of existing ?? []) {
     if (row?.squareVariationId) existingByVariationId.set(row.squareVariationId, row);
@@ -59,6 +77,7 @@ export function mergeEditions(existing: any[], incoming: any[]): any[] {
     return {
       ...match,
       squareVariationId: inc.squareVariationId ?? match.squareVariationId,
+      squareItemId: inc.squareItemId ?? match.squareItemId,
       isbn: inc.isbn !== undefined ? inc.isbn : match.isbn,
       pricing: {
         ...match.pricing,
@@ -74,10 +93,15 @@ export function mergeEditions(existing: any[], incoming: any[]): any[] {
   const missingFromIncoming = (existing ?? []).filter(
     (row) => row?.squareVariationId && !incomingVariationIds.has(row.squareVariationId),
   );
-  const flaggedUnavailable = missingFromIncoming.map((row) => ({ ...row, isAvailable: false }));
+  const flaggedUnavailable = missingFromIncoming
+    .filter(belongsToSyncedItem)
+    .map((row) => ({ ...row, isAvailable: false }));
+
+  // Editions from the book's OTHER Square items -- not this sync's to judge.
+  const otherItems = missingFromIncoming.filter((row) => !belongsToSyncedItem(row));
 
   // Hand-entered rows with no Square link at all -- not Square's to touch, ever.
   const unlinked = (existing ?? []).filter((row) => !row?.squareVariationId);
 
-  return [...mergedFromIncoming, ...flaggedUnavailable, ...unlinked];
+  return [...mergedFromIncoming, ...flaggedUnavailable, ...otherItems, ...unlinked];
 }

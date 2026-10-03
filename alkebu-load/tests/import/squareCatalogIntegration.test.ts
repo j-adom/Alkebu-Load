@@ -736,3 +736,72 @@ test('14. a book with a store-code SKU and the ISBN in the barcode becomes a Boo
   assert.ok(book, 'expected a Book, not a staging row');
   assert.strictEqual(book.editions[0].isbn, VALID_A);
 });
+
+// ---- 15. Consolidated books: one Payload book, one Square item per binding -----------
+//
+// Square keeps each binding as its own item; Payload folds them into one book. Simulated
+// here by syncing two items, then moving the hardcover edition onto the paperback's book
+// and deleting the hardcover's book -- the state an edition merge leaves behind.
+
+test('15. a consolidated book: each binding item updates only its own editions, never the title or a duplicate', async () => {
+  const PB = 'ITEM-T13-PB';
+  const HC = 'ITEM-T13-HC';
+  setCatalogItems([
+    squareItem(PB, [squareVariation('V-T13-PB', VALID_A, 1800)], { name: 'Consolidated Work T13' }),
+    squareItem(HC, [squareVariation('V-T13-HC', VALID_B, 2800)], { name: 'Consolidated Work T13 Hardcover Listing' }),
+  ]);
+  await runSquareCatalogSync(payload);
+
+  const pbBook = await findBookByItemId(PB);
+  const hcBook = await findBookByItemId(HC);
+  assert.ok(pbBook && hcBook);
+  await payload.delete({ collection: 'books', id: hcBook.id });
+  await payload.update({
+    collection: 'books',
+    id: pbBook.id,
+    data: { editions: [...pbBook.editions, ...hcBook.editions.map(({ id: _id, ...edition }: any) => edition)] },
+    context: { skipEnrichment: true },
+  });
+
+  // The hardcover item changes price in Square.
+  setCatalogItems([
+    squareItem(HC, [squareVariation('V-T13-HC', VALID_B, 2995)], { name: 'Consolidated Work T13 Hardcover Listing' }),
+  ]);
+  await runSquareCatalogSync(payload);
+
+  let book: any = await payload.findByID({ collection: 'books', id: pbBook.id, depth: 0 });
+  assert.strictEqual(await countBooksByItemId(HC), 0, 'the hardcover item must not recreate its own book');
+  assert.strictEqual(book.title, 'Consolidated Work T13', 'a secondary item never retitles the book');
+  assert.strictEqual(book.squareItemId, PB);
+  const hc = book.editions.find((e: any) => e.squareVariationId === 'V-T13-HC');
+  assert.strictEqual(hc.pricing.retailPrice, 2995);
+  assert.strictEqual(hc.squareItemId, HC);
+
+  // The paperback item syncs without the hardcover variation: the hardcover stays available.
+  setCatalogItems([squareItem(PB, [squareVariation('V-T13-PB', VALID_A, 1900)], { name: 'Consolidated Work T13' })]);
+  await runSquareCatalogSync(payload);
+
+  book = await payload.findByID({ collection: 'books', id: pbBook.id, depth: 0 });
+  assert.strictEqual(book.editions.length, 2);
+  assert.strictEqual(book.editions.find((e: any) => e.squareVariationId === 'V-T13-HC').isAvailable, true);
+  assert.strictEqual(book.editions.find((e: any) => e.squareVariationId === 'V-T13-PB').pricing.retailPrice, 1900);
+});
+
+test('16. a Square item can be linked to only one book', async () => {
+  setCatalogItems([
+    squareItem('ITEM-T14-A', [squareVariation('V-T14-A', VALID_A, 1500)], { name: 'Owner T14' }),
+    squareItem('ITEM-T14-B', [squareVariation('V-T14-B', VALID_B, 1500)], { name: 'Other T14' }),
+  ]);
+  await runSquareCatalogSync(payload);
+  const other = await findBookByItemId('ITEM-T14-B');
+
+  await assert.rejects(
+    payload.update({
+      collection: 'books',
+      id: other.id,
+      data: { editions: [...other.editions, { squareItemId: 'ITEM-T14-A', squareVariationId: 'V-T14-X', isbn: VALID_A }] },
+      context: { skipEnrichment: true },
+    }),
+    (error: any) => /already linked to book/.test(JSON.stringify(error?.data ?? error?.message ?? '')),
+  );
+});

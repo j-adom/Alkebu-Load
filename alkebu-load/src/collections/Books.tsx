@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload';
 import { autoEnrichBookFromISBN, autoLinkAuthors } from '@/app/utils/autoEnrichBook';
 import { autoLinkPublisher } from '@/app/utils/autoLinkPublisher';
+import { assertSquareItemsUnclaimed } from '@/app/utils/squareItemOwnership';
 import { EnrichBookButton } from '@/app/components/EnrichBookButton';
 
 // Auto-categorization mapping helper
@@ -282,6 +283,14 @@ const Books: CollectionConfig = {
           type: 'text',
           admin: {
             description: 'Physical dimensions (maps to isbndb.dimensions)'
+          }
+        },
+        {
+          name: 'squareItemId',
+          type: 'text',
+          index: true,
+          admin: {
+            description: 'Square POS item this edition belongs to. Each binding is its own Square item, so a consolidated book can span several.'
           }
         },
         {
@@ -881,6 +890,13 @@ const Books: CollectionConfig = {
       }
     ],
 
+    beforeChange: [
+      // A Square item belongs to exactly one book (catalog sync depends on it).
+      async ({ data, originalDoc, req }) => {
+        await assertSquareItemsUnclaimed({ data, originalDoc, req });
+        return data;
+      },
+    ],
     afterChange: [
       async ({ doc, req, operation }) => {
         // AUTO-LINK: Link authors + publisher after book is created/updated.

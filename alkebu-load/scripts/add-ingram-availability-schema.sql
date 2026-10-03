@@ -2,6 +2,9 @@
 --   - books_editions: Ingram availability cache + manual vendor flag
 --   - orders / orders_items: needsIngramOrder flag + per-line fulfillmentSource
 --   - payload_jobs task-slug enums: ingram-stock-fetch, ingram-stock-apply
+--   - books_editions.square_item_id: Square item per edition, backfilled from books.square_item_id (one Square item per binding;
+--     a consolidated book can span several). Indexed, NOT unique: one item's variations
+--     can sit on two editions of the same book. "One item, one book" is enforced in code.
 --
 -- Requires PostgreSQL 12+ (ALTER TYPE ... ADD VALUE inside a transaction).
 --
@@ -39,6 +42,8 @@ ALTER TABLE "books_editions" ADD COLUMN IF NOT EXISTS "inventory_ingram_on_hand"
 ALTER TABLE "books_editions" ADD COLUMN IF NOT EXISTS "inventory_ingram_available" boolean DEFAULT false;
 ALTER TABLE "books_editions" ADD COLUMN IF NOT EXISTS "inventory_ingram_checked_at" timestamp(3) with time zone;
 ALTER TABLE "books_editions" ADD COLUMN IF NOT EXISTS "inventory_available_to_order" boolean DEFAULT false;
+ALTER TABLE "books_editions" ADD COLUMN IF NOT EXISTS "square_item_id" varchar;
+CREATE INDEX IF NOT EXISTS "books_editions_square_item_id_idx" ON "books_editions" USING btree ("square_item_id");
 
 DO $do$
 BEGIN
@@ -56,7 +61,26 @@ ALTER TYPE public.enum_payload_jobs_log_task_slug ADD VALUE IF NOT EXISTS 'ingra
 ALTER TYPE public.enum_payload_jobs_task_slug     ADD VALUE IF NOT EXISTS 'ingram-stock-fetch';
 ALTER TYPE public.enum_payload_jobs_task_slug     ADD VALUE IF NOT EXISTS 'ingram-stock-apply';
 
--- 2. Verify ------------------------------------------------------------------------------
+-- 2. Backfill ----------------------------------------------------------------------------
+-- Before any consolidation, every book maps to exactly one Square item, so each
+-- Square-linked edition belongs to its book's item. Only fills NULLs: safe to re-run.
+DO $do$
+DECLARE
+  filled integer;
+BEGIN
+  UPDATE "books_editions" e
+     SET "square_item_id" = b."square_item_id"
+    FROM "books" b
+   WHERE e."_parent_id" = b."id"
+     AND e."square_item_id" IS NULL
+     AND e."square_variation_id" IS NOT NULL
+     AND b."square_item_id" IS NOT NULL;
+  GET DIAGNOSTICS filled = ROW_COUNT;
+  RAISE NOTICE 'Backfilled square_item_id on % edition(s)', filled;
+END
+$do$;
+
+-- 3. Verify ------------------------------------------------------------------------------
 DO $do$
 DECLARE
   missing text;
@@ -68,6 +92,7 @@ BEGIN
       ('books_editions', 'inventory_ingram_available', 'boolean'),
       ('books_editions', 'inventory_ingram_checked_at', 'timestamp with time zone'),
       ('books_editions', 'inventory_available_to_order', 'boolean'),
+      ('books_editions', 'square_item_id', 'character varying'),
       ('orders_items', 'fulfillment_source', 'USER-DEFINED'),
       ('orders', 'needs_ingram_order', 'boolean')
     ) AS expected(tbl, col, typ)
@@ -91,11 +116,11 @@ $do$;
 
 COMMIT;
 
--- Optional check after COMMIT (expect six rows):
+-- Optional check after COMMIT (expect seven rows):
 -- SELECT table_name, column_name, data_type, column_default
 --   FROM information_schema.columns
 --  WHERE (table_name = 'books_editions' AND column_name LIKE 'inventory_%ingram%')
---     OR (table_name = 'books_editions' AND column_name = 'inventory_available_to_order')
+--     OR (table_name = 'books_editions' AND column_name IN ('inventory_available_to_order', 'square_item_id'))
 --     OR (table_name = 'orders_items' AND column_name = 'fulfillment_source')
 --     OR (table_name = 'orders' AND column_name = 'needs_ingram_order')
 --  ORDER BY table_name, column_name;

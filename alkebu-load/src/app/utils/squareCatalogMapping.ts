@@ -226,6 +226,8 @@ export function mapSquareItemToBook(item: unknown, now: Date = new Date()): Mapp
 
   const editions = usable.map((v) => ({
     isbn: v.isbn,
+    // Per edition: a consolidated book can hold editions from several Square items.
+    squareItemId,
     squareVariationId: v.variationId,
     pricing: { retailPrice: v.priceCents },
     isAvailable: true,

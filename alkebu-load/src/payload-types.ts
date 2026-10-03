@@ -994,6 +994,10 @@ export interface Book {
      */
     dimensions?: string | null;
     /**
+     * Square POS item this edition belongs to. Each binding is its own Square item, so a consolidated book can span several.
+     */
+    squareItemId?: string | null;
+    /**
      * Square POS variation ID for inventory sync
      */
     squareVariationId?: string | null;
@@ -6511,6 +6515,7 @@ export interface BooksSelect<T extends boolean = true> {
         pages?: T;
         language?: T;
         dimensions?: T;
+        squareItemId?: T;
         squareVariationId?: T;
         stripePriceId?: T;
         pricing?:

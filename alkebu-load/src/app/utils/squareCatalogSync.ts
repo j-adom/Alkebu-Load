@@ -1,4 +1,4 @@
-import type { Payload } from 'payload';
+import type { Payload, Where } from 'payload';
 
 import { toJsonSafe } from './jsonSafe';
 import { isNonBookCategory, mapSquareItemToBook, RESOLVED_SENTINEL_ISSUE } from './squareCatalogMapping';
@@ -95,6 +95,61 @@ function squareCatalogVersionOf(rec: Record<string, unknown>): string {
   const updatedAt = rec.updatedAt;
   if (typeof updatedAt === 'string' && updatedAt.length > 0) return updatedAt;
   return 'unknown';
+}
+
+/**
+ * The one book a Square item belongs to (see squareItemOwnership.ts), found in tiers:
+ * an edition linked to the item, then the book-level link (books not yet backfilled
+ * with edition-level ids), then any edition holding one of the item's variations. More
+ * than one book in a tier is a data error to fix by hand, never something to guess at.
+ */
+export async function findBookForSquareItem(
+  payload: Payload,
+  squareItemId: string,
+  variationIds: string[],
+): Promise<any | null> {
+  // A variation match only counts on an edition not already linked to a different item.
+  const holdsVariation = (book: any) =>
+    ((book.editions as any[]) || []).some(
+      (edition) =>
+        variationIds.includes(edition?.squareVariationId) &&
+        (!edition?.squareItemId || edition.squareItemId === squareItemId),
+    );
+  const tiers: Array<{ where: Where; keep?: (book: any) => boolean }> = [
+    { where: { 'editions.squareItemId': { equals: squareItemId } } },
+    { where: { squareItemId: { equals: squareItemId } } },
+    ...(variationIds.length > 0
+      ? [{ where: { 'editions.squareVariationId': { in: variationIds } } as Where, keep: holdsVariation }]
+      : []),
+  ];
+  for (const { where, keep } of tiers) {
+    const result = await payload.find({ collection: 'books', where, limit: 10, depth: 0 });
+    const docs = keep ? result.docs.filter(keep) : result.docs;
+    const ids = [...new Set(docs.map((doc) => doc.id))];
+    if (ids.length > 1) {
+      throw new Error(`Square item ${squareItemId} matches books ${ids.join(', ')}; fix the Square link in the admin`);
+    }
+    if (ids.length === 1) return docs[0];
+  }
+  return null;
+}
+
+/**
+ * Update data for an existing book from one Square item. The book's own (book-level)
+ * item owns its title, price and squareItemId. A different item -- another binding
+ * consolidated into this book -- only reconciles its own editions.
+ */
+export function bookUpdateForSquareItem(
+  existingBook: { squareItemId?: string | null; editions?: unknown },
+  squareItemId: string,
+  mappedData: Record<string, unknown>,
+): Record<string, unknown> {
+  const editions = mergeEditions((existingBook.editions as any[]) || [], mappedData.editions as any[], {
+    squareItemId,
+    bookSquareItemId: existingBook.squareItemId ?? null,
+  });
+  const ownsBook = !existingBook.squareItemId || existingBook.squareItemId === squareItemId;
+  return ownsBook ? { ...mappedData, editions } : { editions, lastSyncedAt: mappedData.lastSyncedAt };
 }
 
 /**
@@ -219,19 +274,13 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
       if (decision.action === 'write-book') {
         if (mapped.kind !== 'complete') continue; // decideStagingAction guarantees this, but keep TS honest.
 
-        const existingBookResult = await payload.find({
-          collection: 'books',
-          where: { squareItemId: { equals: squareItemId } },
-          limit: 1,
-          depth: 0,
-        });
-        const existingBook = existingBookResult.docs[0] ?? null;
+        const variationIds = ((mapped.data.editions as any[]) || [])
+          .map((edition) => edition?.squareVariationId)
+          .filter((id): id is string => typeof id === 'string');
+        const existingBook = await findBookForSquareItem(payload, squareItemId, variationIds);
 
         if (existingBook) {
-          const bookData = {
-            ...mapped.data,
-            editions: mergeEditions((existingBook.editions as any[]) || [], mapped.data.editions as any[]),
-          };
+          const bookData = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
           await payload.update({
             collection: 'books',
             id: existingBook.id,
@@ -252,19 +301,10 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
 
             // A concurrent create won the race -- re-read and update rather
             // than failing this item.
-            const racedResult = await payload.find({
-              collection: 'books',
-              where: { squareItemId: { equals: squareItemId } },
-              limit: 1,
-              depth: 0,
-            });
-            const raced = racedResult.docs[0];
+            const raced = await findBookForSquareItem(payload, squareItemId, variationIds);
             if (!raced) throw err;
 
-            const racedData = {
-              ...mapped.data,
-              editions: mergeEditions((raced.editions as any[]) || [], mapped.data.editions as any[]),
-            };
+            const racedData = bookUpdateForSquareItem(raced, squareItemId, mapped.data);
             await payload.update({
               collection: 'books',
               id: raced.id,
