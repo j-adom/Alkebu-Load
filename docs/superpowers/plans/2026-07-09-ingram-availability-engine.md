@@ -885,6 +885,15 @@ Tasks 1–10 are implemented on `feat/ingram-availability-engine`. Each was comm
 
 > *Amended 2026-07-16:* the FTP and Web Service halves of the contract may activate at different times. If **FTP lands first**, Stage 1 can go live early — implement Task 12's FTP alternative source and run Task 15's rollout for catalog availability; Tasks 11/13/14 (live client, checkout confirm, long-tail) still wait on Web Service credentials.
 
+### Phase 2 status (2026-10-02): Stage-1 refresh from SFTP, built ahead of Task 11
+
+Built first because the Web Service returns no `<Stock>` section yet. This is Task 12's FTP route:
+- **Feed:** `Inventory/Catalog_Stock/cat_ing_stock.zip` (CSV, ~195 MB zipped, header-driven parser). The CSV **does** carry `Product Availability Code`, so open question #4 is answered. StockV2 remains selectable with `INGRAM_STOCK_FEED=stockv2`.
+- **SFTP:** Node `ssh2` (the GoAnywhere server negotiates ecdh-sha2-nistp256 / rsa-sha2-512 / aes128-gcm), with the host key pinned (`SHA256:MKA9n3…pkzoc`, overridable by env).
+- **Jobs:** `ingram-stock-fetch` (daily 11:30 UTC, no lock, gated by `INGRAM_STOCK_REFRESH_ENABLED=true`) queues `ingram-stock-apply` (under the `books-write` lock shared with the Square jobs). Only changed books are written; unchanged ones are re-stamped weekly. A file under 500k lines, or with more than 5% unreadable lines, is rejected.
+- **Safety:** an unreadable on-sale date means "not on sale". The snapshot counts unrecognized dates and availability codes for the dry run.
+- **Owner dry run:** `tsx scripts/ingram-stock-refresh.ts` (counts only). It needs the scoped SQL applied first, because the branch's Books config selects the new columns.
+
 ### Task 11: Live Ingram Web Service client + provider wiring
 
 **Files:**
