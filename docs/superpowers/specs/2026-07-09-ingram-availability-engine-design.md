@@ -6,6 +6,8 @@
 **Amended:** 2026-07-16 — Ingram FTP inventory package reviewed; folded in the On-Sale-Date
 gate, Product-Availability-Code resolution, and the FTP feed as a Stage-1 fallback source
 (see "FTP inventory feed (StockV2)").
+**Amended:** 2026-10-02 — production access verified and catalog enrichment added
+(see "Connectivity status" and "Catalog enrichment from Ingram Titles Basic").
 
 ## Context
 
@@ -229,6 +231,107 @@ to Orders. Ingram Order-API automation is explicitly deferred until volume justi
   negative counts when oversold at POS).
 - The `squareVariationId` backfill (~20% of books unlinked) stays available but adjacent/optional.
 
+## Connectivity status *(added 2026-10-02)*
+
+Production credentials were issued 2026-09-22 (account 20R1339). They are verified with
+`alkebu-load/scripts/ingram-smoke-test.ts`, which prints only status, counts and tag names:
+
+- **SFTP ✅** — host `ftp.ingramcontent.com` over **SFTP** (`sftp.` does not resolve). curl's
+  libssh2 cannot negotiate the server's key exchange, so use OpenSSH (or `ssh2` in Node).
+  Folders: `BriefDesc, DESC_BKLST, DeveloperSpecs, Inventory, Logistics, PubDescripi,
+  Reference_Files, TitlesBasic`.
+- **Web Service login ✅** — `https://api.ingramcontent.com/CWS/companion.asmx` is **SOAP**,
+  not REST. Credentials go in a `UserInfo` SOAP header (`UserName`, `Password`), namespace
+  `http://ingrambook.com/CompDataAccess/companion`. `testLogin` returns an int (1688 for us).
+  The HTTP-POST binding cannot carry the header, so the form-POST approach above is wrong.
+- **Web Service lookup ✅ / stock ❓** — Query Type 9 runs through
+  `SearchRequestTypes12349Enhanced` (`queryType, query, startRecord, endRecord, sortField,
+  liveUpdate, dataRequest`) and returns `Basic`/`Display` sections. With `dataRequest=STK`,
+  **no `<Stock>` section is returned.** Either our Standard package excludes real-time stock
+  (the FTP access sheet offers a separate "Stock Check Web Service") or the code is wrong.
+  Until resolved, Stage 1 runs on the **FTP feed**, and checkout confirm (Task 13) and Stage-2
+  availability fall back to the latest FTP data.
+
+## Catalog enrichment from Ingram Titles Basic *(added 2026-10-02)*
+
+Our ~5,000 books were assembled from Square, CSV imports, ISBNdb, Google Books and Open
+Library, so their metadata is uneven. Ingram's publisher-supplied data is usually better for
+weights, dimensions, page counts, formats, pub dates, BISAC subjects and descriptions. This
+flow uses it to fill gaps and correct objective fields, while leaving staff curation intact.
+
+### Source and licensing
+- **FTP only.** The Titles Basic package is licensed for loading into our system for display on
+  the licensed sites. The **Web Service is never a persistence source** (no DB mirroring), so
+  live WS lookups do not write to Books.
+- Files (per the 2026-09-22 access sheet): `TitlesBasic/ttlingbasic_pipe.zip` (weekly, Tue 6 AM CT,
+  pipe-delimited bibliographic), `TitlesBasic/annobasic_pipe.zip` (≤100-char annotations),
+  `DESC_BKLST/pmall_active.zip` + `PubDescripi/pmmthy-*.zip` (publisher marketing descriptions,
+  monthly backlist + adds/changes), `DESC_BKLST/brdn_GBLFL.zip` + `BriefDesc/brdn.zip` (brief
+  descriptions), `Inventory/` stock file (weight, Media Mail eligibility, on-sale date, discount),
+  and `Reference_Files/` (code tables).
+- **Stream-filter, never mirror:** stream each file and keep only the EANs in our catalog
+  (in-memory set of normalized edition ISBN-13s). Everything else is discarded unparsed.
+- **Covers are out of scope for v1.** Cover images come through the Web Service, and copying
+  them into R2 may count as mirroring. Ask Ingram before storing any.
+- **Termination duty (§6(c)):** if the agreement ends, all Ingram Metadata must be deleted from our
+  systems and backups. Per-field provenance (below) is what makes that purge possible.
+- **AI restriction (§2(c)):** Ingram-sourced fields must **never** be sent to an AI or LLM service.
+  The pipeline is deterministic site code. Fixtures are synthetic, and dry runs report counts only.
+  The repo has no LLM integrations today. Any future AI feature that reads Book text must
+  exclude Ingram-sourced fields.
+
+### Field policy
+Precedence: **manual (staff) > Ingram > ISBNdb / Google / Open Library / CSV > empty.**
+Square stays the source of truth for **price and stock**, which this flow never touches.
+
+| Field(s) | Policy |
+|---|---|
+| `editions[].shippingWeight`, `dimensions`, `pages`, `binding`, `language`, `datePublished` | **Authoritative:** auto-apply when empty *or* when the current value came from a non-manual source |
+| new `editions[].mediaMailEligible`, `ingramOnSaleDate` | **System:** always written by the job |
+| `publisherText`, `subjects` (BISAC), `titleLong` (subtitle) | **Fill-gap:** auto-apply only when empty; otherwise → review if different |
+| `synopsis` (plain), `description` (Lexical), `excerpt` | **Fill-gap:** when empty; otherwise → review (never silently replace curated copy) |
+| `title`, `authorsText` / `authors` | **Review-only:** differences go to review, never auto-applied (they drive slugs, search and author links) |
+| `editions[].wholesalePrice` (cost = list × (1 − discount)) | **Fill-gap**, internal only, never displayed |
+| `retailPrice`, `stockLevel`, `categories`, `collections`, `images` | **Never touched** |
+
+### Provenance and manual-edit protection
+- New Books group `enrichment`: `fieldSources` (JSON map `fieldPath → { source, at }`),
+  `ingramEnrichedAt`, `ingramRecordDate`; add `'ingram'` to `importSource` options.
+- A `beforeChange` hook stamps `source: 'manual'` on any tracked field an authenticated staff or
+  admin user changes in the admin. Job and script writes pass `context.ingramEnrichment = true`
+  and stamp `source: 'ingram'` themselves. Manual fields are never auto-overwritten.
+- `IngramEnrichmentLog` collection: one row per applied change (book, fieldPath, previous value,
+  new value, Ingram record date, run id). This supports rollback and the termination purge.
+
+### Pipeline
+1. **Fetch** — job downloads the needed zips over SFTP to a temp dir. A sha256 checksum
+   skips files already processed.
+2. **Filter + parse** — stream-unzip, keep catalog EANs only, and parse into typed records with pure
+   parsers. Column layouts come from `DeveloperSpecs/`; the owner transcribes them into code.
+3. **Map** — pure `mapIngramRecord(record) → EnrichmentCandidate` (normalized values per field).
+4. **Diff** — pure `diffEnrichment(book, candidate, fieldSources) → FieldChange[]`, each classified
+   `fill | correct | same | conflict | protected` using the policy table.
+5. **Apply** — `fill`/`correct` changes are written per book in one transaction with log rows.
+   `conflict` changes go to the review queue. Runs are idempotent, so rerunning the same file
+   date is a no-op.
+6. **Review** — `IngramEnrichmentReview` collection (reuses the Square staging pattern: state
+   `pending → accepted | rejected | superseded`). The admin view shows current vs proposed with
+   accept/reject per field and bulk accept by field type. Accepting stamps `source: 'ingram'`,
+   and rejecting suppresses the same proposal on later runs.
+7. **Report** — run summary (counts per field × action, unmatched EANs, parse errors) in the job
+   log and staff digest. No titles or values.
+
+### Cadence
+- **Backfill:** manual dry run first (counts only). The owner reviews the counts, then runs the real backfill.
+- **Ongoing:** weekly after the Tuesday Titles Basic drop, and monthly after the first-Monday description
+  files. Both are gated by `ENABLE_JOB_AUTORUN` like every other job. These are FTP downloads, not
+  Web Service calls, so they don't count toward the WS request limit.
+- New titles added between runs keep the ISBNdb/Google on-create enrichment and get upgraded on the next weekly run.
+
+### Search and SEO side effects
+Better `synopsis`/`subjects` improve FlexSearch recall and PDP content. The index refreshes itself
+within 5 minutes. Edition Consolidation (below) can reuse the same fetch/filter stage.
+
 ## Companion phase — Edition Consolidation (one-off, gated on Ingram access)
 
 A separate one-off enrichment to **combine editions across publishings and bindings** (paperback /
@@ -301,6 +404,15 @@ Own spec when pursued.
   Info/`, gitignored). Remaining ask: FTP server credentials + which files our account gets
   (books part file? CSV option?), and whether FTP access activates ahead of Web Service certification.
 - Confirm permission to display Ingram availability + real-time search results publicly.
+
+### Added 2026-10-02
+- Does the **Standard Web Service package include real-time stock** (`dataRequest=STK` returns no
+  `<Stock>`), or is that the separate Stock Check Web Service? Which `dataRequest` codes are we entitled to?
+- Written approval (§3(c)) for each query we use: Type 9 stock, Type 1 search, Type 6 family.
+  Also approval for the refresh cadence and volume (§2(f)(F), §3(d)), plus the monthly hit limit.
+- Does `cat_ing_stock` (CSV) carry the Product Availability Code?
+- May Web Service **cover images** be stored in R2, or must they be hotlinked?
+- Site terms must carry the §3(b) no-copy/no-redistribution clause before Ingram data is displayed.
 
 ## Related docs
 

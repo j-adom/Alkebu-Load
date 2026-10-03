@@ -17,6 +17,16 @@ After reviewing the Ingram FTP inventory onboarding package (`Ingram Inventory I
 3. **Task 12 is transport-agnostic** — the refresh cron consumes `Map<ean, IngramStock>` from either the Web Service `checkStock` or an FTP StockV2 stream-filter (FTP licensing permits persistence; Web Service forbids mirroring). If FTP credentials activate before Web Service certification, Stage 1 can go live on FTP alone; Tasks 13–14 still wait on the Web Service.
 4. Spec updated in lockstep: `docs/superpowers/specs/2026-07-09-ingram-availability-engine-design.md`.
 
+## Amendments (2026-10-02)
+
+Production access was verified (see the spec's "Connectivity status"), and catalog enrichment was added as **Phase 3**.
+
+1. **Web Service is SOAP.** Credentials go in a `UserInfo` header. Query Type 9 uses `SearchRequestTypes12349Enhanced`. Task 11 must build SOAP envelopes, not REST form posts, so the Global Constraints transport line below is superseded.
+2. **No `<Stock>` in WS responses yet** with `dataRequest=STK`. Stage 1 should go live on the **FTP source** (Task 12's transport note), and Tasks 13/14 wait on Ingram's answer about the Stock Check add-on.
+3. **SFTP host** is `ftp.ingramcontent.com`, using OpenSSH or Node `ssh2` (curl/libssh2 fails key exchange).
+4. **Phase 3 (Tasks 16–22): enrich existing Books from Titles Basic over FTP.** It shares the SFTP fetch and stream-filter with Task 12's FTP source.
+5. **AI restriction (agreement §2(c)):** fixtures are synthetic, never vendor sample files. Live runs are performed by the owner, and only counts/status are shared. Ingram-sourced fields never go to an AI/LLM service.
+
 ## Global Constraints
 
 - **Ingram Web Service:** REST + Basic Auth (base64 `user:password`). Test endpoint `https://idswebtest.ingramcontent.com/cws/companion.asmx`; production URL supplied on contract approval. Config via env: `INGRAM_WS_URL`, `INGRAM_WS_USER`, `INGRAM_WS_PASSWORD`.
@@ -956,6 +966,116 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 
 ---
 
+## Phase 3 — Catalog enrichment from Ingram Titles Basic (FTP) *(added 2026-10-02)*
+
+> Spec: "Catalog enrichment from Ingram Titles Basic". Independent of Phases 1–2 except the shared SFTP fetch (Task 16), which Task 12's FTP source also uses. All fixtures are **synthetic**. Column layouts come from `DeveloperSpecs/` on the SFTP server; the owner transcribes field names and positions into the parser constants (Task 17). Claude does not read the vendor spec or sample files.
+
+### Task 16: SFTP fetch + catalog stream-filter (shared)
+
+**Files:**
+- Create: `alkebu-load/src/app/utils/ingram/sftpFetch.ts`
+- Create: `alkebu-load/src/app/utils/ingram/catalogFilter.ts`
+- Create: `alkebu-load/tests/ingram/catalogFilter.test.ts`
+- Modify: `alkebu-load/package.json` (add `ssh2-sftp-client` and `unzipper`, or equivalent streaming unzip)
+
+**Interfaces:**
+- `fetchIngramFile(remotePath, { sinceChecksum? }) → { localPath, checksum, skipped }`: downloads over SFTP (`INGRAM_FTP_HOST/USER/PASSWORD`), returns `skipped: true` when the checksum matches the last processed file, and cleans up temp files on failure.
+- `loadCatalogEans(payload) → Set<string>`: every edition ISBN normalized to EAN-13 (ISBN-10 converted, hyphens stripped, checksum-validated).
+- `streamCatalogRecords(zipPath, entryName, ean(line) → string|null, eans) → AsyncIterable<string>`: yields only lines whose EAN is in the set and never buffers the whole file.
+
+- [ ] **Step 1: Failing tests:** EAN normalization (ISBN-10 → 13, invalid checksum dropped). The stream filter, given a synthetic 10-line file with 3 catalog EANs, yields exactly those 3 lines in order without reading the file into memory (assert through a counting stream).
+- [ ] **Step 2: Implement.** Use a mocked SFTP client in tests; no network.
+- [ ] **Step 3: Verify:** `pnpm test && pnpm check:types`.
+- [ ] **Step 4: Commit:** `feat(ingram): SFTP fetch and catalog EAN stream-filter`.
+
+### Task 17: Titles Basic + description parsers (pure)
+
+**Files:**
+- Create: `alkebu-load/src/app/utils/ingram/titlesBasicParser.ts`, `descriptionParser.ts`
+- Create: `alkebu-load/tests/ingram/titlesBasicParser.test.ts`, `descriptionParser.test.ts` (synthetic fixtures under `tests/ingram/fixtures/`)
+
+**Interfaces:**
+- `TITLES_BASIC_COLUMNS`: ordered column-name constant transcribed from the vendor layout by the owner.
+- `parseTitlesBasicLine(line) → TitlesBasicRecord | null`: pipe-delimited, `{ ean, title, subtitle, contributors[], publisher, pubDate, binding, pages, language, bisac[], dimensions, weight, listPrice }`; malformed → `null` plus a counted error.
+- `parseDescriptionRecord(...) → { ean, kind: 'marketing'|'brief'|'annotation', html }`: description files are multi-line/variable, so the parser is a stream reducer.
+
+- [ ] **Step 1 (owner):** transcribe the column order and field names (no data) from `DeveloperSpecs/` into `TITLES_BASIC_COLUMNS` and the description record markers.
+- [ ] **Step 2: Failing tests** against synthetic lines built *from the column constant*: correct field mapping, empty optional fields, embedded pipes/escapes per the spec, multi-contributor parsing, BISAC list.
+- [ ] **Step 3: Implement**, then verify, then commit: `feat(ingram): Titles Basic and description parsers`.
+
+### Task 18: Books provenance fields + manual-edit hook + SQL
+
+**Files:**
+- Modify: `alkebu-load/src/collections/Books.tsx`: `enrichment` group (`fieldSources` JSON, `ingramEnrichedAt`, `ingramRecordDate`); `editions[].mediaMailEligible`, `editions[].ingramOnSaleDate`; `'ingram'` in `importSource`.
+- Create: `alkebu-load/src/collections/hooks/stampManualFieldSources.ts`
+- Create: `alkebu-load/scripts/add-ingram-enrichment-schema.sql`: scoped, idempotent DDL with verify queries, following `add-square-catalog-staging-schema.sql` (no generated migration against prod)
+- Create: `alkebu-load/tests/ingram/stampManualFieldSources.test.ts`
+
+**Interfaces:**
+- `stampManualFieldSources({ data, originalDoc, req, context })`: for each tracked field path whose value changed, sets `fieldSources[path] = { source: 'manual', at }` only when `req.user` is staff/admin **and** `context.ingramEnrichment !== true`.
+
+- [ ] **Step 1: Failing tests:** an admin edit stamps manual, a job write (context flag) does not, unchanged fields are untouched, and nested edition paths (`editions.0.shippingWeight`) are keyed by edition ISBN rather than index so reorders don't misattribute.
+- [ ] **Step 2: Implement**, then `pnpm generate:types`, then write and test the SQL on disposable Postgres (apply, rerun, verify).
+- [ ] **Step 3: Commit:** `feat(books): field provenance and manual-edit protection for enrichment`.
+
+### Task 19: Mapper + diff engine (pure)
+
+**Files:**
+- Create: `alkebu-load/src/app/utils/ingram/enrichmentPolicy.ts` (the spec's field-policy table as data)
+- Create: `alkebu-load/src/app/utils/ingram/mapEnrichment.ts`, `diffEnrichment.ts`
+- Create: `alkebu-load/tests/ingram/diffEnrichment.test.ts`
+
+**Interfaces:**
+- `mapIngramRecord(titles, descriptions?, stock?) → EnrichmentCandidate`: normalizes units (weight → our shipping-weight unit, dimensions → our format), converts description HTML → plain `synopsis` and Lexical `description`, and BISAC → `subjects`.
+- `diffEnrichment(book, candidate, fieldSources) → FieldChange[]` with `{ path, editionIsbn?, current, proposed, action: 'fill'|'correct'|'same'|'conflict'|'protected' }`.
+
+- [ ] **Step 1: Failing tests (table-driven over the policy):** an empty field gives `fill`; an authoritative field from isbndb gives `correct`; an authoritative field from manual gives `protected`; a fill-gap field that differs gives `conflict`; a review-only title difference gives `conflict` and never `fill`; price/stock/images are never emitted; a whitespace/case-only difference gives `same`; and a previously rejected proposal (same value) gives `same`.
+- [ ] **Step 2: Implement**, then verify, then commit: `feat(ingram): enrichment mapper and policy-driven diff`.
+
+### Task 20: Apply, log, and review queue
+
+**Files:**
+- Create: `alkebu-load/src/collections/IngramEnrichmentLog.ts`, `IngramEnrichmentReview.ts` (register in `payload.config.ts`; add to Task 18's SQL)
+- Create: `alkebu-load/src/app/utils/ingram/applyEnrichment.ts`
+- Create: `alkebu-load/src/app/components/IngramEnrichmentReview.tsx` (admin view: current vs proposed, accept/reject per field, bulk accept by field type)
+- Create: `alkebu-load/tests/ingram/applyEnrichment.test.ts` (integration, real Postgres like the Square suite)
+
+**Interfaces:**
+- `applyEnrichment(payload, book, changes, runId)`: writes `fill`/`correct` changes in **one transaction per book** with `context.ingramEnrichment = true`, stamps `fieldSources[path] = { source: 'ingram', at }`, inserts a log row per change, and upserts `conflict` changes into the review queue (superseding stale pending rows for the same path).
+- `acceptReview(id, user)` / `rejectReview(id, user)`: accept applies via the same path; reject records the value so the diff suppresses it next time.
+
+- [ ] **Step 1: Failing tests:** atomicity (a failure mid-book leaves no partial writes or logs), idempotency (rerunning the same run gives 0 changes), supersession, the accept path stamps provenance, the reject path suppresses.
+- [ ] **Step 2: Implement**, then verify, then commit: `feat(ingram): transactional enrichment apply with audit log and review queue`.
+
+### Task 21: Enrichment job, dry-run CLI, schedules
+
+**Files:**
+- Create: `alkebu-load/src/app/utils/ingram/runEnrichment.ts` (orchestrates Tasks 16 → 17 → 19 → 20)
+- Create: `alkebu-load/scripts/ingram-enrich.ts` (`--dry-run` default; `--apply` explicit; `--limit N`)
+- Modify: `alkebu-load/src/payload.config.ts`: tasks `ingram-enrich-titles` (weekly, Tue 14:00 UTC, after the 6 AM CT drop) and `ingram-enrich-descriptions` (monthly, first Mon 14:00 UTC), both with the exclusive concurrency key pattern from the Square jobs and gated by `ENABLE_JOB_AUTORUN`
+
+**Interfaces:**
+- `runEnrichment(payload, { files, dryRun, limit }) → RunSummary { runId, scanned, matched, unmatchedEans, parseErrors, byField: Record<path, Record<action, n>> }`. **Counts only, no titles or values**, so the summary can be shared safely.
+
+- [ ] **Step 1: Failing tests:** a dry run writes nothing, the summary has no string values from records, and `--limit` bounds the books touched.
+- [ ] **Step 2: Implement**, then verify (`pnpm test && pnpm check:types && pnpm build`).
+- [ ] **Step 3: Commit:** `feat(ingram): scheduled catalog enrichment with dry-run CLI`.
+
+### Task 22: Backfill rollout + termination purge (owner-run)
+
+**Files:**
+- Create: `alkebu-load/scripts/ingram-purge-metadata.ts`: reverts or clears every field whose `fieldSources` is `ingram` (restoring the logged previous value when it came from a non-Ingram source), deletes the Ingram log and review rows, and reports counts. Dry-run by default. This is required by agreement §6(c) if the subscription ends.
+- Modify: `docs/launch.md`, `alkebu-load/CLAUDE.md` (env vars, jobs, AI restriction)
+
+- [ ] **Step 1:** apply Task 18's SQL in production (owner, Coolify PG terminal) **before** deploying.
+- [ ] **Step 2:** `tsx scripts/ingram-enrich.ts --dry-run`, owner-run; share **only** the summary counts. If `conflict` counts are in the hundreds for a field, revisit the policy before applying.
+- [ ] **Step 3:** `--apply --limit 50`; spot-check 5 PDPs (weight, pages, synopsis) and the Shippo quote for one cart; then do a full apply.
+- [ ] **Step 4:** work the review queue (bulk accept objective fields, eyeball descriptions).
+- [ ] **Step 5:** test the purge script's dry run on a DB copy; confirm it reverses a sample book exactly.
+- [ ] **Step 6: Commit:** `chore(ingram): enrichment rollout notes and termination purge`.
+
+---
+
 ## Self-Review
 
 **Spec coverage:** Availability resolution (Task 6/7), Web Service client + Query Type 9 + batching (Tasks 2/3/11), provider abstraction + mock (Task 4), schema fields (Task 5), scheduled refresh (Task 12), checkout confirm (Task 13), Stage-2 gated flow + Turnstile + demand logging (Tasks 8/10/14), fulfillment flag (Task 9), Square coexistence + clamp (Task 1), compliance/noindex (Tasks 10/14), go-live/volume (Task 15). Companion phases (Edition Consolidation, Merchandising Intelligence) are intentionally out of this plan — they get their own specs/plans. **No gaps.**
@@ -963,5 +1083,7 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 **Placeholder scan:** pure-logic tasks (1, 2, 3, 4, 6, 7, 8) carry full code + tests. Integration/UI tasks (9, 10, 11–15) give exact files, interfaces (signatures), and test intent; their internal code follows the cited existing patterns (jobs.tasks, Turnstile verify, OrderDashboard tabs) rather than inventing unverifiable markup — acceptable because they are credential-gated and pattern-bound, not logic placeholders.
 
 **Type consistency:** `IngramStock`/`DcStock` (Task 2) consumed unchanged in Tasks 3/11/12; `AvailabilityProvider`/`LongTailResult` (Task 4) consumed in Tasks 10/11/14; `ResolvedAvailability` (Task 6) consumed in Tasks 7/13; edition fields (Task 5) consumed in Tasks 6/7/12. Names consistent across tasks.
+
+**Phase 3 (2026-10-02):** covers every element of the spec's enrichment section: FTP-only source and stream-filter (16), parsers (17), provenance and manual protection (18), policy table and diff (19), transactional apply, audit log and review (20), scheduled job and counts-only reporting (21), rollout and §6(c) purge (22). Cover images are deliberately excluded pending Ingram's answer. Owner-dependent steps: column transcription (17.1) and all live runs (22).
 
 **Amendments 2026-07-16** (after reviewing the Ingram FTP inventory package — see the Amendments section up top): Task 2b added (StockV2 fixed-width parser; test assertions verified against record 1 of the vendor sample); `IngramStock` gained `onSaleDate` (Task 2); Task 3's `isIngramAvailable` is now code-first with an On-Sale-Date gate; the mock provider emits prodstat codes; Task 12 documented as transport-agnostic with an FTP stream-filter alternative; Phase 2 may split go-live if FTP credentials land first. `StockV2Record` (Task 2b) extends `IngramStock`, so all existing consumers are unaffected.
