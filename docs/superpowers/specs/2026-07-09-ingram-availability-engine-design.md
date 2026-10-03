@@ -399,14 +399,16 @@ data-integrity-sensitive:
 **Square mapping (owner decision 2026-10-02): leave Square alone.** In Square, each binding is
 its own item (one variation each), and that stays as it is: no Square restructuring, no lost
 per-variation sales history, no change for staff at the POS. Payload adapts instead:
-- Move `squareItemId` from the book to the **edition** (`editions[].squareItemId`), with uniqueness
-  enforced per edition (a partial unique index on `books_editions.square_item_id`), not per book.
+- Record `squareItemId` on each **edition** (`editions[].squareItemId`). It is indexed but not unique,
+  since one item's variations can sit on two editions of the same book. "A Square item belongs to
+  one book" is enforced in code (a Books `beforeChange` hook). The book-level field stays as the
+  book's own item, which owns its title and price.
 - Square catalog sync finds the book via `editions.squareItemId` (falling back to
   `editions.squareVariationId`) instead of the book-level field. Without this, a binding merged
   away from its original book would be recreated or staged on its next Square catalog change.
 - Stock sync already matches by `editions.squareVariationId` and needs no change.
-- Backfill: copy each book's current `squareItemId` onto its Square-linked editions before merging.
-- **Prerequisite:** this ships before any books are merged.
+- Backfill: copy each book's current `squareItemId` onto its Square-linked editions (in the scoped SQL).
+- **Prerequisite:** this ships before any books are merged. *(Built 2026-10-02.)*
 
 **Secondary benefit:** likely shrinks the GSC *"Duplicate, Google chose different canonical"*
 bucket (multiple records per work is a classic cause) — an SEO win alongside better UX (one page

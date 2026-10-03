@@ -1112,14 +1112,16 @@ Tasks 1–10 are implemented on `feat/ingram-availability-engine`. Each was comm
 
 ---
 
-## Companion: Edition Consolidation prerequisite *(decided 2026-10-02)*
+## Companion: Edition Consolidation prerequisite *(decided and built 2026-10-02)*
 
-Square stays one item per binding. Before any books are merged (Edition Consolidation gets its own spec), ship this:
+Square stays one item per binding. Built on this branch, before any books are merged:
 
-- **Schema:** `editions[].squareItemId` (text) plus a partial unique index on `books_editions.square_item_id`, via scoped SQL. Keep the book-level field until the backfill is verified, then retire it.
-- **Backfill script:** copy each book's `squareItemId` onto its Square-linked editions; dry run first, counts only.
-- **Catalog sync:** find the book by `editions.squareItemId`, falling back to `editions.squareVariationId`. Integration tests: two Square items mapped to one book's two editions both update that book, and neither creates a duplicate.
-- **Merge stays out of Square:** merging never edits Square items.
+- **Schema:** `editions[].squareItemId` (text), **indexed but not unique**, because one Square item's variations can sit on two editions of the same book. The invariant "a Square item belongs to exactly one book" is enforced in a Books `beforeChange` hook (`squareItemOwnership.ts`). It only queries when a write adds an item id. The book-level `squareItemId` stays and marks the book's own item.
+- **Backfill:** in `scripts/add-ingram-availability-schema.sql`. It copies `books.square_item_id` onto Square-linked editions with a NULL value, and is idempotent.
+- **Catalog sync:** `findBookForSquareItem` checks the edition link, then the book-level link, then a variation on an unlinked or same-item edition. Two or more books in one step is a data error (unresolved), never a guess. `bookUpdateForSquareItem`: the book's own item updates title, price and editions as before; another item only reconciles its own editions.
+- **`mergeEditions(existing, incoming, { squareItemId, bookSquareItemId })`:** only the synced item's editions can be flagged unavailable. Un-backfilled editions belong to the book-level item.
+- **Tests:** unit tests plus integration tests 13–14 (a consolidated book across two items; the ownership guard).
+- **Merging never edits Square.**
 
 ## Self-Review
 
