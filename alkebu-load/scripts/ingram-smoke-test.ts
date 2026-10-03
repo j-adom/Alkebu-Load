@@ -333,9 +333,15 @@ async function printCatalogStockHeader(): Promise<boolean> {
     .map((line) => line.split(/\s+/))
     .filter((cols) => cols.length >= 9 && /^-/.test(cols[0]))
     .map((cols) => ({ size: Number(cols[4]), name: cols.slice(8).join(' ') }))
-  const zips = files.filter((f) => /^cat_ing_stock.*\.zip$/i.test(f.name)).sort((a, b) => a.size - b.size)
-  console.log(`[csv] ${files.length} files; catalog-stock zips: ${zips.map((f) => `${f.name} (${f.size} B)`).join(', ') || '(none)'}`)
-  const smallest = zips[0]
+  const zips = files.filter((f) => /^cat_ing_stock.*\.zip$/i.test(f.name))
+  const deltas = zips.filter((f) => /delta/i.test(f.name))
+  const full = zips.find((f) => !/delta/i.test(f.name))
+  console.log(`[csv] ${files.length} files; ${deltas.length} delta zips; full file: ${full ? `${full.name} (${full.size} B)` : '(none)'}`)
+  // The newest delta big enough to hold records (tiny deltas are empty archives).
+  const smallest = deltas
+    .filter((f) => f.size > 10_000)
+    .sort((a, b) => b.name.localeCompare(a.name))[0]
+  if (smallest) console.log(`[csv] using newest non-empty delta: ${smallest.name} (${smallest.size} B)`)
   if (!smallest) {
     console.log('[csv] FAIL  no cat_ing_stock*.zip found; set INGRAM_CATALOG_STOCK_DIR if the folder differs')
     return false
@@ -351,6 +357,10 @@ async function printCatalogStockHeader(): Promise<boolean> {
       return false
     }
     const header = await firstLineOfZip(local)
+    if (!header.trim()) {
+      console.log('[csv] FAIL  first line is empty')
+      return false
+    }
     const columns = header.split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
     // A 13-digit run means the first line is a data row: report its shape, not its values.
     if (/\d{13}/.test(header)) {

@@ -55,8 +55,10 @@
     "react-dom": "19.1.0",
     "sharp": "0.32.6",
     "square": "^43.2.1",
+    "ssh2-sftp-client": "^12.1.1",
     "stripe": "^18.5.0",
     "xlsx": "^0.18.5",
+    "yauzl": "^3.4.0",
     "zod": "3.25.76"
   },
   "devDependencies": {
@@ -68,6 +70,8 @@
     "@types/parse-full-name": "^1.2.5",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.2",
+    "@types/ssh2-sftp-client": "^9.0.6",
+    "@types/yauzl": "^3.4.0",
     "better-sqlite3": "^12.5.0",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.2",
