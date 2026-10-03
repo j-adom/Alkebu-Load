@@ -8,6 +8,11 @@
  *   pnpm ingram:stock-refresh -- --apply                       # write changed books
  *   pnpm ingram:stock-refresh -- --sold-since-years 3          # sales window (default 4; 0 = off)
  *   pnpm ingram:stock-refresh -- --report path/to/review.csv   # review list location
+ *   pnpm ingram:stock-refresh -- --fresh                       # ignore the cached snapshot
+ *
+ * A successful download is cached as a compact snapshot (our EANs only: on-hand and
+ * orderable) in .ingram-stock-snapshot.json for 24 h, so reruns skip the ~15-minute
+ * download. The SFTP feed is licensed for storing in our systems; the file is gitignored.
  *
  * Rules (src/app/utils/ingram/availabilityPlan.ts):
  *   - request-only / discontinued books are never touched;
@@ -20,13 +25,30 @@
  * (Run through the pnpm script: it adds the CSS stub loader the Payload config needs.)
  */
 import dotenv from 'dotenv'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 dotenv.config({ path: './.env' })
 
 function argValue(name: string): string | undefined {
   const i = process.argv.indexOf(name)
   return i === -1 ? undefined : process.argv[i + 1]
+}
+
+const SNAPSHOT_CACHE = resolve('.ingram-stock-snapshot.json')
+const SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+/** Retries transient network failures (e.g. after the laptop slept mid-run). */
+async function withRetries<T>(label: string, fn: () => Promise<T>, attempts = 4): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (attempt >= attempts) throw error
+      const waitMs = 5000 * attempt
+      console.warn(`[refresh] ${label} failed (${error instanceof Error ? error.message : error}); retry ${attempt}/${attempts - 1} in ${waitMs / 1000}s`)
+      await new Promise((r) => setTimeout(r, waitMs))
+    }
+  }
 }
 
 const csvCell = (value: unknown) => {
@@ -72,13 +94,29 @@ async function main() {
 
   console.log(`[refresh] feed ${feed.name}: ${feed.remotePath} (${apply ? 'APPLY' : 'dry run'})`)
   const started = Date.now()
-  const { input, counts } = await fetchStockSnapshot(payload, {
-    remotePath: feed.remotePath,
-    format: feed.createFormat(),
-    minLines: feed.minLines,
-    threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
-  })
-  console.log(`[refresh] fetched in ${Math.round((Date.now() - started) / 1000)} s:`, counts)
+  let cached: { savedAt: string; input: any; counts: any } | null = null
+  if (!process.argv.includes('--fresh')) {
+    try {
+      cached = JSON.parse(await readFile(SNAPSHOT_CACHE, 'utf8'))
+      if (!cached || Date.now() - Date.parse(cached.savedAt) > SNAPSHOT_MAX_AGE_MS) cached = null
+    } catch {
+      cached = null
+    }
+  }
+  const { input, counts } = cached
+    ? cached
+    : await fetchStockSnapshot(payload, {
+        remotePath: feed.remotePath,
+        format: feed.createFormat(),
+        minLines: feed.minLines,
+        threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
+      })
+  if (cached) {
+    console.log(`[refresh] using cached snapshot from ${cached.savedAt} (pass --fresh to re-download):`, counts)
+  } else {
+    await writeFile(SNAPSHOT_CACHE, JSON.stringify({ savedAt: new Date().toISOString(), input, counts }))
+    console.log(`[refresh] fetched in ${Math.round((Date.now() - started) / 1000)} s:`, counts)
+  }
   const available = Object.values(input.stock).filter((s) => s.available).length
   console.log(`[refresh] matched EANs: ${counts.matched} (${available} available, ${counts.matched - available} not)`)
 
@@ -89,13 +127,13 @@ async function main() {
     since.setFullYear(since.getFullYear() - soldSinceYears)
     const { SquareClient } = await import('square')
     const square = new SquareClient({ token: process.env.SQUARE_ACCESS_TOKEN! })
-    const sales = await fetchSoldVariationIds(square, since.toISOString())
+    const sales = await withRetries('Square sales lookup', () => fetchSoldVariationIds(square, since.toISOString()))
     soldVariationIds = sales.sold
     console.log(
       `[refresh] Square sales since ${since.toISOString().slice(0, 10)}: ${sales.orders} orders, ` +
         `${sales.sold.size} distinct variations, ${sales.locations} location(s)`,
     )
-    const web = await fetchOnlineSales(payload, since.toISOString())
+    const web = await withRetries('website sales lookup', () => fetchOnlineSales(payload, since.toISOString()))
     onlineSales = web.sales
     console.log(`[refresh] website sales since ${since.toISOString().slice(0, 10)}: ${web.orders} orders, ${web.sales.size} distinct books`)
   }
