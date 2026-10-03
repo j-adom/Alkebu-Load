@@ -344,6 +344,39 @@ const Books: CollectionConfig = {
               type: 'checkbox',
               defaultValue: false,
             },
+            {
+              name: 'ingramOnHand',
+              type: 'number',
+              admin: {
+                readOnly: true,
+                description: 'Ingram on-hand (La Vergne first), cached by the availability refresh',
+              },
+            },
+            {
+              name: 'ingramAvailable',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                readOnly: true,
+                description: 'System-set by the availability refresh: Ingram can fulfill this edition',
+              },
+            },
+            {
+              name: 'ingramCheckedAt',
+              type: 'date',
+              admin: {
+                readOnly: true,
+                description: 'When Ingram availability was last refreshed (cache age)',
+              },
+            },
+            {
+              name: 'availableToOrder',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description: 'We can reorder this edition from a non-Ingram vendor (e.g. Afrikan World Books)',
+              },
+            },
           ],
         },
         {

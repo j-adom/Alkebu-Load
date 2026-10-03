@@ -1011,6 +1011,22 @@ export interface Book {
        */
       stockLevel?: number | null;
       allowBackorders?: boolean | null;
+      /**
+       * Ingram on-hand (La Vergne first), cached by the availability refresh
+       */
+      ingramOnHand?: number | null;
+      /**
+       * System-set by the availability refresh: Ingram can fulfill this edition
+       */
+      ingramAvailable?: boolean | null;
+      /**
+       * When Ingram availability was last refreshed (cache age)
+       */
+      ingramCheckedAt?: string | null;
+      /**
+       * We can reorder this edition from a non-Ingram vendor (e.g. Afrikan World Books)
+       */
+      availableToOrder?: boolean | null;
     };
     isAvailable?: boolean | null;
     id?: string | null;
@@ -6493,6 +6509,10 @@ export interface BooksSelect<T extends boolean = true> {
           | {
               stockLevel?: T;
               allowBackorders?: T;
+              ingramOnHand?: T;
+              ingramAvailable?: T;
+              ingramCheckedAt?: T;
+              availableToOrder?: T;
             };
         isAvailable?: T;
         id?: T;
