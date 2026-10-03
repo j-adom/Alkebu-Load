@@ -281,18 +281,67 @@ flow uses it to fill gaps and correct objective fields, while leaving staff cura
   exclude Ingram-sourced fields.
 
 ### Field policy
-Precedence: **manual (staff) > Ingram > ISBNdb / Google / Open Library / CSV > empty.**
-Square stays the source of truth for **price and stock**, which this flow never touches.
+Precedence: **manual (staff) > Ingram > ISBNdb / Google / Open Library / CSV > empty**, with
+two owner-directed exceptions, **price uplift** and **title cleanup** (below). Both are written to
+**Square as well as Payload** (owner decision 2026-10-02), so the POS, receipts and website agree
+and the Square catalog sync never reverts them. Square stays the source of truth for **stock**.
 
 | Field(s) | Policy |
 |---|---|
 | `editions[].shippingWeight`, `dimensions`, `pages`, `binding`, `language`, `datePublished` | **Authoritative:** auto-apply when empty *or* when the current value came from a non-manual source |
 | new `editions[].mediaMailEligible`, `ingramOnSaleDate` | **System:** always written by the job |
-| `publisherText`, `subjects` (BISAC), `titleLong` (subtitle) | **Fill-gap:** auto-apply only when empty; otherwise → review if different |
+| `editions[].pricing.retailPrice` | **Uplift only:** set to Ingram list price when it is **higher** than the current price; never lowered (see "Price uplift") |
+| `title`, new `subtitle`, `titleLong` | **Title cleanup:** prefer Ingram's title when Ingram has a subtitle; strip author vestiges unless needed to disambiguate (see "Title cleanup") |
+| `publisherText`, `subjects` (BISAC) | **Fill-gap:** auto-apply only when empty; otherwise → review if different |
 | `synopsis` (plain), `description` (Lexical), `excerpt` | **Fill-gap:** when empty; otherwise → review (never silently replace curated copy) |
-| `title`, `authorsText` / `authors` | **Review-only:** differences go to review, never auto-applied (they drive slugs, search and author links) |
+| `authorsText` / `authors` | **Review-only:** differences go to review, never auto-applied (they drive author pages and links) |
 | `editions[].wholesalePrice` (cost = list × (1 − discount)) | **Fill-gap**, internal only, never displayed |
-| `retailPrice`, `stockLevel`, `categories`, `collections`, `images` | **Never touched** |
+| `stockLevel`, `categories`, `collections`, `images`, `slug` | **Never touched** |
+
+### Price uplift
+- Per edition, matched by EAN. If Ingram's US list price is **greater** than the current price
+  (Square variation price, in cents), set the price to Ingram's. Never lower a price.
+- **Skipped:** consignment items (`isConsignment`), editions with a new `pricing.lockPrice`
+  checkbox (for used copies sold under the same ISBN, or deliberate promotions), and editions where
+  Ingram's price is missing or zero.
+- **Sanity guard:** an uplift of more than 3× the current price goes to review instead of applying,
+  to catch data or unit errors.
+- **Checkout impact:** none beyond the new price. Stripe checkout builds `price_data` from the cart's
+  unit price, so no Stripe Price objects need updating.
+
+### Title cleanup
+Square-sourced titles often carry the subtitle and/or author in the title (an artifact of how
+Square looks up ISBN data), e.g. `Title: Subtitle by Author Name`.
+- **New `subtitle` field** on Books. `titleLong` becomes derived (`title: subtitle`). Storefront
+  cards and PDPs render the subtitle separately.
+- **Prefer Ingram's title when Ingram has a subtitle.** Set `title` = Ingram title and
+  `subtitle` = Ingram subtitle, so the title no longer repeats the subtitle.
+- **Strip author vestiges.** Remove a trailing or leading author segment (`by X`, ` - X`, `(X)`,
+  `X:`) **only when it matches one of the book's contributors** (Ingram contributors or our
+  `authorsText`, normalized, last-name match minimum).
+- **Keep the author only for disambiguation.** After computing the cleaned base title for the
+  *whole catalog*, any base title shared by books with **different** authors keeps its author
+  segment, in its existing form. Same title with the same author is an edition-consolidation
+  case, not a disambiguation case.
+- **Confidence:** only exact patterns auto-apply. Anything ambiguous (the remainder doesn't match
+  the subtitle or a contributor) goes to review. Staff-edited (`manual`) titles are never touched.
+- **URLs stay stable:** slugs are only generated when empty, so retitling never changes a URL.
+  Search picks up new titles on its next 5-minute refresh.
+
+### Square write-back
+- Price and title changes are written to **Square first**, then Payload, inside the job:
+  - Square variation `price_money` for prices.
+  - Square item `name` = cleaned `title`. The subtitle lives only in Payload, and the catalog
+    sync's merge never writes `subtitle`.
+- Use `BatchUpsertCatalogObjects` with each object's current `version` (optimistic concurrency).
+  On a version conflict, re-fetch and recompute, and never blind-overwrite. Batches are ≤100 objects
+  and run under the `books-write` concurrency key so they can't race the catalog or inventory syncs.
+- If Payload fails after Square succeeds, the next Square catalog sync carries the Square values
+  into Payload, so the two converge. The webhook echo of our own write is a no-op.
+- Books with no `squareItemId` (~20% unlinked) are updated in Payload only.
+- Every Square change is logged (object id, previous name/price, version) for rollback.
+- Square writes are **dry-run by default**. The owner approves a bounded `--apply --limit` before
+  a full run. This changes **in-store prices**, so staff should be told before the full run.
 
 ### Provenance and manual-edit protection
 - New Books group `enrichment`: `fieldSources` (JSON map `fieldPath → { source, at }`),

@@ -25,7 +25,8 @@ Production access was verified (see the spec's "Connectivity status"), and catal
 2. **No `<Stock>` in WS responses yet** with `dataRequest=STK`. Stage 1 should go live on the **FTP source** (Task 12's transport note), and Tasks 13/14 wait on Ingram's answer about the Stock Check add-on.
 3. **SFTP host** is `ftp.ingramcontent.com`, using OpenSSH or Node `ssh2` (curl/libssh2 fails key exchange).
 4. **Phase 3 (Tasks 16–22): enrich existing Books from Titles Basic over FTP.** It shares the SFTP fetch and stream-filter with Task 12's FTP source.
-5. **AI restriction (agreement §2(c)):** fixtures are synthetic, never vendor sample files. Live runs are performed by the owner, and only counts/status are shared. Ingram-sourced fields never go to an AI/LLM service.
+5. **Owner directives (2026-10-02):** raise prices to Ingram list when it is higher (never lower), clean up titles (Ingram title + new `subtitle` field, strip author unless disambiguating), and **write both to Square** (Task 20b).
+6. **AI restriction (agreement §2(c)):** fixtures are synthetic, never vendor sample files. Live runs are performed by the owner, and only counts/status are shared. Ingram-sourced fields never go to an AI/LLM service.
 
 ## Global Constraints
 
@@ -1006,7 +1007,8 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 ### Task 18: Books provenance fields + manual-edit hook + SQL
 
 **Files:**
-- Modify: `alkebu-load/src/collections/Books.tsx`: `enrichment` group (`fieldSources` JSON, `ingramEnrichedAt`, `ingramRecordDate`); `editions[].mediaMailEligible`, `editions[].ingramOnSaleDate`; `'ingram'` in `importSource`.
+- Modify: `alkebu-load/src/collections/Books.tsx`: `enrichment` group (`fieldSources` JSON, `ingramEnrichedAt`, `ingramRecordDate`); `subtitle` (text); `titleLong` derived from `title` + `subtitle` in a `beforeChange` hook; `editions[].mediaMailEligible`, `editions[].ingramOnSaleDate`, `editions[].pricing.lockPrice` (checkbox); `'ingram'` in `importSource`.
+- Modify: `alkebu-web` book card + PDP components: render `subtitle` under the title (follow-up commit in the same task).
 - Create: `alkebu-load/src/collections/hooks/stampManualFieldSources.ts`
 - Create: `alkebu-load/scripts/add-ingram-enrichment-schema.sql`: scoped, idempotent DDL with verify queries, following `add-square-catalog-staging-schema.sql` (no generated migration against prod)
 - Create: `alkebu-load/tests/ingram/stampManualFieldSources.test.ts`
@@ -1023,13 +1025,17 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 **Files:**
 - Create: `alkebu-load/src/app/utils/ingram/enrichmentPolicy.ts` (the spec's field-policy table as data)
 - Create: `alkebu-load/src/app/utils/ingram/mapEnrichment.ts`, `diffEnrichment.ts`
-- Create: `alkebu-load/tests/ingram/diffEnrichment.test.ts`
+- Create: `alkebu-load/src/app/utils/ingram/titleCleanup.ts`
+- Create: `alkebu-load/tests/ingram/diffEnrichment.test.ts`, `titleCleanup.test.ts`
 
 **Interfaces:**
+- `cleanTitle({ current, ingramTitle, ingramSubtitle, contributors }) → { title, subtitle, removed: ('subtitle'|'author')[], confidence: 'exact'|'ambiguous' }`: strips a matching subtitle and a contributor-matching author segment (`by X`, ` - X`, `(X)`, `X:`). It never strips text that doesn't match.
+- `findDisambiguationTitles(books: { id, baseTitle, authorKey }[]) → Set<bookId>`: books whose cleaned base title is shared by a book with a different author keep their author segment. Runs over the whole catalog before any title is applied.
+- `priceUplift({ currentCents, ingramListCents, isConsignment, lockPrice }) → { action: 'raise'|'keep'|'review', cents }`: `raise` when Ingram > current; `review` when > 3× current; `keep` when equal/lower, missing, consignment or locked.
 - `mapIngramRecord(titles, descriptions?, stock?) → EnrichmentCandidate`: normalizes units (weight → our shipping-weight unit, dimensions → our format), converts description HTML → plain `synopsis` and Lexical `description`, and BISAC → `subjects`.
 - `diffEnrichment(book, candidate, fieldSources) → FieldChange[]` with `{ path, editionIsbn?, current, proposed, action: 'fill'|'correct'|'same'|'conflict'|'protected' }`.
 
-- [ ] **Step 1: Failing tests (table-driven over the policy):** an empty field gives `fill`; an authoritative field from isbndb gives `correct`; an authoritative field from manual gives `protected`; a fill-gap field that differs gives `conflict`; a review-only title difference gives `conflict` and never `fill`; price/stock/images are never emitted; a whitespace/case-only difference gives `same`; and a previously rejected proposal (same value) gives `same`.
+- [ ] **Step 1: Failing tests (table-driven over the policy):** an empty field gives `fill`; an authoritative field from isbndb gives `correct`; an authoritative field from manual gives `protected`; a fill-gap field that differs gives `conflict`; a review-only title difference gives `conflict` and never `fill`; price/stock/images are never emitted; a whitespace/case-only difference gives `same`; and a previously rejected proposal (same value) gives `same`. **Title cleanup:** `Title: Subtitle` + Ingram subtitle gives title/subtitle split; `Title by Jane Doe` with contributor Jane Doe strips the author; `Title by Someone Else` (not a contributor) is ambiguous and goes to review; two books with base title `Freedom` and different authors both keep their author; the same title with the same author is stripped (not disambiguation); a manual title gives `protected`. **Price:** 1999 vs Ingram 2499 raises; 2499 vs 1999 keeps; consignment or `lockPrice` keeps; Ingram 0 or missing keeps; 999 vs 3500 goes to review.
 - [ ] **Step 2: Implement**, then verify, then commit: `feat(ingram): enrichment mapper and policy-driven diff`.
 
 ### Task 20: Apply, log, and review queue
@@ -1046,6 +1052,20 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 
 - [ ] **Step 1: Failing tests:** atomicity (a failure mid-book leaves no partial writes or logs), idempotency (rerunning the same run gives 0 changes), supersession, the accept path stamps provenance, the reject path suppresses.
 - [ ] **Step 2: Implement**, then verify, then commit: `feat(ingram): transactional enrichment apply with audit log and review queue`.
+
+### Task 20b: Square write-back for price and title
+
+**Files:**
+- Create: `alkebu-load/src/app/utils/ingram/squareWriteBack.ts` (reuse the Square client setup from `squareCatalogSync.ts`; `squareSync.ts` has an unwired upsert to borrow from but is not called anywhere today)
+- Create: `alkebu-load/tests/ingram/squareWriteBack.test.ts` (mock Square client)
+
+**Interfaces:**
+- `planSquareWrites(changes) → SquareWrite[]`: price changes go to the variation `price_money` (by `squareVariationId`); title changes go to the item `name` (by `squareItemId`). Books without Square ids are skipped (Payload-only).
+- `applySquareWrites(client, writes, { dryRun }) → { written, conflicts, skipped }`: fetches current objects, applies only if the current Square value still equals the value the diff was computed from, and calls `BatchUpsertCatalogObjects` (≤100 per batch) with current `version`. On version mismatch it re-fetches and recomputes once, otherwise reports a conflict. It logs previous name/price/version to `IngramEnrichmentLog`.
+- Called from `applyEnrichment` **before** the Payload write for the same book, under the `books-write` concurrency key.
+
+- [ ] **Step 1: Failing tests:** a dry run calls no upsert; a version conflict leads to re-fetch and recompute; a value changed in Square since the diff is skipped (never clobber a staff change made in the POS); batching ≤100; a Square failure means no Payload write for that book; a Payload failure after Square success is left for the catalog sync to converge (assert no retry storm).
+- [ ] **Step 2: Implement**, then verify, then commit: `feat(ingram): write price uplifts and title cleanup back to Square`.
 
 ### Task 21: Enrichment job, dry-run CLI, schedules
 
@@ -1069,10 +1089,11 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 
 - [ ] **Step 1:** apply Task 18's SQL in production (owner, Coolify PG terminal) **before** deploying.
 - [ ] **Step 2:** `tsx scripts/ingram-enrich.ts --dry-run`, owner-run; share **only** the summary counts. If `conflict` counts are in the hundreds for a field, revisit the policy before applying.
-- [ ] **Step 3:** `--apply --limit 50`; spot-check 5 PDPs (weight, pages, synopsis) and the Shippo quote for one cart; then do a full apply.
-- [ ] **Step 4:** work the review queue (bulk accept objective fields, eyeball descriptions).
-- [ ] **Step 5:** test the purge script's dry run on a DB copy; confirm it reverses a sample book exactly.
-- [ ] **Step 6: Commit:** `chore(ingram): enrichment rollout notes and termination purge`.
+- [ ] **Step 3:** review the dry-run's **price-uplift** count and **title-cleanup** count (exact vs ambiguous vs disambiguation-kept). Tell staff that in-store prices will change.
+- [ ] **Step 4:** `--apply --limit 50`; spot-check 5 PDPs (weight, pages, synopsis, title/subtitle), the same 5 items in Square POS (name and price), and the Shippo quote for one cart; then do a full apply.
+- [ ] **Step 5:** work the review queue (bulk accept objective fields, eyeball descriptions).
+- [ ] **Step 6:** test the purge script's dry run on a DB copy; confirm it reverses a sample book exactly.
+- [ ] **Step 7: Commit:** `chore(ingram): enrichment rollout notes and termination purge`.
 
 ---
 
@@ -1084,6 +1105,6 @@ git commit -m "feat(search): Turnstile-gated long-tail 'look wider' discovery (m
 
 **Type consistency:** `IngramStock`/`DcStock` (Task 2) consumed unchanged in Tasks 3/11/12; `AvailabilityProvider`/`LongTailResult` (Task 4) consumed in Tasks 10/11/14; `ResolvedAvailability` (Task 6) consumed in Tasks 7/13; edition fields (Task 5) consumed in Tasks 6/7/12. Names consistent across tasks.
 
-**Phase 3 (2026-10-02):** covers every element of the spec's enrichment section: FTP-only source and stream-filter (16), parsers (17), provenance and manual protection (18), policy table and diff (19), transactional apply, audit log and review (20), scheduled job and counts-only reporting (21), rollout and §6(c) purge (22). Cover images are deliberately excluded pending Ingram's answer. Owner-dependent steps: column transcription (17.1) and all live runs (22).
+**Phase 3 (2026-10-02):** covers every element of the spec's enrichment section: FTP-only source and stream-filter (16), parsers (17), provenance and manual protection (18), policy table and diff (19), transactional apply, audit log and review (20), price uplift and title cleanup with Square write-back (19, 20b), scheduled job and counts-only reporting (21), rollout and §6(c) purge (22). Cover images are deliberately excluded pending Ingram's answer. Owner-dependent steps: column transcription (17.1) and all live runs (22).
 
 **Amendments 2026-07-16** (after reviewing the Ingram FTP inventory package — see the Amendments section up top): Task 2b added (StockV2 fixed-width parser; test assertions verified against record 1 of the vendor sample); `IngramStock` gained `onSaleDate` (Task 2); Task 3's `isIngramAvailable` is now code-first with an On-Sale-Date gate; the mock provider emits prodstat codes; Task 12 documented as transport-agnostic with an FTP stream-filter alternative; Phase 2 may split go-live if FTP credentials land first. `StockV2Record` (Task 2b) extends `IngramStock`, so all existing consumers are unaffected.
