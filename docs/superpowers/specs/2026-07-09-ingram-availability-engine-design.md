@@ -331,7 +331,9 @@ Square looks up ISBN data), e.g. `Title: Subtitle by Author Name`.
 ### Square write-back
 - Price and title changes are written to **Square first**, then Payload, inside the job:
   - Square variation `price_money` for prices.
-  - Square item `name` = cleaned `title`. The subtitle lives only in Payload, and the catalog
+  - Square item `name` = cleaned `title` plus the edition's binding, e.g. `Wayward Lives (Paperback)`,
+    because each binding is a separate Square item and staff need to tell them apart at the POS
+    (see Edition Consolidation, "Square mapping"). The subtitle lives only in Payload, and the catalog
     sync's merge never writes `subtitle`.
 - Use `BatchUpsertCatalogObjects` with each object's current `version` (optimistic concurrency).
   On a version conflict, re-fetch and recompute, and never blind-overwrite. Batches are ≤100 objects
@@ -393,6 +395,18 @@ data-integrity-sensitive:
 - **301-redirect** retired slugs (preserve SEO/link equity).
 - Migrate `Orders` / `Carts` / `Reviews` / `Comments` references off deleted records.
 - Resolve metadata/cover conflicts: **preserve curated data**, use Ingram only to *group* and fill gaps.
+
+**Square mapping (owner decision 2026-10-02): leave Square alone.** In Square, each binding is
+its own item (one variation each), and that stays as it is: no Square restructuring, no lost
+per-variation sales history, no change for staff at the POS. Payload adapts instead:
+- Move `squareItemId` from the book to the **edition** (`editions[].squareItemId`), with uniqueness
+  enforced per edition (a partial unique index on `books_editions.square_item_id`), not per book.
+- Square catalog sync finds the book via `editions.squareItemId` (falling back to
+  `editions.squareVariationId`) instead of the book-level field. Without this, a binding merged
+  away from its original book would be recreated or staged on its next Square catalog change.
+- Stock sync already matches by `editions.squareVariationId` and needs no change.
+- Backfill: copy each book's current `squareItemId` onto its Square-linked editions before merging.
+- **Prerequisite:** this ships before any books are merged.
 
 **Secondary benefit:** likely shrinks the GSC *"Duplicate, Google chose different canonical"*
 bucket (multiple records per work is a classic cause) — an SEO win alongside better UX (one page

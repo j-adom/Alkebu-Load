@@ -1075,7 +1075,7 @@ Tasks 1–10 are implemented on `feat/ingram-availability-engine`. Each was comm
 - Create: `alkebu-load/tests/ingram/squareWriteBack.test.ts` (mock Square client)
 
 **Interfaces:**
-- `planSquareWrites(changes) → SquareWrite[]`: price changes go to the variation `price_money` (by `squareVariationId`); title changes go to the item `name` (by `squareItemId`). Books without Square ids are skipped (Payload-only).
+- `planSquareWrites(changes) → SquareWrite[]`: price changes go to the variation `price_money` (by `squareVariationId`); title changes go to the item `name` (by the edition's Square item) as `<cleaned title> (<binding>)`, since each binding is its own Square item. Books without Square ids are skipped (Payload-only).
 - `applySquareWrites(client, writes, { dryRun }) → { written, conflicts, skipped }`: fetches current objects, applies only if the current Square value still equals the value the diff was computed from, and calls `BatchUpsertCatalogObjects` (≤100 per batch) with current `version`. On version mismatch it re-fetches and recomputes once, otherwise reports a conflict. It logs previous name/price/version to `IngramEnrichmentLog`.
 - Called from `applyEnrichment` **before** the Payload write for the same book, under the `books-write` concurrency key.
 
@@ -1111,6 +1111,15 @@ Tasks 1–10 are implemented on `feat/ingram-availability-engine`. Each was comm
 - [ ] **Step 7: Commit:** `chore(ingram): enrichment rollout notes and termination purge`.
 
 ---
+
+## Companion: Edition Consolidation prerequisite *(decided 2026-10-02)*
+
+Square stays one item per binding. Before any books are merged (Edition Consolidation gets its own spec), ship this:
+
+- **Schema:** `editions[].squareItemId` (text) plus a partial unique index on `books_editions.square_item_id`, via scoped SQL. Keep the book-level field until the backfill is verified, then retire it.
+- **Backfill script:** copy each book's `squareItemId` onto its Square-linked editions; dry run first, counts only.
+- **Catalog sync:** find the book by `editions.squareItemId`, falling back to `editions.squareVariationId`. Integration tests: two Square items mapped to one book's two editions both update that book, and neither creates a duplicate.
+- **Merge stays out of Square:** merging never edits Square items.
 
 ## Self-Review
 
