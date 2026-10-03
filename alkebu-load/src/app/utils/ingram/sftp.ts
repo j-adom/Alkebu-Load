@@ -2,6 +2,7 @@
 // algorithms (ecdh-sha2-nistp256 / rsa-sha2-512 / aes128-gcm), so no OpenSSH binary is
 // needed in the container.
 import { createHash } from 'node:crypto';
+import { stat } from 'node:fs/promises';
 import SftpClient from 'ssh2-sftp-client';
 
 // Recorded 2026-10-02 on first connect. Override with INGRAM_FTP_HOST_FINGERPRINT if
@@ -69,6 +70,29 @@ export async function listIngramDir(dir: string, config = sftpConfigFromEnv()): 
   );
 }
 
+/**
+ * Sequential download, verified. Not fastGet: its parallel chunked reads produced a
+ * corrupt zip against Ingram's GoAnywhere server. The full stock file is also rebuilt
+ * several times a day, so a size/timestamp change between the before and after stat
+ * means we caught it mid-rewrite: fail (the job retries) rather than parse a torn file.
+ */
+export async function verifiedDownload(
+  client: Pick<SftpClient, 'stat' | 'get'>,
+  remotePath: string,
+  localPath: string,
+): Promise<void> {
+  const before = await client.stat(remotePath);
+  await client.get(remotePath, localPath);
+  const after = await client.stat(remotePath);
+  if (after.size !== before.size || after.modifyTime !== before.modifyTime) {
+    throw new Error(`${remotePath} changed on the server during download; retry later`);
+  }
+  const { size } = await stat(localPath);
+  if (size !== before.size) {
+    throw new Error(`Download of ${remotePath} incomplete: got ${size} of ${before.size} bytes`);
+  }
+}
+
 export async function downloadIngramFile(remotePath: string, localPath: string, config = sftpConfigFromEnv()): Promise<void> {
-  await withSftp(config, (client) => client.fastGet(remotePath, localPath));
+  await withSftp(config, (client) => verifiedDownload(client, remotePath, localPath));
 }
