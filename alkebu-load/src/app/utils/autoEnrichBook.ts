@@ -128,16 +128,14 @@ export async function autoLinkAuthors(doc: any, req: any) {
       const authorName = authorText.name?.trim();
       if (!authorName) continue;
 
-      // Use smart fuzzy matching to find or create author
-      const author = await findOrCreateAuthor(req.payload, authorName);
-
-      if (author.wasCreated) {
-        console.log(`  ✨ Created author: ${author.name}`);
-      } else {
-        console.log(`  🔗 Matched existing author: ${author.name}`);
+      // One unlinkable name must not cost the book its other authors.
+      try {
+        const author = await findOrCreateAuthor(req.payload, authorName);
+        console.log(`  ${author.wasCreated ? '✨ Created' : '🔗 Matched existing'} author: ${author.name}`);
+        if (!authorIds.includes(author.id)) authorIds.push(author.id);
+      } catch (error) {
+        console.error(`  ⚠️ Could not link author "${authorName}":`, error);
       }
-
-      authorIds.push(author.id);
     }
 
     // Update book with linked authors. Also clean any malformed authorsText

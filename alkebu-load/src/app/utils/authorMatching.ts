@@ -1,212 +1,84 @@
 /**
- * Smart author matching utility
- * Uses parse-full-name to normalize and match author names
- * Handles variations like:
- * - "Dr. Martin Luther King Jr." vs "Martin Luther King"
- * - "Maya Angelou" vs "Dr. Maya Angelou"
- * - Different capitalization and spacing
+ * Author linking: find the existing author for a name, or create one.
+ *
+ * Rules (see authorNameKey.ts for what "same" and "compatible" mean):
+ *   1. Same name, written differently ("Gates, Henry Louis Jr." ~ "Henry Louis Gates, Jr.")
+ *      -> that author (the oldest record if duplicates already exist).
+ *   2. Otherwise exactly ONE compatible person ("Henry L. Gates" ~ "Henry Louis Gates")
+ *      -> that author (the oldest record if that person already has duplicates). Two
+ *      compatible people (Angela Y. Davis and Angela J. Davis for "Angela Davis") is
+ *      ambiguous: create rather than guess.
+ *   3. Otherwise create.
+ *
+ * Existing authors are never renamed here. The old "upgrade to the more complete name"
+ * step renamed authors to title-laden forms ("Dr. Jawanza Kunjufu PhD") and, because
+ * author names are unique, failed outright when the new name already existed elsewhere
+ * (Henry L. Gates -> Henry Louis Gates, Jr., 2026-10-04). Name cleanup belongs to the
+ * reviewed merge script (scripts/author-merge.ts).
  */
 
-import parseFullName from 'parse-full-name';
+import { authorKey, namesCompatible } from './authorNameKey';
 
-export interface ParsedName {
-  first: string;
-  middle: string;
-  last: string;
-  title: string;
-  suffix: string;
-  nick: string;
-  normalized: string; // Full name without title/suffix
-  sortKey: string; // For matching: "last first middle" lowercase
+export interface AuthorRef {
+  id: number | string;
+  name: string;
 }
 
-/**
- * Parse and normalize an author name
- */
-export function parseAuthorName(fullName: string): ParsedName {
-  const parsed = parseFullName.parseFullName(fullName);
+/** Pure: the author a name should link to, or null to create a new one. */
+export function chooseAuthorMatch(newName: string, existing: AuthorRef[]): AuthorRef | null {
+  const key = authorKey(newName);
+  if (!key) return null;
 
-  // Build normalized name (first middle last, no title/suffix)
-  const nameParts = [
-    parsed.first,
-    parsed.middle,
-    parsed.last
-  ].filter(Boolean);
+  const byId = (a: AuthorRef, b: AuthorRef) => Number(a.id) - Number(b.id);
+  const sameName = existing.filter((a) => authorKey(a.name) === key).sort(byId);
+  if (sameName.length > 0) return sameName[0];
 
-  const normalized = nameParts.join(' ').trim();
-
-  // Create sort key for matching (last, first middle)
-  const sortKeyParts = [
-    parsed.last,
-    parsed.first,
-    parsed.middle
-  ].filter(Boolean);
-
-  const sortKey = sortKeyParts
-    .join(' ')
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, '') // Remove non-letters
-    .replace(/\s+/g, ' ')     // Normalize spaces
-    .trim();
-
-  return {
-    first: parsed.first || '',
-    middle: parsed.middle || '',
-    last: parsed.last || '',
-    title: parsed.title || '',
-    suffix: parsed.suffix || '',
-    nick: parsed.nick || '',
-    normalized,
-    sortKey
-  };
+  // Several compatible records that are all the same name (existing duplicates) still
+  // count as one person; two different names is genuinely ambiguous.
+  const compatible = existing.filter((a) => namesCompatible(newName, a.name)).sort(byId);
+  const people = new Set(compatible.map((a) => authorKey(a.name)));
+  return people.size === 1 ? compatible[0] : null;
 }
 
-/**
- * Check if two author names match (fuzzy matching)
- * Returns true if they represent the same person
- */
-export function namesMatch(name1: string, name2: string): boolean {
-  const parsed1 = parseAuthorName(name1);
-  const parsed2 = parseAuthorName(name2);
-
-  // Exact match on sort key (ignores titles, suffixes, capitalization)
-  if (parsed1.sortKey === parsed2.sortKey) {
-    return true;
-  }
-
-  // Check if one is a subset of the other (handles middle name variations)
-  // e.g., "Martin Luther King" matches "Martin L. King"
-  const key1Words = parsed1.sortKey.split(' ').filter(w => w.length > 1);
-  const key2Words = parsed2.sortKey.split(' ').filter(w => w.length > 1);
-
-  if (key1Words.length === 0 || key2Words.length === 0) {
-    return false;
-  }
-
-  // Must have matching first and last names
-  const firstMatch = key1Words[0] === key2Words[0]; // Last name
-  const lastMatch = key1Words[key1Words.length - 1] === key2Words[key2Words.length - 1] ||
-                    key1Words[1] === key2Words[1]; // First name
-
-  if (!firstMatch || !lastMatch) {
-    return false;
-  }
-
-  // If they have the same first and last, consider it a match
-  // (handles middle name/initial differences)
-  return true;
-}
-
-/**
- * Get the most complete version of a name
- * Prefers versions with titles and suffixes
- */
-export function getMostCompleteName(name1: string, name2: string): string {
-  const parsed1 = parseAuthorName(name1);
-  const parsed2 = parseAuthorName(name2);
-
-  // Score based on completeness
-  const score1 =
-    (parsed1.title ? 1 : 0) +
-    (parsed1.first ? 1 : 0) +
-    (parsed1.middle ? 1 : 0) +
-    (parsed1.last ? 1 : 0) +
-    (parsed1.suffix ? 1 : 0);
-
-  const score2 =
-    (parsed2.title ? 1 : 0) +
-    (parsed2.first ? 1 : 0) +
-    (parsed2.middle ? 1 : 0) +
-    (parsed2.last ? 1 : 0) +
-    (parsed2.suffix ? 1 : 0);
-
-  // Return the more complete version
-  return score1 >= score2 ? name1 : name2;
-}
-
-/**
- * Find matching author in existing authors list
- * Returns the matching author or null
- */
-export function findMatchingAuthor(
-  newName: string,
-  existingAuthors: Array<{ id: number | string; name: string }>
-): { id: number | string; name: string } | null {
-  for (const existing of existingAuthors) {
-    if (namesMatch(newName, existing.name)) {
-      return existing;
-    }
-  }
-  return null;
-}
-
-/**
- * Smart author finder with fuzzy matching
- * For use with Payload API
- */
 export async function findOrCreateAuthor(
   payload: any,
-  authorName: string
+  authorName: string,
 ): Promise<{ id: number; name: string; wasCreated: boolean }> {
   const trimmedName = authorName.trim();
   if (!trimmedName) {
     throw new Error('Author name cannot be empty');
   }
 
-  // Get all authors (we'll do fuzzy matching in-memory)
-  // This is efficient enough for a few thousand authors
+  // In-memory matching over all authors: a few thousand rows, fine per book link.
   const allAuthors = await payload.find({
     collection: 'authors',
     limit: 10000,
-    pagination: false
+    pagination: false,
+    depth: 0,
   });
 
-  // Try to find a matching author
-  const match = findMatchingAuthor(trimmedName, allAuthors.docs);
-
+  const match = chooseAuthorMatch(trimmedName, allAuthors.docs);
   if (match) {
-    // Found a match - check if we should update to a more complete name
-    const betterName = getMostCompleteName(trimmedName, match.name);
-
-    if (betterName !== match.name) {
-      // Update to the more complete version
-      await payload.update({
-        collection: 'authors',
-        id: match.id,
-        data: {
-          name: betterName
-        }
-      });
-
-      console.log(`  🔄 Updated author name: "${match.name}" → "${betterName}"`);
-
-      return {
-        id: match.id as number,
-        name: betterName,
-        wasCreated: false
-      };
-    }
-
-    return {
-      id: match.id as number,
-      name: match.name,
-      wasCreated: false
-    };
+    return { id: match.id as number, name: match.name, wasCreated: false };
   }
 
-  // No match found - create new author
-  const newAuthor = await payload.create({
-    collection: 'authors',
-    data: {
-      name: trimmedName,
-      isActive: true,
-      featured: false
+  try {
+    const newAuthor = await payload.create({
+      collection: 'authors',
+      data: { name: trimmedName, isActive: true, featured: false },
+    });
+    return { id: newAuthor.id as number, name: trimmedName, wasCreated: true };
+  } catch (error) {
+    // Author names are unique: a concurrent link may have just created this exact name.
+    const existing = await payload.find({
+      collection: 'authors',
+      where: { name: { equals: trimmedName } },
+      limit: 1,
+      depth: 0,
+    });
+    if (existing.docs[0]) {
+      return { id: existing.docs[0].id as number, name: existing.docs[0].name, wasCreated: false };
     }
-  });
-
-  return {
-    id: newAuthor.id as number,
-    name: trimmedName,
-    wasCreated: true
-  };
+    throw error;
+  }
 }
