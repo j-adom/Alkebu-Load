@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Owner review list from scripts/square-staging-reprocess.ts
 /square-staging-review*.csv
+
+# Owner review list for scripts/author-merge.ts
+/author-duplicates-review*.csv

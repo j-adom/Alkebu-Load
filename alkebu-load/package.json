@@ -18,7 +18,8 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start -p 3000",
     "test": "cross-env NODE_OPTIONS=--no-deprecation STRIPE_SECRET_KEY=sk_test_dummy node --test --import tsx --test-reporter tap \"./tests/**/*.test.ts\"",
     "square:staging-reprocess": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-staging-reprocess.ts",
-    "square:staging-promote": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-staging-promote.ts"
+    "square:staging-promote": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-staging-promote.ts",
+    "authors:merge": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/author-merge.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.952.0",
