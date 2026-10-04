@@ -222,3 +222,9 @@ test('isNonBookCategory: only a set, non-Books reporting category is non-book', 
   assert.strictEqual(isNonBookCategory(withCategory()), false);
   assert.strictEqual(isNonBookCategory(withCategory('OTHER'), 'OTHER'), false);
 });
+
+test('isValidIsbn rejects checksum-valid EAN-13s outside the 978/979 Bookland prefix', () => {
+  assert.strictEqual(isValidIsbn('9780310180302'), true);
+  assert.strictEqual(isValidIsbn('8901234567890'), false); // valid EAN-13 checksum, not an ISBN
+  assert.strictEqual(isValidIsbn('0306406152'), true); // ISBN-10 unaffected
+});

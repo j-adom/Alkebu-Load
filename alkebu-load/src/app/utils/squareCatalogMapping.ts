@@ -43,7 +43,9 @@ export function isValidIsbn(isbn: string): boolean {
   if (typeof isbn !== 'string') return false;
   const clean = isbn.replace(/[-\s]/g, '');
 
-  if (/^\d{13}$/.test(clean)) {
+  // ISBN-13s are Bookland EANs: 978/979 only. Other EAN-13 product barcodes (incense,
+  // soap) also pass the checksum, so the prefix is what separates them.
+  if (/^\d{13}$/.test(clean) && /^97[89]/.test(clean)) {
     let sum = 0;
     for (let i = 0; i < 13; i++) {
       const digit = clean.charCodeAt(i) - 48;
