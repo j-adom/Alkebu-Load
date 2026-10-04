@@ -9,6 +9,7 @@
  *   pnpm ingram:stock-refresh -- --sold-since-years 3          # sales window (default 4; 0 = off)
  *   pnpm ingram:stock-refresh -- --report path/to/review.csv   # review list location
  *   pnpm ingram:stock-refresh -- --fresh                       # ignore the cached snapshot
+ *   pnpm ingram:stock-refresh -- --legacy-orders orders.csv    # also count pre-Payload Snipcart sales
  *
  * A successful download is cached as a compact snapshot (our EANs only: on-hand and
  * orderable) in .ingram-stock-snapshot.json for 24 h, so reruns skip the ~15-minute
@@ -85,6 +86,7 @@ async function main() {
   const { planBookAvailability } = await import('../src/app/utils/ingram/availabilityPlan')
   const { fetchSoldVariationIds } = await import('../src/app/utils/ingram/squareSales')
   const { fetchOnlineSales } = await import('../src/app/utils/ingram/onlineSales')
+  const { parseSnipcartOrders } = await import('../src/app/utils/ingram/legacyOrders')
 
   const apply = process.argv.includes('--apply')
   const soldSinceYears = Number(argValue('--sold-since-years') ?? 4)
@@ -123,6 +125,7 @@ async function main() {
 
   let soldVariationIds: Map<string, string> | undefined
   let onlineSales: Awaited<ReturnType<typeof fetchOnlineSales>>['sales'] | undefined
+  let soldEans: Map<string, string> | undefined
   if (soldSinceYears > 0) {
     const since = new Date()
     since.setFullYear(since.getFullYear() - soldSinceYears)
@@ -137,6 +140,15 @@ async function main() {
     const web = await withRetries('website sales lookup', () => fetchOnlineSales(payload, since.toISOString()))
     onlineSales = web.sales
     console.log(`[refresh] website sales since ${since.toISOString().slice(0, 10)}: ${web.orders} orders, ${web.sales.size} distinct books`)
+    const legacyPath = argValue('--legacy-orders')
+    if (legacyPath) {
+      const legacy = parseSnipcartOrders(await readFile(legacyPath, 'utf8'), since.toISOString())
+      soldEans = legacy.sold
+      console.log(
+        `[refresh] Snipcart sales since ${since.toISOString().slice(0, 10)}: ${legacy.counted} book lines, ${legacy.sold.size} distinct ISBNs ` +
+          `(skipped: ${legacy.cancelled} cancelled, ${legacy.outsideWindow} before the window, ${legacy.notABook} non-book)`,
+      )
+    }
   }
 
   const tally: Record<string, number> = {}
@@ -156,6 +168,7 @@ async function main() {
         fullCoverage: input.fullCoverage,
         soldVariationIds,
         onlineSales,
+        soldEans,
       })
       tally[plan.transition] = (tally[plan.transition] ?? 0) + 1
       if (plan.reason) reasons[plan.reason] = (reasons[plan.reason] ?? 0) + 1

@@ -134,3 +134,17 @@ test('in-store and website sales together report "both" and the latest date', ()
   assert.equal(plan.saleSource, 'both');
   assert.equal(plan.lastSoldAt, '2025-06-01T00:00:00Z');
 });
+
+test('a pre-Payload (Snipcart) sale rescues the edition with that ISBN', () => {
+  const editions = [{ isbn: '9780000000002' }, { isbn10: '0306406152' }];
+  const plan = planBookAvailability({ id: 12, availabilityStatus: 'available', editions }, stock({}), {
+    checkedAt: NOW,
+    fullCoverage: true,
+    soldEans: new Map([['9780306406157', '2024-08-01T10:00:00.000Z']]),
+  });
+  assert.equal(plan.transition, 'rescued-by-sales');
+  assert.equal(plan.saleSource, 'online');
+  assert.equal(plan.lastSoldAt, '2024-08-01T10:00:00.000Z');
+  assert.equal(plan.editions[0].inventory?.availableToOrder, undefined);
+  assert.equal(plan.editions[1].inventory.availableToOrder, true);
+});

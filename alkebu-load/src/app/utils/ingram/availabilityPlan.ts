@@ -41,6 +41,8 @@ export function planBookAvailability(
     soldVariationIds?: Map<string, string>;
     /** Website sales by book id. */
     onlineSales?: OnlineSales;
+    /** Sales by EAN, e.g. the pre-Payload Snipcart store (counted as online). */
+    soldEans?: Map<string, string>;
   },
 ): BookAvailabilityPlan {
   const editions: any[] = Array.isArray(book?.editions) ? book.editions : [];
@@ -53,7 +55,7 @@ export function planBookAvailability(
   let { editions: next, changed } = applyStockToEditions(editions, stockByEan, opts);
   let after = resolveAvailability({ ...book, editions: next }).state;
 
-  if (before === 'in_stock' && after === 'request' && (opts.soldVariationIds || opts.onlineSales)) {
+  if (before === 'in_stock' && after === 'request' && (opts.soldVariationIds || opts.onlineSales || opts.soldEans)) {
     const inStoreAt = (edition: any) => opts.soldVariationIds?.get(edition?.squareVariationId);
     const online = opts.onlineSales?.get(String(book?.id));
     // The edition(s) bought online, else the primary (or first) edition.
@@ -65,17 +67,24 @@ export function planBookAvailability(
         ? boughtOnline
         : [next.find((edition) => edition?.isPrimary) ?? next[0]].filter(Boolean)
       : [];
+    const legacyAt = (edition: any) => {
+      const ean = editionEan(edition);
+      return ean ? opts.soldEans?.get(ean) : undefined;
+    };
     const soldInStore = next.some(inStoreAt);
+    const soldOnline = onlineTargets.length > 0 || next.some(legacyAt);
 
-    if (soldInStore || onlineTargets.length > 0) {
+    if (soldInStore || soldOnline) {
       next = next.map((edition) =>
-        inStoreAt(edition) || onlineTargets.includes(edition)
+        inStoreAt(edition) || onlineTargets.includes(edition) || legacyAt(edition)
           ? { ...edition, inventory: { ...(edition.inventory ?? {}), availableToOrder: true } }
           : edition,
       );
       changed = true;
-      const dates = [...next.map(inStoreAt), online?.lastSoldAt].filter((d): d is string => !!d).sort();
-      const saleSource = soldInStore && online ? 'both' : soldInStore ? 'in-store' : 'online';
+      const dates = [...next.map(inStoreAt), ...next.map(legacyAt), online?.lastSoldAt]
+        .filter((d): d is string => !!d)
+        .sort();
+      const saleSource = soldInStore && soldOnline ? 'both' : soldInStore ? 'in-store' : 'online';
       after = resolveAvailability({ ...book, editions: next }).state;
       return {
         protected: false,
