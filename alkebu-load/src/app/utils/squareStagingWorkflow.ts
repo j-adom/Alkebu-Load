@@ -19,7 +19,8 @@
  */
 
 import { fromJsonSafe } from './jsonSafe';
-import { mapSquareItemToBook } from './squareCatalogMapping';
+import { isNonBookCategory, mapSquareItemToBook, RESOLVED_SENTINEL_ISSUE } from './squareCatalogMapping';
+import { matchProductLine } from './wellnessProductLines';
 
 export type StagingDecision =
   | { action: 'write-book' } // promoted row, or no staging history
@@ -169,4 +170,35 @@ export async function promoteStagedItem(
     }
     throw err;
   }
+}
+
+export type StagingReassessment =
+  | { action: 'unchanged'; reason: 'promoted' | 'rejected' }
+  | { action: 'reject-non-book' }
+  | {
+      action: 'update';
+      reviewStatus: 'ready' | 'needs-review';
+      validationIssues: Array<{ field: string; code: string; detail?: string; variationId?: string }>;
+      proposedIsbn?: string;
+    };
+
+/**
+ * Re-checks a stored staging row against the CURRENT mapping rules, for rows that were
+ * staged under older rules (e.g. before the ISBN could come from upc/gtin). Pure. Like
+ * the sync, it never promotes: a now-complete row only becomes 'ready'.
+ */
+export function reassessStagingRow(row: { reviewStatus?: string | null; rawItem: unknown }): StagingReassessment {
+  if (row.reviewStatus === 'promoted' || row.reviewStatus === 'rejected') {
+    return { action: 'unchanged', reason: row.reviewStatus };
+  }
+  const item = fromJsonSafe(row.rawItem);
+  const name = String(((item ?? {}) as { itemData?: { name?: unknown } }).itemData?.name ?? '');
+  if (isNonBookCategory(item) || matchProductLine(name)) return { action: 'reject-non-book' };
+
+  const mapped = mapSquareItemToBook(item);
+  if (mapped.kind === 'complete') {
+    const editions = (mapped.data.editions as Array<{ isbn?: string }>) ?? [];
+    return { action: 'update', reviewStatus: 'ready', validationIssues: [RESOLVED_SENTINEL_ISSUE], proposedIsbn: editions[0]?.isbn };
+  }
+  return { action: 'update', reviewStatus: 'needs-review', validationIssues: mapped.issues, proposedIsbn: mapped.proposed.proposedIsbn };
 }

@@ -1,7 +1,7 @@
 import type { Payload } from 'payload';
 
 import { toJsonSafe } from './jsonSafe';
-import { isNonBookCategory, mapSquareItemToBook, type ValidationIssue } from './squareCatalogMapping';
+import { isNonBookCategory, mapSquareItemToBook, RESOLVED_SENTINEL_ISSUE } from './squareCatalogMapping';
 import { mergeEditions } from './squareEditionMerge';
 import { decideStagingAction } from './squareStagingWorkflow';
 import { matchProductLine } from './wellnessProductLines';
@@ -28,11 +28,6 @@ const SKIP_ENRICHMENT_CONTEXT = { skipEnrichment: true };
 const OVERLAP_MS = 15 * 60 * 1000; // 15 minutes
 const DEFAULT_LOOKBACK_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-const RESOLVED_SENTINEL_ISSUE: ValidationIssue = {
-  field: '-',
-  code: 'resolved',
-  detail: 'Square now supplies all required data',
-};
 
 // Lazy-initialize Square client (avoid crash during Next.js build, and avoid
 // requiring SQUARE_ACCESS_TOKEN in environments/tests that never call this).

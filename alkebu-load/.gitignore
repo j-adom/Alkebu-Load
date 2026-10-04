@@ -46,3 +46,6 @@ next-env.d.ts
 # crash between creation and its after() cleanup must not leave this one `git add -A`
 # away from a commit.
 .tmp-integration-square-catalog.db*
+
+# Owner review list from scripts/square-staging-reprocess.ts
+/square-staging-review*.csv

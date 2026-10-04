@@ -263,3 +263,10 @@ export function isNonBookCategory(
   const id = data?.reportingCategory?.id;
   return typeof id === 'string' && id !== '' && id !== booksCategoryId;
 }
+
+/** Staging rows need at least one issue entry; a complete item records this one. */
+export const RESOLVED_SENTINEL_ISSUE: ValidationIssue = {
+  field: '-',
+  code: 'resolved',
+  detail: 'Square now supplies all required data',
+};
