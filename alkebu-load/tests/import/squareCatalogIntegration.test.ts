@@ -712,3 +712,27 @@ test('11. checkpoint holds on failure: one unresolved item prevents the watermar
   assert.ok(state.lastRunUnresolved >= 1);
 });
 
+
+test('13. an item filed under a non-Books reporting category is skipped, not staged', async () => {
+  const itemId = 'ITEM-T13-INCENSE';
+  const item: any = squareItem(itemId, [squareVariation('V-T13', 'M16', 500)], { name: 'Madina Incense Pack T13' });
+  item.itemData.reportingCategory = { id: 'HOTU26XFEIY5AZ4M22JPR7CE' };
+  setCatalogItems([item]);
+  const result = await runSquareCatalogSync(payload);
+  assert.strictEqual(await findStagingByItemId(itemId), null, 'a non-book must not be staged');
+  assert.strictEqual(await findBookByItemId(itemId), null);
+  assert.ok(result.skippedNonBook >= 1);
+});
+
+test('14. a book with a store-code SKU and the ISBN in the barcode becomes a Book', async () => {
+  const itemId = 'ITEM-T14-UPC';
+  const item: any = squareItem(itemId, [{ id: 'V-T14', itemVariationData: { sku: 'H623082', upc: VALID_A, priceMoney: { amount: BigInt(1999) } } }], {
+    name: 'Barcode ISBN Book T14',
+  });
+  item.itemData.reportingCategory = { id: 'T2B3ROTJ3HFGVBO22QLOOJDE' };
+  setCatalogItems([item]);
+  await runSquareCatalogSync(payload);
+  const book = await findBookByItemId(itemId);
+  assert.ok(book, 'expected a Book, not a staging row');
+  assert.strictEqual(book.editions[0].isbn, VALID_A);
+});

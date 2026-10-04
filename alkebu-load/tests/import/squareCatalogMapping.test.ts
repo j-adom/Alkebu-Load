@@ -175,3 +175,50 @@ test('malformed input is incomplete, never a throw', () => {
     assert.strictEqual(mapSquareItemToBook(bad).kind, 'incomplete');
   }
 });
+
+test('the ISBN can come from the barcode when sku holds a store code', () => {
+  const r = mapSquareItemToBook({
+    type: 'ITEM',
+    id: 'ITEM-UPC',
+    itemData: {
+      name: 'Kwanzaa',
+      variations: [{ id: 'V1', itemVariationData: { sku: 'H623082', upc: '9780310180302', priceMoney: { amount: 1999n } } }],
+    },
+  });
+  assert.strictEqual(r.kind, 'complete');
+  assert.strictEqual((r as any).data.editions[0].isbn, '9780310180302');
+});
+
+test('gtin is checked too, and a valid sku still wins', () => {
+  const fromGtin = mapSquareItemToBook({
+    type: 'ITEM',
+    id: 'ITEM-GTIN',
+    itemData: { name: 'G', variations: [{ id: 'V1', itemVariationData: { sku: '270576Z', gtin: '9780062457714', priceMoney: { amount: 1000n } } }] },
+  });
+  assert.strictEqual((fromGtin as any).data.editions[0].isbn, '9780062457714');
+  const skuWins = mapSquareItemToBook({
+    type: 'ITEM',
+    id: 'ITEM-SKU',
+    itemData: { name: 'S', variations: [{ id: 'V1', itemVariationData: { sku: '9780310180302', upc: '9780062457714', priceMoney: { amount: 1000n } } }] },
+  });
+  assert.strictEqual((skuWins as any).data.editions[0].isbn, '9780310180302');
+});
+
+test('the invalid-checksum detail lists every value it tried', () => {
+  const r = mapSquareItemToBook({
+    type: 'ITEM',
+    id: 'ITEM-BAD',
+    itemData: { name: 'B', variations: [{ id: 'V1', itemVariationData: { sku: 'H623082', upc: '123456789012', priceMoney: { amount: 1000n } } }] },
+  });
+  assert.strictEqual(r.kind, 'incomplete');
+  assert.match((r as any).issues[0].detail, /"H623082", "123456789012": none is a valid ISBN/);
+});
+
+test('isNonBookCategory: only a set, non-Books reporting category is non-book', async () => {
+  const { isNonBookCategory, DEFAULT_BOOKS_CATEGORY_ID } = await import('../../src/app/utils/squareCatalogMapping');
+  const withCategory = (id?: string) => ({ itemData: id === undefined ? {} : { reportingCategory: { id } } });
+  assert.strictEqual(isNonBookCategory(withCategory(DEFAULT_BOOKS_CATEGORY_ID)), false);
+  assert.strictEqual(isNonBookCategory(withCategory('HOTU26XFEIY5AZ4M22JPR7CE')), true);
+  assert.strictEqual(isNonBookCategory(withCategory()), false);
+  assert.strictEqual(isNonBookCategory(withCategory('OTHER'), 'OTHER'), false);
+});

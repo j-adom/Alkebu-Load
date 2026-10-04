@@ -1,7 +1,7 @@
 import type { Payload } from 'payload';
 
 import { toJsonSafe } from './jsonSafe';
-import { mapSquareItemToBook, type ValidationIssue } from './squareCatalogMapping';
+import { isNonBookCategory, mapSquareItemToBook, type ValidationIssue } from './squareCatalogMapping';
 import { mergeEditions } from './squareEditionMerge';
 import { decideStagingAction } from './squareStagingWorkflow';
 import { matchProductLine } from './wellnessProductLines';
@@ -183,6 +183,13 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
     if (matchProductLine(itemName)) {
       skippedNonBook++;
       console.log(`⏭️ square-catalog-sync: skipping non-book product line "${itemName}" (has its own import path)`);
+      continue;
+    }
+    // Filed under a non-Books reporting category (incense, apparel, nutrition, ...):
+    // not a book, and staging it would only park it as "invalid ISBN" forever.
+    if (isNonBookCategory(item)) {
+      skippedNonBook++;
+      console.log(`⏭️ square-catalog-sync: skipping "${itemName}" (Square reporting category is not Books)`);
       continue;
     }
 

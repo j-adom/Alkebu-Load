@@ -70,9 +70,25 @@ type SquareVariation = {
   itemVariationData?: {
     sku?: unknown;
     upc?: unknown;
+    gtin?: unknown;
     priceMoney?: { amount?: unknown };
   };
 };
+
+/**
+ * The variation's ISBN: the first checksum-valid value among sku, upc and gtin. Staff
+ * often leave Square's auto-generated store code (e.g. "H623082") in sku and scan the
+ * book's ISBN into the barcode (upc/gtin) field, so sku alone is not enough.
+ */
+export function isbnFromVariationData(data: { sku?: unknown; upc?: unknown; gtin?: unknown }): {
+  isbn?: string;
+  candidates: string[];
+} {
+  const candidates = [data.sku, data.upc, data.gtin]
+    .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    .map((v) => v.trim());
+  return { isbn: candidates.find(isValidIsbn), candidates };
+}
 
 type UsableVariation = {
   variationId?: string;
@@ -95,9 +111,7 @@ function evaluateVariation(
   const variationId = typeof variation.id === 'string' ? variation.id : undefined;
   const data = variation.itemVariationData ?? {};
 
-  const skuCandidate =
-    typeof data.sku === 'string' ? data.sku : typeof data.upc === 'string' ? data.upc : undefined;
-  const isbn = skuCandidate !== undefined && isValidIsbn(skuCandidate) ? skuCandidate : undefined;
+  const { isbn, candidates } = isbnFromVariationData(data);
 
   const rawAmount = data.priceMoney?.amount;
   const hasAmount = typeof rawAmount === 'bigint' || typeof rawAmount === 'number';
@@ -106,8 +120,11 @@ function evaluateVariation(
   if (!isbn) {
     issues.push({
       field: 'editions.isbn',
-      code: skuCandidate === undefined ? 'missing' : 'invalid-checksum',
-      detail: skuCandidate === undefined ? undefined : `sku/upc "${skuCandidate}" is not a valid ISBN`,
+      code: candidates.length === 0 ? 'missing' : 'invalid-checksum',
+      detail:
+        candidates.length === 0
+          ? undefined
+          : `sku/upc/gtin ${candidates.map((c) => `"${c}"`).join(', ')}: none is a valid ISBN`,
       variationId: variationId ?? `index-${index}`,
     });
   }
@@ -176,8 +193,7 @@ export function mapSquareItemToBook(item: unknown, now: Date = new Date()): Mapp
     const firstIsbn = usable[0]?.isbn ?? variationsArray
       .map((v) => {
         const d = ((v ?? {}) as SquareVariation).itemVariationData ?? {};
-        const sku = typeof d.sku === 'string' ? d.sku : typeof d.upc === 'string' ? d.upc : undefined;
-        return sku !== undefined && isValidIsbn(sku) ? sku : undefined;
+        return isbnFromVariationData(d).isbn;
       })
       .find((v): v is string => v !== undefined);
 
@@ -228,4 +244,22 @@ export function mapSquareItemToBook(item: unknown, now: Date = new Date()): Mapp
   data.lastSyncedAt = now.toISOString();
 
   return { kind: 'complete', data };
+}
+
+// Square reporting category "Books" (4,604 items as of 2026-10-03). Override with
+// SQUARE_BOOKS_CATEGORY_ID if the category is ever recreated.
+export const DEFAULT_BOOKS_CATEGORY_ID = 'T2B3ROTJ3HFGVBO22QLOOJDE';
+
+/**
+ * True when the item is filed under a Square reporting category other than Books
+ * (Incense & Oils, Fashion, Nutrition, ...). Those never belong in the Books sync.
+ * Items with no reporting category still go through: some books were never filed.
+ */
+export function isNonBookCategory(
+  item: unknown,
+  booksCategoryId: string = process.env.SQUARE_BOOKS_CATEGORY_ID || DEFAULT_BOOKS_CATEGORY_ID,
+): boolean {
+  const data = ((item ?? {}) as { itemData?: { reportingCategory?: { id?: unknown } } }).itemData;
+  const id = data?.reportingCategory?.id;
+  return typeof id === 'string' && id !== '' && id !== booksCategoryId;
 }
