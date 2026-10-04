@@ -2,7 +2,8 @@ import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { error, isRedirect, redirect } from '@sveltejs/kit';
+import { authorSearchWord, findRenamedAuthor } from '$lib/utils/authorKey';
 import { is404Error } from '$lib/utils/errors';
 
 function slugToName(slug: string): string {
@@ -34,6 +35,23 @@ async function resolveAuthorName(slug: string): Promise<string | null> {
   return null;
 }
 
+// When a slug matches no book's author text, its spelling may have been merged into
+// another ("Dr. Jawanza Kunjufu PhD" -> "Jawanza Kunjufu"). Find the surviving spelling
+// among books sharing the slug's most distinctive word.
+async function findRenamedAuthorName(slug: string): Promise<string | null> {
+  const word = authorSearchWord(slug);
+  if (!word) return null;
+  const res = await payloadGet<any>(
+    `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
+      'where[authorsText.name][like]': word,
+      limit: '50',
+      depth: '0',
+    })).toString()}`
+  );
+  const names = (res?.docs || []).flatMap((book: any) => (book.authorsText || []).map((a: any) => a?.name).filter(Boolean));
+  return findRenamedAuthor(slug, names, nameToSlug);
+}
+
 export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
   const authorSlug = params.slug;
   const page = parseInt(url.searchParams.get('p') || '1');
@@ -52,6 +70,10 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
     const authorName = await resolveAuthorName(authorSlug);
 
     if (!authorName) {
+      const renamed = await findRenamedAuthorName(authorSlug);
+      if (renamed) {
+        throw redirect(301, `/shop/books/authors/${nameToSlug(renamed)}${url.search}`);
+      }
       throw error(404, 'Author not found');
     }
 
@@ -107,7 +129,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       seo: seoData
     };
   } catch (err: unknown) {
-    if (is404Error(err)) {
+    if (is404Error(err) || isRedirect(err)) {
       throw err;
     }
 
