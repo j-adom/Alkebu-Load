@@ -1993,7 +1993,7 @@ export interface WellnessLifestyle {
       }[]
     | null;
   /**
-   * Different sizes, concentrations, and packaging options
+   * Scent and size variations. Expand a row to edit it; use Collapse All to close previously opened rows.
    */
   variations: {
     /**
@@ -3018,7 +3018,7 @@ export interface OilsIncense {
     | ('floral' | 'woody' | 'citrus' | 'herbal' | 'spicy' | 'earthy' | 'sweet' | 'fresh' | 'exotic' | 'sacred')
     | null;
   /**
-   * Available sizes and formats
+   * Scent and size variations. Expand a row to edit it; use Collapse All to close previously opened rows.
    */
   variations: {
     /**

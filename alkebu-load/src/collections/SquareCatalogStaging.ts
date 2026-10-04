@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload';
 
+import { handlePromoteRequest } from '../app/utils/promoteStagingEndpoint';
 import { isCatalogStaff } from '../app/utils/squareStagingWorkflow';
 
 const isAdmin = (user: unknown): boolean =>
@@ -22,7 +23,22 @@ export const SquareCatalogStaging: CollectionConfig = {
     update: ({ req: { user } }) => isCatalogStaff(user),
     delete: ({ req: { user } }) => isAdmin(user),
   },
+  endpoints: [
+    {
+      path: '/:id/promote',
+      method: 'post',
+      handler: (req) => handlePromoteRequest(req),
+    },
+  ],
   fields: [
+    {
+      name: 'promote',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: { Field: '@/app/components/admin/PromoteStagedItemButton#PromoteStagedItemButton' },
+      },
+    },
     { name: 'squareItemId', type: 'text', required: true, unique: true, index: true },
     { name: 'squareCatalogVersion', type: 'text', required: true },
     { name: 'squareUpdatedAt', type: 'date', required: true },
