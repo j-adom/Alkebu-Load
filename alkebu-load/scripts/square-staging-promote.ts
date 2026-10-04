@@ -65,7 +65,9 @@ async function main() {
 
   console.log(`[promote] rows in list: ${ids.length}; ${apply ? `promoted: ${promoted}` : `would promote: ${wouldPromote}`}; refused: ${refused.length}`)
   for (const line of refused.slice(0, 20)) console.log(`[promote]   refused ${line}`)
-  process.exit(refused.length > 0 && apply ? 1 : 0)
+  // Non-zero whenever a row was refused, dry run included, so a chained
+  // "dry run && --apply" stops instead of promoting a partial list.
+  process.exit(refused.length > 0 ? 1 : 0)
 }
 
 main().catch((error) => {

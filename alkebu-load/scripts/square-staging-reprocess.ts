@@ -26,6 +26,9 @@ async function main() {
 
   const tally: Record<string, number> = {}
   const rows: string[][] = []
+  // Collect every candidate first: updating rows while paging through a filter on
+  // reviewStatus shifts the pages and silently skips rows (it did, on 2026-10-04).
+  const candidates: any[] = []
   for (let page = 1; ; page += 1) {
     const result = await payload.find({
       collection: 'square-catalog-staging',
@@ -35,7 +38,12 @@ async function main() {
       depth: 0,
       sort: 'id',
     })
-    for (const row of result.docs as any[]) {
+    candidates.push(...result.docs)
+    if (!result.hasNextPage) break
+  }
+
+  {
+    for (const row of candidates) {
       const r = reassessStagingRow(row)
       const key = r.action === 'update' ? r.reviewStatus : r.action
       tally[key] = (tally[key] ?? 0) + 1
@@ -70,12 +78,11 @@ async function main() {
         }
       }
     }
-    if (!result.hasNextPage) break
   }
 
   const header = ['staging_id', 'square_item_id', 'title', 'isbn', 'price', 'existing_book_ids_same_isbn', 'existing_titles', 'admin_url']
   await writeFile(reportPath, [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n')
-  console.log(`[reprocess] ${apply ? 'APPLIED' : 'dry run'}:`, tally)
+  console.log(`[reprocess] ${apply ? 'APPLIED' : 'dry run'} on ${candidates.length} rows:`, tally)
   console.log(`[reprocess] would become ready: ${rows.length}; already in catalog by ISBN: ${rows.filter((r) => r[5]).length}`)
   console.log(`[reprocess] review list: ${reportPath}`)
   process.exit(0)
