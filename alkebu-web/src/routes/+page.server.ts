@@ -1,4 +1,4 @@
-import { buildBookStorefrontPath, payloadGet } from '$lib/server/payload';
+import { appendBookCardSelect, buildBookStorefrontPath, payloadGet } from '$lib/server/payload';
 import { buildHomepageShelves } from '$lib/utils/homepageShelves';
 import { buildSEOData } from '$lib/seo';
 import { PUBLIC_SITE_URL } from '$env/static/public';
@@ -12,11 +12,13 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     // Owner-curated shelf (books flagged `isFeatured` in Payload)
     const featuredBooks = await payloadGet<any>(
       buildBookStorefrontPath(
-        new URLSearchParams({
-          'where[isFeatured][equals]': 'true',
-          limit: '8',
-          depth: '2',
-        }),
+        appendBookCardSelect(
+          new URLSearchParams({
+            'where[isFeatured][equals]': 'true',
+            limit: '8',
+            depth: '1',
+          }),
+        ),
       ),
     );
 
@@ -25,11 +27,13 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     // image and drops anything already on the featured shelf.
     const newBooksRaw = await payloadGet<any>(
       buildBookStorefrontPath(
-        new URLSearchParams({
-          sort: '-createdAt',
-          limit: '100',
-          depth: '2',
-        }),
+        appendBookCardSelect(
+          new URLSearchParams({
+            sort: '-createdAt',
+            limit: '100',
+            depth: '1',
+          }),
+        ),
       ),
     );
     const shelves = buildHomepageShelves({
