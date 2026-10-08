@@ -140,6 +140,7 @@ function ctaButton(text: string, url: string): string {
 // with " · " in both the HTML and plain-text bodies.
 function itemDetailParts(item: EmailLineItem): string[] {
   const parts: string[] = [];
+  if (item.variant) parts.push(item.variant);
   if (item.author) parts.push(`by ${item.author}`);
   if (item.edition) parts.push(item.edition);
   if (item.isbn) parts.push(`ISBN: ${item.isbn}`);
@@ -529,6 +530,7 @@ ${data.items.map(item => {
     const lines = [`  ${item.productTitle} x${item.quantity} - ${formatCents(item.totalPrice)}`];
     const detail = itemDetailParts(item);
     if (detail.length) lines.push(`    ${detail.join(' · ')}`);
+    if (item.productUrl) lines.push(`    ${item.productUrl}`);
     return lines.join('\n');
   }).join('\n')}
 

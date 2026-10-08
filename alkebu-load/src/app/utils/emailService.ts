@@ -43,6 +43,7 @@ export interface EmailLineItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  variant?: string | null;
   isbn?: string | null;
   productUrl?: string | null;
   author?: string | null;

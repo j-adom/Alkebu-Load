@@ -135,6 +135,44 @@ describe('buildOrderEmailLineItems', () => {
   });
 });
 
+describe('buildOrderEmailLineItems — wellness variations', () => {
+  const sheaProduct = {
+    slug: 'whipped-shea-butter',
+    variations: [
+      { sku: 'WSB-BLACKWOMAN-4OZ', scent: 'Black Woman', variantName: '4 oz' },
+      { sku: 'WSB-PINKSUGAR-4OZ', scent: 'Pink Sugar', variantName: '4 oz' },
+    ],
+  };
+  const sheaCartItem = {
+    productTitle: 'Whipped Shea Butter',
+    productType: 'wellness-lifestyle',
+    quantity: 1,
+    unitPrice: 1499,
+    product: { relationTo: 'wellness-lifestyle', value: sheaProduct },
+    identifiers: { sku: 'WSB-PINKSUGAR-4OZ' },
+  };
+
+  it('recovers the scent from the sku and links the product page', () => {
+    const [item] = buildOrderEmailLineItems([sheaCartItem]);
+
+    assert.equal(item.variant, 'Pink Sugar');
+    assert.equal(item.productUrl, 'https://alkebulanimages.com/shop/health-and-beauty/whipped-shea-butter');
+
+    const { html, text } = generateStaffNotificationTemplate(staffData([item]));
+    assert.match(html, /Pink Sugar/);
+    assert.match(html, /href="https:\/\/alkebulanimages\.com\/shop\/health-and-beauty\/whipped-shea-butter"/);
+    assert.match(text, /Pink Sugar/);
+  });
+
+  it('does not repeat the scent when the title already carries it', () => {
+    const [item] = buildOrderEmailLineItems([
+      { ...sheaCartItem, productTitle: 'Whipped Shea Butter — Pink Sugar' },
+    ]);
+
+    assert.equal(item.variant, undefined);
+  });
+});
+
 // ─── toCustomerLineItems ──────────────────────────────────────────────────────
 
 describe('toCustomerLineItems', () => {

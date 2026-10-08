@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import test from 'node:test';
 
 import {
+  resolveCartProductIdentifiers,
   resolveCartProductTitle,
   resolveCartProductUnitPrice,
   resolveCartStripePriceId,
@@ -110,4 +111,90 @@ test('an unmatched wellness variation throws instead of pricing at zero', () => 
   );
   // The pre-fix behavior — silently returning 0 — must never come back.
   assert.throws(() => resolveCartProductUnitPrice(product, 'wellness-lifestyle'), /Cannot resolve price/);
+});
+
+test('wellness cart title names the chosen scent, omitting a size every variation shares', () => {
+  const product = {
+    name: 'Whipped Shea Butter',
+    variations: [
+      { sku: 'WSB-BLACKWOMAN-4OZ', scent: 'Black Woman', variantName: '4 oz', price: 1499 },
+      { sku: 'WSB-PINKSUGAR-4OZ', scent: 'Pink Sugar', variantName: '4 oz', price: 1499 },
+    ],
+  };
+
+  assert.strictEqual(
+    resolveCartProductTitle(product, { variationSku: 'WSB-PINKSUGAR-4OZ' }, 'wellness-lifestyle'),
+    'Whipped Shea Butter — Pink Sugar',
+  );
+  // Non-wellness callers keep the bare title.
+  assert.strictEqual(
+    resolveCartProductTitle(product, { variationSku: 'WSB-PINKSUGAR-4OZ' }),
+    'Whipped Shea Butter',
+  );
+});
+
+test('wellness cart title includes the size when sizes differ', () => {
+  const product = {
+    name: 'Body Oil',
+    variations: [
+      { sku: 'OIL-MUSK-1OZ', scent: 'Egyptian Musk', variantName: '1 oz', price: 999 },
+      { sku: 'OIL-MUSK-4OZ', scent: 'Egyptian Musk', variantName: '4 oz', price: 2499 },
+      { sku: 'OIL-AMBER-4OZ', scent: 'Amber', variantName: '4 oz', price: 2499 },
+    ],
+  };
+
+  assert.strictEqual(
+    resolveCartProductTitle(product, { variationSku: 'OIL-MUSK-4OZ' }, 'wellness-lifestyle'),
+    'Body Oil — Egyptian Musk, 4 oz',
+  );
+});
+
+test('single-variation wellness titles get no variation suffix', () => {
+  const product = {
+    name: 'Gye Nyame Blackseed Soap',
+    variations: [{ sku: 'GYENYAME-BAR', scent: 'Blackseed', price: 899 }],
+  };
+
+  assert.strictEqual(
+    resolveCartProductTitle(product, undefined, 'wellness-lifestyle'),
+    'Gye Nyame Blackseed Soap',
+  );
+});
+
+test('wellness identifiers record the selected variation, not the first one', () => {
+  const product = {
+    name: 'Whipped Shea Butter',
+    variations: [
+      { sku: 'WSB-BLACKWOMAN-4OZ', scent: 'Black Woman', price: 1499, squareVariationId: 'SQ_A' },
+      { sku: 'WSB-PINKSUGAR-8OZ', scent: 'Pink Sugar', price: 2499, squareVariationId: 'SQ_C' },
+    ],
+  };
+
+  const identifiers = resolveCartProductIdentifiers(product, 'wellness-lifestyle', {
+    squareVariationId: 'SQ_C',
+  });
+
+  assert.strictEqual(identifiers.sku, 'WSB-PINKSUGAR-8OZ');
+  assert.strictEqual(identifiers.squareVariationId, 'SQ_C');
+});
+
+test('wellness title ignores Square variation names that just repeat the scent or say Regular', () => {
+  // Shape of the production Whipped Shea Butter variations.
+  const product = {
+    name: 'Whipped Shea Butter',
+    variations: [
+      { sku: '210000011102', scent: 'Baby Powder', variantName: 'Baby Powder', price: 1399 },
+      { sku: '4686697', scent: 'Black Coconut', variantName: 'Regular', price: 1399 },
+      { sku: '210000007870', scent: 'Amber White', variantName: 'Amber White', price: 1399 },
+    ],
+  };
+
+  assert.strictEqual(
+    resolveCartProductTitle(product, { variationSku: '210000011102' }, 'wellness-lifestyle'),
+    'Whipped Shea Butter — Baby Powder',
+  );
+  assert.strictEqual(
+    resolveCartProductTitle(product, { variationSku: '4686697' }, 'wellness-lifestyle'),
+    'Whipped Shea Butter — Black Coconut',
+  );
 });

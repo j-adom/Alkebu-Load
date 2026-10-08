@@ -405,7 +405,7 @@ export async function addToCart(
     // the line. This is what makes re-adding a DIFFERENT variation of the
     // same product start a separate cart line instead of merging into the
     // first variation's stale price/sku (see cartOperations.ts FIX A).
-    const productTitle = resolveCartProductTitle(product, item.customization);
+    const productTitle = resolveCartProductTitle(product, item.customization, item.productType);
     const unitPrice = resolveCartProductUnitPrice(product, item.productType, item.customization);
     const identifiers = resolveCartProductIdentifiers(
       product,
@@ -475,6 +475,7 @@ export async function addToCart(
         id: existing.id,
         data: {
           quantity: existing.quantity + item.quantity,
+          productTitle,
           customization: item.customization || existing.customization,
           unitPrice,
           identifiers,
