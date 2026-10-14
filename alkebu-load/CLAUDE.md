@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working in `alk
 
 ## Project Overview
 
-Payload CMS 3.x (on Next.js 15) backend for Alkebu-Lan Images, the Nashville-based Black-owned bookstore. **The site is in production** at [payload.alkebulanimages.com](https://payload.alkebulanimages.com), serving the SvelteKit storefront at [alkebulanimages.com](https://alkebulanimages.com).
+Payload CMS 3.x (on Next.js 16) backend for Alkebu-Lan Images, the Nashville-based Black-owned bookstore. **The site is in production** at [payload.alkebulanimages.com](https://payload.alkebulanimages.com), serving the SvelteKit storefront at [alkebulanimages.com](https://alkebulanimages.com).
 
 This single Payload instance handles:
 - **E-commerce** — cart, checkout (Stripe primary, Square adapter under validation), tax/shipping, refunds, abandoned-cart recovery
@@ -210,7 +210,9 @@ This single Payload instance handles:
 
 - **Schema sync**: when changing `Carts` or `Orders`, run `pnpm generate:types` AND check `scripts/fix-carts-schema.sql` / `fix-orders-schema.sql` — there have been cases where Drizzle-generated migrations didn't fully match the collection (commits `4cab2ac`, `effa8cf`).
 
-- **Strict build mode**: type and lint errors are enforced in production builds (`985dbcb`). `pnpm build` will fail on warnings — fix locally before pushing.
+- **Strict build mode**: type errors fail production builds (`985dbcb`). Next 16 removed lint from `next build`, so run `pnpm lint` (`eslint src`) separately before pushing.
+
+- **Payload upgrades need prod DDL.** Production Postgres doesn't auto-migrate on boot. After bumping `payload`, diff `pnpm generate:types` output for new stored fields and apply a guarded SQL patch (e.g. `scripts/fix-payload-3-90-schema.sql`) before deploying, or reads of those collections fail with 42703.
 
 - **Books collection is `Books.tsx`**, not `Books.ts` — it has admin UI custom JSX. Don't rename without updating Payload registration.
 
