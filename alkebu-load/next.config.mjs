@@ -6,11 +6,6 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
 
-  // Fail builds on ESLint errors. Warnings (e.g. no-explicit-any) still pass.
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
-
   // Fail builds on TypeScript errors.
   typescript: {
     ignoreBuildErrors: false,
@@ -21,7 +16,10 @@ const nextConfig = {
 
   // Image optimization
   images: {
-    domains: ['localhost', 'media.alkebulanimages.com'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'media.alkebulanimages.com' },
+    ],
     formats: ['image/avif', 'image/webp'],
   },
 
