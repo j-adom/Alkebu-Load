@@ -98,6 +98,15 @@ cpus: 1
 
 - **Postgres: never publish its port.** Payload reaches it over the Docker network. If you need remote psql, use Tailscale or an SSH tunnel.
 - **Coolify dashboard (8000) and realtime (6001/6002): reach them over Tailscale only.** Put the dashboard behind a domain with Cloudflare Access, or firewall those ports in the `DOCKER-USER` chain.
+- **`ops/docker-user-firewall.sh` does this.** It drops public-interface traffic to 8000, 8080 (Traefik dashboard), 6001, 6002 and 8123 (Hi.Events' direct port) in `DOCKER-USER`, matching the original published port via conntrack. Tailscale, the host itself, cloudflared and outbound replies are unaffected; 22/80/443 are untouched.
+  ```bash
+  # keep an SSH session open while doing this
+  sudo ./ops/docker-user-firewall.sh --dry-run      # check the detected interface and rules
+  sudo install -m 0755 ops/docker-user-firewall.sh /usr/local/sbin/
+  sudo install -m 0644 ops/docker-user-firewall.service /etc/systemd/system/
+  sudo systemctl daemon-reload && sudo systemctl enable --now docker-user-firewall
+  ```
+  First confirm you can open Coolify at `http://<tailscale-ip>:8000`. Undo with `sudo docker-user-firewall.sh --remove`.
 - **Host firewall:**
   ```bash
   ufw default deny incoming && ufw default allow outgoing
