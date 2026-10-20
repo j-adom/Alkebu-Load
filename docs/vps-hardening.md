@@ -67,19 +67,31 @@ Anything the old container could read is burned. Rotate it, then update the valu
 These flags were verified against the standalone build: the server boots and serves
 with a read-only root, uses ~180 MB idle, and only writes to `.next/cache`.
 
-**Coolify → Resource → Advanced → Custom Docker Options:**
+**Coolify 4.4.6 (latest release as of Oct 20, 2026):**
+
+- **Settings → General → Runtime → Custom Docker Options:** `--cap-drop=ALL` (this is what production runs).
+- **Operations → Resource Limits:** CPU limit `1`, memory limit `1g`, and memory-and-swap limit `1g`.
+
+The limits matter as much as the flags. With them in place, a compromised container
+can't pin every core, which is what triggers the abuse suspensions.
+
+4.4.6's `convertDockerRunToCompose` only maps `--cap-add/--cap-drop/--security-opt/
+--sysctl/--device/--init/--ulimit/--privileged/--ip/--shm-size/--dns/--gpus/--hostname/
+--entrypoint`. It **silently ignores** `--read-only`, `--tmpfs` and `--pids-limit`. It also
+cuts option values at the first `-`, so `--security-opt=no-new-privileges` becomes
+`security_opt: "no"` and the deploy fails with `invalid security-opt: "no"`.
+Coolify's `main` branch has fixed both. Once a release includes the fix, use the full set
+(verified against the standalone build: it boots read-only, ~180 MB idle, and only
+writes to `.next/cache`):
 
 ```
 --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --tmpfs /app/.next/cache:rw,noexec,nosuid,uid=1001,gid=1001,size=256m --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=256
 ```
 
-**Coolify → Resource → Resource Limits:** memory `1g`, CPUs `1`.
+Confirm what actually applied with `ops/vps-triage.sh` ("container hardening flags").
 
-The limits matter as much as the flags. With them in place, a compromised container
-can't pin every core, which is what triggers the abuse suspensions.
-
-If your Coolify version rejects a flag in that field, deploy as a Docker Compose
-resource with the equivalent keys instead:
+To get the full set before then, deploy as a Docker Compose resource; compose keys
+are passed through unparsed:
 
 ```yaml
 read_only: true
