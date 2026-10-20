@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@/payload.config';
+import { isStaffUser } from '@/access/roles';
 import { quoteRequestSystem, QuoteRequest } from '@/app/utils/quoteRequestSystem';
 
 export async function POST(request: NextRequest) {
+  // No storefront caller exists yet; until one is wired with Turnstile and rate
+  // limiting, this route stays staff-only so anonymous callers can't relay HTML email from our domain or trigger paid external lookups.
+  const authPayload = await getPayload({ config });
+  const { user } = await authPayload.auth({ headers: request.headers });
+  if (!isStaffUser(user)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     

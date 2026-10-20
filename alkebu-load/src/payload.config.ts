@@ -2,6 +2,7 @@ import { s3Storage } from '@payloadcms/storage-s3'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
+import { isAdminUser } from './access/roles'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
@@ -245,6 +246,13 @@ export default buildConfig({
     skipVerify: shouldSkipEmailTransportVerify(),
   }),
   jobs: {
+    // Payload's default lets any logged-in principal (customers included) run,
+    // queue or cancel jobs via /api/payload-jobs/*.
+    access: {
+      run: ({ req }) => isAdminUser(req.user),
+      queue: ({ req }) => isAdminUser(req.user),
+      cancel: ({ req }) => isAdminUser(req.user),
+    },
     // Runs the queue. Without this, the `schedule` entries on the tasks below
     // are inert -- Payload registers them but nothing ever queues or executes
     // them. Opt-in per environment; see jobRunnerConfig.ts for why.

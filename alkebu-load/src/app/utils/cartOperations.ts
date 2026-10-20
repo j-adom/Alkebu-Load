@@ -705,7 +705,13 @@ export async function getCartSummary(
       shipping: totals.shipping.cost,
       total: totals.total,
       hasEstimatedTotals,
-      items: itemDocs as any,
+      // Cart IDs are sequential and the summary routes are unauthenticated, so the
+      // populated parent cart (guestEmail, shippingAddress, phone, linked user) must
+      // never ride along on each item.
+      items: itemDocs.map(({ cart: itemCart, ...item }) => ({
+        ...item,
+        cart: typeof itemCart === 'object' && itemCart !== null ? itemCart.id : itemCart,
+      })) as any,
     };
 
   } catch (error) {
