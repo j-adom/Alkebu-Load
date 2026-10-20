@@ -1,41 +1,34 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
-
-const CART_SESSION_COOKIE = 'cart_session'
+import { getPayloadApiUrl } from '$lib/server/payloadEnv'
+import {
+    cartRequestHeaders,
+    takeCartSession,
+    withoutClientIdentity,
+} from '$lib/server/cartSession'
 
 /**
  * POST /api/checkout/preview
  *
  * Proxies to Payload's checkout preview endpoint.
  * Returns tax, shipping, and total estimates for a given cart + address.
+ * Payload checks the cart token / login forwarded by cartRequestHeaders.
  */
 export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
     const payloadApiUrl = getPayloadApiUrl()
-    const payload = await request.json()
+    const payload = withoutClientIdentity(await request.json())
     const normalizedCountry = payload?.shippingAddress?.country?.trim?.().toUpperCase?.()
 
     if (normalizedCountry) {
         payload.shippingAddress.country = normalizedCountry
     }
 
-    // Inject cart ID from cookie if not provided
-    if (!payload.cartId) {
-        const sessionCookie = cookies.get(CART_SESSION_COOKIE)
-        if (sessionCookie) {
-            payload.cartId = sessionCookie
-        }
-    }
-
     const response = await fetch(`${payloadApiUrl}/api/checkout/preview`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...getPayloadAuthHeader(),
-        },
+        headers: cartRequestHeaders(cookies, { 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload),
     })
 
     const data = await response.json()
 
-    return json(data, { status: response.status })
+    return json(takeCartSession(cookies, data, response.ok), { status: response.status })
 }

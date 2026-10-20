@@ -1,20 +1,22 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
+import { getPayloadApiUrl } from '$lib/server/payloadEnv'
+import {
+  cartRequestHeaders,
+  takeCartSession,
+  withoutClientIdentity,
+} from '$lib/server/cartSession'
 
-export const DELETE: RequestHandler = async ({ request, fetch }) => {
+export const DELETE: RequestHandler = async ({ request, cookies, fetch }) => {
   const payloadApiUrl = getPayloadApiUrl()
-  const payload = await request.json()
+  const payload = withoutClientIdentity(await request.json())
 
   const response = await fetch(`${payloadApiUrl}/api/cart/remove`, {
     method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPayloadAuthHeader(),
-    },
+    headers: cartRequestHeaders(cookies, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   })
 
   const data = await response.json()
 
-  return json(data, { status: response.status })
+  return json(takeCartSession(cookies, data, response.ok), { status: response.status })
 }

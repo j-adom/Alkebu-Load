@@ -51,6 +51,25 @@ Product page
 | POST /api/stripe-webhook | Stripe payment confirmation |
 | POST /api/payment-webhook/[provider] | Provider-specific payment webhook path |
 
+### Cart ownership
+
+Cart IDs are sequential, so a `cartId` only selects a cart; it never proves ownership.
+Every cart, cart-recovery and checkout route (`alkebu-load/src/app/utils/cartAccess.ts`)
+requires either the cart's secret token or a signed-in Payload user who owns the cart
+(`cart.user`), and answers 403/404 otherwise.
+
+- **Token**: `ct_` + 32 random bytes, minted by Payload when a cart is created and stored
+  as `carts.sessionId`. Payload returns it (as `sessionId`) only when it issues a new one;
+  lookups never echo it.
+- **Storefront**: the SvelteKit proxies (`alkebu-web/src/lib/server/cartSession.ts`) keep it
+  in the httpOnly, Secure `cart_session` cookie, send it as the `x-cart-session` header,
+  forward the shopper's `payload-token` as `Authorization: JWT …`, and strip the token
+  from every response. Browser code never sees it.
+- **Legacy tokens** (anything without the `ct_` prefix, from before this check existed)
+  are accepted once on a cart touched in the last 30 days, then rotated to a new token.
+  Short ones (old numeric IDs) also need the cart ID, which the store sends once from
+  the old `guest-cart-id` localStorage key and then deletes.
+
 ## Cart Drawer Behavior
 
 - Opens from the right side.

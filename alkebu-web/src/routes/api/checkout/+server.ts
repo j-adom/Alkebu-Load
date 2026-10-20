@@ -1,11 +1,15 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
 import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
-
-const CART_SESSION_COOKIE = 'cart_session'
+import {
+  cartRequestHeaders,
+  clearCartSession,
+  takeCartSession,
+  withoutClientIdentity,
+} from '$lib/server/cartSession'
 
 export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
   const payloadApiUrl = getPayloadApiUrl()
-  const payload = await request.json()
+  const payload = withoutClientIdentity(await request.json())
   const normalizedCountry = payload?.shippingAddress?.country?.trim?.().toUpperCase?.()
 
   if (normalizedCountry) {
@@ -17,28 +21,18 @@ export const POST: RequestHandler = async ({ request, cookies, fetch }) => {
     return json({ error: 'Only US shipping addresses are supported.' }, { status: 400 })
   }
 
-  if (!payload.cartId) {
-    const sessionCookie = cookies.get(CART_SESSION_COOKIE)
-    if (sessionCookie) {
-      payload.cartId = sessionCookie
-    }
-  }
-
   const response = await fetch(`${payloadApiUrl}/api/checkout`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPayloadAuthHeader(),
-    },
+    headers: cartRequestHeaders(cookies, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   })
 
   const data = await response.json()
 
-  return json(data, { status: response.status })
+  return json(takeCartSession(cookies, data, response.ok), { status: response.status })
 }
 
-export const GET: RequestHandler = async ({ url, fetch }) => {
+export const GET: RequestHandler = async ({ url, cookies, fetch }) => {
   const payloadApiUrl = getPayloadApiUrl()
   const response = await fetch(
     `${payloadApiUrl}/api/checkout?${url.searchParams.toString()}`,
@@ -51,14 +45,10 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   )
 
   const data = await response.json()
-  const result = json(data, { status: response.status })
 
   if (response.ok && data?.orderCreated) {
-    result.headers.append(
-      'set-cookie',
-      `${CART_SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`,
-    )
+    clearCartSession(cookies)
   }
 
-  return result
+  return json(data, { status: response.status })
 }

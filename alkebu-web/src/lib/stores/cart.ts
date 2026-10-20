@@ -87,18 +87,32 @@ function createCartStore() {
     return fallback;
   };
 
-  const persistCart = (cart?: Partial<Cart>) => {
-    if (browser && cart?.id) {
-      localStorage.setItem('guest-cart-id', cart.id);
+  // The cart is identified by an httpOnly cookie the server proxies manage; the
+  // numeric cart id held here is only a selector. Older builds kept that id in
+  // localStorage, which is read once as a hint and then dropped.
+  const LEGACY_CART_ID_KEY = 'guest-cart-id';
+
+  const takeLegacyCartId = (): string | null => {
+    if (!browser) return null;
+    try {
+      return localStorage.getItem(LEGACY_CART_ID_KEY);
+    } catch {
+      return null;
+    }
+  };
+
+  const dropLegacyCartId = () => {
+    if (!browser) return;
+    try {
+      localStorage.removeItem(LEGACY_CART_ID_KEY);
+    } catch {
+      // Storage unavailable (private mode etc.); nothing to clean up.
     }
   };
 
   const resetLocalCart = () => {
     set(createEmptyCart());
-
-    if (browser) {
-      localStorage.removeItem('guest-cart-id');
-    }
+    dropLegacyCartId();
   };
 
   return {
@@ -106,16 +120,14 @@ function createCartStore() {
     set,
     update,
 
-    // Initialize cart from API
-    async initialize(userId?: string) {
+    // Initialize cart from API (identified by the cart cookie and/or login)
+    async initialize() {
       try {
-        const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
+        const legacyCartId = takeLegacyCartId();
         const params = new URLSearchParams();
 
-        if (userId) {
-          params.append('userId', userId);
-        } else if (guestCartId) {
-          params.append('cartId', guestCartId);
+        if (legacyCartId) {
+          params.append('cartId', legacyCartId);
         }
 
         const response = await fetch(`/api/cart/summary?${params.toString()}`);
@@ -124,11 +136,7 @@ function createCartStore() {
           const result = await response.json();
           const cartData = result?.cart ?? result;
           set(cartData);
-
-          // Store cart ID for guest users
-          if (!userId && browser) {
-            persistCart(cartData);
-          }
+          dropLegacyCartId();
         }
       } catch (error) {
         console.error('Failed to initialize cart:', error);
@@ -143,8 +151,6 @@ function createCartStore() {
       customization?: Record<string, unknown>
     ) {
       try {
-        const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
-
         const currentCart = get(store);
 
         const response = await fetch('/api/cart/add', {
@@ -157,8 +163,7 @@ function createCartStore() {
             productType,
             quantity,
             customization,
-            sessionId: guestCartId,
-            cartId: currentCart.id || guestCartId || undefined
+            cartId: currentCart.id || undefined
           }),
         });
 
@@ -170,9 +175,6 @@ function createCartStore() {
             ...cart,
             ...cartData
           }));
-
-          // Store cart ID for guest users
-          persistCart(cartData);
 
           trackEvent('add_to_cart', {
             product_id: productId,
@@ -218,7 +220,6 @@ function createCartStore() {
             ...cart,
             ...(result.cart ?? result)
           }));
-          persistCart(result.cart ?? result);
           return { success: true };
         } else {
           throw new Error(
@@ -254,7 +255,6 @@ function createCartStore() {
             ...cart,
             ...(result.cart ?? result)
           }));
-          persistCart(result.cart ?? result);
           return { success: true };
         } else {
           throw new Error(
@@ -271,8 +271,6 @@ function createCartStore() {
     // Clear cart
     async clear() {
       try {
-        const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
-
         const currentCart = get(store);
 
         const response = await fetch('/api/cart/clear', {
@@ -281,7 +279,7 @@ function createCartStore() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            cartId: currentCart.id || guestCartId
+            cartId: currentCart.id || undefined
           }),
         });
 
@@ -290,10 +288,6 @@ function createCartStore() {
           const summary = result.cart ?? createEmptyCart();
 
           set(summary);
-
-          if (browser) {
-            localStorage.removeItem('guest-cart-id');
-          }
           return { success: true };
         } else {
           throw new Error(
@@ -319,11 +313,10 @@ function createCartStore() {
       selectedShippingRateId?: string
     }) {
       try {
-        const guestCartId = browser ? localStorage.getItem('guest-cart-id') : null;
         const currentCart = get(store);
 
         trackEvent('begin_checkout', {
-          cart_id: guestCartId || currentCart.id,
+          cart_id: currentCart.id,
           item_count: currentCart.itemCount,
           value: Number(currentCart.total || currentCart.subtotal || 0) / 100,
           provider: paymentProvider.slug,
@@ -336,7 +329,7 @@ function createCartStore() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            cartId: guestCartId || currentCart.id,
+            cartId: currentCart.id,
             successUrl: `${PUBLIC_SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${PUBLIC_SITE_URL}/checkout/cancel`,
             shippingAddress: options?.shippingAddress,

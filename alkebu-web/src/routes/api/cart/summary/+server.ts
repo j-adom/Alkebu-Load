@@ -1,60 +1,56 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv'
+import { getPayloadApiUrl } from '$lib/server/payloadEnv'
+import {
+  cartRequestHeaders,
+  getCartSessionToken,
+  takeCartSession,
+} from '$lib/server/cartSession'
 
-const CART_SESSION_COOKIE = 'cart_session'
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+const emptyCart = {
+  id: '',
+  items: [],
+  itemCount: 0,
+  subtotal: 0,
+  tax: 0,
+  shipping: 0,
+  total: 0,
+  status: 'active',
+}
 
-export const GET: RequestHandler = async ({ url, cookies, fetch, locals }) => {
+export const GET: RequestHandler = async ({ url, cookies, fetch }) => {
   const payloadApiUrl = getPayloadApiUrl()
-  const params = new URLSearchParams(url.searchParams)
+  const token = getCartSessionToken(cookies)
+  // Optional selector only (e.g. a pre-migration cart id kept in localStorage);
+  // ownership is proven by the cookie token or the shopper's login.
+  const cartIdHint = url.searchParams.get('cartId')
 
-  if (!params.get('cartId') && !params.get('sessionId')) {
-    const sessionCookie = cookies.get(CART_SESSION_COOKIE)
-    if (sessionCookie) {
-      params.set('sessionId', sessionCookie)
+  const load = async (cartId: string | null) => {
+    const params = new URLSearchParams()
+    if (cartId) {
+      params.set('cartId', cartId)
+    } else if (token) {
+      // Lookup key for a Payload that predates the x-cart-session header.
+      params.set('sessionId', token)
     }
-  }
-
-  if (locals.user?.id && !params.get('userId')) {
-    params.set('userId', locals.user.id)
-  }
-
-  const response = await fetch(
-    `${payloadApiUrl}/api/cart/summary?${params.toString()}`,
-    {
+    const response = await fetch(`${payloadApiUrl}/api/cart/summary?${params.toString()}`, {
       method: 'GET',
-      headers: {
-        ...getPayloadAuthHeader(),
-      },
-    },
-  )
-
-  const data = await response.json()
-
-  if (response.ok && data?.sessionId) {
-    cookies.set(CART_SESSION_COOKIE, data.sessionId, {
-      path: '/',
-      maxAge: COOKIE_MAX_AGE,
-      httpOnly: false,
-      sameSite: 'lax',
+      headers: cartRequestHeaders(cookies),
     })
+    return { response, data: await response.json().catch(() => null) }
   }
 
-  if (!response.ok) {
-    return json(
-      {
-        id: '',
-        items: [],
-        itemCount: 0,
-        subtotal: 0,
-        tax: 0,
-        shipping: 0,
-        total: 0,
-        status: 'active',
-      },
-      { status: 200 },
-    )
+  let result = await load(cartIdHint)
+  if (!result.response.ok && cartIdHint) {
+    // A stale hint must not hide the cart the cookie actually owns.
+    result = await load(null)
   }
 
-  return json(data.cart, { status: 200 })
+  const { response, data } = result
+  const body = takeCartSession(cookies, data, response.ok)
+
+  if (!response.ok || !body?.cart) {
+    return json(emptyCart, { status: 200 })
+  }
+
+  return json(body.cart, { status: 200 })
 }
