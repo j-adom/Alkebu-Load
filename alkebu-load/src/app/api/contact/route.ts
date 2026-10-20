@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getEmailRuntimeConfig } from '@/app/utils/emailConfig';
 import { getClientIp, verifyTurnstileToken } from '@/app/utils/turnstile';
+import { createRateLimiter } from '@/app/utils/rateLimit';
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
@@ -13,7 +14,7 @@ const MAX_FIELD_LENGTHS = {
   message: 5000,
 };
 
-const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+const isRateLimited = createRateLimiter({ windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX });
 
 const sanitizeText = (value: unknown): string => {
   if (typeof value !== 'string') return '';
@@ -34,19 +35,6 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;');
 
 const getClientKey = (request: NextRequest): string => getClientIp(request.headers);
-
-const isRateLimited = (key: string): boolean => {
-  const now = Date.now();
-  const current = rateLimitBuckets.get(key);
-
-  if (!current || current.resetAt <= now) {
-    rateLimitBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-
-  current.count += 1;
-  return current.count > RATE_LIMIT_MAX;
-};
 
 const fieldIsTooLong = (field: keyof typeof MAX_FIELD_LENGTHS, value: string): boolean =>
   value.length > MAX_FIELD_LENGTHS[field];
