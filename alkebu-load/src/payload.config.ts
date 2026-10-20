@@ -1,5 +1,4 @@
 import { s3Storage } from '@payloadcms/storage-s3'
-import { payloadCloudPlugin } from '@payloadcms/payload-cloud'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -208,7 +207,6 @@ export default buildConfig({
   db,
   sharp,
   plugins: [
-    // payloadCloudPlugin(), // Disabled - causes Cache-Control header conflicts in local dev
     // Cloudflare R2 storage (S3-compatible)
     ...(process.env.R2_ACCESS_KEY_ID ? [s3Storage({
       collections: { media: true },
