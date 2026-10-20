@@ -17,9 +17,11 @@ export const EnrichBookButton: React.FC = () => {
 
       const response = await fetch(`/api/books/${id}/enrich`, {
         method: 'POST',
+        // Payload keeps the admin session in an httpOnly cookie; there is no
+        // localStorage token, and a `Bearer null` header would shadow the cookie.
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('payload-token')}`
         }
       })
 

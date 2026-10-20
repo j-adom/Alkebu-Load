@@ -1,7 +1,9 @@
 import type { CollectionConfig } from 'payload';
+import { staffCollectionAccess } from '../access/roles';
 
 const BookQuotes: CollectionConfig = {
   slug: 'bookQuotes',
+  access: staffCollectionAccess,
   admin: {
     useAsTitle: 'bookTitle',
     defaultColumns: ['bookTitle', 'customerName', 'status', 'requestDate', 'estimatedPrice'],

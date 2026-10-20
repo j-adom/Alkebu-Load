@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { staffCollectionAccess } from '../access/roles';
 import { checkToxicity } from '../app/utils/toxicityCheck';
 
 // Helper to extract plain text from Payload rich text
@@ -32,6 +33,7 @@ function extractTextFromNode(node: any): string {
 
 const Comments: CollectionConfig = {
   slug: 'comments',
+  access: staffCollectionAccess,
   admin: {
     useAsTitle: 'content',
     defaultColumns: ['author', 'contentType', 'contentId', 'status', 'createdAt'],

@@ -1,5 +1,6 @@
 // collections/Users.ts
 import type { CollectionConfig } from 'payload';
+import { adminOnly, adminOnlyField } from '../access/roles';
 
 const Users: CollectionConfig = {
   slug: 'users',
@@ -47,6 +48,11 @@ const Users: CollectionConfig = {
       ],
       defaultValue: 'customer',
       required: true,
+      // Without field access, update's own-row rule let any user set role: 'admin'.
+      access: {
+        create: adminOnlyField,
+        update: adminOnlyField,
+      },
     },
 
     // === AUTHENTICATION ===
@@ -510,6 +516,10 @@ const Users: CollectionConfig = {
 
       return false;
     },
+
+    // Only admins can create users. Payload's default (any logged-in principal,
+    // customers included) let anyone with a login create an admin.
+    create: adminOnly,
 
     // Only admins can delete users
     delete: ({ req: { user } }) => {

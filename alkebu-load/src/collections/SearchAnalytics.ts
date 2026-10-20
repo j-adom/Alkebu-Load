@@ -1,7 +1,9 @@
 import type { CollectionConfig } from 'payload';
+import { staffCollectionAccess } from '../access/roles';
 
 const SearchAnalytics: CollectionConfig = {
   slug: 'searchAnalytics',
+  access: staffCollectionAccess,
   admin: {
     useAsTitle: 'query',
     defaultColumns: ['query', 'resultCount', 'clickthrough', 'searchDate'],
