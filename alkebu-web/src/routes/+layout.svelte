@@ -20,7 +20,6 @@
 
   let { data, children }: Props = $props();
   const settings = $derived(data.settings);
-  const user = $derived(data.user);
   const settings$ = writable<any>(undefined);
 
   // Keep the writable store in sync with the settings prop
@@ -31,7 +30,7 @@
   setContext("settings", settings$);
 
   onMount(() => {
-    cart.initialize(user?.id);
+    cart.initialize();
   });
 </script>
 

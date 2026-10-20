@@ -5,6 +5,7 @@ import {
 } from './taxShippingCalculations';
 import { isShippingQuoteExpired } from './shippingQuotes';
 import { sendAbandonedCartEmail, type AbandonedCartData } from './emailService';
+import { generateCartSessionToken } from './cartAccess';
 import {
   resolveCartProductIdentifiers,
   resolveCartProductTitle,
@@ -705,7 +706,12 @@ export async function getCartSummary(
       shipping: totals.shipping.cost,
       total: totals.total,
       hasEstimatedTotals,
-      items: itemDocs as any,
+      // The populated parent cart (guestEmail, shippingAddress, linked user, and
+      // the secret sessionId token) must never ride along on each item.
+      items: itemDocs.map(({ cart: itemCart, ...item }) => ({
+        ...item,
+        cart: typeof itemCart === 'object' && itemCart !== null ? itemCart.id : itemCart,
+      })) as any,
     };
 
   } catch (error) {
@@ -876,7 +882,7 @@ export async function findOrCreateCart(
 
     if (userId) {
       cartData.user = userId;
-      cartData.sessionId = `user_${userId}_${Date.now()}`;
+      cartData.sessionId = generateCartSessionToken();
     } else {
       cartData.sessionId = sessionId;
     }
