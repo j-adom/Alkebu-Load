@@ -26,7 +26,7 @@ RUN mkdir -p public
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
-# ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Use the same pinned pnpm version for the build stage
 RUN npm install -g pnpm@10.15.0
@@ -38,8 +38,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 ENV NODE_ENV=production
-# Uncomment the following line in case you want to disable telemetry during runtime.
-# ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -48,8 +47,10 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# .next/cache is the only path the server writes to. In Coolify, run with a
+# read-only root filesystem and mount tmpfs at /tmp and /app/.next/cache
+# (see docs/vps-hardening.md).
+RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
