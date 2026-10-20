@@ -149,7 +149,7 @@ This single Payload instance handles:
 
 - **Checkout**: `POST /api/checkout`, `POST /api/checkout/preview`, `POST /api/refund`, `POST /api/stripe-webhook`, `POST /api/payment-webhook`
 - **Cart**: `POST /api/cart`, `POST /api/cart-recovery`
-- **Search**: `GET|POST /api/search`, `GET /api/external-books?q=…|isbn=…`, `POST /api/quote-request`, `GET /api/quote-request?id=…&email=…`
+- **Search**: `GET|POST /api/search`, `GET /api/external-books?q=…|isbn=…`, `POST /api/quote-request` (Turnstile + per-IP/per-recipient rate limits), `GET /api/quote-request?id=…&email=…`
 - **Orders**: `GET /api/stripe-orders`, `GET /api/payment-methods`
 - **Webhooks**: `POST /api/webhooks/square-catalog`, others under `/api/webhooks/*`
 - **Health & contact**: `GET /api/health`, `POST /api/contact` (Cloudflare Turnstile-protected)

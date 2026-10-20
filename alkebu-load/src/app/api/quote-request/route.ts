@@ -1,65 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayload } from 'payload';
 import config from '@/payload.config';
-import { quoteRequestSystem, QuoteRequest } from '@/app/utils/quoteRequestSystem';
+import { quoteRequestSystem, parseQuoteRequestBody } from '@/app/utils/quoteRequestSystem';
+import { getClientIp, verifyTurnstileToken } from '@/app/utils/turnstile';
+import { createRateLimiter } from '@/app/utils/rateLimit';
+
+// Each request emails the customer address it names and runs paid external
+// lookups, so limit per client IP and per recipient address.
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const isIpRateLimited = createRateLimiter({ windowMs: RATE_LIMIT_WINDOW_MS, max: 5 });
+const isRecipientRateLimited = createRateLimiter({ windowMs: RATE_LIMIT_WINDOW_MS, max: 3 });
 
 export async function POST(request: NextRequest) {
   try {
+    const clientKey = getClientIp(request.headers);
+
     const body = await request.json();
-    
-    // Validate required fields
-    const requiredFields = ['bookTitle', 'customerName', 'customerEmail', 'quantity'];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json(
-          { error: `Field "${field}" is required` },
-          { status: 400 }
-        );
-      }
-    }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.customerEmail)) {
+    const turnstileToken = typeof body?.turnstileToken === 'string' ? body.turnstileToken.trim() : '';
+    if (!turnstileToken) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { error: 'Bot check is required. Please refresh the page and try again.' },
         { status: 400 }
       );
     }
 
-    // Validate quantity
-    if (body.quantity < 1 || body.quantity > 100) {
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, clientKey);
+    if (!turnstileResult.success) {
       return NextResponse.json(
-        { error: 'Quantity must be between 1 and 100' },
-        { status: 400 }
+        { error: turnstileResult.error || 'Bot check failed.' },
+        { status: 403 }
       );
     }
 
-    // Construct quote request
-    const quoteRequest: QuoteRequest = {
-      bookTitle: body.bookTitle.trim(),
-      author: body.author?.trim(),
-      isbn: body.isbn?.trim(),
-      format: body.format || 'any',
-      quantity: parseInt(body.quantity),
-      urgency: body.urgency || 'normal',
-      maxBudget: body.maxBudget ? parseFloat(body.maxBudget) : undefined,
-      specialInstructions: body.specialInstructions?.trim(),
-      customerName: body.customerName.trim(),
-      customerEmail: body.customerEmail.trim().toLowerCase(),
-      customerPhone: body.customerPhone?.trim(),
-      preferredContact: body.preferredContact || 'email',
-      requestSource: body.requestSource || 'website-search'
-    };
+    if (isIpRateLimited(clientKey)) {
+      return NextResponse.json(
+        { error: 'Too many quote requests. Please wait a while and try again.' },
+        { status: 429 }
+      );
+    }
+
+    // searchAnalyticsId is deliberately not read from the body: an anonymous
+    // caller could otherwise flag any SearchAnalytics row as converted.
+    const parsed = parseQuoteRequestBody(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const quoteRequest = parsed.quoteRequest;
+
+    if (isRecipientRateLimited(quoteRequest.customerEmail)) {
+      return NextResponse.json(
+        { error: 'Too many quote requests. Please wait a while and try again.' },
+        { status: 429 }
+      );
+    }
 
     const payload = await getPayload({ config });
     
     // Process the quote request
-    const result = await quoteRequestSystem.processQuoteRequest(
-      payload,
-      quoteRequest,
-      body.searchAnalyticsId
-    );
+    const result = await quoteRequestSystem.processQuoteRequest(payload, quoteRequest);
 
     if (result.success) {
       return NextResponse.json({

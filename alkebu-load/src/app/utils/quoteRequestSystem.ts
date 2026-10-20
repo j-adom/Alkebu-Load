@@ -1,5 +1,10 @@
 import { externalBookAPI, ExternalBookData } from './externalBookAPI';
 import { sendRawEmail } from './emailService';
+import { escapeHtml } from './emailTemplates';
+
+// Subject lines become a mail header: collapse CR/LF so a caller-supplied value
+// can't start a new header line.
+const subjectSafe = (value: unknown): string => String(value ?? '').replace(/[\r\n]+/g, ' ').trim();
 
 export interface QuoteRequest {
   bookTitle: string;
@@ -30,6 +35,103 @@ export interface QuoteEmail {
   subject: string;
   html: string;
   text: string;
+}
+
+const QUOTE_FIELD_MAX_LENGTHS = {
+  bookTitle: 300,
+  author: 200,
+  isbn: 20,
+  specialInstructions: 2000,
+  customerName: 120,
+  customerEmail: 254,
+  customerPhone: 40,
+} as const;
+
+const QUOTE_ENUMS = {
+  format: ['any', 'hardcover', 'paperback', 'mass-market', 'ebook', 'audiobook'],
+  urgency: ['normal', 'rush', 'asap'],
+  preferredContact: ['email', 'phone', 'either'],
+  requestSource: ['website-search', 'in-store', 'phone', 'email', 'social-media'],
+} as const;
+
+const QUOTE_ENUM_DEFAULTS = {
+  format: 'any',
+  urgency: 'normal',
+  preferredContact: 'email',
+  requestSource: 'website-search',
+} as const;
+
+const optionalText = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined;
+
+/**
+ * Validate and normalize a public quote-request body. Only the fields below are
+ * read; anything else in the body (e.g. `searchAnalyticsId`) is ignored so an
+ * anonymous caller can't point the request at records they don't own.
+ */
+export function parseQuoteRequestBody(
+  body: unknown,
+): { ok: true; quoteRequest: QuoteRequest } | { ok: false; error: string } {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+
+  const bookTitle = optionalText(b.bookTitle);
+  const customerName = optionalText(b.customerName);
+  const customerEmail = optionalText(b.customerEmail)?.toLowerCase();
+  if (!bookTitle) return { ok: false, error: 'Field "bookTitle" is required' };
+  if (!customerName) return { ok: false, error: 'Field "customerName" is required' };
+  if (!customerEmail) return { ok: false, error: 'Field "customerEmail" is required' };
+  if (b.quantity === undefined || b.quantity === null || b.quantity === '') {
+    return { ok: false, error: 'Field "quantity" is required' };
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    return { ok: false, error: 'Invalid email format' };
+  }
+
+  const quantity = Number(b.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+    return { ok: false, error: 'Quantity must be between 1 and 100' };
+  }
+
+  const text = {
+    bookTitle,
+    author: optionalText(b.author),
+    isbn: optionalText(b.isbn),
+    specialInstructions: optionalText(b.specialInstructions),
+    customerName,
+    customerEmail,
+    customerPhone: optionalText(b.customerPhone),
+  };
+  for (const [field, max] of Object.entries(QUOTE_FIELD_MAX_LENGTHS)) {
+    const value = text[field as keyof typeof text];
+    if (value && value.length > max) {
+      return { ok: false, error: `Field "${field}" is too long` };
+    }
+  }
+
+  const enums = {} as { -readonly [K in keyof typeof QUOTE_ENUMS]: (typeof QUOTE_ENUMS)[K][number] };
+  for (const field of Object.keys(QUOTE_ENUMS) as (keyof typeof QUOTE_ENUMS)[]) {
+    const raw = b[field];
+    if (raw === undefined || raw === null || raw === '') {
+      (enums as Record<string, string>)[field] = QUOTE_ENUM_DEFAULTS[field];
+    } else if (typeof raw === 'string' && (QUOTE_ENUMS[field] as readonly string[]).includes(raw)) {
+      (enums as Record<string, string>)[field] = raw;
+    } else {
+      return { ok: false, error: `Invalid value for "${field}"` };
+    }
+  }
+
+  const maxBudget = Number(b.maxBudget);
+
+  return {
+    ok: true,
+    quoteRequest: {
+      ...text,
+      ...enums,
+      quantity,
+      maxBudget: Number.isFinite(maxBudget) && maxBudget > 0 ? maxBudget : undefined,
+    },
+  };
 }
 
 class QuoteRequestSystem {
@@ -229,27 +331,27 @@ class QuoteRequestSystem {
     quoteId: string,
     externalResults: ExternalBookData[]
   ): QuoteEmail {
-    const subject = `Quote Request Confirmed - ${quoteRequest.bookTitle}`;
+    const subject = `Quote Request Confirmed - ${subjectSafe(quoteRequest.bookTitle)}`;
     
     const html = `
       <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Thank you for your book quote request!</h2>
           
-          <p>Hi ${quoteRequest.customerName},</p>
+          <p>Hi ${escapeHtml(quoteRequest.customerName)},</p>
           
-          <p>We've received your request for a quote on "<strong>${quoteRequest.bookTitle}</strong>"${quoteRequest.author ? ` by ${quoteRequest.author}` : ''}.</p>
+          <p>We've received your request for a quote on "<strong>${escapeHtml(quoteRequest.bookTitle)}</strong>"${quoteRequest.author ? ` by ${escapeHtml(quoteRequest.author)}` : ''}.</p>
           
           <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <h3 style="margin-top: 0;">Request Details:</h3>
             <ul style="list-style: none; padding: 0;">
-              <li><strong>Quote ID:</strong> ${quoteId}</li>
-              <li><strong>Book:</strong> ${quoteRequest.bookTitle}</li>
-              ${quoteRequest.author ? `<li><strong>Author:</strong> ${quoteRequest.author}</li>` : ''}
-              ${quoteRequest.isbn ? `<li><strong>ISBN:</strong> ${quoteRequest.isbn}</li>` : ''}
-              <li><strong>Quantity:</strong> ${quoteRequest.quantity}</li>
-              <li><strong>Format:</strong> ${quoteRequest.format}</li>
-              <li><strong>Urgency:</strong> ${quoteRequest.urgency}</li>
+              <li><strong>Quote ID:</strong> ${escapeHtml(quoteId)}</li>
+              <li><strong>Book:</strong> ${escapeHtml(quoteRequest.bookTitle)}</li>
+              ${quoteRequest.author ? `<li><strong>Author:</strong> ${escapeHtml(quoteRequest.author)}</li>` : ''}
+              ${quoteRequest.isbn ? `<li><strong>ISBN:</strong> ${escapeHtml(quoteRequest.isbn)}</li>` : ''}
+              <li><strong>Quantity:</strong> ${escapeHtml(quoteRequest.quantity)}</li>
+              <li><strong>Format:</strong> ${escapeHtml(quoteRequest.format)}</li>
+              <li><strong>Urgency:</strong> ${escapeHtml(quoteRequest.urgency)}</li>
             </ul>
           </div>
 
@@ -258,9 +360,9 @@ class QuoteRequestSystem {
             <div style="margin: 20px 0;">
               ${externalResults.slice(0, 3).map(book => `
                 <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
-                  <strong>${book.title}</strong><br>
-                  Author: ${book.author}<br>
-                  ${book.pricing?.[0] ? `Estimated Price: $${book.pricing[0].price}` : 'Price: Contact for quote'}
+                  <strong>${escapeHtml(book.title)}</strong><br>
+                  Author: ${escapeHtml(book.author)}<br>
+                  ${book.pricing?.[0] ? `Estimated Price: $${escapeHtml(book.pricing[0].price)}` : 'Price: Contact for quote'}
                 </div>
               `).join('')}
             </div>
@@ -336,7 +438,7 @@ class QuoteRequestSystem {
     quoteId: string,
     externalResults: ExternalBookData[]
   ): Omit<QuoteEmail, 'to'> {
-    const subject = `New Book Quote Request - ${quoteRequest.bookTitle}`;
+    const subject = `New Book Quote Request - ${subjectSafe(quoteRequest.bookTitle)}`;
     
     const html = `
       <html>
@@ -346,29 +448,29 @@ class QuoteRequestSystem {
           <div style="background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <h3 style="margin-top: 0;">Customer Information:</h3>
             <ul style="list-style: none; padding: 0;">
-              <li><strong>Name:</strong> ${quoteRequest.customerName}</li>
-              <li><strong>Email:</strong> ${quoteRequest.customerEmail}</li>
-              ${quoteRequest.customerPhone ? `<li><strong>Phone:</strong> ${quoteRequest.customerPhone}</li>` : ''}
-              <li><strong>Preferred Contact:</strong> ${quoteRequest.preferredContact}</li>
-              <li><strong>Request Source:</strong> ${quoteRequest.requestSource}</li>
+              <li><strong>Name:</strong> ${escapeHtml(quoteRequest.customerName)}</li>
+              <li><strong>Email:</strong> ${escapeHtml(quoteRequest.customerEmail)}</li>
+              ${quoteRequest.customerPhone ? `<li><strong>Phone:</strong> ${escapeHtml(quoteRequest.customerPhone)}</li>` : ''}
+              <li><strong>Preferred Contact:</strong> ${escapeHtml(quoteRequest.preferredContact)}</li>
+              <li><strong>Request Source:</strong> ${escapeHtml(quoteRequest.requestSource)}</li>
             </ul>
           </div>
 
           <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <h3 style="margin-top: 0;">Book Request Details:</h3>
             <ul style="list-style: none; padding: 0;">
-              <li><strong>Quote ID:</strong> ${quoteId}</li>
-              <li><strong>Book:</strong> ${quoteRequest.bookTitle}</li>
-              ${quoteRequest.author ? `<li><strong>Author:</strong> ${quoteRequest.author}</li>` : ''}
-              ${quoteRequest.isbn ? `<li><strong>ISBN:</strong> ${quoteRequest.isbn}</li>` : ''}
-              <li><strong>Quantity:</strong> ${quoteRequest.quantity}</li>
-              <li><strong>Format:</strong> ${quoteRequest.format}</li>
-              <li><strong>Urgency:</strong> ${quoteRequest.urgency}</li>
-              ${quoteRequest.maxBudget ? `<li><strong>Max Budget:</strong> $${quoteRequest.maxBudget}</li>` : ''}
+              <li><strong>Quote ID:</strong> ${escapeHtml(quoteId)}</li>
+              <li><strong>Book:</strong> ${escapeHtml(quoteRequest.bookTitle)}</li>
+              ${quoteRequest.author ? `<li><strong>Author:</strong> ${escapeHtml(quoteRequest.author)}</li>` : ''}
+              ${quoteRequest.isbn ? `<li><strong>ISBN:</strong> ${escapeHtml(quoteRequest.isbn)}</li>` : ''}
+              <li><strong>Quantity:</strong> ${escapeHtml(quoteRequest.quantity)}</li>
+              <li><strong>Format:</strong> ${escapeHtml(quoteRequest.format)}</li>
+              <li><strong>Urgency:</strong> ${escapeHtml(quoteRequest.urgency)}</li>
+              ${quoteRequest.maxBudget ? `<li><strong>Max Budget:</strong> $${escapeHtml(quoteRequest.maxBudget)}</li>` : ''}
             </ul>
             ${quoteRequest.specialInstructions ? `
               <p><strong>Special Instructions:</strong></p>
-              <p style="background-color: white; padding: 10px; border-left: 3px solid #ccc;">${quoteRequest.specialInstructions}</p>
+              <p style="background-color: white; padding: 10px; border-left: 3px solid #ccc;">${escapeHtml(quoteRequest.specialInstructions)}</p>
             ` : ''}
           </div>
 
@@ -377,16 +479,16 @@ class QuoteRequestSystem {
             <div style="margin: 20px 0;">
               ${externalResults.map(book => `
                 <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                  <h4 style="margin-top: 0;">${book.title}</h4>
-                  <p><strong>Author:</strong> ${book.author}</p>
-                  ${book.isbn ? `<p><strong>ISBN:</strong> ${book.isbn}</p>` : ''}
-                  ${book.publisher ? `<p><strong>Publisher:</strong> ${book.publisher}</p>` : ''}
+                  <h4 style="margin-top: 0;">${escapeHtml(book.title)}</h4>
+                  <p><strong>Author:</strong> ${escapeHtml(book.author)}</p>
+                  ${book.isbn ? `<p><strong>ISBN:</strong> ${escapeHtml(book.isbn)}</p>` : ''}
+                  ${book.publisher ? `<p><strong>Publisher:</strong> ${escapeHtml(book.publisher)}</p>` : ''}
                   ${book.pricing?.[0] ? `
-                    <p><strong>Price:</strong> $${book.pricing[0].price} (${book.pricing[0].source})</p>
+                    <p><strong>Price:</strong> $${escapeHtml(book.pricing[0].price)} (${escapeHtml(book.pricing[0].source)})</p>
                   ` : ''}
                   <p><strong>Available:</strong> ${book.available ? 'Yes' : 'Contact for availability'}</p>
                   ${book.description ? `
-                    <p><strong>Description:</strong> ${book.description.substring(0, 200)}...</p>
+                    <p><strong>Description:</strong> ${escapeHtml(book.description.substring(0, 200))}...</p>
                   ` : ''}
                 </div>
               `).join('')}
@@ -403,7 +505,7 @@ class QuoteRequestSystem {
             </ol>
           </div>
 
-          <p><a href="${process.env.PAYLOAD_PUBLIC_SERVER_URL}/admin/collections/bookQuotes/${quoteId}" 
+          <p><a href="${process.env.PAYLOAD_PUBLIC_SERVER_URL}/admin/collections/bookQuotes/${encodeURIComponent(quoteId)}" 
                 style="background-color: #007cba; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
                 View Quote in Admin →
              </a></p>
@@ -464,16 +566,16 @@ class QuoteRequestSystem {
    */
   private generateInitialRequestContent(quoteRequest: QuoteRequest): string {
     return `
-      <p>Customer ${quoteRequest.customerName} requested a quote for:</p>
+      <p>Customer ${escapeHtml(quoteRequest.customerName)} requested a quote for:</p>
       <ul>
-        <li><strong>Book:</strong> ${quoteRequest.bookTitle}</li>
-        ${quoteRequest.author ? `<li><strong>Author:</strong> ${quoteRequest.author}</li>` : ''}
-        ${quoteRequest.isbn ? `<li><strong>ISBN:</strong> ${quoteRequest.isbn}</li>` : ''}
-        <li><strong>Quantity:</strong> ${quoteRequest.quantity}</li>
-        <li><strong>Format:</strong> ${quoteRequest.format}</li>
-        <li><strong>Urgency:</strong> ${quoteRequest.urgency}</li>
+        <li><strong>Book:</strong> ${escapeHtml(quoteRequest.bookTitle)}</li>
+        ${quoteRequest.author ? `<li><strong>Author:</strong> ${escapeHtml(quoteRequest.author)}</li>` : ''}
+        ${quoteRequest.isbn ? `<li><strong>ISBN:</strong> ${escapeHtml(quoteRequest.isbn)}</li>` : ''}
+        <li><strong>Quantity:</strong> ${escapeHtml(quoteRequest.quantity)}</li>
+        <li><strong>Format:</strong> ${escapeHtml(quoteRequest.format)}</li>
+        <li><strong>Urgency:</strong> ${escapeHtml(quoteRequest.urgency)}</li>
       </ul>
-      ${quoteRequest.specialInstructions ? `<p><strong>Special Instructions:</strong> ${quoteRequest.specialInstructions}</p>` : ''}
+      ${quoteRequest.specialInstructions ? `<p><strong>Special Instructions:</strong> ${escapeHtml(quoteRequest.specialInstructions)}</p>` : ''}
     `;
   }
 
@@ -553,21 +655,28 @@ class QuoteRequestSystem {
   }
 
   /**
-   * Send follow-up email to customer
+   * Generate follow-up email for a stored quote
    */
-  private async sendFollowupEmail(payload: any, quote: any) {
-    const email = {
+  private generateFollowupEmail(quote: any): QuoteEmail {
+    return {
       to: quote.customerEmail,
-      subject: `Following up on your book quote - ${quote.bookTitle}`,
+      subject: `Following up on your book quote - ${subjectSafe(quote.bookTitle)}`,
       html: `
-        <p>Hi ${quote.customerName},</p>
-        <p>We wanted to follow up on the quote we sent for "${quote.bookTitle}". 
+        <p>Hi ${escapeHtml(quote.customerName)},</p>
+        <p>We wanted to follow up on the quote we sent for "${escapeHtml(quote.bookTitle)}". 
            If you have any questions or would like to proceed with the order, please let us know!</p>
-        <p>Quote ID: ${quote.id}</p>
+        <p>Quote ID: ${escapeHtml(quote.id)}</p>
         <p>Best regards,<br>The Alkebulanimages Team</p>
       `,
       text: `Hi ${quote.customerName}, we wanted to follow up on your quote for "${quote.bookTitle}". Quote ID: ${quote.id}. Please let us know if you have questions or would like to proceed!`
     };
+  }
+
+  /**
+   * Send follow-up email to customer
+   */
+  private async sendFollowupEmail(payload: any, quote: any) {
+    const email = this.generateFollowupEmail(quote);
 
     const result = await sendRawEmail(email);
     if (!result.success) {
