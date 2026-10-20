@@ -43,7 +43,7 @@
     "next": "^16.4.2",
     "node-fetch": "^3.3.2",
     "nodemailer": "^10.1.7",
-    "papaparse": "^5.5.3",
+    "papaparse": "^5.7.0",
     "parse-full-name": "^1.2.6",
     "payload": "^3.91.0",
     "rate-limiter-flexible": "^7.4.0",
