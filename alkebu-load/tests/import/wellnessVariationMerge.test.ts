@@ -208,3 +208,52 @@ test('a row missing squareVariationId on both sides is never matched, treated as
   assert.strictEqual(orphaned.length, 1);
   assert.strictEqual(merged.length, 2);
 });
+
+test('trackInventory is Square-owned: overwritten on merge while stock/weight/isAvailable are preserved', () => {
+  const existing: MergeableVariation[] = [
+    {
+      id: 'row-1',
+      sku: 'OIL-AMBER',
+      price: 800,
+      scent: 'Amber',
+      squareVariationId: 'SQ-VAR-1',
+      stock: 0,
+      weight: 3,
+      isAvailable: false,
+      trackInventory: true,
+    },
+  ];
+  const incoming: MergeableVariation[] = [
+    { sku: 'OIL-AMBER', price: 800, scent: 'Amber', squareVariationId: 'SQ-VAR-1', stock: 0, trackInventory: false },
+  ];
+
+  const { merged } = mergeVariations(existing, incoming);
+
+  assert.strictEqual(merged[0].trackInventory, false);
+  assert.strictEqual(merged[0].isAvailable, false); // staff/script decision survives
+  assert.strictEqual(merged[0].weight, 3);
+  assert.strictEqual(merged[0].id, 'row-1');
+});
+
+test('an incoming row without trackInventory leaves the stored value untouched', () => {
+  const existing: MergeableVariation[] = [
+    { id: 'row-1', sku: 'S', price: 800, squareVariationId: 'SQ-VAR-1', trackInventory: false },
+  ];
+  const incoming: MergeableVariation[] = [{ sku: 'S', price: 900, squareVariationId: 'SQ-VAR-1' }];
+
+  const { merged } = mergeVariations(existing, incoming);
+
+  assert.strictEqual(merged[0].trackInventory, false);
+  assert.strictEqual(merged[0].price, 900);
+});
+
+test('a new untracked Square variation is inserted with trackInventory: false', () => {
+  const incoming: MergeableVariation[] = [
+    { sku: 'NEW', price: 800, squareVariationId: 'SQ-NEW', stock: 0, trackInventory: false },
+  ];
+
+  const { merged, added } = mergeVariations([], incoming);
+
+  assert.strictEqual(added, 1);
+  assert.strictEqual(merged[0].trackInventory, false);
+});

@@ -1,4 +1,5 @@
 import { getWellnessPhotography } from './wellnessPhotography';
+import { isInStock } from './variant';
 import { formatCurrency } from '$lib/utils/currency';
 
 export type ProductType = 'books' | 'wellness-lifestyle' | 'fashion-jewelry' | 'oils-incense';
@@ -128,7 +129,7 @@ export function normalizeProduct(
       // Variation prices are in CENTS; formatCurrency expects dollars.
       priceLabel = (variations.length > 1 ? 'From ' : '') + formatCurrency(minCents / 100);
 
-      inStock = variations.some((v: any) => (v?.stock ?? 0) > 0 && v?.isAvailable !== false);
+      inStock = variations.some((v: any) => isInStock(v));
       // A multi-variation product needs the picker on the detail page — the
       // grid card can't resolve which scent/size to add, so it must not
       // quick-add (that would add with no variationSku and the backend

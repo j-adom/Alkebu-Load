@@ -203,7 +203,7 @@ async function main() {
   const items = await fetchWellnessItems(squareClient)
   console.log(`Fetched ${items.length} items from the Square wellness tree.\n`)
 
-  const { lines, skipped } = buildImportPlan(items)
+  const { lines, skipped } = buildImportPlan(items, { locationId: process.env.SQUARE_LOCATION_ID })
 
   // Auth happens ONLY on the --commit path. Dry-run reads Square and prints the plan;
   // it must never require credentials.

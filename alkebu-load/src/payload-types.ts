@@ -2113,6 +2113,10 @@ export interface WellnessLifestyle {
      */
     weight?: number | null;
     isAvailable?: boolean | null;
+    /**
+     * Off when Square doesn't track this variation's inventory. Stock is then ignored and 'Is Available' alone decides.
+     */
+    trackInventory?: boolean | null;
     id?: string | null;
   }[];
   origin?: {
@@ -3103,6 +3107,10 @@ export interface OilsIncense {
      */
     weight?: number | null;
     isAvailable?: boolean | null;
+    /**
+     * Off when Square doesn't track this variation's inventory. Stock is then ignored and 'Is Available' alone decides.
+     */
+    trackInventory?: boolean | null;
     id?: string | null;
   }[];
   /**
@@ -6712,6 +6720,7 @@ export interface WellnessLifestyleSelect<T extends boolean = true> {
         stock?: T;
         weight?: T;
         isAvailable?: T;
+        trackInventory?: T;
         id?: T;
       };
   origin?:
@@ -6954,6 +6963,7 @@ export interface OilsIncenseSelect<T extends boolean = true> {
         stock?: T;
         weight?: T;
         isAvailable?: T;
+        trackInventory?: T;
         id?: T;
       };
   sageBlend?:

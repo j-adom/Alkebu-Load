@@ -112,3 +112,74 @@ test('two different Square items on the same line key merge into ONE line accumu
   assert.strictEqual(skipped.noPrice.length, 0);
   assert.strictEqual(skipped.noPricedVariation.length, 0);
 });
+
+test('trackInventory comes from Square: false when untracked, true when unset, location override wins', async () => {
+  const { resolveSquareTrackInventory } = await import('../../src/app/utils/wellnessImportPlan');
+
+  assert.strictEqual(resolveSquareTrackInventory({ trackInventory: false }), false);
+  assert.strictEqual(resolveSquareTrackInventory({ trackInventory: true }), true);
+  assert.strictEqual(resolveSquareTrackInventory({}), true);
+  assert.strictEqual(resolveSquareTrackInventory(undefined), true);
+  assert.strictEqual(resolveSquareTrackInventory({ trackInventory: null }), true);
+
+  const withOverride = {
+    trackInventory: true,
+    locationOverrides: [
+      { locationId: 'OTHER', trackInventory: true },
+      { locationId: 'OURS', trackInventory: false },
+    ],
+  };
+  assert.strictEqual(resolveSquareTrackInventory(withOverride, 'OURS'), false);
+  assert.strictEqual(resolveSquareTrackInventory(withOverride, 'ELSEWHERE'), true);
+  assert.strictEqual(resolveSquareTrackInventory(withOverride), true);
+  // An override that doesn't set track_inventory falls back to the variation flag.
+  assert.strictEqual(
+    resolveSquareTrackInventory({ trackInventory: false, locationOverrides: [{ locationId: 'OURS' }] }, 'OURS'),
+    false,
+  );
+});
+
+test('buildImportPlan carries track_inventory onto pending variations', () => {
+  const item = {
+    type: 'ITEM',
+    id: 'item-oil',
+    itemData: {
+      name: 'Amber Scented Oil',
+      variations: [
+        {
+          type: 'ITEM_VARIATION',
+          id: 'v-untracked',
+          itemVariationData: { sku: 'A1', name: '1/4 oz', trackInventory: false, priceMoney: { amount: 500n, currency: 'USD' } },
+        },
+        {
+          type: 'ITEM_VARIATION',
+          id: 'v-unset',
+          itemVariationData: { sku: 'A2', name: '1 oz', priceMoney: { amount: 1500n, currency: 'USD' } },
+        },
+        {
+          type: 'ITEM_VARIATION',
+          id: 'v-override',
+          itemVariationData: {
+            sku: 'A3',
+            name: '2 oz',
+            trackInventory: true,
+            locationOverrides: [{ locationId: 'LOC', trackInventory: false }],
+            priceMoney: { amount: 2500n, currency: 'USD' },
+          },
+        },
+      ],
+    },
+  } as unknown as CatalogItemObject;
+
+  const { lines } = buildImportPlan([item], { locationId: 'LOC' });
+  const line = [...lines.values()][0];
+  assert.ok(line, 'expected the item to match a product line');
+  assert.deepStrictEqual(
+    line.variations.map((v) => [v.squareVariationId, v.trackInventory]),
+    [
+      ['v-untracked', false],
+      ['v-unset', true],
+      ['v-override', false],
+    ],
+  );
+});

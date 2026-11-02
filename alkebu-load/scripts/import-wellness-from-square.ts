@@ -30,8 +30,8 @@
  * wipe any staff `isAvailable` toggle. `mergeVariations()` (src/app/utils/
  * wellnessVariationMerge.ts) fixes this: it starts from the EXISTING row for every
  * variation Square still carries and only overwrites the fields Square owns (price,
- * sku, scent, variantName, squareItemId). Variations gone from Square are kept (never
- * deleted) and reported for human review, never silently dropped.
+ * sku, scent, variantName, squareItemId, trackInventory). Variations gone from Square
+ * are kept (never deleted) and reported for human review, never silently dropped.
  *
  * SAME OWNERSHIP SPLIT APPLIES AT THE DOCUMENT LEVEL: Square owns price/stock
  * (via variations[]); Payload owns name, slug, productType, images, and all
@@ -131,7 +131,7 @@ async function main() {
   const items = await fetchWellnessItems(squareClient)
   console.log(`Fetched ${items.length} items from the Square wellness tree.\n`)
 
-  const { lines, skipped } = buildImportPlan(items)
+  const { lines, skipped } = buildImportPlan(items, { locationId: process.env.SQUARE_LOCATION_ID })
 
   let created = 0
   let updated = 0

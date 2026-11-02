@@ -56,3 +56,6 @@ next-env.d.ts
 /ingram-availability-review*.csv
 /.ingram-stock-snapshot.json
 /square-link-repair*.csv
+
+# Owner review list for scripts/wellness-untracked-availability.ts
+/wellness-untracked-review*.csv

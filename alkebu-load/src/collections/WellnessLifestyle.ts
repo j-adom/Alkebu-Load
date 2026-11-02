@@ -506,6 +506,18 @@ const WellnessLifestyle: CollectionConfig = {
           name: 'isAvailable',
           type: 'checkbox',
           defaultValue: true
+        },
+        {
+          // Square owns this (item_variation_data.track_inventory); the wellness
+          // importer overwrites it on every sync. Untracked variations never get
+          // inventory counts from Square, so their stock would sit at 0 forever.
+          name: 'trackInventory',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description:
+              "Off when Square doesn't track this variation's inventory. Stock is then ignored and 'Is Available' alone decides.",
+          },
         }
       ],
       admin: {
@@ -924,8 +936,14 @@ const WellnessLifestyle: CollectionConfig = {
 
   hooks: {
     beforeValidate: [
-      async ({ data, operation }) => {
+      async ({ data, operation, context }) => {
         if (!data || (operation !== 'create' && operation !== 'update')) {
+          return;
+        }
+        // Bulk maintenance writes (scripts/wellness-untracked-availability.ts) pass
+        // context.disableHooks: they only touch variations[], so no SEO regeneration
+        // and no lastUpdated bump.
+        if (context?.disableHooks) {
           return;
         }
 

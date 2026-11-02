@@ -1,6 +1,14 @@
 <script lang="ts">
   import { formatCents } from '$lib/utils/currency';
-  import { resolveDefaultVariation, type VariantOption } from '$lib/utils/variant';
+  import {
+    defaultSizeKey,
+    isInStock,
+    norm,
+    resolveDefaultVariation,
+    sizeKey,
+    sizeOptions,
+    type VariantOption,
+  } from '$lib/utils/variant';
 
   /**
    * Wellness / oils-incense products carry two independent variant axes —
@@ -20,11 +28,6 @@
   }
 
   let { variations = [], onchange }: Props = $props();
-
-  const norm = (value?: string | null): string => (typeof value === 'string' ? value.trim() : '');
-
-  const isInStock = (variation: VariantOption): boolean =>
-    (variation?.stock ?? 0) > 0 && variation?.isAvailable !== false;
 
   // All distinct scents across every variation, alphabetical.
   const scents = $derived.by(() => {
@@ -51,22 +54,10 @@
 
   // All distinct sizes across every variation, ordered by ascending price —
   // e.g. "1/4 oz" ($5) before "2 oz" ($25) — without parsing fraction
-  // strings like "1/4 oz" ourselves.
-  const sizes = $derived.by(() => {
-    const set = new Set<string>();
-    for (const variation of variations) {
-      const size = norm(variation.variantName);
-      if (size) set.add(size);
-    }
-    const minPriceFor = (size: string): number => {
-      const prices = variations
-        .filter((v) => norm(v.variantName) === size)
-        .map((v) => Number(v.price) || 0)
-        .filter((p) => p > 0);
-      return prices.length ? Math.min(...prices) : Number.POSITIVE_INFINITY;
-    };
-    return Array.from(set).sort((a, b) => minPriceFor(a) - minPriceFor(b) || a.localeCompare(b));
-  });
+  // strings like "1/4 oz" ourselves. Square names that only repeat the scent
+  // or say "Regular" aren't sizes (see `sizeKey`).
+  const sizes = $derived(sizeOptions(variations));
+  const sizeKeys = $derived(sizes.map((size) => size.key));
 
   const hasSizeAxis = $derived(sizes.length > 0);
   // Gate on variations.length, not on whether scent/size happen to be
@@ -75,21 +66,17 @@
   // single-variation → no-picker requirement.
   const hasPicker = $derived(variations.length > 1);
 
-  function defaultSize(pool: VariantOption[]): string {
-    if (!sizes.length) return '';
-    const inStockSize = sizes.find((size) => pool.some((v) => norm(v.variantName) === size && isInStock(v)));
-    if (inStockSize) return inStockSize;
-    const existingSize = sizes.find((size) => pool.some((v) => norm(v.variantName) === size));
-    return existingSize ?? sizes[0];
-  }
-
   // $state initializers run once at component creation (including during
   // SSR), so the first render already highlights the same combination
   // `resolveDefaultVariation` picks — the same pure function a parent page
   // uses to seed its own initial price, so the two never disagree.
   const initialVariation = resolveDefaultVariation(variations);
   let selectedScent = $state(norm(initialVariation?.scent));
-  let selectedSize = $state(norm(initialVariation?.variantName));
+  let selectedSize = $state(initialVariation ? sizeKey(initialVariation) : '');
+
+  // A scent whose rows carry no real size (a single unsized bottle) gets no
+  // size row; its row matches the empty size key.
+  const scentHasSizes = $derived(poolForScent(selectedScent).some((v) => sizeKey(v) !== ''));
 
   // Not every scent comes in every size — a size that doesn't exist (or is
   // out of stock) for the currently selected scent must be disabled, not
@@ -97,7 +84,7 @@
   // conclude it never did.
   function sizeInfo(size: string): { exists: boolean; inStock: boolean } {
     const pool = poolForScent(selectedScent);
-    const match = pool.find((v) => norm(v.variantName) === size);
+    const match = pool.find((v) => sizeKey(v) === size);
     return { exists: Boolean(match), inStock: match ? isInStock(match) : false };
   }
 
@@ -106,7 +93,7 @@
     selectedScent = scent;
     // Re-anchor the size selection to something valid for the new scent
     // instead of silently leaving a stale, now-invalid combination selected.
-    selectedSize = defaultSize(poolForScent(scent));
+    selectedSize = defaultSizeKey(sizeKeys, poolForScent(scent));
     scentQuery = '';
     scentOpen = false;
   }
@@ -123,7 +110,7 @@
       variations.find(
         (v) =>
           (!hasScentAxis || norm(v.scent) === selectedScent) &&
-          (!hasSizeAxis || norm(v.variantName) === selectedSize),
+          (!hasSizeAxis || sizeKey(v) === selectedSize),
       ) ?? null
     );
   });
@@ -213,30 +200,30 @@
       </div>
     {/if}
 
-    {#if hasSizeAxis}
+    {#if hasSizeAxis && scentHasSizes}
       <div class="variant-field">
         <span class="variant-label" id="size-label">Size</span>
         <div class="size-options" role="listbox" aria-labelledby="size-label">
-          {#each sizes as size (size)}
-            {@const info = sizeInfo(size)}
+          {#each sizes as size (size.key)}
+            {@const info = sizeInfo(size.key)}
             {@const disabled = !info.exists || !info.inStock}
             <button
               type="button"
               role="option"
-              aria-selected={size === selectedSize}
+              aria-selected={size.key === selectedSize}
               aria-disabled={disabled}
               class="size-option"
-              class:selected={size === selectedSize}
+              class:selected={size.key === selectedSize}
               class:unavailable={disabled}
               {disabled}
               title={!info.exists
-                ? `${size} isn't available for this scent`
+                ? `${size.label} isn't available for this scent`
                 : !info.inStock
-                  ? `${size} is sold out`
+                  ? `${size.label} is sold out`
                   : undefined}
-              onclick={() => chooseSize(size)}
+              onclick={() => chooseSize(size.key)}
             >
-              {size}
+              {size.label}
               {#if !info.exists}
                 <span class="tag">N/A</span>
               {:else if !info.inStock}
