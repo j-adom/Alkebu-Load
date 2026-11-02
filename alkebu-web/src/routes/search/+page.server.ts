@@ -2,6 +2,7 @@ import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { resolveOilsIncenseShopSection } from '$lib/server/sitemapHelpers.js';
 import { PUBLIC_SITE_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { fail } from '@sveltejs/kit';
 import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv';
 import type { Actions, PageServerLoad } from './$types';
@@ -311,6 +312,10 @@ export const actions: Actions = {
     const query = String(formData.get('query') || '').trim();
     const scope = String(formData.get('scope') || '');
     const turnstileToken = String(formData.get('cf-turnstile-response') || '').trim();
+
+    if (publicEnv.PUBLIC_LONG_TAIL_SEARCH_ENABLED !== 'true') {
+      return fail(404, { lookWider: { query, scope, error: 'The wider search is not available yet.' } });
+    }
 
     if (!turnstileToken) {
       return fail(400, { lookWider: { query, scope, error: 'Please complete the bot check and try again.' } });

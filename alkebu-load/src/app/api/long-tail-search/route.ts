@@ -20,6 +20,11 @@ const global = createRateLimiter({
  * storefront's IP and one rate-limit bucket).
  */
 export async function POST(request: NextRequest) {
+  // Off until the live Ingram provider lands (plan Task 11): the mock would show sample titles.
+  if (process.env.LONG_TAIL_SEARCH_ENABLED !== 'true') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   const payload = await getPayload({ config });
 
   let clientKey = getClientIp(request.headers);

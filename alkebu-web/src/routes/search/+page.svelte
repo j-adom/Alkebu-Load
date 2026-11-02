@@ -7,6 +7,7 @@
   import { formatCurrency } from '$lib/utils/currency';
   import { cleanResultDescription, getBookMeta } from '$lib/utils/searchPresentation.js';
   import { Search, BookOpen, ShoppingBag, Sparkles, Home, ArrowRight, RotateCcw } from 'lucide-svelte';
+  import { env as publicEnv } from '$env/dynamic/public';
   import LookWiderPanel from '$lib/components/Search/LookWiderPanel.svelte';
 
   type SearchPageData = {
@@ -93,9 +94,12 @@
   let results = $derived(data.results || []);
   let pagination = $derived(data.pagination || { page: 1, totalPages: 1, totalDocs: 0 });
   const hasResults = $derived(results.length > 0);
+  // Off until the live Ingram provider lands; the mock would show sample titles.
+  const lookWiderEnabled = publicEnv.PUBLIC_LONG_TAIL_SEARCH_ENABLED === 'true';
   // Offer the wider search on zero or thin book results (never for events, blog, etc.).
   const showLookWider = $derived(
-    !!searchQuery &&
+    lookWiderEnabled &&
+      !!searchQuery &&
       searchStatus === 'success' &&
       !isLoading &&
       results.length <= 2 &&
