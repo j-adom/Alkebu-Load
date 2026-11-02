@@ -143,3 +143,52 @@ test('stock check is a no-op for books and fashion-jewelry (different inventory 
     true,
   );
 });
+
+// Square doesn't track inventory for most Scented Oil variations, so their
+// stock never leaves the importer's default 0. trackInventory: false means
+// stock is ignored and isAvailable alone decides.
+test('an untracked variation with stock 0 is allowed', () => {
+  const product = {
+    publishOnline: true,
+    variations: [{ sku: 'OIL-AMBER', stock: 0, isAvailable: true, trackInventory: false }],
+  };
+
+  const result = evaluateWellnessVariationStock(product, 'oils-incense', { variationSku: 'OIL-AMBER' }, 5);
+
+  assert.strictEqual(result.allowed, true);
+});
+
+test('an untracked variation marked unavailable is still rejected', () => {
+  const product = {
+    publishOnline: true,
+    variations: [{ sku: 'OIL-AMBER', stock: 0, isAvailable: false, trackInventory: false }],
+  };
+
+  const result = evaluateWellnessVariationStock(product, 'oils-incense', { variationSku: 'OIL-AMBER' }, 1);
+
+  assert.strictEqual(result.allowed, false);
+});
+
+test('a tracked variation still enforces stock, and a missing trackInventory means tracked', () => {
+  const tracked = {
+    publishOnline: true,
+    variations: [{ sku: 'SHEA-1', stock: 2, isAvailable: true, trackInventory: true }],
+  };
+  const legacy = {
+    publishOnline: true,
+    variations: [{ sku: 'SHEA-1', stock: 0, isAvailable: true }],
+  };
+
+  assert.strictEqual(
+    evaluateWellnessVariationStock(tracked, 'wellness-lifestyle', { variationSku: 'SHEA-1' }, 3).allowed,
+    false,
+  );
+  assert.strictEqual(
+    evaluateWellnessVariationStock(tracked, 'wellness-lifestyle', { variationSku: 'SHEA-1' }, 2).allowed,
+    true,
+  );
+  assert.strictEqual(
+    evaluateWellnessVariationStock(legacy, 'wellness-lifestyle', { variationSku: 'SHEA-1' }, 1).allowed,
+    false,
+  );
+});

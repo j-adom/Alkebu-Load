@@ -10,7 +10,8 @@
  * stop that: it starts from the EXISTING row for every variation Square still carries,
  * and overwrites only the fields Square actually owns.
  *
- * Square is the source of truth for: `price`, `sku`, `scent`, `variantName`, and
+ * Square is the source of truth for: `price`, `sku`, `scent`, `variantName`,
+ * `trackInventory` (item_variation_data.track_inventory, when the incoming row carries it), and
  * `squareItemId` (where the field exists on the collection -- OilsIncense.variations[]
  * has no such field, and the merge respects that by only touching it when the incoming
  * row carries the key). `variantName` carries Square's own size/option label
@@ -42,6 +43,7 @@ export interface MergeableVariation {
   stock?: number | null;
   weight?: number | null;
   isAvailable?: boolean | null;
+  trackInventory?: boolean | null;
   id?: string | null;
 }
 
@@ -90,6 +92,11 @@ export function mergeVariations<T extends MergeableVariation>(
     };
     if ('squareItemId' in inc) {
       overrides.squareItemId = inc.squareItemId;
+    }
+    // Square decides whether it tracks inventory. A caller that doesn't read the
+    // flag leaves the stored value alone rather than resetting it.
+    if (typeof inc.trackInventory === 'boolean') {
+      overrides.trackInventory = inc.trackInventory;
     }
 
     return { ...match, ...overrides };

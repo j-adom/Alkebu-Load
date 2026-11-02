@@ -73,6 +73,14 @@ export function evaluateWellnessVariationStock(
     return { allowed: false, error: 'This option is currently unavailable.' };
   }
 
+  // Square doesn't track inventory for this variation, so it never sends counts
+  // and `stock` is meaningless (it stays at the importer's default 0). Staff
+  // control availability with isAvailable alone. Only an explicit `false`
+  // counts: rows written before the field existed are tracked.
+  if (variation.trackInventory === false) {
+    return { allowed: true };
+  }
+
   const stock = typeof variation.stock === 'number' ? variation.stock : 0;
   if (stock < quantity) {
     return {

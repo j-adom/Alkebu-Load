@@ -57,6 +57,7 @@ export interface PendingVariation {
   variantName?: string
   price: number
   stock: number
+  trackInventory: boolean
   squareItemId: string
   squareVariationId: string
 }
@@ -79,6 +80,7 @@ export interface WellnessVariation {
   squareVariationId?: string
   weight?: number
   isAvailable?: boolean
+  trackInventory?: boolean
   id?: string
 }
 
@@ -93,6 +95,7 @@ export interface OilsIncenseVariation {
   squareVariationId?: string
   weight?: number
   isAvailable?: boolean
+  trackInventory?: boolean
   id?: string
 }
 
@@ -104,6 +107,36 @@ export interface SkippedLines {
   noPrice: string[] // a matched item's variation carried no price
   noPricedVariation: string[] // matched line, but every variation on it lacked a price
   malformed: string[] // defensive: item/variation with no id from Square (should be rare/never)
+}
+
+export interface ImportPlanOptions {
+  // Our Square location (SQUARE_LOCATION_ID). A location override's track_inventory
+  // for this location wins over the variation-level value.
+  locationId?: string
+}
+
+/**
+ * Whether Square tracks inventory for a variation: its location override for
+ * `locationId` if that override sets track_inventory, else the variation-level flag.
+ * Square omits track_inventory when it was never set, and Square's own default is
+ * "tracked", so undefined/null reads as true. Untracked variations never receive
+ * inventory.count.updated webhooks, so their Payload stock stays at 0 forever.
+ */
+export function resolveSquareTrackInventory(
+  variationData:
+    | {
+        trackInventory?: boolean | null
+        locationOverrides?: Array<{ locationId?: string | null; trackInventory?: boolean | null }> | null
+      }
+    | null
+    | undefined,
+  locationId?: string,
+): boolean {
+  if (locationId) {
+    const override = (variationData?.locationOverrides ?? []).find((o) => o?.locationId === locationId)
+    if (typeof override?.trackInventory === 'boolean') return override.trackInventory
+  }
+  return variationData?.trackInventory !== false
 }
 
 export interface ImportPlan {
@@ -136,7 +169,7 @@ export async function fetchWellnessItems(squareClient: SquareClient): Promise<Ca
 // it into ONE pending line per lineKey. Many Square items collapse into a single line
 // (104 "Scented Oil" SKUs -> one oils-incense line with 104 scent variations). Makes
 // no network or DB calls -- see tests/import/wellnessImportPlan.test.ts.
-export function buildImportPlan(items: CatalogItemObject[]): ImportPlan {
+export function buildImportPlan(items: CatalogItemObject[], options: ImportPlanOptions = {}): ImportPlan {
   const lines = new Map<string, PendingLine>()
 
   const skipped: SkippedLines = {
@@ -205,6 +238,7 @@ export function buildImportPlan(items: CatalogItemObject[]): ImportPlan {
         variantName,
         price,
         stock: 0, // Only used for a genuinely new row -- see mergeVariations().
+        trackInventory: resolveSquareTrackInventory(variationObj.itemVariationData, options.locationId),
         squareItemId: itemId,
         squareVariationId: variationId,
       })
@@ -241,6 +275,7 @@ export function buildWellnessLifestyleVariations(line: PendingLine): WellnessVar
     variantName: v.variantName,
     price: v.price,
     stock: v.stock,
+    trackInventory: v.trackInventory,
     squareItemId: v.squareItemId,
     squareVariationId: v.squareVariationId,
   }))
@@ -256,6 +291,7 @@ export function buildOilsIncenseVariations(line: PendingLine): OilsIncenseVariat
     variantName: v.variantName,
     price: v.price,
     stock: v.stock,
+    trackInventory: v.trackInventory,
     squareVariationId: v.squareVariationId,
   }))
 }

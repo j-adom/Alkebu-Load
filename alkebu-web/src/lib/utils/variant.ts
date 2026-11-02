@@ -15,13 +15,23 @@ export interface VariantOption {
   stock?: number | null;
   weight?: number | null;
   squareVariationId?: string | null;
-  isAvailable?: boolean;
+  isAvailable?: boolean | null;
+  /** false when Square doesn't track this variation's stock; `stock` is then ignored. */
+  trackInventory?: boolean | null;
 }
 
 export const norm = (value?: string | null): string => (typeof value === 'string' ? value.trim() : '');
 
-export const isInStock = (variation: VariantOption): boolean =>
-  (variation?.stock ?? 0) > 0 && variation?.isAvailable !== false;
+/**
+ * Purchasable = not switched off by staff, and either Square doesn't track
+ * this variation's inventory (`trackInventory: false`, stock is meaningless)
+ * or it has stock. Mirrors the backend's add-to-cart check
+ * (`evaluateWellnessVariationStock` in alkebu-load cartOperations.ts).
+ */
+export const isInStock = (variation: VariantOption | null | undefined): boolean =>
+  !!variation &&
+  variation.isAvailable !== false &&
+  (variation.trackInventory === false || (variation.stock ?? 0) > 0);
 
 /**
  * The variation's size as a comparison key, or '' when it has no real size.

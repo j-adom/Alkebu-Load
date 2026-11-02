@@ -6,7 +6,7 @@
   import AddToCartButton from '$lib/components/cart/AddToCartButton.svelte';
   import ProductCard from '$lib/components/Shop/ProductCard.svelte';
   import VariantPicker from '$lib/components/Shop/VariantPicker.svelte';
-  import { resolveDefaultVariation, type VariantOption } from '$lib/utils/variant';
+  import { isInStock, resolveDefaultVariation, type VariantOption } from '$lib/utils/variant';
   import { formatCents } from '$lib/utils/currency';
 
   let { data } = $props();
@@ -40,9 +40,7 @@
   });
 
   const displayPriceCents = $derived(selectedVariation?.price ?? 0);
-  const inStock = $derived(
-    selectedVariation ? (selectedVariation.stock ?? 0) > 0 && selectedVariation.isAvailable !== false : false,
-  );
+  const inStock = $derived(isInStock(selectedVariation));
 
   const gallery = $derived.by(() => {
     const images = Array.isArray(product.images)
