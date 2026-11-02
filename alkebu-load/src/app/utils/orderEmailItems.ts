@@ -8,6 +8,7 @@
  */
 
 import type { EmailLineItem } from './emailService';
+import { describeWellnessVariation, resolveWellnessVariation } from './cartProductDetails';
 import { buildProductPageUrl, resolveRelatedProductDoc } from './productUrls';
 
 const asNonEmptyString = (value: unknown): string | undefined =>
@@ -21,11 +22,26 @@ const resolveAuthor = (productDoc: Record<string, unknown> | null): string | und
   return names.length ? names.join(', ') : undefined;
 };
 
+// Scent/size of the purchased variation, matched by the sku captured at
+// add-to-cart. Omitted when the title already carries it (lines added since
+// resolveCartProductTitle started appending it) so it isn't shown twice.
+const resolveVariant = (item: any, productDoc: Record<string, unknown> | null): string | undefined => {
+  const sku = asNonEmptyString(item.identifiers?.sku);
+  if (!productDoc || !sku) return undefined;
+  const label = describeWellnessVariation(
+    productDoc,
+    resolveWellnessVariation(productDoc, { variationSku: sku }),
+  );
+  if (!label || String(item.productTitle ?? '').includes(label)) return undefined;
+  return label;
+};
+
 export function buildOrderEmailLineItems(cartItems: any[]): EmailLineItem[] {
   return cartItems.map((item) => {
     const productDoc = resolveRelatedProductDoc(item.product);
     return {
       productTitle: item.productTitle,
+      variant: resolveVariant(item, productDoc),
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.quantity * item.unitPrice,

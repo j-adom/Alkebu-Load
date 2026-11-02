@@ -127,20 +127,64 @@ export const resolveWellnessVariation = (product: any, customization?: Customiza
   return product.variations.length === 1 ? product.variations[0] : null;
 };
 
+/**
+ * Human-readable label for a wellness/oils variation, naming only the axes
+ * that differ across the product's variations: "Pink Sugar" when every
+ * variation is 4 oz, "Pink Sugar, 8 oz" when sizes vary too. Null when the
+ * product has only one variation (nothing was chosen) or nothing differs.
+ */
+export const describeWellnessVariation = (product: any, variation: any): string | null => {
+  if (!variation || !Array.isArray(product?.variations) || product.variations.length < 2) {
+    return null;
+  }
+
+  const varies = (field: 'scent' | 'variantName') =>
+    new Set(product.variations.map((v: any) => asNonEmptyString(v?.[field])?.toLowerCase() ?? '')).size > 1;
+
+  const scent = varies('scent') ? asNonEmptyString(variation.scent) : null;
+  // Square's variation name is often just a copy of the scent ("Baby
+  // Powder") or the placeholder "Regular" rather than a real size.
+  const rawVariantName = asNonEmptyString(variation.variantName);
+  const variantName =
+    varies('variantName') &&
+    rawVariantName &&
+    rawVariantName.toLowerCase() !== 'regular' &&
+    rawVariantName.toLowerCase() !== scent?.toLowerCase()
+      ? rawVariantName
+      : null;
+
+  const parts = [scent, variantName].filter((part): part is string => Boolean(part));
+
+  return parts.length ? parts.join(', ') : null;
+};
+
 export const resolveCartProductTitle = (
   product: any,
   customization?: Customization,
+  productType?: string,
 ): string => {
   const fashionVariation = resolveFashionVariation(product, customization);
 
-  return (
+  const baseTitle =
     asNonEmptyString(product?.title) ??
     asNonEmptyString(product?.name) ??
     asNonEmptyString(fashionVariation?.customVariationName) ??
     asNonEmptyString(product?.baseScent) ??
     asNonEmptyString(product?.primaryIngredient) ??
-    'Untitled product'
-  );
+    'Untitled product';
+
+  // The cart line, order line, dashboard and emails only carry this title,
+  // so the chosen scent/size must be part of it or staff can't tell which
+  // variation to pull.
+  if (productType && WELLNESS_COLLECTIONS.has(productType)) {
+    const label = describeWellnessVariation(
+      product,
+      resolveWellnessVariation(product, customization),
+    );
+    if (label) return `${baseTitle} — ${label}`;
+  }
+
+  return baseTitle;
 };
 
 export const resolveCartProductUnitPrice = (
@@ -211,10 +255,15 @@ export const resolveCartProductIdentifiers = (
   const bookEdition = productType === 'books'
     ? resolveBookEdition(product, customization)
     : null;
-  const fashionVariation = resolveFashionVariation(product, customization);
+  // Wellness lines must use the exact selected variation; the fashion
+  // resolver falls back to variations[0], which would record the wrong SKU
+  // when the selection came in by squareVariationId.
+  const variation = WELLNESS_COLLECTIONS.has(productType)
+    ? resolveWellnessVariation(product, customization)
+    : resolveFashionVariation(product, customization);
 
   const productSku =
-    asNonEmptyString(fashionVariation?.sku) ??
+    asNonEmptyString(variation?.sku) ??
     asNonEmptyString(product?.sku) ??
     asNonEmptyString(product?.inventory?.sku);
 
@@ -225,7 +274,7 @@ export const resolveCartProductIdentifiers = (
     sku: productSku ?? undefined,
     squareVariationId:
       asNonEmptyString(bookEdition?.squareVariationId) ??
-      asNonEmptyString(fashionVariation?.squareVariationId) ??
+      asNonEmptyString(variation?.squareVariationId) ??
       undefined,
     stripePriceId: resolveCartStripePriceId(product, customization),
     edition:

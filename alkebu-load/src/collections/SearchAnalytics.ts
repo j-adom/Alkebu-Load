@@ -1,8 +1,10 @@
 import type { CollectionConfig } from 'payload';
+import { staffCollectionAccess } from '../access/roles';
 import { frequencyForNewSearch } from '../app/utils/searchDemand';
 
 const SearchAnalytics: CollectionConfig = {
   slug: 'searchAnalytics',
+  access: staffCollectionAccess,
   admin: {
     useAsTitle: 'query',
     defaultColumns: ['query', 'resultCount', 'clickthrough', 'searchDate'],

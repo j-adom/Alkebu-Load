@@ -59,6 +59,30 @@ export function buildBookStorefrontPath(params: URLSearchParams): string {
   return `/api/books?${appendBookStorefrontFilters(params).toString()}`;
 }
 
+// Fields ProductCard / BookPurchaseAction read for a book grid card. A full
+// depth-2 book doc is ~7KB (synopsis, description, subjects, publisher, SEO…);
+// parsing and re-serializing those on the Worker blew the CPU limit (1102).
+const bookCardFields = [
+  'title',
+  'slug',
+  'images',
+  'scrapedImageUrls',
+  'inventory',
+  'editions',
+  'binding',
+  'authors',
+  'authorsText',
+  'pricing',
+  'availabilityStatus',
+];
+
+export function appendBookCardSelect(params: URLSearchParams): URLSearchParams {
+  for (const field of bookCardFields) params.set(`select[${field}]`, 'true');
+  params.set('populate[authors][name]', 'true');
+  params.set('populate[authors][slug]', 'true');
+  return params;
+}
+
 // Product types based on our Payload collections
 export interface Book extends PayloadDoc {
   title: string;

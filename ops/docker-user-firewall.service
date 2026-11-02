@@ -1,0 +1,19 @@
+# Re-applies ops/docker-user-firewall.sh after every boot and Docker restart.
+#
+#   sudo install -m 0755 ops/docker-user-firewall.sh /usr/local/sbin/docker-user-firewall.sh
+#   sudo install -m 0644 ops/docker-user-firewall.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now docker-user-firewall
+[Unit]
+Description=Block public access to Docker-published admin ports (Coolify, Traefik)
+After=docker.service network-online.target
+Wants=network-online.target
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/docker-user-firewall.sh
+ExecStop=/usr/local/sbin/docker-user-firewall.sh --remove
+
+[Install]
+WantedBy=multi-user.target docker.service

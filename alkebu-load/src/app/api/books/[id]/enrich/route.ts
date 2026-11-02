@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
+import { isStaffUser } from '@/access/roles'
 import { buildBookMetadataPatch, type GoogleBooksVolumeInfo, type IsbndbBook } from '@/app/utils/bookImport'
 
 const ISBNDB_API_KEY = process.env.ISBNDB_API_KEY || ''
@@ -62,9 +63,9 @@ export async function POST(
         // Get payload instance
         const payload = await getPayload({ config })
 
-        // Verify auth
-        const authHeader = request.headers.get('authorization')
-        if (!authHeader) {
+        // Verify auth: a present-but-unchecked Authorization header used to pass.
+        const { user } = await payload.auth({ headers: request.headers })
+        if (!isStaffUser(user)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 

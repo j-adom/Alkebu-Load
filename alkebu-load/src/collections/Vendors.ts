@@ -1,7 +1,9 @@
 import type { CollectionConfig } from 'payload'
+import { staffCollectionAccess } from '../access/roles'
 
 const Vendors: CollectionConfig = {
   slug: 'vendors',
+  access: staffCollectionAccess,
   admin: {
     useAsTitle: 'name',
     defaultColumns: ['name', 'type', 'isActive', 'productCount'],

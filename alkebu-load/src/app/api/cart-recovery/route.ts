@@ -67,7 +67,12 @@ export async function GET(request: NextRequest) {
         id: reactivatedCart.id,
         itemCount: items.docs.length,
         totalAmount: reactivatedCart.totalAmount,
-        items: items.docs,
+        // Unauthenticated route keyed by a sequential ID: never echo the populated
+        // parent cart (guestEmail, shippingAddress, linked user) on each item.
+        items: items.docs.map(({ cart: itemCart, ...item }) => ({
+          ...item,
+          cart: typeof itemCart === 'object' && itemCart !== null ? itemCart.id : itemCart,
+        })),
       },
     });
 

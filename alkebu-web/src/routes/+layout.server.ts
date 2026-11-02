@@ -1,38 +1,16 @@
-import { buildBookStorefrontPath, payloadGet } from '$lib/server/payload';
+import { payloadGet } from '$lib/server/payload';
 import type { LayoutServerLoad } from './$types';
 
+// Runs on every SSR request, so keep it to what the shell needs. Book shelves
+// belong to the homepage's own load; fetching them here serialized ~160KB of
+// unused JSON into every page.
 export const load: LayoutServerLoad = async ({ locals }) => {
   try {
-    // Get site settings global
     const settings = await payloadGet<any>('/api/globals/siteSettings?depth=1');
-
-    // Get featured books
-    const featuredBooks = await payloadGet<any>(
-      buildBookStorefrontPath(
-        new URLSearchParams({
-          'where[isFeatured][equals]': 'true',
-          limit: '10',
-          depth: '2',
-        }),
-      ),
-    );
-
-    // Get new books (recent releases)
-    const newBooks = await payloadGet<any>(
-      buildBookStorefrontPath(
-        new URLSearchParams({
-          sort: '-createdAt',
-          limit: '10',
-          depth: '2',
-        }),
-      ),
-    );
 
     // Note: Cache headers are set at page level to avoid conflicts
     return {
       settings: settings || {},
-      featured: featuredBooks.docs || [],
-      newBooks: newBooks.docs || [],
       user: locals.user ?? null
     };
   } catch (error) {
@@ -40,8 +18,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
     return {
       settings: {},
-      featured: [],
-      newBooks: [],
       user: locals.user ?? null
     };
   }

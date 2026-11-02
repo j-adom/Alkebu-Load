@@ -1,0 +1,25 @@
+# Security patches for the Payload backend land as PRs instead of waiting on a
+# manual bump. next/react/payload move together: Payload's peer range on next is
+# narrow (e.g. 3.91 accepts >=16.3.3 <17 but no 15.5.x), so they must upgrade as a set.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /alkebu-load
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    groups:
+      next-react-payload:
+        patterns:
+          - next
+          - eslint-config-next
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+          - payload
+          - "@payloadcms/*"
+  - package-ecosystem: docker
+    directory: /alkebu-load
+    schedule:
+      interval: weekly

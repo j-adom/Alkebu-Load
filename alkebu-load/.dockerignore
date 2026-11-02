@@ -10,7 +10,26 @@ pnpm-debug.log
 .env.*.local
 alkebulanimages.db
 alkebulanimages.db-*
+alkebulanimages.db.*
+*.db
+*.db.*
 *.backup
+
+# Data dumps, exports and logs: never ship into an image
+square-dumps/
+data/
+logs/
+*.log
+*.csv
+catalog-*.json
+inventory-response.json
+payload-*.json
+sample-products.json
+square-analysis.json
+sync-summary.json
+*.sql
+*.sh
+migrations.archive/
 
 # Build outputs
 .next
