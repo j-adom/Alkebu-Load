@@ -3,6 +3,9 @@ import type { Payload, Where } from 'payload';
 import { toJsonSafe } from './jsonSafe';
 import { isNonBookCategory, mapSquareItemToBook, RESOLVED_SENTINEL_ISSUE } from './squareCatalogMapping';
 import { mergeEditions } from './squareEditionMerge';
+import { bookUpdateForSquareItem, findBookForSquareItem } from './squareBookMatch';
+import { bookHasNoCover, bookVariationIds, squareImageUrls } from './squareLinks';
+import { withNewBookEnrichment } from './squareNewBookEnrichment';
 import { decideStagingAction } from './squareStagingWorkflow';
 import { matchProductLine } from './wellnessProductLines';
 import {
@@ -98,61 +101,6 @@ function squareCatalogVersionOf(rec: Record<string, unknown>): string {
 }
 
 /**
- * The one book a Square item belongs to (see squareItemOwnership.ts), found in tiers:
- * an edition linked to the item, then the book-level link (books not yet backfilled
- * with edition-level ids), then any edition holding one of the item's variations. More
- * than one book in a tier is a data error to fix by hand, never something to guess at.
- */
-export async function findBookForSquareItem(
-  payload: Payload,
-  squareItemId: string,
-  variationIds: string[],
-): Promise<any | null> {
-  // A variation match only counts on an edition not already linked to a different item.
-  const holdsVariation = (book: any) =>
-    ((book.editions as any[]) || []).some(
-      (edition) =>
-        variationIds.includes(edition?.squareVariationId) &&
-        (!edition?.squareItemId || edition.squareItemId === squareItemId),
-    );
-  const tiers: Array<{ where: Where; keep?: (book: any) => boolean }> = [
-    { where: { 'editions.squareItemId': { equals: squareItemId } } },
-    { where: { squareItemId: { equals: squareItemId } } },
-    ...(variationIds.length > 0
-      ? [{ where: { 'editions.squareVariationId': { in: variationIds } } as Where, keep: holdsVariation }]
-      : []),
-  ];
-  for (const { where, keep } of tiers) {
-    const result = await payload.find({ collection: 'books', where, limit: 10, depth: 0 });
-    const docs = keep ? result.docs.filter(keep) : result.docs;
-    const ids = [...new Set(docs.map((doc) => doc.id))];
-    if (ids.length > 1) {
-      throw new Error(`Square item ${squareItemId} matches books ${ids.join(', ')}; fix the Square link in the admin`);
-    }
-    if (ids.length === 1) return docs[0];
-  }
-  return null;
-}
-
-/**
- * Update data for an existing book from one Square item. The book's own (book-level)
- * item owns its title, price and squareItemId. A different item -- another binding
- * consolidated into this book -- only reconciles its own editions.
- */
-export function bookUpdateForSquareItem(
-  existingBook: { squareItemId?: string | null; editions?: unknown },
-  squareItemId: string,
-  mappedData: Record<string, unknown>,
-): Record<string, unknown> {
-  const editions = mergeEditions((existingBook.editions as any[]) || [], mappedData.editions as any[], {
-    squareItemId,
-    bookSquareItemId: existingBook.squareItemId ?? null,
-  });
-  const ownsBook = !existingBook.squareItemId || existingBook.squareItemId === squareItemId;
-  return ownsBook ? { ...mappedData, editions } : { editions, lastSyncedAt: mappedData.lastSyncedAt };
-}
-
-/**
  * Runs one incremental Square catalog sync: fetch changed items, map each
  * one, and either write a Book, stage it for human review, or skip it
  * (rejected rows stay rejected forever; non-book product lines -- wellness,
@@ -195,8 +143,13 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
   const catalogResponse = await client.catalog.list({ types: 'ITEM,IMAGE' });
 
   const items: Record<string, unknown>[] = [];
+  const imageUrlsById = new Map<string, string>();
   for await (const obj of catalogResponse) {
     if (obj?.type === 'ITEM') items.push(obj as Record<string, unknown>);
+    const imageUrl = (obj as { imageData?: { url?: unknown } })?.imageData?.url;
+    if (obj?.type === 'IMAGE' && typeof obj.id === 'string' && typeof imageUrl === 'string') {
+      imageUrlsById.set(obj.id, imageUrl);
+    }
   }
 
   const changedItems = items.filter((item) => {
@@ -274,13 +227,20 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
       if (decision.action === 'write-book') {
         if (mapped.kind !== 'complete') continue; // decideStagingAction guarantees this, but keep TS honest.
 
-        const variationIds = ((mapped.data.editions as any[]) || [])
-          .map((edition) => edition?.squareVariationId)
-          .filter((id): id is string => typeof id === 'string');
+        // No ISBN tier here: legacy books whose variation ids Square no longer has are
+        // relinked by scripts/square-link-repair.ts, and promotion (human-gated) checks
+        // ISBNs. An extra lookup on every new item widened the window in which two
+        // unserialized syncs race on one book (integration test 8).
+        const variationIds = bookVariationIds(mapped.data);
         const existingBook = await findBookForSquareItem(payload, squareItemId, variationIds);
+        const imageUrls = squareImageUrls(item, imageUrlsById);
 
         if (existingBook) {
           const bookData = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
+          // A photo staff took in Square fills a missing cover; it never replaces one.
+          if (imageUrls.length > 0 && bookHasNoCover(existingBook)) {
+            bookData.scrapedImageUrls = imageUrls.map((url) => ({ url }));
+          }
           await payload.update({
             collection: 'books',
             id: existingBook.id,
@@ -290,10 +250,11 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
           updated++;
         } else {
           try {
-            const bookData = {
+            const bookData = await withNewBookEnrichment({
               ...mapped.data,
               editions: mergeEditions([], mapped.data.editions as any[]),
-            };
+              ...(imageUrls.length > 0 ? { scrapedImageUrls: imageUrls.map((url) => ({ url })) } : {}),
+            });
             await payload.create({ collection: 'books', data: bookData as any, context: SKIP_ENRICHMENT_CONTEXT });
             created++;
           } catch (err) {

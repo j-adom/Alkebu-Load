@@ -805,3 +805,72 @@ test('16. a Square item can be linked to only one book', async () => {
     (error: any) => /already linked to book/.test(JSON.stringify(error?.data ?? error?.message ?? '')),
   );
 });
+
+// ---- 17-18. Legacy Square links (production, 2026-11) --------------------------
+// The March CSV import stored each book's variation id as its item id, and older manual
+// books carry numeric ids. Every Square edit to such a book used to create a coverless
+// duplicate. The legacy-linked fixtures below mirror those rows.
+
+const LEGACY_ISBN = '9780913543962';
+
+test('17. a Square edit to a CSV-imported book updates it and repairs its item id instead of duplicating it', async () => {
+  const legacy: any = await payload.create({
+    collection: 'books',
+    data: {
+      title: 'Legacy T17',
+      pricing: { retailPrice: 1500 },
+      squareItemId: 'V-T17',
+      importSource: 'csv-import',
+      scrapedImageUrls: [{ url: 'https://covers.example/t17.jpg' }],
+      editions: [{ isbn: LEGACY_ISBN, squareVariationId: 'V-T17', squareItemId: 'V-T17', pricing: { retailPrice: 1500 } }],
+    } as any,
+    context: { skipEnrichment: true },
+  });
+
+  setCatalogItems([squareItem('ITEM-T17', [squareVariation('V-T17', LEGACY_ISBN, 1695)], { name: 'Legacy T17' })]);
+  await runSquareCatalogSync(payload);
+
+  assert.strictEqual(await countBooksByItemId('ITEM-T17'), 1);
+  const book: any = await payload.findByID({ collection: 'books', id: legacy.id, depth: 0 });
+  assert.strictEqual(book.squareItemId, 'ITEM-T17');
+  assert.strictEqual(book.editions.length, 1);
+  assert.strictEqual(book.editions[0].squareItemId, 'ITEM-T17');
+  assert.strictEqual(book.editions[0].pricing.retailPrice, 1695);
+  assert.strictEqual(book.scrapedImageUrls[0].url, 'https://covers.example/t17.jpg');
+});
+
+test('18. promoting a staged item for a legacy manual book joins that book by ISBN', async () => {
+  const legacy: any = await payload.create({
+    collection: 'books',
+    data: {
+      title: 'Manual T18',
+      pricing: { retailPrice: 1500 },
+      squareItemId: '210000000918',
+      importSource: 'manual',
+      editions: [{ isbn: '0141439513', squareVariationId: '210000000918', squareItemId: '210000000918' }],
+    } as any,
+    context: { skipEnrichment: true },
+  });
+  const rawItem = squareItem('ITEM-T18', [squareVariation('V-T18', '9780141439518', 1800)], { name: 'Manual T18' });
+  const { toJsonSafe } = await import('../../src/app/utils/jsonSafe');
+  const stagingRow: any = await payload.create({
+    collection: 'square-catalog-staging' as any,
+    data: {
+      squareItemId: 'ITEM-T18',
+      squareCatalogVersion: '1',
+      squareUpdatedAt: new Date().toISOString(),
+      rawItem: toJsonSafe(rawItem),
+      validationIssues: [{ field: '-', code: 'resolved' }],
+      reviewStatus: 'ready',
+      lastSeenAt: new Date().toISOString(),
+    },
+  });
+
+  const { bookId } = await promoteStagedItem(payload, stagingRow.id, { id: 'staff-t18', role: 'staff' });
+
+  assert.strictEqual(bookId, legacy.id);
+  const book: any = await payload.findByID({ collection: 'books', id: legacy.id, depth: 0 });
+  assert.strictEqual(book.squareItemId, 'ITEM-T18');
+  assert.strictEqual(book.editions.length, 1);
+  assert.strictEqual(book.editions[0].squareVariationId, 'V-T18');
+});
