@@ -52,6 +52,7 @@ test('untracked + sold -> available, untracked + unsold -> unavailable, tracked 
     tracked: 1,
     untracked: 2,
     soldAvailable: 1,
+    scentSoldAvailable: 0,
     unsoldUnavailable: 1,
     notInSquare: 2,
     // r1 already isAvailable true but trackInventory unset (=true) -> changes;
@@ -63,6 +64,21 @@ test('untracked + sold -> available, untracked + unsold -> unavailable, tracked 
     { product: 'Scented Oil', scent: 'Amber', size: '1/4 oz', sku: 'AMB', lastSold: '2026-09-14', isAvailable: true },
     { product: 'Scented Oil', scent: 'Musk', size: '1/4 oz', sku: 'MSK', lastSold: '', isAvailable: false },
   ]);
+});
+
+test('every size of a scent that sold in the window is available', () => {
+  const amber = {
+    ...doc,
+    variations: [
+      { id: 'a1', sku: 'AMB-Q', scent: 'Amber', variantName: '1/4 oz', squareVariationId: 'V1', stock: 0, isAvailable: true },
+      { id: 'a2', sku: 'AMB-2', scent: ' amber ', variantName: '2 oz', squareVariationId: 'V9', stock: 0, isAvailable: false },
+    ],
+  };
+  const plan = planUntrackedAvailability('oils-incense', amber, new Map([['V1', false], ['V9', false]]), sold);
+  assert.deepStrictEqual(plan.variations.map((v) => v.isAvailable), [true, true]);
+  assert.strictEqual(plan.counts.soldAvailable, 1);
+  assert.strictEqual(plan.counts.scentSoldAvailable, 1);
+  assert.strictEqual(plan.review[1].lastSold, '2026-09-14');
 });
 
 test('a second run over the applied result changes nothing', () => {

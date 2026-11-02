@@ -12,8 +12,8 @@
  * and their stock stays at 0: the storefront showed every scent sold out. For every
  * wellness-lifestyle and oils-incense variation this reads track_inventory from the Square
  * catalog (our SQUARE_LOCATION_ID override wins) and then:
- *   - untracked: trackInventory = false, isAvailable = sold in a COMPLETED Square order
- *     (any location) closed within the window;
+ *   - untracked: trackInventory = false, isAvailable = any size of the same scent sold in a
+ *     COMPLETED Square order (any location) closed within the window;
  *   - tracked: trackInventory = true, nothing else touched;
  *   - not in Square (no squareVariationId, or deleted there): untouched.
  * The review CSV lists every untracked variation (product, scent, size, sku, last sold
@@ -76,7 +76,7 @@ async function main() {
       `${sales.orders} orders, ${sales.sold.size} distinct variations, ${sales.locations} location(s)`,
   )
 
-  const totals = { tracked: 0, untracked: 0, soldAvailable: 0, unsoldUnavailable: 0, notInSquare: 0, unchanged: 0 }
+  const totals = { tracked: 0, untracked: 0, soldAvailable: 0, scentSoldAvailable: 0, unsoldUnavailable: 0, notInSquare: 0, unchanged: 0 }
   const review: string[] = ['product,scent,size,sku,last_sold,new_is_available']
   let changedProducts = 0
   let written = 0
@@ -94,7 +94,8 @@ async function main() {
     const c = plan.counts
     console.log(
       `[untracked] ${collection}/${doc.slug ?? doc.id}: ${c.variations} variations; untracked ${c.untracked} ` +
-        `(sold -> available ${c.soldAvailable}, unsold -> unavailable ${c.unsoldUnavailable}); tracked ${c.tracked}; ` +
+        `(sold -> available ${c.soldAvailable}, scent sold -> available ${c.scentSoldAvailable}, ` +
+        `scent unsold -> unavailable ${c.unsoldUnavailable}); tracked ${c.tracked}; ` +
         `not in Square ${c.notInSquare}; unchanged ${c.unchanged}`,
     )
     if (!plan.changed) continue
@@ -120,7 +121,8 @@ async function main() {
   await writeFile(reportPath, `${review.join('\n')}\n`)
   console.log(
     `[untracked] totals: untracked ${totals.untracked} (sold -> available ${totals.soldAvailable}, ` +
-      `unsold -> unavailable ${totals.unsoldUnavailable}); tracked ${totals.tracked}; ` +
+      `scent sold -> available ${totals.scentSoldAvailable}, scent unsold -> unavailable ${totals.unsoldUnavailable}); ` +
+      `tracked ${totals.tracked}; ` +
       `not in Square ${totals.notInSquare}; unchanged ${totals.unchanged}`,
   )
   console.log(

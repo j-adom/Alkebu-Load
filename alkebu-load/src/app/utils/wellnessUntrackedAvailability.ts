@@ -32,7 +32,8 @@ export interface ProductAvailabilityCounts {
   tracked: number
   untracked: number
   soldAvailable: number // untracked, sold in window -> isAvailable true
-  unsoldUnavailable: number // untracked, not sold in window -> isAvailable false
+  scentSoldAvailable: number // untracked, unsold, but another size of its scent sold -> isAvailable true
+  unsoldUnavailable: number // untracked, no size of its scent sold in window -> isAvailable false
   notInSquare: number // no squareVariationId, or Square no longer has it: left untouched
   unchanged: number // rows whose stored values already match the plan
 }
@@ -58,6 +59,10 @@ export interface ProductAvailabilityPlan {
 /**
  * @param tracking squareVariationId -> whether Square tracks it (missing = not in Square)
  * @param sold     squareVariationId -> ISO date of the latest completed sale in the window
+ *
+ * Availability goes by scent (the owner's rule): if any size of a scent sold in the window,
+ * every untracked size of that scent is available. Square's per-size records are
+ * unreliable, so one size selling shows the scent is stocked.
  */
 export function planUntrackedAvailability(
   collection: string,
@@ -70,12 +75,20 @@ export function planUntrackedAvailability(
     tracked: 0,
     untracked: 0,
     soldAvailable: 0,
+    scentSoldAvailable: 0,
     unsoldUnavailable: 0,
     notInSquare: 0,
     unchanged: 0,
   }
   const review: ReviewRow[] = []
   const product = doc.name || doc.slug || String(doc.id)
+  const scentKey = (row: AvailabilityVariation) => (row.scent ?? '').trim().toLowerCase()
+  const scentLastSold = new Map<string, string>()
+  for (const row of doc.variations ?? []) {
+    const date = row.squareVariationId ? sold.get(row.squareVariationId) : undefined
+    const key = scentKey(row)
+    if (date && key && (scentLastSold.get(key) ?? '') < date) scentLastSold.set(key, date)
+  }
 
   const variations = (doc.variations ?? []).map((row) => {
     counts.variations += 1
@@ -94,9 +107,10 @@ export function planUntrackedAvailability(
       next = { ...row, trackInventory: true }
     } else {
       counts.untracked += 1
-      const lastSold = sold.get(id)
+      const lastSold = sold.get(id) ?? scentLastSold.get(scentKey(row))
       const isAvailable = lastSold !== undefined
-      if (isAvailable) counts.soldAvailable += 1
+      if (sold.has(id)) counts.soldAvailable += 1
+      else if (isAvailable) counts.scentSoldAvailable += 1
       else counts.unsoldUnavailable += 1
       next = { ...row, trackInventory: false, isAvailable }
       review.push({
