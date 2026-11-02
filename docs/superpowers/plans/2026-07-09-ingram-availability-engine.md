@@ -894,6 +894,20 @@ Built first because the Web Service returns no `<Stock>` section yet. This is Ta
 - **Safety:** an unreadable on-sale date means "not on sale". The snapshot counts unrecognized dates and availability codes for the dry run.
 - **Owner dry run:** `tsx scripts/ingram-stock-refresh.ts` (counts only). It needs the scoped SQL applied first, because the branch's Books config selects the new columns.
 
+### Status (2026-11-02)
+
+- `main` (Next 16 / Payload 3.91 security upgrades) is merged into this branch (`569c296`). Backend: 533 tests, production build exit 0. Storefront: tests pass, svelte-check 0 errors.
+- "Search all books" (Task 10) is now behind `LONG_TAIL_SEARCH_ENABLED` (backend) and `PUBLIC_LONG_TAIL_SEARCH_ENABLED` (storefront), both off by default. This removes the "don't deploy Task 10 while the mock is active" blocker.
+- Ingram env vars are documented in `alkebu-load/.env.example` (Task 15 Step 1).
+- The production schema was applied on 2026-10-03. The owner's dry run produced the 254-row review list (`ingram-availability-review-awb-matches.csv`): 185 books not carried by Ingram, 51 Ingram can't supply. The ISBN column in that copy was mangled to scientific notation by a spreadsheet, so regenerate it before using ISBNs from it.
+- **Remaining, owner-run:**
+  1. Finish reviewing that list. Set `request-only` or `discontinued` on books that should change, or flag `availableToOrder` for AWB-sourced ones.
+  2. Deploy.
+  3. Run `pnpm ingram:stock-refresh -- --apply`.
+  4. Set `INGRAM_STOCK_REFRESH_ENABLED=true` in Coolify.
+- Tasks 11, 13 and 14 still wait on Ingram's Stock Check add-on. Phase 3 (Tasks 16–22) waits on the owner transcribing the Titles Basic column layout (Task 17 Step 1).
+- The stacked branch `fix/square-duplicate-books` carries the Square duplicate fix and `pnpm square:link-repair` (see that commit).
+
 ### Task 11: Live Ingram Web Service client + provider wiring
 
 **Files:**
