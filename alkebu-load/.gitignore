@@ -52,3 +52,6 @@ next-env.d.ts
 
 # Owner review list for scripts/author-merge.ts
 /author-duplicates-review*.csv
+
+# Owner review list for scripts/wellness-untracked-availability.ts
+/wellness-untracked-review*.csv
