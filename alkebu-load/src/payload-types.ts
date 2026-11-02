@@ -168,6 +168,8 @@ export interface Config {
       'recover-stripe-orders': TaskRecoverStripeOrders;
       'square-catalog-sync': TaskSquareCatalogSync;
       'square-inventory-sync': TaskSquareInventorySync;
+      'ingram-stock-fetch': TaskIngramStockFetch;
+      'ingram-stock-apply': TaskIngramStockApply;
       inline: {
         input: unknown;
         output: unknown;
@@ -444,6 +446,10 @@ export interface User {
 export interface Order {
   id: number;
   /**
+   * At least one line must be ordered from Ingram (Direct-to-Home) in iPage
+   */
+  needsIngramOrder?: boolean | null;
+  /**
    * Unique order identifier
    */
   orderNumber: string;
@@ -500,6 +506,10 @@ export interface Order {
      */
     totalPrice: number;
     stripePriceId?: string | null;
+    /**
+     * Where to fulfill this line from, set when the order is created. Staff can correct it.
+     */
+    fulfillmentSource?: ('in-store' | 'ingram' | 'vendor') | null;
     customization?: {
       giftWrap?: boolean | null;
       giftMessage?: string | null;
@@ -986,6 +996,10 @@ export interface Book {
      */
     dimensions?: string | null;
     /**
+     * Square POS item this edition belongs to. Each binding is its own Square item, so a consolidated book can span several.
+     */
+    squareItemId?: string | null;
+    /**
      * Square POS variation ID for inventory sync
      */
     squareVariationId?: string | null;
@@ -1013,6 +1027,22 @@ export interface Book {
        */
       stockLevel?: number | null;
       allowBackorders?: boolean | null;
+      /**
+       * Ingram on-hand (La Vergne first), cached by the availability refresh
+       */
+      ingramOnHand?: number | null;
+      /**
+       * System-set by the availability refresh: Ingram can fulfill this edition
+       */
+      ingramAvailable?: boolean | null;
+      /**
+       * When Ingram availability was last refreshed (cache age)
+       */
+      ingramCheckedAt?: string | null;
+      /**
+       * We can reorder this edition from a non-Ingram vendor (e.g. Afrikan World Books)
+       */
+      availableToOrder?: boolean | null;
     };
     isAvailable?: boolean | null;
     id?: string | null;
@@ -5445,7 +5475,9 @@ export interface PayloadJob {
           | 'quote-followups'
           | 'recover-stripe-orders'
           | 'square-catalog-sync'
-          | 'square-inventory-sync';
+          | 'square-inventory-sync'
+          | 'ingram-stock-fetch'
+          | 'ingram-stock-apply';
         taskID: string;
         input?:
           | {
@@ -5487,6 +5519,8 @@ export interface PayloadJob {
         | 'recover-stripe-orders'
         | 'square-catalog-sync'
         | 'square-inventory-sync'
+        | 'ingram-stock-fetch'
+        | 'ingram-stock-apply'
       )
     | null;
   queue?: string | null;
@@ -5883,6 +5917,7 @@ export interface CartItemsSelect<T extends boolean = true> {
  * via the `definition` "orders_select".
  */
 export interface OrdersSelect<T extends boolean = true> {
+  needsIngramOrder?: T;
   orderNumber?: T;
   customer?: T;
   guestEmail?: T;
@@ -5910,6 +5945,7 @@ export interface OrdersSelect<T extends boolean = true> {
         unitPrice?: T;
         totalPrice?: T;
         stripePriceId?: T;
+        fulfillmentSource?: T;
         customization?:
           | T
           | {
@@ -6486,6 +6522,7 @@ export interface BooksSelect<T extends boolean = true> {
         pages?: T;
         language?: T;
         dimensions?: T;
+        squareItemId?: T;
         squareVariationId?: T;
         stripePriceId?: T;
         pricing?:
@@ -6500,6 +6537,10 @@ export interface BooksSelect<T extends boolean = true> {
           | {
               stockLevel?: T;
               allowBackorders?: T;
+              ingramOnHand?: T;
+              ingramAvailable?: T;
+              ingramCheckedAt?: T;
+              availableToOrder?: T;
             };
         isAvailable?: T;
         id?: T;
@@ -8213,6 +8254,22 @@ export interface TaskSquareCatalogSync {
  * via the `definition` "TaskSquare-inventory-sync".
  */
 export interface TaskSquareInventorySync {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-stock-fetch".
+ */
+export interface TaskIngramStockFetch {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-stock-apply".
+ */
+export interface TaskIngramStockApply {
   input?: unknown;
   output?: unknown;
 }

@@ -228,3 +228,19 @@ test('isValidIsbn rejects checksum-valid EAN-13s outside the 978/979 Bookland pr
   assert.strictEqual(isValidIsbn('8901234567890'), false); // valid EAN-13 checksum, not an ISBN
   assert.strictEqual(isValidIsbn('0306406152'), true); // ISBN-10 unaffected
 });
+
+test('each mapped edition records the Square item it came from', () => {
+  const result = mapSquareItemToBook(
+    {
+      type: 'ITEM',
+      id: 'ITEM-PB',
+      itemData: {
+        name: 'A Title',
+        variations: [{ id: 'VAR-1', itemVariationData: { sku: '9780310180302', priceMoney: { amount: BigInt(1800) } } }],
+      },
+    },
+    new Date('2026-10-03T00:00:00Z'),
+  );
+  assert.strictEqual(result.kind, 'complete');
+  assert.strictEqual((result as any).data.editions[0].squareItemId, 'ITEM-PB');
+});

@@ -197,3 +197,17 @@ test('updates only matching editions when array contains a row with null squareV
   // Unmatched rows remain unchanged.
   assert.strictEqual(result[2], editions[2]);
 });
+
+// Square reports negative counts when the POS oversells. Negative stock is meaningless
+// online, so both helpers clamp to 0.
+test('clamps a negative Square count to 0 for editions', () => {
+  const editions = [{ squareVariationId: 'VAR1', inventory: { stockLevel: 5 } }];
+  const result = applyInventoryCountToEditions(editions, 'VAR1', -3);
+  assert.strictEqual(result[0].inventory.stockLevel, 0);
+});
+
+test('clamps a negative Square count to 0 for wellness/oils variations', () => {
+  const variations = [{ squareVariationId: 'VAR1', stock: 5 }];
+  const result = applyInventoryCountToVariations(variations, 'VAR1', -2);
+  assert.strictEqual(result[0].stock, 0);
+});

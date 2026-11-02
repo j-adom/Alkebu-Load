@@ -18,7 +18,8 @@ async function fetchFromISBNdb(isbn: string): Promise<IsbndbBook | null> {
       headers: {
         'Authorization': process.env.ISBNDB_API_KEY,
         'Accept': 'application/json'
-      }
+      },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) return null;
@@ -40,7 +41,7 @@ async function fetchFromGoogleBooks(isbn: string): Promise<{ volumeInfo?: Google
       ? `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${process.env.GOOGLE_BOOKS_API_KEY}`
       : `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
     if (!response.ok) return null;
 
@@ -50,6 +51,24 @@ async function fetchFromGoogleBooks(isbn: string): Promise<{ volumeInfo?: Google
     console.error('Google Books fetch error:', error);
     return null;
   }
+}
+
+/**
+ * The gap-filling metadata patch for an already-saved book, without writing it.
+ * Null when it has no ISBN or no source knows it.
+ */
+export async function fetchBookMetadataPatch(book: any): Promise<Record<string, unknown> | null> {
+  const isbn = book?.editions?.[0]?.isbn;
+  if (!isbn) return null;
+
+  const [isbndbData, googleData] = await Promise.all([fetchFromISBNdb(isbn), fetchFromGoogleBooks(isbn)]);
+  if (!isbndbData && !googleData) return null;
+
+  return buildBookMetadataPatch(book, {
+    isbndbBook: isbndbData,
+    googleVolumeInfo: googleData?.volumeInfo,
+    markChecked: true,
+  }).updateData;
 }
 
 /**

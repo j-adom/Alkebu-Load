@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload';
 import { staffCollectionAccess } from '../access/roles';
+import { frequencyForNewSearch } from '../app/utils/searchDemand';
 
 const SearchAnalytics: CollectionConfig = {
   slug: 'searchAnalytics',
@@ -422,18 +423,13 @@ const SearchAnalytics: CollectionConfig = {
       }
     ],
 
-    afterChange: [
-      async ({ doc, operation }) => {
-        if (operation !== 'create') return;
-
-        // This could trigger analytics updates, like:
-        // - Updating query frequency counters
-        // - Identifying trending searches
-        // - Flagging potential inventory gaps
-        // - Updating search suggestions
-
-        // For now, we'll just log it
-        console.log(`Search logged: "${doc.query}" - ${doc.resultCount} results`);
+    beforeChange: [
+      // Accumulate demand: carry the running count for this normalized query, so the
+      // "most wanted, not carried" report is a simple sort rather than a re-aggregation.
+      async ({ data, operation, req }) => {
+        if (operation !== 'create' || !data?.normalizedQuery) return data;
+        const { queryFrequency, popularQuery } = await frequencyForNewSearch(req.payload, data.normalizedQuery);
+        return { ...data, queryFrequency, popularQuery };
       }
     ]
   }

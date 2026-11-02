@@ -4,6 +4,24 @@ export function getPrimaryBookEdition(book: any) {
   return book?.editions?.find((edition: any) => edition?.isPrimary) || book?.editions?.[0] || null;
 }
 
+// Mirrors alkebu-load's resolveAvailability: a book is purchasable when any edition is on
+// hand in store, Ingram can fulfill it, or staff flagged a vendor reorder. Books Ingram has
+// never been checked for keep the pre-Ingram rule (purchasable at zero stock), so the
+// catalog doesn't flip to "Request" before the availability refresh has run.
+function canFulfill(book: any): boolean {
+  const inventories = (Array.isArray(book?.editions) ? book.editions : []).map(
+    (edition: any) => edition?.inventory ?? {},
+  );
+
+  if (inventories.some((inv: any) => typeof inv.stockLevel === 'number' && inv.stockLevel > 0)) {
+    return true;
+  }
+  if (inventories.some((inv: any) => inv.ingramAvailable === true || inv.availableToOrder === true)) {
+    return true;
+  }
+  return !inventories.some((inv: any) => inv.ingramCheckedAt);
+}
+
 export function getBookAvailabilityStatus(book: any): BookAvailabilityStatus {
   const status = String(book?.availabilityStatus || 'available');
 
@@ -11,7 +29,7 @@ export function getBookAvailabilityStatus(book: any): BookAvailabilityStatus {
     return status;
   }
 
-  return 'available';
+  return canFulfill(book) ? 'available' : 'request-only';
 }
 
 export function getBookStockLevel(book: any): number {
@@ -43,9 +61,8 @@ export function getBookAvailabilityMessage(book: any): string {
     return 'This title is no longer available.';
   }
 
-  return getBookStockLevel(book) > 0
-    ? 'In store & ships in 3-8 days'
-    : 'Ships in 3-8 days';
+  // One promise regardless of source: customers never see where a copy comes from.
+  return 'Ships in 3–8 days';
 }
 
 export function buildBookInquiryHref(book: any): string {

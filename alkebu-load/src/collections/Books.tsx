@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload';
 import { autoEnrichBookFromISBN, autoLinkAuthors } from '@/app/utils/autoEnrichBook';
 import { autoLinkPublisher } from '@/app/utils/autoLinkPublisher';
+import { assertSquareItemsUnclaimed } from '@/app/utils/squareItemOwnership';
 import { EnrichBookButton } from '@/app/components/EnrichBookButton';
 
 // Auto-categorization mapping helper
@@ -285,6 +286,14 @@ const Books: CollectionConfig = {
           }
         },
         {
+          name: 'squareItemId',
+          type: 'text',
+          index: true,
+          admin: {
+            description: 'Square POS item this edition belongs to. Each binding is its own Square item, so a consolidated book can span several.'
+          }
+        },
+        {
           name: 'squareVariationId',
           type: 'text',
           admin: {
@@ -343,6 +352,39 @@ const Books: CollectionConfig = {
               name: 'allowBackorders',
               type: 'checkbox',
               defaultValue: false,
+            },
+            {
+              name: 'ingramOnHand',
+              type: 'number',
+              admin: {
+                readOnly: true,
+                description: 'Ingram on-hand (La Vergne first), cached by the availability refresh',
+              },
+            },
+            {
+              name: 'ingramAvailable',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                readOnly: true,
+                description: 'System-set by the availability refresh: Ingram can fulfill this edition',
+              },
+            },
+            {
+              name: 'ingramCheckedAt',
+              type: 'date',
+              admin: {
+                readOnly: true,
+                description: 'When Ingram availability was last refreshed (cache age)',
+              },
+            },
+            {
+              name: 'availableToOrder',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description: 'We can reorder this edition from a non-Ingram vendor (e.g. Afrikan World Books)',
+              },
             },
           ],
         },
@@ -848,6 +890,13 @@ const Books: CollectionConfig = {
       }
     ],
 
+    beforeChange: [
+      // A Square item belongs to exactly one book (catalog sync depends on it).
+      async ({ data, originalDoc, req }) => {
+        await assertSquareItemsUnclaimed({ data, originalDoc, req });
+        return data;
+      },
+    ],
     afterChange: [
       async ({ doc, req, operation }) => {
         // AUTO-LINK: Link authors + publisher after book is created/updated.

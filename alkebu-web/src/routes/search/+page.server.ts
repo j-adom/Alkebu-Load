@@ -2,7 +2,10 @@ import { appendBookStorefrontFilters, payloadGet } from '$lib/server/payload';
 import { buildSEOData } from '$lib/seo';
 import { resolveOilsIncenseShopSection } from '$lib/server/sitemapHelpers.js';
 import { PUBLIC_SITE_URL } from '$env/static/public';
-import type { PageServerLoad } from './$types';
+import { env as publicEnv } from '$env/dynamic/public';
+import { fail } from '@sveltejs/kit';
+import { getPayloadApiUrl, getPayloadAuthHeader } from '$lib/server/payloadEnv';
+import type { Actions, PageServerLoad } from './$types';
 
 function stripHtml(str: string | null | undefined): string {
   if (!str) return '';
@@ -291,3 +294,61 @@ async function fallbackSearch(query: string, typeFilter: SearchType, visibleLimi
     hasMore: responses.some((response) => response.hasMore) || results.length > visibleLimit,
   };
 }
+
+export type LookWiderResult = {
+  ean: string;
+  title: string;
+  author?: string;
+  binding?: string;
+  price?: number;
+  available: boolean;
+};
+
+// "Look wider": a deliberate, bot-gated search beyond our shelves. Results come back for
+// display only; the page is noindex and nothing here is stored.
+export const actions: Actions = {
+  lookWider: async ({ request, getClientAddress }) => {
+    const formData = await request.formData();
+    const query = String(formData.get('query') || '').trim();
+    const scope = String(formData.get('scope') || '');
+    const turnstileToken = String(formData.get('cf-turnstile-response') || '').trim();
+
+    if (publicEnv.PUBLIC_LONG_TAIL_SEARCH_ENABLED !== 'true') {
+      return fail(404, { lookWider: { query, scope, error: 'The wider search is not available yet.' } });
+    }
+
+    if (!turnstileToken) {
+      return fail(400, { lookWider: { query, scope, error: 'Please complete the bot check and try again.' } });
+    }
+
+    try {
+      const response = await fetch(`${getPayloadApiUrl()}/api/long-tail-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Lets the backend rate-limit per visitor instead of per storefront worker.
+          'x-client-ip': getClientAddress(),
+          ...getPayloadAuthHeader(),
+        },
+        body: JSON.stringify({ query, scope: scope || undefined, turnstileToken }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        return fail(response.status, {
+          lookWider: {
+            query,
+            scope,
+            error: typeof data?.error === 'string' ? data.error : "We couldn't search the wider catalog just now.",
+          },
+        });
+      }
+
+      const results: LookWiderResult[] = Array.isArray(data?.results) ? data.results : [];
+      return { lookWider: { query, scope, results } };
+    } catch (error) {
+      console.error('Look-wider search failed:', error);
+      return fail(502, { lookWider: { query, scope, error: "We couldn't search the wider catalog just now." } });
+    }
+  },
+};

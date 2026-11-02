@@ -736,3 +736,141 @@ test('14. a book with a store-code SKU and the ISBN in the barcode becomes a Boo
   assert.ok(book, 'expected a Book, not a staging row');
   assert.strictEqual(book.editions[0].isbn, VALID_A);
 });
+
+// ---- 15. Consolidated books: one Payload book, one Square item per binding -----------
+//
+// Square keeps each binding as its own item; Payload folds them into one book. Simulated
+// here by syncing two items, then moving the hardcover edition onto the paperback's book
+// and deleting the hardcover's book -- the state an edition merge leaves behind.
+
+test('15. a consolidated book: each binding item updates only its own editions, never the title or a duplicate', async () => {
+  const PB = 'ITEM-T13-PB';
+  const HC = 'ITEM-T13-HC';
+  setCatalogItems([
+    squareItem(PB, [squareVariation('V-T13-PB', VALID_A, 1800)], { name: 'Consolidated Work T13' }),
+    squareItem(HC, [squareVariation('V-T13-HC', VALID_B, 2800)], { name: 'Consolidated Work T13 Hardcover Listing' }),
+  ]);
+  await runSquareCatalogSync(payload);
+
+  const pbBook = await findBookByItemId(PB);
+  const hcBook = await findBookByItemId(HC);
+  assert.ok(pbBook && hcBook);
+  await payload.delete({ collection: 'books', id: hcBook.id });
+  await payload.update({
+    collection: 'books',
+    id: pbBook.id,
+    data: { editions: [...pbBook.editions, ...hcBook.editions.map(({ id: _id, ...edition }: any) => edition)] },
+    context: { skipEnrichment: true },
+  });
+
+  // The hardcover item changes price in Square.
+  setCatalogItems([
+    squareItem(HC, [squareVariation('V-T13-HC', VALID_B, 2995)], { name: 'Consolidated Work T13 Hardcover Listing' }),
+  ]);
+  await runSquareCatalogSync(payload);
+
+  let book: any = await payload.findByID({ collection: 'books', id: pbBook.id, depth: 0 });
+  assert.strictEqual(await countBooksByItemId(HC), 0, 'the hardcover item must not recreate its own book');
+  assert.strictEqual(book.title, 'Consolidated Work T13', 'a secondary item never retitles the book');
+  assert.strictEqual(book.squareItemId, PB);
+  const hc = book.editions.find((e: any) => e.squareVariationId === 'V-T13-HC');
+  assert.strictEqual(hc.pricing.retailPrice, 2995);
+  assert.strictEqual(hc.squareItemId, HC);
+
+  // The paperback item syncs without the hardcover variation: the hardcover stays available.
+  setCatalogItems([squareItem(PB, [squareVariation('V-T13-PB', VALID_A, 1900)], { name: 'Consolidated Work T13' })]);
+  await runSquareCatalogSync(payload);
+
+  book = await payload.findByID({ collection: 'books', id: pbBook.id, depth: 0 });
+  assert.strictEqual(book.editions.length, 2);
+  assert.strictEqual(book.editions.find((e: any) => e.squareVariationId === 'V-T13-HC').isAvailable, true);
+  assert.strictEqual(book.editions.find((e: any) => e.squareVariationId === 'V-T13-PB').pricing.retailPrice, 1900);
+});
+
+test('16. a Square item can be linked to only one book', async () => {
+  setCatalogItems([
+    squareItem('ITEM-T14-A', [squareVariation('V-T14-A', VALID_A, 1500)], { name: 'Owner T14' }),
+    squareItem('ITEM-T14-B', [squareVariation('V-T14-B', VALID_B, 1500)], { name: 'Other T14' }),
+  ]);
+  await runSquareCatalogSync(payload);
+  const other = await findBookByItemId('ITEM-T14-B');
+
+  await assert.rejects(
+    payload.update({
+      collection: 'books',
+      id: other.id,
+      data: { editions: [...other.editions, { squareItemId: 'ITEM-T14-A', squareVariationId: 'V-T14-X', isbn: VALID_A }] },
+      context: { skipEnrichment: true },
+    }),
+    (error: any) => /already linked to book/.test(JSON.stringify(error?.data ?? error?.message ?? '')),
+  );
+});
+
+// ---- 17-18. Legacy Square links (production, 2026-11) --------------------------
+// The March CSV import stored each book's variation id as its item id, and older manual
+// books carry numeric ids. Every Square edit to such a book used to create a coverless
+// duplicate. The legacy-linked fixtures below mirror those rows.
+
+const LEGACY_ISBN = '9780913543962';
+
+test('17. a Square edit to a CSV-imported book updates it and repairs its item id instead of duplicating it', async () => {
+  const legacy: any = await payload.create({
+    collection: 'books',
+    data: {
+      title: 'Legacy T17',
+      pricing: { retailPrice: 1500 },
+      squareItemId: 'V-T17',
+      importSource: 'csv-import',
+      scrapedImageUrls: [{ url: 'https://covers.example/t17.jpg' }],
+      editions: [{ isbn: LEGACY_ISBN, squareVariationId: 'V-T17', squareItemId: 'V-T17', pricing: { retailPrice: 1500 } }],
+    } as any,
+    context: { skipEnrichment: true },
+  });
+
+  setCatalogItems([squareItem('ITEM-T17', [squareVariation('V-T17', LEGACY_ISBN, 1695)], { name: 'Legacy T17' })]);
+  await runSquareCatalogSync(payload);
+
+  assert.strictEqual(await countBooksByItemId('ITEM-T17'), 1);
+  const book: any = await payload.findByID({ collection: 'books', id: legacy.id, depth: 0 });
+  assert.strictEqual(book.squareItemId, 'ITEM-T17');
+  assert.strictEqual(book.editions.length, 1);
+  assert.strictEqual(book.editions[0].squareItemId, 'ITEM-T17');
+  assert.strictEqual(book.editions[0].pricing.retailPrice, 1695);
+  assert.strictEqual(book.scrapedImageUrls[0].url, 'https://covers.example/t17.jpg');
+});
+
+test('18. promoting a staged item for a legacy manual book joins that book by ISBN', async () => {
+  const legacy: any = await payload.create({
+    collection: 'books',
+    data: {
+      title: 'Manual T18',
+      pricing: { retailPrice: 1500 },
+      squareItemId: '210000000918',
+      importSource: 'manual',
+      editions: [{ isbn: '0141439513', squareVariationId: '210000000918', squareItemId: '210000000918' }],
+    } as any,
+    context: { skipEnrichment: true },
+  });
+  const rawItem = squareItem('ITEM-T18', [squareVariation('V-T18', '9780141439518', 1800)], { name: 'Manual T18' });
+  const { toJsonSafe } = await import('../../src/app/utils/jsonSafe');
+  const stagingRow: any = await payload.create({
+    collection: 'square-catalog-staging' as any,
+    data: {
+      squareItemId: 'ITEM-T18',
+      squareCatalogVersion: '1',
+      squareUpdatedAt: new Date().toISOString(),
+      rawItem: toJsonSafe(rawItem),
+      validationIssues: [{ field: '-', code: 'resolved' }],
+      reviewStatus: 'ready',
+      lastSeenAt: new Date().toISOString(),
+    },
+  });
+
+  const { bookId } = await promoteStagedItem(payload, stagingRow.id, { id: 'staff-t18', role: 'staff' });
+
+  assert.strictEqual(bookId, legacy.id);
+  const book: any = await payload.findByID({ collection: 'books', id: legacy.id, depth: 0 });
+  assert.strictEqual(book.squareItemId, 'ITEM-T18');
+  assert.strictEqual(book.editions.length, 1);
+  assert.strictEqual(book.editions[0].squareVariationId, 'V-T18');
+});

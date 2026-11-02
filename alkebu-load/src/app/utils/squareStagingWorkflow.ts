@@ -18,8 +18,12 @@
  * transaction so two concurrent promotions can only ever produce one Book.
  */
 
+import type { Payload } from 'payload';
+
 import { fromJsonSafe } from './jsonSafe';
+import { bookUpdateForSquareItem, findBookForSquareItem } from './squareBookMatch';
 import { isNonBookCategory, mapSquareItemToBook, RESOLVED_SENTINEL_ISSUE } from './squareCatalogMapping';
+import { bookVariationIds } from './squareLinks';
 import { matchProductLine } from './wellnessProductLines';
 
 export type StagingDecision =
@@ -70,6 +74,7 @@ type PayloadLike = {
     id: string | number;
     req?: unknown;
   }) => Promise<Record<string, unknown> | null>;
+  find: (args: any) => Promise<{ docs: any[] }>;
   create: (args: { collection: string; data: Record<string, unknown>; req?: unknown }) => Promise<{ id: string | number }>;
   update: (args: {
     collection: string;
@@ -137,11 +142,30 @@ export async function promoteStagedItem(
       throw new Error(`Staging row ${String(stagingId)} no longer maps to a complete Book.`);
     }
 
-    const book = await payload.create({
-      collection: 'books',
-      data: mapped.data,
+    // A staged item for a book we already carry (a re-entered or legacy-linked title)
+    // joins that book instead of creating a coverless duplicate of it.
+    const squareItemId = String(row.squareItemId);
+    const isbns = ((mapped.data.editions as Array<{ isbn?: unknown }>) || [])
+      .map((edition) => edition?.isbn)
+      .filter((isbn): isbn is string => typeof isbn === 'string');
+    const existing = await findBookForSquareItem(
+      payload as unknown as Payload,
+      squareItemId,
+      bookVariationIds(mapped.data),
+      isbns,
       req,
-    });
+    );
+    const book = existing
+      ? { id: existing.id as string | number }
+      : await payload.create({ collection: 'books', data: mapped.data, req });
+    if (existing) {
+      await payload.update({
+        collection: 'books',
+        id: existing.id,
+        data: bookUpdateForSquareItem(existing, squareItemId, mapped.data),
+        req,
+      });
+    }
 
     await payload.update({
       collection: 'square-catalog-staging',

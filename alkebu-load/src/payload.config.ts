@@ -334,6 +334,42 @@ export default buildConfig({
           return { output: await runSquareInventorySync(req.payload, (input as any).counts) };
         },
       },
+      {
+        // Ingram availability, half 1: download the SFTP stock file and keep only our
+        // EANs. No lock, so the multi-minute download never blocks Square stock writes.
+        // Off unless INGRAM_STOCK_REFRESH_ENABLED=true (on top of ENABLE_JOB_AUTORUN).
+        slug: 'ingram-stock-fetch',
+        retries: { attempts: 2, backoff: { type: 'exponential', delay: 60_000 } },
+        handler: async ({ req }) => {
+          if (process.env.INGRAM_STOCK_REFRESH_ENABLED !== 'true') {
+            return { output: { skipped: 'INGRAM_STOCK_REFRESH_ENABLED is not true' } };
+          }
+          const { fetchStockSnapshot } = await import('./app/utils/ingram/refreshCatalogStock');
+          const { stockFeedFromEnv } = await import('./app/utils/ingram/stockFeeds');
+          const feed = stockFeedFromEnv();
+          const { input, counts } = await fetchStockSnapshot(req.payload, {
+            remotePath: feed.remotePath,
+            format: feed.createFormat(),
+            minLines: feed.minLines,
+            threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
+          });
+          await req.payload.jobs.queue({ task: 'ingram-stock-apply', input: input as any });
+          return { output: { feed: feed.name, ...counts } };
+        },
+        schedule: [{ cron: '30 11 * * *', queue: 'default' }], // 11:30 UTC = 6:30 AM CDT, after the 5 AM CT update
+      },
+      {
+        // Ingram availability, half 2: merge the snapshot into editions under the same
+        // lock as the Square jobs, since all three rewrite the editions array.
+        slug: 'ingram-stock-apply',
+        retries: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        concurrency: { key: () => 'books-write' },
+        handler: async ({ req, input }) => {
+          const { applyStockSnapshot } = await import('./app/utils/ingram/refreshCatalogStock');
+          const summary = await applyStockSnapshot(req.payload, input as any, { checkedAt: new Date().toISOString() });
+          return { output: summary };
+        },
+      },
     ],
   },
 })
