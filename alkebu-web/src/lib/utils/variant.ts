@@ -18,10 +18,54 @@ export interface VariantOption {
   isAvailable?: boolean;
 }
 
-const norm = (value?: string | null): string => (typeof value === 'string' ? value.trim() : '');
+export const norm = (value?: string | null): string => (typeof value === 'string' ? value.trim() : '');
 
-const isInStock = (variation: VariantOption): boolean =>
+export const isInStock = (variation: VariantOption): boolean =>
   (variation?.stock ?? 0) > 0 && variation?.isAvailable !== false;
+
+/**
+ * The variation's size as a comparison key, or '' when it has no real size.
+ * Square's variation name is often a copy of the scent ("Baby Powder") or the
+ * placeholder "Regular" — the same rule the backend applies to order-line
+ * labels (`cartProductDetails.ts`). Lower-cased so "Roll-On" and "Roll-on"
+ * are one size.
+ */
+export function sizeKey(variation: VariantOption): string {
+  const size = norm(variation.variantName).toLowerCase();
+  return size === 'regular' || size === norm(variation.scent).toLowerCase() ? '' : size;
+}
+
+/** Distinct sizes, cheapest first, keyed by `sizeKey` with the first-seen spelling as the label. */
+export function sizeOptions(variations: VariantOption[]): { key: string; label: string }[] {
+  const labels = new Map<string, string>();
+  for (const variation of variations) {
+    const key = sizeKey(variation);
+    if (key && !labels.has(key)) labels.set(key, norm(variation.variantName));
+  }
+  const minPriceFor = (key: string): number => {
+    const prices = variations
+      .filter((v) => sizeKey(v) === key)
+      .map((v) => Number(v.price) || 0)
+      .filter((p) => p > 0);
+    return prices.length ? Math.min(...prices) : Number.POSITIVE_INFINITY;
+  };
+  return Array.from(labels, ([key, label]) => ({ key, label })).sort(
+    (a, b) => minPriceFor(a.key) - minPriceFor(b.key) || a.key.localeCompare(b.key),
+  );
+}
+
+/**
+ * The size to select within one scent's variations: cheapest in stock, then
+ * cheapest that exists. '' when none of the pool's rows has a real size, which
+ * matches those rows by `sizeKey`.
+ */
+export function defaultSizeKey(sizeKeys: string[], pool: VariantOption[]): string {
+  return (
+    sizeKeys.find((key) => pool.some((v) => sizeKey(v) === key && isInStock(v))) ??
+    sizeKeys.find((key) => pool.some((v) => sizeKey(v) === key)) ??
+    ''
+  );
+}
 
 /**
  * Picks the same "best" starting variation VariantPicker highlights by
@@ -40,8 +84,8 @@ export function resolveDefaultVariation(variations: VariantOption[]): VariantOpt
   );
   const hasScentAxis = scents.length > 0;
 
-  const sizes = Array.from(new Set(variations.map((v) => norm(v.variantName)).filter(Boolean)));
-  const hasSizeAxis = sizes.length > 0;
+  const sizeKeys = sizeOptions(variations).map((size) => size.key);
+  const hasSizeAxis = sizeKeys.length > 0;
 
   if (!hasScentAxis && !hasSizeAxis) return variations[0];
 
@@ -55,19 +99,6 @@ export function resolveDefaultVariation(variations: VariantOption[]): VariantOpt
     return pool.find(isInStock) ?? pool[0] ?? null;
   }
 
-  const minPriceFor = (size: string): number => {
-    const prices = variations
-      .filter((v) => norm(v.variantName) === size)
-      .map((v) => Number(v.price) || 0)
-      .filter((p) => p > 0);
-    return prices.length ? Math.min(...prices) : Number.POSITIVE_INFINITY;
-  };
-  const sizesByPrice = [...sizes].sort((a, b) => minPriceFor(a) - minPriceFor(b) || a.localeCompare(b));
-
-  const defaultSize =
-    sizesByPrice.find((sz) => pool.some((v) => norm(v.variantName) === sz && isInStock(v))) ??
-    sizesByPrice.find((sz) => pool.some((v) => norm(v.variantName) === sz)) ??
-    sizesByPrice[0];
-
-  return pool.find((v) => norm(v.variantName) === defaultSize) ?? pool[0] ?? null;
+  const defaultSize = defaultSizeKey(sizeKeys, pool);
+  return pool.find((v) => sizeKey(v) === defaultSize) ?? pool[0] ?? null;
 }
