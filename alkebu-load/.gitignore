@@ -55,3 +55,4 @@ next-env.d.ts
 # Owner review list from scripts/ingram-stock-refresh.ts (our catalog + Ingram-derived reasons)
 /ingram-availability-review*.csv
 /.ingram-stock-snapshot.json
+/square-link-repair*.csv

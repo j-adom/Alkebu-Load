@@ -20,6 +20,7 @@
     "square:staging-reprocess": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-staging-reprocess.ts",
     "square:staging-promote": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-staging-promote.ts",
     "authors:merge": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/author-merge.ts",
+    "square:link-repair": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-link-repair.ts",
     "ingram:stock-refresh": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/ingram-stock-refresh.ts"
   },
   "dependencies": {
