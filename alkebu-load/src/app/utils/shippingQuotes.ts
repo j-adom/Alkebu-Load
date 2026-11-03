@@ -22,6 +22,9 @@ export type ShippingOption = {
   isDefault: boolean;
   isMediaMail: boolean;
   method: string;
+  // Set on the single free option offered above FREE_SHIPPING_THRESHOLD. Its
+  // carrier/service stay the real ones so staff know how to ship it.
+  isFreeShipping?: boolean;
 };
 
 export type ShippingQuoteResult = {
@@ -208,6 +211,18 @@ const normalizeShippoRates = (
   return normalized.filter((option) => !option.isMediaMail);
 };
 
+const cheapestOption = (options: ShippingOption[]): ShippingOption | null =>
+  options.reduce<ShippingOption | null>(
+    (best, option) =>
+      !best ||
+      option.amount < best.amount ||
+      (option.amount === best.amount && option.estimatedDays < best.estimatedDays)
+        ? option
+        : best,
+    null,
+  );
+
+// Book-only carts default to Media Mail; everything else to the cheapest rate.
 const chooseDefaultShippingOption = (
   options: ShippingOption[],
   items: CartItemForTax[],
@@ -215,21 +230,37 @@ const chooseDefaultShippingOption = (
   if (!options.length) return null;
 
   if (isBookOnlyOrder(items)) {
-    return options.find((option) => option.isMediaMail) || options[0];
+    const mediaMail = options.find((option) => option.isMediaMail);
+    if (mediaMail) return mediaMail;
   }
 
-  return options.find((option) => option.method === 'standard') || options[0];
+  return cheapestOption(options);
 };
 
-const withFreeShipping = (options: ShippingOption[], subtotal: number): ShippingOption[] => {
+/**
+ * Above the free-shipping threshold, offer one free option (the method we'd
+ * pick by default: Media Mail for books, otherwise the cheapest) and price
+ * every other method as an upgrade: what it costs beyond that free baseline.
+ * Methods no dearer than the baseline are dropped as redundant.
+ */
+const withFreeShipping = (
+  options: ShippingOption[],
+  subtotal: number,
+  items: CartItemForTax[],
+): ShippingOption[] => {
   if (!qualifiesForFreeShipping(subtotal)) {
     return options;
   }
 
-  return options.map((option) => ({
-    ...option,
-    amount: 0,
-  }));
+  const baseline = chooseDefaultShippingOption(options, items);
+  if (!baseline) return options;
+
+  const free: ShippingOption = { ...baseline, amount: 0, isFreeShipping: true };
+  const upgrades = options
+    .filter((option) => option.id !== baseline.id && option.amount > baseline.amount)
+    .map((option) => ({ ...option, amount: option.amount - baseline.amount }));
+
+  return [free, ...upgrades];
 };
 
 const buildEstimatedMediaMailOption = (items: CartItemForTax[]): ShippingOption => {
@@ -265,7 +296,6 @@ const withEstimatedMediaMail = (
 const buildFallbackOptions = (
   items: CartItemForTax[],
   shippingAddress: ShippingAddress,
-  subtotal: number,
 ): ShippingOption[] => {
   const totalWeightOz = calculateTotalWeight(items);
   const options: ShippingOption[] = [];
@@ -298,7 +328,7 @@ const buildFallbackOptions = (
     method: expedited.method,
   });
 
-  return withFreeShipping(options, subtotal);
+  return options;
 };
 
 export const buildShippingQuoteFingerprint = (
@@ -404,18 +434,18 @@ export async function getShippingQuotes(
         error,
       );
       quoteSource = 'estimated';
-      options = buildFallbackOptions(items, shippingAddress, subtotal);
+      options = buildFallbackOptions(items, shippingAddress);
     }
   } else {
     quoteSource = 'estimated';
-    options = buildFallbackOptions(items, shippingAddress, subtotal);
+    options = buildFallbackOptions(items, shippingAddress);
   }
 
   if (!options.length) {
     throw new Error('No shipping rates available for this address');
   }
 
-  options = withFreeShipping(options, subtotal);
+  options = withFreeShipping(options, subtotal, items);
 
   const defaultOption = chooseDefaultShippingOption(options, items);
   if (!defaultOption) {
@@ -426,10 +456,12 @@ export async function getShippingQuotes(
     options.find((option) => option.id === selectedShippingRateId) ||
     defaultOption;
 
-  options = options.map((option) => ({
-    ...option,
-    isDefault: option.id === selectedOption.id,
-  }));
+  options = options
+    .map((option) => ({
+      ...option,
+      isDefault: option.id === selectedOption.id,
+    }))
+    .sort((a, b) => a.amount - b.amount || a.estimatedDays - b.estimatedDays);
 
   return {
     shippingOptions: options,
@@ -440,8 +472,10 @@ export async function getShippingQuotes(
   };
 }
 
-export const formatShippingMethodLabel = (option: Pick<ShippingOption, 'carrier' | 'service'>): string =>
-  `${option.carrier} ${option.service}`.trim();
+export const formatShippingMethodLabel = (
+  option: Pick<ShippingOption, 'carrier' | 'service' | 'isFreeShipping'>,
+): string =>
+  option.isFreeShipping ? 'Free Shipping' : `${option.carrier} ${option.service}`.trim();
 
 export const getShippingMethodCode = (option: ShippingOption): string => {
   if (option.isMediaMail) return 'media_mail';

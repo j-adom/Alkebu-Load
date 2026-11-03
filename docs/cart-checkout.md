@@ -113,9 +113,20 @@ That script reads the payment provider selected in Payload Site Settings and wri
 
 ## Shipping and Tax
 
-- Book-only orders default to USPS Media Mail rates; mixed carts use standard rates.
-- Shippo can provide live carrier rates when configured.
-- Static/estimated rates are the fallback when Shippo fails or is not configured.
+- Book-only orders default to USPS Media Mail; other carts default to the cheapest rate.
+  Checkout shows the default preselected with the rest in a dropdown, cheapest first.
+- Media Mail is priced from the USPS Notice 123 table by total cart weight (books floored at
+  8 oz paperback / 16 oz hardcover). Shippo's USPS integration never returns Media Mail, so it
+  is added to live Shippo quotes for book-only carts. Packaging weight is not counted.
+- Shippo provides live carrier rates when `SHIPPO_API_KEY` (or `SHIPPO_API_TOKEN`) is set.
+  Static/estimated rates are the fallback when Shippo fails or is not configured.
+- At or above `FREE_SHIPPING_THRESHOLD`, checkout offers one "Free Shipping" option (the
+  default method above, at $0) and lists every other method at its extra cost over that
+  baseline. The cart and order keep the real carrier/service so staff know how to ship it.
+- Address check: the preview also sends the address to Shippo's validator (cached per
+  address, 4 s timeout). A standardized correction is offered as "Did you mean…"; an
+  unverifiable address shows a warning. It never blocks checkout, and the result is not
+  stored on the order.
 - Tennessee addresses collect tax when applicable; out-of-state addresses should not.
 - Staff can still use Pirate Ship operationally for label purchase until label creation is automated.
 

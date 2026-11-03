@@ -12,6 +12,7 @@ import {
   getShippingQuotes,
   isShippingQuoteExpired,
 } from './shippingQuotes';
+import { validateShippingAddress } from './addressValidation';
 import { validateTaxExemptStatus } from './taxExemptValidation';
 import {
   calculateTax,
@@ -248,7 +249,10 @@ export async function handleCheckout(
 export async function handleCheckoutPreview(
   payload: Payload,
   request: Request,
-  deps: { getShippingQuotes?: typeof getShippingQuotes } = {},
+  deps: {
+    getShippingQuotes?: typeof getShippingQuotes;
+    validateShippingAddress?: typeof validateShippingAddress;
+  } = {},
 ): Promise<Response> {
   try {
     const body = await readJsonBody(request);
@@ -350,12 +354,16 @@ export async function handleCheckoutPreview(
       });
     }
 
-    const quote = await (deps.getShippingQuotes ?? getShippingQuotes)({
-      items: taxItems,
-      shippingAddress: address,
-      subtotal,
-      selectedShippingRateId,
-    });
+    // Address check runs alongside the rate quote; it's advisory and never blocks.
+    const [quote, addressValidation] = await Promise.all([
+      (deps.getShippingQuotes ?? getShippingQuotes)({
+        items: taxItems,
+        shippingAddress: address,
+        subtotal,
+        selectedShippingRateId,
+      }),
+      (deps.validateShippingAddress ?? validateShippingAddress)(address),
+    ]);
     const tax = calculateTax(taxItems, address, taxExemptValidation.valid);
     const total = subtotal + tax.amount + quote.selectedOption.amount;
     const shippingMethod = getShippingMethodCode(quote.selectedOption);
@@ -396,8 +404,10 @@ export async function handleCheckoutPreview(
         carrier: quote.selectedOption.carrier,
         service: quote.selectedOption.service,
         isMediaMail: quote.selectedOption.isMediaMail,
+        isFreeShipping: Boolean(quote.selectedOption.isFreeShipping),
       },
       shippingOptions: quote.shippingOptions,
+      addressValidation,
       selectedShippingRateId: quote.selectedShippingRateId,
       quoteExpiresAt: quote.quoteExpiresAt,
       total,

@@ -15,7 +15,21 @@
     isDefault: boolean;
     isMediaMail: boolean;
     method: string;
+    isFreeShipping?: boolean;
   };
+
+  type SuggestedAddress = {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+
+  type AddressValidation =
+    | { status: "valid"; messages: string[] }
+    | { status: "corrected"; suggested: SuggestedAddress; messages: string[] }
+    | { status: "invalid"; messages: string[] }
+    | { status: "unavailable" };
 
   let cartState = $state({
     id: "",
@@ -67,6 +81,9 @@
   let shippingOptions = $state<ShippingOption[]>([]);
   let selectedShippingRateId = $state("");
   let quoteExpiresAt = $state<string | null>(null);
+  let addressValidation = $state<AddressValidation | null>(null);
+  // The suggestion the shopper chose to ignore, so it isn't offered again.
+  let dismissedSuggestionKey = $state("");
   let previewTimeout: ReturnType<typeof setTimeout> | null = null;
 
   function isQuoteExpired(expiresAt: string | null) {
@@ -164,6 +181,7 @@
         selectedShippingRateId = data.selectedShippingRateId ?? "";
         quoteExpiresAt = data.quoteExpiresAt ?? null;
         taxExemptNotice = data.taxExemptDenied ?? null;
+        addressValidation = data.addressValidation ?? null;
         hasPreview = true;
         return true;
       } else {
@@ -197,6 +215,55 @@
     selectedShippingRateId = rateId;
     await fetchPreview(rateId);
   }
+
+  const suggestionKey = (address: SuggestedAddress) =>
+    [address.street, address.city, address.state, address.zip].join("|");
+
+  const addressSuggestion = $derived(
+    addressValidation?.status === "corrected" &&
+      suggestionKey(addressValidation.suggested) !== dismissedSuggestionKey
+      ? addressValidation.suggested
+      : null,
+  );
+
+  function useSuggestedAddress() {
+    if (!addressSuggestion) return;
+    street = addressSuggestion.street;
+    city = addressSuggestion.city;
+    stateCode = addressSuggestion.state;
+    zip = addressSuggestion.zip;
+    addressValidation = null;
+  }
+
+  function keepEnteredAddress() {
+    if (addressSuggestion) dismissedSuggestionKey = suggestionKey(addressSuggestion);
+  }
+
+  const offersFreeShipping = $derived(
+    shippingOptions.some((option) => option.isFreeShipping),
+  );
+
+  function shippingOptionName(option: ShippingOption) {
+    return option.isFreeShipping
+      ? "Free Shipping"
+      : `${option.carrier} ${option.service}`.trim();
+  }
+
+  function shippingOptionPrice(option: ShippingOption) {
+    if (option.amount === 0) return "Free";
+    // Above the free-shipping threshold, other methods are priced as the extra cost.
+    return offersFreeShipping ? `+${formatCents(option.amount)}` : formatCents(option.amount);
+  }
+
+  function shippingOptionDays(option: ShippingOption) {
+    return option.estimatedDays > 0
+      ? `${option.estimatedDays} business day${option.estimatedDays !== 1 ? "s" : ""}`
+      : "Delivery estimate unavailable";
+  }
+
+  const selectedShippingOption = $derived(
+    shippingOptions.find((option) => option.id === selectedShippingRateId) ?? null,
+  );
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -437,6 +504,31 @@
                 <p class="mt-2 text-sm text-destructive">{taxExemptNotice}</p>
               {/if}
             </div>
+
+            {#if addressSuggestion}
+              <div class="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm" role="status">
+                <p class="font-medium text-foreground">Did you mean this address?</p>
+                <p class="mt-1 text-foreground">
+                  {addressSuggestion.street}<br />
+                  {addressSuggestion.city}, {addressSuggestion.state} {addressSuggestion.zip}
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="btn-primary text-sm" onclick={useSuggestedAddress}>
+                    Use this address
+                  </button>
+                  <button type="button" class="btn-secondary text-sm" onclick={keepEnteredAddress}>
+                    Keep what I entered
+                  </button>
+                </div>
+              </div>
+            {:else if addressValidation?.status === "invalid"}
+              <div class="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm" role="status">
+                <p class="font-medium text-foreground">We couldn't verify this address.</p>
+                <p class="mt-1 text-muted-foreground">
+                  Please double-check the street, city and ZIP code. If it's correct, you can still continue.
+                </p>
+              </div>
+            {/if}
           </div>
         </section>
 
@@ -453,39 +545,32 @@
           {:else if previewLoading && !hasPreview}
             <p class="text-sm text-muted-foreground">Loading shipping options…</p>
           {:else if shippingOptions.length > 0}
-            <div class="space-y-3">
+            <label for="shipping-rate" class="sr-only">Shipping method</label>
+            <select
+              id="shipping-rate"
+              class="input-modern"
+              value={selectedShippingRateId}
+              disabled={previewLoading}
+              onchange={(event) => handleShippingSelection(event.currentTarget.value)}
+            >
               {#each shippingOptions as option (option.id)}
-                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition hover:border-primary/40">
-                  <input
-                    type="radio"
-                    name="shipping-rate"
-                    value={option.id}
-                    checked={selectedShippingRateId === option.id}
-                    disabled={previewLoading}
-                    onchange={() => handleShippingSelection(option.id)}
-                    class="mt-1 h-4 w-4 border-input text-primary focus:ring-primary/50"
-                  />
-                  <span class="flex-1">
-                    <span class="flex items-center justify-between gap-4">
-                      <span class="font-medium text-foreground">
-                        {option.carrier} {option.service}
-                        {#if option.isMediaMail}
-                          <span class="ml-2 text-xs uppercase tracking-wide text-accent">Default for books</span>
-                        {/if}
-                      </span>
-                      <span class="font-semibold text-foreground">
-                        {option.amount === 0 ? "Free" : formatCents(option.amount)}
-                      </span>
-                    </span>
-                    <span class="mt-1 block text-sm text-muted-foreground">
-                      {option.estimatedDays > 0
-                        ? `${option.estimatedDays} business day${option.estimatedDays !== 1 ? "s" : ""}`
-                        : "Delivery estimate unavailable"}
-                    </span>
-                  </span>
-                </label>
+                <option value={option.id}>
+                  {shippingOptionName(option)} · {shippingOptionPrice(option)} · {shippingOptionDays(option)}
+                </option>
               {/each}
-            </div>
+            </select>
+            {#if selectedShippingOption}
+              <p class="mt-2 text-sm text-muted-foreground">
+                {#if selectedShippingOption.isFreeShipping}
+                  Ships {selectedShippingOption.isMediaMail ? "USPS Media Mail" : "by the most economical service"}
+                  at no charge. Choose a faster method above for an extra fee.
+                {:else if selectedShippingOption.isMediaMail}
+                  The most affordable option for books.
+                {:else if shippingOptions.length > 1}
+                  {shippingOptions.length - 1} other option{shippingOptions.length - 1 !== 1 ? "s" : ""} available above.
+                {/if}
+              </p>
+            {/if}
           {:else if previewError}
             <p class="text-sm text-destructive">{previewError}</p>
           {:else}
