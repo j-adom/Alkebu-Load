@@ -260,7 +260,7 @@ const OilsIncense: CollectionConfig = {
       defaultValue: false,
       admin: {
         description:
-          "Any scent goes into any bottle. When on, each untracked variation is available unless its scent or its bottle size is listed below as out of stock (saving recalculates every variation's 'Is Available').",
+          "Any scent goes into any bottle. When on, every variation is available unless its scent or its bottle size is listed below as out of stock; Square stock counts are ignored (saving recalculates every variation's 'Is Available').",
       },
     },
     {

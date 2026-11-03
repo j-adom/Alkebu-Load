@@ -4,8 +4,9 @@
  * short lists on the product (out-of-stock scents, out-of-stock sizes) instead of
  * toggling hundreds of scent x size rows. Pure.
  *
- * Only untracked variations (trackInventory === false) are derived; a variation Square
- * counts keeps its stock-driven availability.
+ * Every variation is derived and marked untracked: a poured size can't run out on its
+ * own, so a tracking flag in Square (with its stock count) is a data-entry slip. Marking
+ * it untracked here keeps the cart's stock check from refusing an in-stock scent.
  */
 
 type Variation = {
@@ -35,11 +36,10 @@ export function applyPouredAvailability<T extends Variation>(variations: T[], li
   const scentsOut = new Set((lists.unavailableScents ?? []).map((row) => key(row.scent)).filter(Boolean));
   const sizesOut = new Set((lists.unavailableSizes ?? []).map((row) => key(row.size)).filter(Boolean));
   return variations.map((variation) => {
-    if (variation.trackInventory !== false) return variation;
     const size = pouredSizeKey(variation);
     // A row without a real size (a stray import) can't be poured, so it never sells.
     const isAvailable = size !== '' && !scentsOut.has(key(variation.scent)) && !sizesOut.has(size);
-    return { ...variation, isAvailable };
+    return { ...variation, trackInventory: false, isAvailable };
   });
 }
 
