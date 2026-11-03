@@ -591,8 +591,7 @@ export interface Order {
      */
     providerCustomerId?: string | null;
     paymentStatus?:
-      | ('pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'partially_refunded' | 'refunded')
-      | null;
+      ('pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'partially_refunded' | 'refunded') | null;
     /**
      * Payment method used (card, apple_pay, etc.)
      */
@@ -1797,8 +1796,7 @@ export interface InstitutionalAccount {
   };
   discounting?: {
     discountTier?:
-      | ('none' | 'educational_10' | 'educational_15' | 'nonprofit_10' | 'religious_10' | 'bulk_20' | 'custom')
-      | null;
+      ('none' | 'educational_10' | 'educational_15' | 'nonprofit_10' | 'religious_10' | 'bulk_20' | 'custom') | null;
     /**
      * Custom discount percentage (e.g., 0.15 for 15%)
      */
@@ -1866,8 +1864,7 @@ export interface WellnessLifestyle {
    * General scent category
    */
   scentFamily?:
-    | ('floral' | 'woody' | 'citrus' | 'herbal' | 'spicy' | 'earthy' | 'sweet' | 'fresh' | 'exotic' | 'sacred')
-    | null;
+    ('floral' | 'woody' | 'citrus' | 'herbal' | 'spicy' | 'earthy' | 'sweet' | 'fresh' | 'exotic' | 'sacred') | null;
   /**
    * Type of wellness/lifestyle product
    */
@@ -3052,8 +3049,7 @@ export interface OilsIncense {
    * General scent category
    */
   scentFamily?:
-    | ('floral' | 'woody' | 'citrus' | 'herbal' | 'spicy' | 'earthy' | 'sweet' | 'fresh' | 'exotic' | 'sacred')
-    | null;
+    ('floral' | 'woody' | 'citrus' | 'herbal' | 'spicy' | 'earthy' | 'sweet' | 'fresh' | 'exotic' | 'sacred') | null;
   /**
    * Scent and size variations. Expand a row to edit it; use Collapse All to close previously opened rows.
    */
@@ -3114,7 +3110,7 @@ export interface OilsIncense {
     id?: string | null;
   }[];
   /**
-   * Any scent goes into any bottle. When on, each untracked variation is available unless its scent or its bottle size is listed below as out of stock (saving recalculates every variation's 'Is Available').
+   * Any scent goes into any bottle. When on, every variation is available unless its scent or its bottle size is listed below as out of stock; Square stock counts are ignored (saving recalculates every variation's 'Is Available').
    */
   pouredToOrder?: boolean | null;
   /**
@@ -3838,8 +3834,7 @@ export interface Business {
    * Directory classification for filtering and organization
    */
   directoryCategory?:
-    | ('black-owned' | 'minority-owned' | 'community-partner' | 'local-business' | 'cultural-institution')
-    | null;
+    ('black-owned' | 'minority-owned' | 'community-partner' | 'local-business' | 'cultural-institution') | null;
   /**
    * Business name
    */
