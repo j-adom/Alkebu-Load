@@ -48,7 +48,7 @@ SMTP_PORT=587
 Optional but recommended:
 
 ~~~bash
-SHIPPO_API_TOKEN=<shippo-token>
+SHIPPO_API_KEY=<shippo-key>   # SHIPPO_API_TOKEN also accepted
 SHIPPO_SHIP_FROM_NAME=Alkebu-Lan Images
 SHIPPO_SHIP_FROM_STREET1=2721 Jefferson St.
 SHIPPO_SHIP_FROM_CITY=Nashville

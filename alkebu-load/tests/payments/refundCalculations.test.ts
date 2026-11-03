@@ -72,12 +72,12 @@ test('incrementalShipping returns the full shipping paid when the whole order is
 });
 
 test('incrementalShipping refunds the carrier-tier difference the removed items cost', () => {
-  // 4 paperbacks = 32oz = 2 media-mail lb (487¢). Remove 2 → 16oz = 1 lb (413¢).
+  // 4 paperbacks = 32oz = 2 media-mail lb (513¢). Remove 2 → 16oz = 1 lb (439¢).
   const bookOrder = {
     items: [{ id: 'a', productType: 'books', quantity: 4, unitPrice: 1000, product: paperbackProduct }],
     taxAmount: 0,
-    shippingAmount: 487,
-    totalAmount: 4000 + 487,
+    shippingAmount: 513,
+    totalAmount: 4000 + 513,
     shippingAddress: TN,
   };
   assert.strictEqual(incrementalShipping(bookOrder as any, [{ itemId: 'a', quantity: 2 }]), 74);
@@ -89,7 +89,7 @@ test('incrementalShipping is zero on a free-shipping ($0) order', () => {
 });
 
 test('incrementalShipping clamps to zero when remaining cost exceeds shipping paid', () => {
-  // Paid only 200¢ (discounted); remaining single book still costs 413¢ → no shipping refund.
+  // Paid only 200¢ (discounted); remaining single book still costs 439¢ → no shipping refund.
   const discounted = { ...order, shippingAmount: 200 };
   assert.strictEqual(incrementalShipping(discounted as any, [{ itemId: 'b', quantity: 1 }]), 0);
 });

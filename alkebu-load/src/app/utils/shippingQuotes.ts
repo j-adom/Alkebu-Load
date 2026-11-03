@@ -106,18 +106,10 @@ const getEstimatedDays = (rate: Record<string, unknown>): number => {
 const isBookOnlyOrder = (items: CartItemForTax[]): boolean =>
   items.length > 0 && items.every((item) => item.productType === 'books');
 
-const getBookItemCount = (items: CartItemForTax[]): number =>
-  items.reduce((count, item) => count + Math.max(0, item.quantity || 0), 0);
-
-const calculateEstimatedBookMediaMailShipping = (items: CartItemForTax[]) => {
-  const baseRate = calculateUspsMediaMailShipping(1);
-  const bookCount = Math.max(1, getBookItemCount(items));
-
-  return {
-    ...baseRate,
-    cost: baseRate.cost + ((bookCount - 1) * 100),
-  };
-};
+// Media Mail priced from the USPS table by the cart's real total weight
+// (each book floored at its binding minimum in calculateTotalWeight).
+const calculateEstimatedBookMediaMailShipping = (items: CartItemForTax[]) =>
+  calculateUspsMediaMailShipping(calculateTotalWeight(items));
 
 const getShipFromAddress = (): ShippoAddress => ({
   name: readEnv('SHIPPO_SHIP_FROM_NAME') || 'Alkebu-Lan Images',
@@ -240,6 +232,36 @@ const withFreeShipping = (options: ShippingOption[], subtotal: number): Shipping
   }));
 };
 
+const buildEstimatedMediaMailOption = (items: CartItemForTax[]): ShippingOption => {
+  const mediaMail = calculateEstimatedBookMediaMailShipping(items);
+  return {
+    id: 'best-available-media-mail',
+    carrier: 'USPS',
+    service: 'Media Mail',
+    amount: mediaMail.cost,
+    estimatedDays: mediaMail.estimatedDays,
+    isDefault: true,
+    isMediaMail: true,
+    method: mediaMail.method,
+  };
+};
+
+/**
+ * Shippo's USPS integration doesn't return Media Mail rates, so book-only
+ * carts would otherwise lose it. Add the USPS-table Media Mail option to a
+ * live quote whenever Shippo didn't supply one.
+ */
+const withEstimatedMediaMail = (
+  options: ShippingOption[],
+  items: CartItemForTax[],
+): ShippingOption[] => {
+  if (!isBookOnlyOrder(items) || options.some((option) => option.isMediaMail)) {
+    return options;
+  }
+
+  return [buildEstimatedMediaMailOption(items), ...options];
+};
+
 const buildFallbackOptions = (
   items: CartItemForTax[],
   shippingAddress: ShippingAddress,
@@ -249,17 +271,7 @@ const buildFallbackOptions = (
   const options: ShippingOption[] = [];
 
   if (isBookOnlyOrder(items)) {
-    const mediaMail = calculateEstimatedBookMediaMailShipping(items);
-    options.push({
-      id: 'best-available-media-mail',
-      carrier: 'USPS',
-      service: 'Media Mail',
-      amount: mediaMail.cost,
-      estimatedDays: mediaMail.estimatedDays,
-      isDefault: true,
-      isMediaMail: true,
-      method: mediaMail.method,
-    });
+    options.push(buildEstimatedMediaMailOption(items));
   }
 
   const standard = calculateShipping(totalWeightOz, 'standard', shippingAddress.state || 'TN');
@@ -321,7 +333,12 @@ export const buildShippingQuoteFingerprint = (
 export const getShippingQuoteExpiry = (): string =>
   new Date(Date.now() + QUOTE_TTL_MS).toISOString();
 
-export const isShippoConfigured = (): boolean => Boolean(readEnv('SHIPPO_API_TOKEN'));
+// Coolify stores the live key as SHIPPO_API_KEY; older docs used SHIPPO_API_TOKEN.
+// Accept both so a naming mismatch never silently disables live rates.
+export const getShippoToken = (): string | undefined =>
+  readEnv('SHIPPO_API_TOKEN') || readEnv('SHIPPO_API_KEY');
+
+export const isShippoConfigured = (): boolean => Boolean(getShippoToken());
 
 export async function getShippingQuotes(
   args: {
@@ -340,7 +357,7 @@ export async function getShippingQuotes(
     fetchImpl = fetch,
   } = args;
 
-  const shippoToken = readEnv('SHIPPO_API_TOKEN');
+  const shippoToken = getShippoToken();
 
   let options: ShippingOption[] = [];
   let quoteSource: 'shippo' | 'estimated' = 'shippo';
@@ -379,6 +396,8 @@ export async function getShippingQuotes(
       if (!options.length) {
         throw new Error('Shippo returned no usable shipping rates');
       }
+
+      options = withEstimatedMediaMail(options, items);
     } catch (error) {
       console.warn(
         'Using estimated shipping quotes after Shippo quote failure:',

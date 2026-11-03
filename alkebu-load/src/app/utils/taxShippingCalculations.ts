@@ -216,18 +216,21 @@ const SHIPPING_RATES = {
   },
 };
 
-const USPS_MEDIA_MAIL_RATES: Record<number, number> = {
-  1: 413,
-  2: 487,
-  3: 561,
-  4: 635,
-  5: 709,
-  6: 783,
-  7: 857,
-  8: 931,
-  9: 1005,
-  10: 1079,
-};
+// USPS Media Mail single-piece prices in cents, indexed by billable pound
+// (index 0 = 1 lb ... index 69 = 70 lb, the Media Mail maximum).
+// Source: USPS Notice 123 (Price List), effective October 4, 2026, "Media Mail—Retail".
+// Commercial single-piece prices in the same notice are identical.
+// Update this table whenever USPS publishes a new Notice 123.
+const USPS_MEDIA_MAIL_RATES: readonly number[] = [
+  439, 513, 586, 660, 734, 808, 881, 955, 1029, 1102,
+  1176, 1250, 1323, 1397, 1471, 1544, 1618, 1692, 1765, 1839,
+  1913, 1986, 2060, 2134, 2207, 2281, 2355, 2429, 2502, 2576,
+  2650, 2723, 2797, 2871, 2944, 3018, 3092, 3165, 3239, 3313,
+  3386, 3460, 3534, 3607, 3681, 3755, 3828, 3902, 3976, 4049,
+  4123, 4197, 4271, 4344, 4418, 4492, 4565, 4639, 4713, 4786,
+  4860, 4934, 5007, 5081, 5155, 5228, 5302, 5376, 5449, 5523,
+];
+// Past 70 lb a parcel can't go Media Mail; keep extrapolating so a quote still exists.
 const USPS_MEDIA_MAIL_INCREMENTAL_RATE = 74;
 
 // Default weights by product type (in ounces)
@@ -266,6 +269,25 @@ function getDefaultBookWeight(binding?: string | null): number {
   return 8;
 }
 
+/**
+ * Floor for a physical book's shipping weight, so an under-recorded weight
+ * can't under-price postage: paperbacks (incl. mass market) ship as at least
+ * half a pound, hardcovers as at least a pound. Digital bindings have none.
+ */
+function getMinimumBookWeight(binding?: string | null): number {
+  const normalizedBinding = normalizeBinding(binding);
+
+  if (normalizedBinding === 'hardcover') {
+    return 16;
+  }
+
+  if (normalizedBinding === 'ebook' || normalizedBinding === 'audiobook') {
+    return 0;
+  }
+
+  return 8;
+}
+
 function getBookBinding(item: CartItemForTax): string | undefined {
   return item.product?.editions?.find(Boolean)?.binding;
 }
@@ -290,6 +312,10 @@ function resolveVariationWeight(item: CartItemForTax): number | undefined {
 }
 
 function resolveItemWeight(item: CartItemForTax): number {
+  if (item.productType === 'books') {
+    return resolveBookWeight(item);
+  }
+
   const editionWeight = item.product?.editions?.find(
     (edition) =>
       typeof edition?.pricing?.shippingWeight === 'number' &&
@@ -300,32 +326,46 @@ function resolveItemWeight(item: CartItemForTax): number {
     return editionWeight;
   }
 
-  if (item.productType !== 'books') {
-    const variationWeight = resolveVariationWeight(item);
-    if (typeof variationWeight === 'number' && variationWeight > 0) {
-      return variationWeight;
-    }
+  const variationWeight = resolveVariationWeight(item);
+  if (typeof variationWeight === 'number' && variationWeight > 0) {
+    return variationWeight;
   }
 
   const topLevelWeight = item.product?.pricing?.shippingWeight;
-
-  if (item.productType === 'books') {
-    const binding = getBookBinding(item);
-
-    // Most current book records appear to have a blanket 16oz top-level weight.
-    // Treat that as a placeholder unless an edition weight is present.
-    if (typeof topLevelWeight === 'number' && topLevelWeight > 0 && topLevelWeight !== 16) {
-      return topLevelWeight;
-    }
-
-    return getDefaultBookWeight(binding);
-  }
 
   if (typeof topLevelWeight === 'number' && topLevelWeight > 0) {
     return topLevelWeight;
   }
 
   return getDefaultWeight(item.productType);
+}
+
+/**
+ * Real recorded weight for a book, never below its binding's minimum.
+ * Prefers an edition weight; a top-level weight of exactly 16oz is a blanket
+ * import placeholder on most records, so it's ignored in favor of the default.
+ */
+function resolveBookWeight(item: CartItemForTax): number {
+  const binding = getBookBinding(item);
+  const minimum = getMinimumBookWeight(binding);
+
+  const editionWeight = item.product?.editions?.find(
+    (edition) =>
+      typeof edition?.pricing?.shippingWeight === 'number' &&
+      edition.pricing.shippingWeight > 0,
+  )?.pricing?.shippingWeight;
+
+  if (typeof editionWeight === 'number' && editionWeight > 0) {
+    return Math.max(editionWeight, minimum);
+  }
+
+  const topLevelWeight = item.product?.pricing?.shippingWeight;
+
+  if (typeof topLevelWeight === 'number' && topLevelWeight > 0 && topLevelWeight !== 16) {
+    return Math.max(topLevelWeight, minimum);
+  }
+
+  return Math.max(getDefaultBookWeight(binding), minimum);
 }
 
 function isBookOnlyOrder(items: CartItemForTax[]): boolean {
@@ -375,9 +415,12 @@ export function calculateShipping(
 
 export function calculateUspsMediaMailShipping(totalWeightOz: number): ShippingCalculation {
   const billablePounds = Math.max(1, Math.ceil(totalWeightOz / 16));
+  const maxPounds = USPS_MEDIA_MAIL_RATES.length;
   const baseCost =
-    USPS_MEDIA_MAIL_RATES[billablePounds] ??
-    USPS_MEDIA_MAIL_RATES[10] + ((billablePounds - 10) * USPS_MEDIA_MAIL_INCREMENTAL_RATE);
+    billablePounds <= maxPounds
+      ? USPS_MEDIA_MAIL_RATES[billablePounds - 1]
+      : USPS_MEDIA_MAIL_RATES[maxPounds - 1] +
+        ((billablePounds - maxPounds) * USPS_MEDIA_MAIL_INCREMENTAL_RATE);
 
   return {
     method: 'media-mail',

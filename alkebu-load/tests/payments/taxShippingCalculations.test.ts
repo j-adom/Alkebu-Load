@@ -23,12 +23,12 @@ const jewelry = (quantity: number, unitPrice: number) => ({
 });
 
 test('calculateItemsShippingCost: book-only set uses media mail by weight', () => {
-  // One paperback resolves to 8oz → 1 billable lb → media mail tier 1 = 413
-  assert.strictEqual(calculateItemsShippingCost([paperback(1, 1200)] as any, 'TN'), 413);
+  // One paperback resolves to 8oz → 1 billable lb → media mail tier 1 = 439
+  assert.strictEqual(calculateItemsShippingCost([paperback(1, 1200)] as any, 'TN'), 439);
 });
 
 test('calculateItemsShippingCost: two paperbacks (16oz) still one media-mail pound', () => {
-  assert.strictEqual(calculateItemsShippingCost([paperback(2, 1200)] as any, 'TN'), 413);
+  assert.strictEqual(calculateItemsShippingCost([paperback(2, 1200)] as any, 'TN'), 439);
 });
 
 test('calculateItemsShippingCost: mixed cart falls back to standard weight-based rates', () => {
@@ -46,7 +46,7 @@ test('calculateItemsShippingCost: empty set costs nothing', () => {
 test('calculateItemsShippingCost: ignores the free-shipping threshold (deterministic subset cost)', () => {
   // A large book-only subtotal would ship free in calculateOrderTotals, but the
   // subset primitive must return the real carrier cost so refund math can diff it.
-  assert.strictEqual(calculateItemsShippingCost([paperback(1, 50000)] as any, 'TN'), 413);
+  assert.strictEqual(calculateItemsShippingCost([paperback(1, 50000)] as any, 'TN'), 439);
 });
 
 test('book-only orders use paperback fallback weight and media mail pricing', () => {
@@ -80,7 +80,7 @@ test('book-only orders use paperback fallback weight and media mail pricing', ()
 
   assert.strictEqual(totalWeight, 16);
   assert.strictEqual(totals.shipping.method, 'media-mail');
-  assert.strictEqual(totals.shipping.cost, 413);
+  assert.strictEqual(totals.shipping.cost, 439);
 });
 
 test('hardcover fallback remains one pound when no explicit edition weight exists', () => {
@@ -240,4 +240,36 @@ test('out-of-state addresses do not collect tax', () => {
 
   assert.strictEqual(tax.amount, 0);
   assert.strictEqual(tax.rate, 0);
+});
+
+const book = (binding: string, editionWeight: number | undefined, quantity = 1) => ({
+  product: { editions: [{ binding, pricing: editionWeight === undefined ? {} : { shippingWeight: editionWeight } }] },
+  productType: 'books',
+  quantity,
+  unitPrice: 2000,
+});
+
+test('book weights are floored at half a pound for paperback and a pound for hardcover', () => {
+  assert.strictEqual(calculateTotalWeight([book('paperback', 4)] as any), 8);
+  assert.strictEqual(calculateTotalWeight([book('mass-market', 5)] as any), 8);
+  assert.strictEqual(calculateTotalWeight([book('hardcover', 10)] as any), 16);
+});
+
+test('book weights above the minimum use the recorded weight', () => {
+  assert.strictEqual(calculateTotalWeight([book('paperback', 13)] as any), 13);
+  assert.strictEqual(calculateTotalWeight([book('hardcover', 26)] as any), 26);
+});
+
+test('digital bindings have no minimum weight', () => {
+  assert.strictEqual(calculateTotalWeight([book('ebook', undefined)] as any), 0);
+});
+
+test('media mail follows the USPS table by real total weight', () => {
+  // 26oz hardcover → 2 lb → 513
+  assert.strictEqual(calculateItemsShippingCost([book('hardcover', 26)] as any, 'TN'), 513);
+  // 3 × 20oz hardcovers = 60oz → 4 lb → 660
+  assert.strictEqual(calculateItemsShippingCost([book('hardcover', 20, 3)] as any, 'TN'), 660);
+  // 10 lb boundary and the 70 lb maximum
+  assert.strictEqual(calculateItemsShippingCost([book('hardcover', 160)] as any, 'TN'), 1102);
+  assert.strictEqual(calculateItemsShippingCost([book('hardcover', 70 * 16)] as any, 'TN'), 5523);
 });
