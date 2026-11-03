@@ -87,3 +87,24 @@ test('a standard size entered without a price gets the standard price, all else 
   assert.equal(fixed.itemVariationData.pricingType, 'FIXED_PRICING');
   assert.equal(fixed.itemVariationData.trackInventory, false);
 });
+
+test('items built on the Volume option get the exact option value for each new size', () => {
+  const values = new Map([['OPT', new Map([['1/4 oz', 'V14'], ['1/2 oz', 'V12'], ['2oz', 'STRAY'], ['2 oz', 'V2'], ['roll-on', 'VR'], ['1 oz', 'V1']])]]);
+  const withOption = { ...item('W', 'Vera Wang (M) Scented Oil', [variation('1/4 oz', 500)]), itemData: { name: 'Vera Wang (M) Scented Oil', itemOptions: [{ itemOptionId: 'OPT' }], variations: [variation('1/4 oz', 500)] } };
+  const plan = planOilSizeFill([withOption], values);
+  assert.deepEqual(
+    plan.additions.map((a) => [a.size, a.itemOptionValues]),
+    [
+      ['1/2 oz', [{ itemOptionId: 'OPT', itemOptionValueId: 'V12' }]],
+      ['Roll-on', [{ itemOptionId: 'OPT', itemOptionValueId: 'VR' }]],
+      ['1 oz', [{ itemOptionId: 'OPT', itemOptionValueId: 'V1' }]],
+      ['2 oz', [{ itemOptionId: 'OPT', itemOptionValueId: 'V2' }]],
+    ],
+  );
+  assert.deepEqual(squareVariationFor(plan.additions[0], '#x').itemVariationData.itemOptionValues, [{ itemOptionId: 'OPT', itemOptionValueId: 'V12' }]);
+  // An option missing a size's value: the item is skipped, never guessed.
+  const partial = new Map([['OPT', new Map([['1/2 oz', 'V12']])]]);
+  const skipped = planOilSizeFill([withOption], partial);
+  assert.deepEqual(skipped.additions, []);
+  assert.deepEqual(skipped.skippedNoOptionValue, ['Vera Wang (M) Scented Oil']);
+});

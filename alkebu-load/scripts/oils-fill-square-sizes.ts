@@ -39,11 +39,26 @@ async function main() {
   for await (const obj of await square.catalog.list({ types: 'ITEM' })) {
     if ((obj as any)?.type === 'ITEM') items.push(obj)
   }
-  const plan = planOilSizeFill(items)
+  // Most scent items use the shared "Volume" item option, which Square requires on every
+  // variation: index its values by name.
+  const optionIds = [...new Set(items.flatMap((i) => (i.itemData?.itemOptions ?? []).map((o: any) => o.itemOptionId)).filter(Boolean))]
+  const optionValues = new Map<string, Map<string, string>>()
+  if (optionIds.length > 0) {
+    for (const option of ((await square.catalog.batchGet({ objectIds: optionIds })).objects ?? []) as any[]) {
+      const values = new Map<string, string>()
+      for (const value of option.itemOptionData?.values ?? []) {
+        const name = String(value.itemOptionValueData?.name ?? '').trim().toLowerCase()
+        if (name && value.id && !values.has(name)) values.set(name, value.id)
+      }
+      optionValues.set(option.id, values)
+    }
+  }
+  const plan = planOilSizeFill(items, optionValues)
   console.log(`[fill] ${apply ? 'APPLY' : 'dry run'}: ${JSON.stringify(plan.counts)}`)
   for (const f of plan.priceFixes) console.log(`[fill]   no price -> standard ${f.cents}¢: ${f.itemName} ${f.size}`)
   for (const m of plan.priceMismatches) console.log(`[fill]   off-standard price (left alone): ${m.itemName} ${m.size} = ${m.cents}¢, standard ${m.standard}¢`)
   for (const n of plan.nonStandard) console.log(`[fill]   non-standard variation (left alone): ${n.itemName} "${n.name}"`)
+  for (const name of plan.skippedNoOptionValue) console.log(`[fill]   skipped, its size option lacks a standard size: ${name}`)
   for (const name of plan.skippedNoTemplate) console.log(`[fill]   skipped, no variation to copy settings from: ${name}`)
 
   if (!apply) {
@@ -76,7 +91,8 @@ async function main() {
       created += e.added
       priced += e.priced
     } catch (error) {
-      failures.push(`${e.name}: ${error instanceof Error ? error.message.slice(0, 200) : String(error)}`)
+      const details = (error as any)?.body?.errors?.map((x: any) => x.detail).join(' | ')
+      failures.push(`${e.name}: ${details ?? (error instanceof Error ? error.message : String(error))}`)
     }
   }
   console.log(`[fill] created ${created}/${plan.additions.length} sizes and priced ${priced}/${plan.priceFixes.length} across ${byItem.size} items`)

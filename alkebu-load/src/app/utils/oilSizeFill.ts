@@ -26,6 +26,7 @@ export type OilItem = {
   presentAtLocationIds?: string[];
   itemData?: {
     name?: string;
+    itemOptions?: Array<{ itemOptionId?: string }>;
     variations?: Array<{
       id?: string;
       isDeleted?: boolean;
@@ -50,7 +51,12 @@ export type SizeAddition = {
   presentAtAllLocations: boolean;
   presentAtLocationIds: string[];
   locationIds: string[];
+  /** Set when the item uses a Square item option ("Volume"): Square requires it on every variation. */
+  itemOptionValues?: Array<{ itemOptionId: string; itemOptionValueId: string }>;
 };
+
+/** Square item option id -> its values by name (trimmed, lower-cased) -> value id. */
+export type OptionValueIndex = ReadonlyMap<string, ReadonlyMap<string, string>>;
 
 export type PriceFix = { itemName: string; size: string; cents: number; variation: any };
 
@@ -60,6 +66,7 @@ export type OilFillPlan = {
   priceMismatches: Array<{ itemName: string; size: string; cents: number; standard: number }>;
   nonStandard: Array<{ itemName: string; name: string }>;
   skippedNoTemplate: string[];
+  skippedNoOptionValue: string[];
   counts: { items: number; complete: number; toFill: number; additions: number; priceFixes: number; bySize: Record<string, number> };
 };
 
@@ -67,13 +74,14 @@ export function isScentedOilItem(item: OilItem): boolean {
   return !item.isDeleted && /\s+scented oil$/i.test(item.itemData?.name ?? '');
 }
 
-export function planOilSizeFill(items: OilItem[]): OilFillPlan {
+export function planOilSizeFill(items: OilItem[], optionValues: OptionValueIndex = new Map()): OilFillPlan {
   const plan: OilFillPlan = {
     additions: [],
     priceFixes: [],
     priceMismatches: [],
     nonStandard: [],
     skippedNoTemplate: [],
+    skippedNoOptionValue: [],
     counts: { items: 0, complete: 0, toFill: 0, additions: 0, priceFixes: 0, bySize: {} },
   };
 
@@ -108,6 +116,22 @@ export function planOilSizeFill(items: OilItem[]): OilFillPlan {
       plan.skippedNoTemplate.push(itemName);
       continue;
     }
+    // Items built on a Square item option need each new size's option value. Exact names
+    // only ("2 oz", not the stray "2oz"); an item missing one is skipped, not guessed.
+    const optionIds = (item.itemData?.itemOptions ?? []).map((o) => o.itemOptionId).filter((id): id is string => !!id);
+    const optionFor = (size: string) => {
+      const values: Array<{ itemOptionId: string; itemOptionValueId: string }> = [];
+      for (const itemOptionId of optionIds) {
+        const itemOptionValueId = optionValues.get(itemOptionId)?.get(key(size));
+        if (!itemOptionValueId) return null;
+        values.push({ itemOptionId, itemOptionValueId });
+      }
+      return values;
+    };
+    if (missing.some((size) => optionFor(size.name) === null)) {
+      plan.skippedNoOptionValue.push(itemName);
+      continue;
+    }
     plan.counts.toFill++;
     const presentAtAllLocations = template.presentAtAllLocations ?? item.presentAtAllLocations ?? false;
     const presentAtLocationIds = template.presentAtLocationIds ?? item.presentAtLocationIds ?? [];
@@ -124,6 +148,7 @@ export function planOilSizeFill(items: OilItem[]): OilFillPlan {
         presentAtAllLocations,
         presentAtLocationIds,
         locationIds,
+        ...(optionIds.length > 0 ? { itemOptionValues: optionFor(size.name)! } : {}),
       });
       plan.counts.bySize[size.name] = (plan.counts.bySize[size.name] ?? 0) + 1;
     }
@@ -149,6 +174,7 @@ export function squareVariationFor(addition: SizeAddition, tempId: string) {
       sellable: true,
       stockable: true,
       locationOverrides: addition.locationIds.map((locationId) => ({ locationId, trackInventory: false })),
+      ...(addition.itemOptionValues ? { itemOptionValues: addition.itemOptionValues } : {}),
     },
   };
 }
