@@ -93,7 +93,7 @@ test('two different Square items on the same line key merge into ONE line accumu
   const itemA = makeItem('item-oil-a', 'Egyptian Musk Scented Oil', [
     { id: 'var-a1', sku: 'EM-1', amount: 500n },
   ]);
-  const itemB = makeItem('item-oil-b', 'Mr. Obama type', [{ id: 'var-b1', sku: 'MO-1', amount: 550n }]);
+  const itemB = makeItem('item-oil-b', 'Mr. Obama Scented Oil', [{ id: 'var-b1', sku: 'MO-1', amount: 550n }]);
 
   const { lines, skipped } = buildImportPlan([itemA, itemB]);
 

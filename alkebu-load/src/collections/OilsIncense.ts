@@ -1,4 +1,7 @@
 import type { CollectionConfig } from 'payload';
+import { ValidationError } from 'payload';
+
+import { applyPouredAvailability, unknownPouredNames } from '../app/utils/pouredToOrder';
 import { collapsedVariations } from '../fields/collapsedVariations';
 
 const OilsIncense: CollectionConfig = {
@@ -249,6 +252,37 @@ const OilsIncense: CollectionConfig = {
         description: 'Scent and size variations. Expand a row to edit it; use Collapse All to close previously opened rows.'
       }
     }),
+
+    // Poured to order (Scented Oil): availability is scent in stock AND bottle in stock.
+    {
+      name: 'pouredToOrder',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          "Any scent goes into any bottle. When on, each untracked variation is available unless its scent or its bottle size is listed below as out of stock (saving recalculates every variation's 'Is Available').",
+      },
+    },
+    {
+      name: 'unavailableScents',
+      label: 'Out-of-stock scents',
+      type: 'array',
+      fields: [{ name: 'scent', type: 'text', required: true }],
+      admin: {
+        condition: (data) => data?.pouredToOrder === true,
+        description: 'Scents we are out of: every bottle size of these is unavailable. Spell them as in the variations.',
+      },
+    },
+    {
+      name: 'unavailableSizes',
+      label: 'Out-of-stock bottle sizes',
+      type: 'array',
+      fields: [{ name: 'size', type: 'text', required: true }],
+      admin: {
+        condition: (data) => data?.pouredToOrder === true,
+        description: 'Bottle sizes we are out of (e.g. "2 oz"): unavailable for every scent.',
+      },
+    },
 
     // Sage Bundle Specific Fields
     {
@@ -549,7 +583,34 @@ const OilsIncense: CollectionConfig = {
         // Set last updated
         data.lastUpdated = new Date().toISOString();
       }
-    ]
+    ],
+    beforeChange: [
+      // Not behind disableHooks: importer and script writes must keep poured availability right.
+      ({ data, originalDoc, req }) => {
+        const pouredToOrder = data?.pouredToOrder ?? originalDoc?.pouredToOrder;
+        if (!data || pouredToOrder !== true) return data;
+        const variations = data.variations ?? originalDoc?.variations ?? [];
+        const lists = {
+          unavailableScents: data.unavailableScents ?? originalDoc?.unavailableScents,
+          unavailableSizes: data.unavailableSizes ?? originalDoc?.unavailableSizes,
+        };
+        // Typos only block a person's save; an import or script must never fail on them.
+        if (req?.user) {
+          const unknown = unknownPouredNames(variations, lists);
+          const problems = [
+            ...unknown.scents.map((name) => `scent "${name}"`),
+            ...unknown.sizes.map((name) => `size "${name}"`),
+          ];
+          if (problems.length > 0) {
+            throw new ValidationError({
+              collection: 'oils-incense',
+              errors: [{ message: `Not on this product: ${problems.join(', ')}. Check the spelling.`, path: 'unavailableScents' }],
+            });
+          }
+        }
+        return { ...data, variations: applyPouredAvailability(variations, lists) };
+      },
+    ],
   }
 };
 

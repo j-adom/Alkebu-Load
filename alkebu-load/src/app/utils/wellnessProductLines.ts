@@ -197,11 +197,12 @@ export const matchProductLine = (squareItemName: string): ProductLineMatch | nul
     };
   }
 
-  // 4. Scented Oil — scent is the variant axis. Two naming conventions in Square:
-  //    "<Scent> Scented Oil" and the bare "<Scent> type" (the top seller, 2,259 units).
+  // 4. Scented Oil — "<Scent> Scented Oil", one Square item per scent, sizes as its
+  //    variations. The bare "<Scent> type" items are NOT oils: they're $2 Madina incense
+  //    packs from an abandoned attempt to split the pack by scent (the packs share one
+  //    GTIN), so they stay out of this line.
   const scented = /^(.+?)\s+scented oil$/i.exec(name);
-  const typeOil = /^(.+?)\s+type$/i.exec(name);
-  const oilScent = scented?.[1] ?? typeOil?.[1];
+  const oilScent = scented?.[1];
   if (oilScent) {
     return {
       lineKey: 'scented-oil',

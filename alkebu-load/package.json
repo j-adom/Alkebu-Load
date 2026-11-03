@@ -22,6 +22,8 @@
     "authors:merge": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/author-merge.ts",
     "square:link-repair": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-link-repair.ts",
     "ingram:stock-refresh": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/ingram-stock-refresh.ts",
+    "oils:fill-square-sizes": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/oils-fill-square-sizes.ts",
+    "oils:poured-to-order": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/oils-poured-to-order.ts",
     "wellness:untracked-availability": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/wellness-untracked-availability.ts"
   },
   "dependencies": {

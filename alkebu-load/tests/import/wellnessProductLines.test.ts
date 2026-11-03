@@ -15,14 +15,14 @@ test('whipped shea butter SKUs collapse to one line with the scent as the varian
   assert.strictEqual(matchProductLine('Whipped Shea Butter Pink Sugar')?.variantLabel, 'Pink Sugar');
 });
 
-test('scented oils collapse to one line, including the "type" naming convention', () => {
+test('scented oils collapse to one line; "<scent> type" incense packs are not oils', () => {
   assert.strictEqual(matchProductLine('Egyptian Musk Scented Oil')?.lineKey, 'scented-oil');
   assert.strictEqual(matchProductLine('Egyptian Musk Scented Oil')?.variantLabel, 'Egyptian Musk');
   assert.strictEqual(matchProductLine('Egyptian Musk Scented Oil')?.collection, 'oils-incense');
 
-  // The top seller (2,259 units) uses the bare "<scent> type" convention.
-  assert.strictEqual(matchProductLine('Mr. Obama type')?.lineKey, 'scented-oil');
-  assert.strictEqual(matchProductLine('Mr. Obama type')?.variantLabel, 'Mr. Obama');
+  // "<scent> type" items are $2 Madina incense packs, not oils.
+  assert.strictEqual(matchProductLine('Mr. Obama type'), null);
+  assert.strictEqual(matchProductLine('Jimmy Choo Type'), null);
   // oils-incense.productType has only 4 valid options; fragrance-oil is the only fit.
   assert.strictEqual(matchProductLine('Egyptian Musk Scented Oil')?.productType, 'fragrance-oil');
 });

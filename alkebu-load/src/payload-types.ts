@@ -3114,6 +3114,28 @@ export interface OilsIncense {
     id?: string | null;
   }[];
   /**
+   * Any scent goes into any bottle. When on, each untracked variation is available unless its scent or its bottle size is listed below as out of stock (saving recalculates every variation's 'Is Available').
+   */
+  pouredToOrder?: boolean | null;
+  /**
+   * Scents we are out of: every bottle size of these is unavailable. Spell them as in the variations.
+   */
+  unavailableScents?:
+    | {
+        scent: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Bottle sizes we are out of (e.g. "2 oz"): unavailable for every scent.
+   */
+  unavailableSizes?:
+    | {
+        size: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * Ingredients in this sage bundle blend
    */
   sageBlend?:
@@ -6964,6 +6986,19 @@ export interface OilsIncenseSelect<T extends boolean = true> {
         weight?: T;
         isAvailable?: T;
         trackInventory?: T;
+        id?: T;
+      };
+  pouredToOrder?: T;
+  unavailableScents?:
+    | T
+    | {
+        scent?: T;
+        id?: T;
+      };
+  unavailableSizes?:
+    | T
+    | {
+        size?: T;
         id?: T;
       };
   sageBlend?:
