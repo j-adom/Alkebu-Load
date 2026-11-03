@@ -152,17 +152,36 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
 
 ### Local Development
 - **Database**: SQLite by default (`alkebu-load/alkebulanimages.db`). PostgreSQL for production via `DATABASE_URI`.
-  - **Verify this before running anything local.** As of 2026-09-23 the working `alkebu-load/.env`
-    has `DATABASE_URI=postgresql://100.108.178.32:5432/...` — a Tailscale address for the
-    PRODUCTION database — not the SQLite default. `cd alkebu-load && grep -o '^DATABASE_URI=[a-z]*' .env`
-    tells you which adapter you are actually about to use. Never `source` the file.
-  - **`pnpm dev` can push schema to whatever it connects to.**
-    `@payloadcms/db-postgres/dist/connect.js:109` runs `pushDevSchema()` whenever
-    `NODE_ENV !== 'production' && PAYLOAD_MIGRATING !== 'true' && push !== false`, and
-    `src/payload.config.ts:67-71` sets no `push: false`. With the URI above, a dev server started
-    from a session where Tailscale is up will reconcile production's schema against the current
-    branch. From a WSL shell with Tailscale down it fails at connect instead — that is luck, not
-    a safeguard.
+  - **Verify this before running anything local.** As of 2026-10-03 the working `alkebu-load/.env`
+    has `DATABASE_URI=file:...` (local SQLite), **not** production.
+    `cd alkebu-load && grep -o '^DATABASE_URI=[a-z]*' .env` tells you which adapter you are about
+    to use. Never `source` the file. Anything that needs production data (e.g.
+    `pnpm ingram:stock-refresh`) must be given the production URL explicitly.
+  - **Reaching the production database (as of 2026-10-03).** The server is `srv659618`, SSH alias
+    `alkebu-vps` in `~/.ssh/config` (Tailscale `100.79.181.36`). The old `100.108.178.32` address
+    and the `coolify` alias (`62.72.1.133`) are gone or unreachable. Postgres is **not** publicly
+    exposed: it's the Coolify container `qcgwcg0swcck04okk4oskoos` on the `coolify` Docker network.
+    Reach it through an SSH tunnel. Look up the container IP each time, since it can change when
+    the container restarts:
+    ```bash
+    ssh alkebu-vps 'docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" qcgwcg0swcck04okk4oskoos'
+    ssh -f -N -o ExitOnForwardFailure=yes -L 55433:<container-ip>:5432 alkebu-vps
+    pg_isready -h localhost -p 55433
+    ```
+    Then use `postgres://<user>:<password>@localhost:55433/alkebulan` (the user and password are
+    in Coolify). Close the tunnel with `pkill -f 'ssh -f -N .*55433'`. A tunneled production
+    database looks like `localhost`, and dev-mode schema push is allowed for local hosts, so any
+    script that boots Payload against it must run with `NODE_ENV=production`
+    (`scripts/ingram-stock-refresh.ts` forces this).
+  - **Dev-mode schema push.** Outside `NODE_ENV=production`, Payload reconciles the connected
+    database's schema to the current branch on boot (`pnpm dev`, and any `tsx` script that calls
+    `getPayload`):
+    - **Postgres:** allowed only for local hosts (`shouldEnableDevSchemaPush` in
+      `src/app/utils/devSchemaPush.ts`, since `534017e`), so a production URL is never pushed to.
+    - **SQLite: always pushed.** `alkebu-load/alkebulanimages.db` is **committed to git**, and a
+      branch whose schema differs from the file will rewrite it, prompting about "data loss" on
+      changed columns. Don't accept that prompt casually. If it happens, restore the file with
+      `git checkout -- alkebu-load/alkebulanimages.db`.
 - **Setup**: `cd alkebu-load && pnpm install && cp .env.example .env && pnpm dev` → create admin at `/admin` → `tsx scripts/initialize-search.ts`. Then `cd alkebu-web && npm install && cp .env.example .env.local && npm run dev`.
 - See [docs/development-guide.md](docs/development-guide.md) for the full walkthrough.
 

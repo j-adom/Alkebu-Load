@@ -13,7 +13,8 @@
 -- schema Payload generates at origin/main and at main + the uncommitted
 -- lastRunSkippedNonBook counter, made idempotent. That diff was checked against the
 -- plan's allow-list: on `books` it only adds last_synced_at and a UNIQUE index on
--- square_item_id. Nothing is dropped or retyped.
+-- square_item_id. An existing non-unique index with that name is replaced atomically;
+-- no product records, tables, or columns are dropped or retyped.
 --
 -- Supersedes scripts/add-square-sync-skipped-count.sql (that script assumed
 -- square_sync_state already existed; it does not until this runs).
@@ -160,6 +161,19 @@ CREATE INDEX IF NOT EXISTS square_catalog_staging_updated_at_idx
   ON public.square_catalog_staging USING btree ("updated_at");
 CREATE INDEX IF NOT EXISTS square_catalog_staging_created_at_idx
   ON public.square_catalog_staging USING btree ("created_at");
+-- IF NOT EXISTS alone would silently retain an older non-unique index.
+-- The transaction restores that index if its unique replacement fails.
+DO $do$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_index
+    WHERE indexrelid = to_regclass('public.books_square_item_id_idx')
+      AND indrelid = 'public.books'::regclass
+      AND NOT indisunique
+  ) THEN
+    DROP INDEX public.books_square_item_id_idx;
+  END IF;
+END$do$;
 CREATE UNIQUE INDEX IF NOT EXISTS books_square_item_id_idx
   ON public.books USING btree ("square_item_id");
 CREATE INDEX IF NOT EXISTS payload_jobs_concurrency_key_idx
@@ -175,6 +189,6 @@ UNION ALL SELECT 'issues table',     to_regclass('public.square_catalog_staging_
 UNION ALL SELECT 'sync state table', to_regclass('public.square_sync_state') IS NOT NULL
 UNION ALL SELECT 'skipped counter',  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'square_sync_state' AND column_name = 'last_run_skipped_non_book')
 UNION ALL SELECT 'books.last_synced_at', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'books' AND column_name = 'last_synced_at')
-UNION ALL SELECT 'books unique idx', to_regclass('public.books_square_item_id_idx') IS NOT NULL
+UNION ALL SELECT 'books unique idx', EXISTS (SELECT 1 FROM pg_index WHERE indexrelid = to_regclass('public.books_square_item_id_idx') AND indrelid = 'public.books'::regclass AND indisunique AND indisvalid)
 UNION ALL SELECT 'jobs concurrency', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payload_jobs' AND column_name = 'concurrency_key')
 UNION ALL SELECT 'task slug enum',   EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'enum_payload_jobs_task_slug' AND e.enumlabel = 'square-inventory-sync');
