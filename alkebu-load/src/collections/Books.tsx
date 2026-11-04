@@ -3,6 +3,7 @@ import { autoEnrichBookFromISBN, autoLinkAuthors } from '@/app/utils/autoEnrichB
 import { autoLinkPublisher } from '@/app/utils/autoLinkPublisher';
 import { assertSquareItemsUnclaimed } from '@/app/utils/squareItemOwnership';
 import { EnrichBookButton } from '@/app/components/EnrichBookButton';
+import { deriveTitleLong, stampManualFieldSources } from './hooks/stampManualFieldSources';
 
 // Auto-categorization mapping helper
 const mapCategoriesToPayload = (scrapedCategories: string[], scrapedSubjects: string[]): string[] => {
@@ -94,10 +95,17 @@ const Books: CollectionConfig = {
       }
     },
     {
+      name: 'subtitle',
+      type: 'text',
+      admin: {
+        description: 'Subtitle, shown under the title on the storefront. Keep it out of the title.'
+      }
+    },
+    {
       name: 'titleLong',
       type: 'text',
       admin: {
-        description: 'Full title with subtitle (maps to isbndb.title_long)'
+        description: 'Full title with subtitle. Derived as "Title: Subtitle" whenever a subtitle is set (otherwise maps to isbndb.title_long)'
       }
     },
     {
@@ -286,6 +294,22 @@ const Books: CollectionConfig = {
           }
         },
         {
+          name: 'mediaMailEligible',
+          type: 'checkbox',
+          admin: {
+            readOnly: true,
+            description: 'System-set by Ingram enrichment: Ingram flags this edition as USPS Media Mail eligible',
+          },
+        },
+        {
+          name: 'ingramOnSaleDate',
+          type: 'date',
+          admin: {
+            readOnly: true,
+            description: 'System-set by Ingram enrichment: street (on-sale) date',
+          },
+        },
+        {
           name: 'squareItemId',
           type: 'text',
           index: true,
@@ -332,6 +356,14 @@ const Books: CollectionConfig = {
               type: 'number',
               admin: {
                 description: 'Weight in ounces for this edition',
+              },
+            },
+            {
+              name: 'lockPrice',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description: 'Never raise this price to Ingram list (used copies under the same ISBN, deliberate promotions)',
               },
             },
           ],
@@ -608,7 +640,8 @@ const Books: CollectionConfig = {
         { label: 'ISBNDB API', value: 'isbndb' },
         { label: 'Google Books API', value: 'google-books' },
         { label: 'CSV Import', value: 'csv-import' },
-        { label: 'Square Webhook', value: 'square-webhook' }
+        { label: 'Square Webhook', value: 'square-webhook' },
+        { label: 'Ingram', value: 'ingram' }
       ],
       admin: {
         description: 'Source of this book data'
@@ -808,6 +841,35 @@ const Books: CollectionConfig = {
       ],
     },
 
+    // Ingram enrichment provenance (spec: "Provenance and manual-edit protection")
+    {
+      name: 'enrichment',
+      type: 'group',
+      admin: {
+        description: 'Where enrichable fields came from. Staff edits are stamped "manual" and never overwritten by Ingram enrichment.',
+      },
+      fields: [
+        {
+          name: 'fieldSources',
+          type: 'json',
+          admin: {
+            readOnly: true,
+            description: 'fieldPath -> { source: manual | ingram, at }. Edition fields are keyed by EAN.',
+          },
+        },
+        {
+          name: 'ingramEnrichedAt',
+          type: 'date',
+          admin: { readOnly: true, description: 'Last time Ingram enrichment wrote to this book' },
+        },
+        {
+          name: 'ingramRecordDate',
+          type: 'date',
+          admin: { readOnly: true, description: 'Record date of the Ingram data last applied' },
+        },
+      ],
+    },
+
     // SEO Fields
     {
       name: 'seo',
@@ -896,6 +958,10 @@ const Books: CollectionConfig = {
         await assertSquareItemsUnclaimed({ data, originalDoc, req });
         return data;
       },
+      // Staff edits own their fields: Ingram enrichment never overwrites them.
+      ({ data, originalDoc, req, context, operation }) =>
+        stampManualFieldSources({ data, originalDoc, req, context, operation }),
+      ({ data, originalDoc }) => deriveTitleLong(data, originalDoc),
     ],
     afterChange: [
       async ({ doc, req, operation }) => {

@@ -892,7 +892,11 @@ export interface Book {
    */
   title: string;
   /**
-   * Full title with subtitle (maps to isbndb.title_long)
+   * Subtitle, shown under the title on the storefront. Keep it out of the title.
+   */
+  subtitle?: string | null;
+  /**
+   * Full title with subtitle. Derived as "Title: Subtitle" whenever a subtitle is set (otherwise maps to isbndb.title_long)
    */
   titleLong?: string | null;
   /**
@@ -995,6 +999,14 @@ export interface Book {
      */
     dimensions?: string | null;
     /**
+     * System-set by Ingram enrichment: Ingram flags this edition as USPS Media Mail eligible
+     */
+    mediaMailEligible?: boolean | null;
+    /**
+     * System-set by Ingram enrichment: street (on-sale) date
+     */
+    ingramOnSaleDate?: string | null;
+    /**
      * Square POS item this edition belongs to. Each binding is its own Square item, so a consolidated book can span several.
      */
     squareItemId?: string | null;
@@ -1019,6 +1031,10 @@ export interface Book {
        * Weight in ounces for this edition
        */
       shippingWeight?: number | null;
+      /**
+       * Never raise this price to Ingram list (used copies under the same ISBN, deliberate promotions)
+       */
+      lockPrice?: boolean | null;
     };
     inventory?: {
       /**
@@ -1170,7 +1186,7 @@ export interface Book {
   /**
    * Source of this book data
    */
-  importSource?: ('manual' | 'isbndb' | 'google-books' | 'csv-import' | 'square-webhook') | null;
+  importSource?: ('manual' | 'isbndb' | 'google-books' | 'csv-import' | 'square-webhook' | 'ingram') | null;
   /**
    * Date when this book was imported
    */
@@ -1252,6 +1268,31 @@ export interface Book {
      * Date added to inventory
      */
     dateAdded?: string | null;
+  };
+  /**
+   * Where enrichable fields came from. Staff edits are stamped "manual" and never overwritten by Ingram enrichment.
+   */
+  enrichment?: {
+    /**
+     * fieldPath -> { source: manual | ingram, at }. Edition fields are keyed by EAN.
+     */
+    fieldSources?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Last time Ingram enrichment wrote to this book
+     */
+    ingramEnrichedAt?: string | null;
+    /**
+     * Record date of the Ingram data last applied
+     */
+    ingramRecordDate?: string | null;
   };
   seo?: {
     /**
@@ -6519,6 +6560,7 @@ export interface VendorsSelect<T extends boolean = true> {
  */
 export interface BooksSelect<T extends boolean = true> {
   title?: T;
+  subtitle?: T;
   titleLong?: T;
   slug?: T;
   authors?: T;
@@ -6547,6 +6589,8 @@ export interface BooksSelect<T extends boolean = true> {
         pages?: T;
         language?: T;
         dimensions?: T;
+        mediaMailEligible?: T;
+        ingramOnSaleDate?: T;
         squareItemId?: T;
         squareVariationId?: T;
         stripePriceId?: T;
@@ -6556,6 +6600,7 @@ export interface BooksSelect<T extends boolean = true> {
               retailPrice?: T;
               wholesalePrice?: T;
               shippingWeight?: T;
+              lockPrice?: T;
             };
         inventory?:
           | T
@@ -6653,6 +6698,13 @@ export interface BooksSelect<T extends boolean = true> {
         location?: T;
         isConsignment?: T;
         dateAdded?: T;
+      };
+  enrichment?:
+    | T
+    | {
+        fieldSources?: T;
+        ingramEnrichedAt?: T;
+        ingramRecordDate?: T;
       };
   seo?:
     | T
