@@ -84,7 +84,7 @@ This single Payload instance handles:
 ### Email (SES SMTP)
 - Transport: `@payloadcms/email-nodemailer` → Amazon SES SMTP, with generic SMTP fallback
 - Templates (`src/app/utils/emailTemplates.ts`) — Afrocentric branded (Kente Gold, Forest Green): order confirmation, staff notification, status updates, daily digest, abandoned cart
-- Payload job queue (`src/payload.config.ts`), run only when `ENABLE_JOB_AUTORUN=true`. **The Square webhook only queues `square-catalog-sync` / `square-inventory-sync`; nothing executes them unless that flag is on**, so with it unset Square changes never reach Payload.
+- Payload job queue (`src/payload.config.ts`), run only when `ENABLE_JOB_AUTORUN=true` (set in production Coolify, confirmed 2026-11-03). **The Square webhook only queues `square-catalog-sync` / `square-inventory-sync`; nothing executes them unless that flag is on**, so with it unset Square changes never reach Payload.
   - `cleanup-abandoned-carts` every 2 hours — emails customers about carts idle. **Also needs `ENABLE_CUSTOMER_EMAIL_JOBS=true`.**
   - `quote-followups` daily at 15:00 UTC — emails customers about quote requests idle >7 days. **Also needs `ENABLE_CUSTOMER_EMAIL_JOBS=true`.**
   - `daily-order-digest` at 12:00 UTC (7 AM CT) — emails staff a digest
@@ -189,7 +189,8 @@ This single Payload instance handles:
 - Perspective API key — comment moderation
 - `ENABLE_JOB_AUTORUN` — opt-in, production-only. Set to exactly `"true"` to enable Payload's
   job queue runner (`autoRun`, resolved by `src/app/utils/jobRunnerConfig.ts`). Required for Square
-  sync, Stripe recovery and the staff digest. Never set it on a dev machine.
+  sync, Stripe recovery and the staff digest. Set to `true` in production (confirmed 2026-11-03).
+  Never set it on a dev machine.
 - `ENABLE_CUSTOMER_EMAIL_JOBS` — second opt-in for the two customer-emailing jobs (abandoned cart,
   quote follow-ups). Unset means they are never queued, even with the runner on.
 

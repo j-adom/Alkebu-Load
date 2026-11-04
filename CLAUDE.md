@@ -91,7 +91,7 @@ Square POS  ──webhooks──>  Payload CMS  ──Local API──>  Carts / 
   - `daily-order-digest` — 12:00 UTC (7 AM CT)
   - `quote-followups` — daily at 15:00 UTC; emails customers about quote requests idle >7 days
   - `recover-stripe-orders` — hourly at :15; reconciles paid Stripe sessions with no matching order and emails staff on recovery
-  - Gated behind `ENABLE_JOB_AUTORUN` (opt-in, production-only — see `alkebu-load/src/app/utils/jobRunnerConfig.ts`). The same runner executes the Square sync jobs the webhook queues, so with it unset Square changes never reach Payload.
+  - Gated behind `ENABLE_JOB_AUTORUN` (opt-in, production-only — see `alkebu-load/src/app/utils/jobRunnerConfig.ts`); it is `true` in production (confirmed 2026-11-03). The same runner executes the Square sync jobs the webhook queues, so with it unset Square changes never reach Payload.
   - `cleanup-abandoned-carts` and `quote-followups` email customers and additionally need `ENABLE_CUSTOMER_EMAIL_JOBS=true`.
 - **Refund API**: admin-only POST, admin+staff GET. Phase 1 staff use the Stripe Dashboard for actual refunds.
 
