@@ -19,7 +19,7 @@ import { SiteSettings } from './globals/SiteSettings'
 import { searchEngine } from './app/utils/searchEngine'
 import { checkSchemaDrift } from './app/utils/schemaDrift'
 import { sendRawEmail } from './app/utils/emailService'
-import { customerEmailJobSchedule, resolveJobAutoRunConfig } from './app/utils/jobRunnerConfig'
+import { customerEmailJobSchedule, customerEmailJobsEnabled, resolveJobAutoRunConfig } from './app/utils/jobRunnerConfig'
 import { shouldEnableDevSchemaPush } from './app/utils/devSchemaPush'
 
 import Users from './collections/Users'
@@ -265,6 +265,9 @@ export default buildConfig({
       {
         slug: 'cleanup-abandoned-carts',
         handler: async ({ req }) => {
+          if (!customerEmailJobsEnabled()) {
+            return { output: { skipped: 'ENABLE_CUSTOMER_EMAIL_JOBS is not true' } };
+          }
           const { cleanupAbandonedCarts } = await import('./app/utils/cartOperations');
           await cleanupAbandonedCarts(req.payload);
           return { output: {} };
@@ -286,6 +289,9 @@ export default buildConfig({
         handler: async ({ req }) => {
           // Nudge customers with quotes stuck in quote-sent / awaiting-response
           // for 7+ days; each quote is re-nudged at most every 7 days.
+          if (!customerEmailJobsEnabled()) {
+            return { output: { skipped: 'ENABLE_CUSTOMER_EMAIL_JOBS is not true' } };
+          }
           const { quoteRequestSystem } = await import('./app/utils/quoteRequestSystem');
           await quoteRequestSystem.processQuoteFollowups(req.payload);
           return { output: {} };

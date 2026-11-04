@@ -60,3 +60,12 @@ export function customerEmailJobSchedule(
 ): ScheduleEntry[] {
   return env.ENABLE_CUSTOMER_EMAIL_JOBS === 'true' ? schedule : [];
 }
+
+/**
+ * Run-time half of the opt-in. Removing a task's schedule stops new runs from
+ * being queued, but Payload queues each next run as soon as the previous one
+ * finishes, so a job queued before the flag changed would still execute. The
+ * handlers check this too and skip.
+ */
+export const customerEmailJobsEnabled = (env: Record<string, string | undefined> = process.env): boolean =>
+  env.ENABLE_CUSTOMER_EMAIL_JOBS === 'true';
