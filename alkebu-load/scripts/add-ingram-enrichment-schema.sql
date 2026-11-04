@@ -3,6 +3,8 @@
 --   - books_editions: mediaMailEligible, ingramOnSaleDate, pricing.lockPrice
 --   - enum_books_import_source: 'ingram'
 --   - ingram_enrichment_log, ingram_enrichment_review (+ payload_locked_documents_rels links)
+--   - ingram_enrichment_state global (processed-file checksums)
+--   - payload_jobs task-slug enums: ingram-enrich-titles, ingram-enrich-descriptions
 --
 -- APPLY TO PRODUCTION POSTGRES *BEFORE* DEPLOYING the branch that adds these fields.
 -- Without the columns, Payload errors when it reads or writes books.
@@ -158,6 +160,21 @@ CREATE INDEX IF NOT EXISTS "ingram_enrichment_review_created_at_idx" ON "ingram_
 CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_ingram_enrichment_log_id_idx" ON "payload_locked_documents_rels" USING btree ("ingram_enrichment_log_id");
 CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_ingram_enrichment_review_i_idx" ON "payload_locked_documents_rels" USING btree ("ingram_enrichment_review_id");
 
+-- 3. Run state global and job slugs (Task 21) ---------------------------------------------
+CREATE TABLE IF NOT EXISTS "ingram_enrichment_state" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "processed_files" jsonb,
+  "last_run_at" timestamp(3) with time zone,
+  "last_run_summary" jsonb,
+  "updated_at" timestamp(3) with time zone,
+  "created_at" timestamp(3) with time zone
+);
+
+ALTER TYPE public.enum_payload_jobs_log_task_slug ADD VALUE IF NOT EXISTS 'ingram-enrich-titles';
+ALTER TYPE public.enum_payload_jobs_log_task_slug ADD VALUE IF NOT EXISTS 'ingram-enrich-descriptions';
+ALTER TYPE public.enum_payload_jobs_task_slug     ADD VALUE IF NOT EXISTS 'ingram-enrich-titles';
+ALTER TYPE public.enum_payload_jobs_task_slug     ADD VALUE IF NOT EXISTS 'ingram-enrich-descriptions';
+
 -- 9. Verify (inside the transaction: any failure rolls everything back) ------------------
 DO $do$
 DECLARE
@@ -179,7 +196,8 @@ BEGIN
       ('ingram_enrichment_review', 'proposed_key', 'character varying'),
       ('ingram_enrichment_review', 'state', 'USER-DEFINED'),
       ('payload_locked_documents_rels', 'ingram_enrichment_log_id', 'integer'),
-      ('payload_locked_documents_rels', 'ingram_enrichment_review_id', 'integer')
+      ('payload_locked_documents_rels', 'ingram_enrichment_review_id', 'integer'),
+      ('ingram_enrichment_state', 'processed_files', 'jsonb')
     ) AS expected(tbl, col, typ)
     LEFT JOIN information_schema.columns c
       ON c.table_schema = 'public'
@@ -194,6 +212,12 @@ BEGIN
                   WHERE t.typname = 'enum_books_import_source' AND e.enumlabel = 'ingram') THEN
     RAISE EXCEPTION 'Verification failed: enum_books_import_source lacks ingram';
   END IF;
+  -- Enum labels added in this transaction are visible to catalog queries here.
+  IF (SELECT count(*) FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+       WHERE t.typname IN ('enum_payload_jobs_task_slug', 'enum_payload_jobs_log_task_slug')
+         AND e.enumlabel IN ('ingram-enrich-titles', 'ingram-enrich-descriptions')) <> 4 THEN
+    RAISE EXCEPTION 'Verification failed: enrichment job slugs missing from the payload_jobs enums';
+  END IF;
 END
 $do$;
 
@@ -205,4 +229,6 @@ COMMIT;
 -- UNION ALL SELECT 'books_editions.pricing_lock_price', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'books_editions' AND column_name = 'pricing_lock_price')
 -- UNION ALL SELECT 'log table', to_regclass('public.ingram_enrichment_log') IS NOT NULL
 -- UNION ALL SELECT 'review table', to_regclass('public.ingram_enrichment_review') IS NOT NULL
+-- UNION ALL SELECT 'state table', to_regclass('public.ingram_enrichment_state') IS NOT NULL
+-- UNION ALL SELECT 'job slug', EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'enum_payload_jobs_task_slug' AND e.enumlabel = 'ingram-enrich-titles')
 -- UNION ALL SELECT 'import_source ingram', EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'enum_books_import_source' AND e.enumlabel = 'ingram');

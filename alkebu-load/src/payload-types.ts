@@ -148,6 +148,7 @@ export interface Config {
     shopPage: ShopPage;
     siteSettings: SiteSetting;
     squareSyncState: SquareSyncState;
+    ingramEnrichmentState: IngramEnrichmentState;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
@@ -157,6 +158,7 @@ export interface Config {
     shopPage: ShopPageSelect<false> | ShopPageSelect<true>;
     siteSettings: SiteSettingsSelect<false> | SiteSettingsSelect<true>;
     squareSyncState: SquareSyncStateSelect<false> | SquareSyncStateSelect<true>;
+    ingramEnrichmentState: IngramEnrichmentStateSelect<false> | IngramEnrichmentStateSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
@@ -174,6 +176,8 @@ export interface Config {
       'square-inventory-sync': TaskSquareInventorySync;
       'ingram-stock-fetch': TaskIngramStockFetch;
       'ingram-stock-apply': TaskIngramStockApply;
+      'ingram-enrich-titles': TaskIngramEnrichTitles;
+      'ingram-enrich-descriptions': TaskIngramEnrichDescriptions;
       inline: {
         input: unknown;
         output: unknown;
@@ -5644,7 +5648,9 @@ export interface PayloadJob {
           | 'square-catalog-sync'
           | 'square-inventory-sync'
           | 'ingram-stock-fetch'
-          | 'ingram-stock-apply';
+          | 'ingram-stock-apply'
+          | 'ingram-enrich-titles'
+          | 'ingram-enrich-descriptions';
         taskID: string;
         input?:
           | {
@@ -5688,6 +5694,8 @@ export interface PayloadJob {
         | 'square-inventory-sync'
         | 'ingram-stock-fetch'
         | 'ingram-stock-apply'
+        | 'ingram-enrich-titles'
+        | 'ingram-enrich-descriptions'
       )
     | null;
   queue?: string | null;
@@ -8228,6 +8236,40 @@ export interface SquareSyncState {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingramEnrichmentState".
+ */
+export interface IngramEnrichmentState {
+  id: number;
+  /**
+   * remotePath -> { checksum, processedAt } of the last successful apply
+   */
+  processedFiles?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  lastRunAt?: string | null;
+  /**
+   * Counts-only summary of the last applied run (no Ingram titles or values)
+   */
+  lastRunSummary?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
@@ -8433,6 +8475,18 @@ export interface SquareSyncStateSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingramEnrichmentState_select".
+ */
+export interface IngramEnrichmentStateSelect<T extends boolean = true> {
+  processedFiles?: T;
+  lastRunAt?: T;
+  lastRunSummary?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats_select".
  */
 export interface PayloadJobsStatsSelect<T extends boolean = true> {
@@ -8512,6 +8566,22 @@ export interface TaskIngramStockFetch {
  * via the `definition` "TaskIngram-stock-apply".
  */
 export interface TaskIngramStockApply {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-enrich-titles".
+ */
+export interface TaskIngramEnrichTitles {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-enrich-descriptions".
+ */
+export interface TaskIngramEnrichDescriptions {
   input?: unknown;
   output?: unknown;
 }

@@ -26,7 +26,7 @@ const REFRESH_CONTEXT = { skipEnrichment: true, ingramStockRefresh: true };
 
 type BookPager = Pick<Payload, 'find'>;
 
-async function* allBooks(payload: BookPager, pageSize = PAGE_SIZE): AsyncGenerator<any> {
+export async function* allBooks(payload: BookPager, pageSize = PAGE_SIZE): AsyncGenerator<any> {
   for (let page = 1; ; page += 1) {
     const result = await payload.find({ collection: 'books', page, limit: pageSize, depth: 0, sort: 'id' });
     for (const doc of result.docs) yield doc;

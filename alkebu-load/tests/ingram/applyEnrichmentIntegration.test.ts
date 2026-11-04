@@ -203,3 +203,16 @@ test('supersession, accept and reject against the real review collection', async
   assert.equal(accepted.state, 'accepted');
   assert.ok((await logsFor(created.id)).some((l) => l.fieldPath === 'synopsis' && l.action === 'accept'));
 });
+
+test('the enrichment jobs are registered, share the Square lock, and are inert without INGRAM_ENRICHMENT_ENABLED', async () => {
+  delete process.env.INGRAM_ENRICHMENT_ENABLED;
+  const tasks = (payload.config.jobs?.tasks ?? []) as any[];
+  for (const slug of ['ingram-enrich-titles', 'ingram-enrich-descriptions']) {
+    const task = tasks.find((t) => t.slug === slug);
+    assert.ok(task, `${slug} registered`);
+    assert.equal(task.concurrency?.key?.({}), 'books-write');
+    assert.ok(task.schedule?.length, `${slug} scheduled`);
+    const result = await task.handler({ req: { payload }, input: {} });
+    assert.deepEqual(result, { output: { skipped: 'INGRAM_ENRICHMENT_ENABLED is not true' } });
+  }
+});

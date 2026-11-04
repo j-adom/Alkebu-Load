@@ -75,6 +75,15 @@ export function createFakePayload(seed: Record<string, Doc[]> = {}, opts: { tran
         transactions.delete(String(id));
       },
     },
+    globals: new Map<string, Doc>(),
+    async findGlobal({ slug }: any) {
+      return clone(payload.globals.get(slug) ?? {});
+    },
+    async updateGlobal({ slug, data }: any) {
+      calls.push({ op: 'updateGlobal', collection: slug, data: clone(data) });
+      payload.globals.set(slug, { ...(payload.globals.get(slug) ?? {}), ...clone(data) });
+      return clone(payload.globals.get(slug));
+    },
     async findByID({ collection, id, req }: any) {
       const doc = coll(target(req), collection).get(String(id));
       if (!doc) throw new Error(`fakePayload: ${collection} ${id} not found`);
