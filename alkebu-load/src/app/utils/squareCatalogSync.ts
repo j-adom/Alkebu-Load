@@ -144,7 +144,8 @@ function storedDifferences(next: unknown, current: unknown, path: string, out: S
   if (next === undefined) return;
   if (next === null || typeof next !== 'object') {
     const same = (next ?? null) === (current ?? null) || (typeof next === 'number' && Number(current) === next);
-    if (!same) out.add(path);
+    // A flag's direction matters (hiding an edition vs restoring it), so name it.
+    if (!same) out.add(typeof next === 'boolean' ? `${path} -> ${next}` : path);
     return;
   }
   if (Array.isArray(next)) {

@@ -104,7 +104,7 @@ test('changedBookFields names the stored paths an update would change', () => {
       ],
       lastSyncedAt: '2026-11-04T00:00:00.000Z',
     }),
-    ['editions.isAvailable', 'editions.squareItemId'],
+    ['editions.isAvailable -> true', 'editions.squareItemId'],
   );
   assert.deepEqual(changedBookFields(stored, { editions: [stored.editions[1], stored.editions[0]] }), [
     'editions (order only)',
