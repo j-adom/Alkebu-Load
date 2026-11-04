@@ -19,7 +19,7 @@ import { SiteSettings } from './globals/SiteSettings'
 import { searchEngine } from './app/utils/searchEngine'
 import { checkSchemaDrift } from './app/utils/schemaDrift'
 import { sendRawEmail } from './app/utils/emailService'
-import { resolveJobAutoRunConfig } from './app/utils/jobRunnerConfig'
+import { customerEmailJobSchedule, resolveJobAutoRunConfig } from './app/utils/jobRunnerConfig'
 import { shouldEnableDevSchemaPush } from './app/utils/devSchemaPush'
 
 import Users from './collections/Users'
@@ -269,7 +269,8 @@ export default buildConfig({
           await cleanupAbandonedCarts(req.payload);
           return { output: {} };
         },
-        schedule: [{ cron: '0 */2 * * *', queue: 'default' }], // Every 2 hours
+        // Emails customers about abandoned carts: needs ENABLE_CUSTOMER_EMAIL_JOBS too.
+        schedule: customerEmailJobSchedule([{ cron: '0 */2 * * *', queue: 'default' }]), // Every 2 hours
       },
       {
         slug: 'daily-order-digest',
@@ -289,7 +290,8 @@ export default buildConfig({
           await quoteRequestSystem.processQuoteFollowups(req.payload);
           return { output: {} };
         },
-        schedule: [{ cron: '0 15 * * *', queue: 'default' }], // 15:00 UTC = 10:00 AM CDT / 9:00 AM CST
+        // Emails customers: needs ENABLE_CUSTOMER_EMAIL_JOBS too.
+        schedule: customerEmailJobSchedule([{ cron: '0 15 * * *', queue: 'default' }]), // 15:00 UTC = 10:00 AM CDT / 9:00 AM CST
       },
       {
         slug: 'recover-stripe-orders',
