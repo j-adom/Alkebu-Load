@@ -11,7 +11,8 @@ type Req = Pick<PayloadRequest, 'user' | 'payload' | 'routeParams'> & Partial<Pa
  * catalog sync would revert them. Resolved lazily so this module never loads the SDK.
  */
 async function acceptExtras(): Promise<AcceptExtras> {
-  return {};
+  const { squareWriteOptionFromEnv } = await import('./squareWriteBack');
+  return { square: await squareWriteOptionFromEnv() };
 }
 
 const forbidden = () => Response.json({ error: 'Only admin or staff can review Ingram proposals.' }, { status: 403 });

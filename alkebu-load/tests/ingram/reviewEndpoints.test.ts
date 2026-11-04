@@ -22,7 +22,7 @@ test('accept maps a refusal to 409 and success to 200', async () => {
   assert.equal(refused.status, 409);
   assert.match((await refused.json()).error, /already accepted/);
 
-  const ok = await handleAcceptReview(req, async () => ({ applied: 1, stale: 0, logged: 1, queued: 0, superseded: 0 }));
+  const ok = await handleAcceptReview(req, async () => ({ applied: 1, stale: 0, logged: 1, queued: 0, superseded: 0, deferred: 0, squareWritten: 0, squareConflicts: 0 }));
   assert.equal(ok.status, 200);
   assert.equal((await handleAcceptReview({ ...req, routeParams: {} })).status, 400);
 });

@@ -10,6 +10,12 @@ import type { Payload } from 'payload';
 
 import { isWrite, rejectionKey, type FieldChange } from './diffEnrichment';
 import {
+  applySquareWrites,
+  planSquareWrites,
+  type SquareWriteOption,
+  type WrittenObject,
+} from './squareWriteBack';
+import {
   comparable,
   editionEanOf,
   getPath,
@@ -166,6 +172,12 @@ export interface ApplyOptions {
   requireAll?: boolean;
   /** Extra writes inside the same transaction (e.g. marking the review accepted). */
   withinTransaction?: (req: TxReq) => Promise<void>;
+  /**
+   * Square write-back (Task 20b). Price/title changes on Square-linked books are written to
+   * Square first, then Payload. Without it they are deferred: Payload alone would be
+   * reverted by the next Square catalog sync.
+   */
+  square?: SquareWriteOption;
 }
 
 export interface ApplyResult {
@@ -174,7 +186,22 @@ export interface ApplyResult {
   logged: number;
   queued: number;
   superseded: number;
+  /** Price/title changes held back: Square write-back off, or Square refused (conflict/missing). */
+  deferred: number;
+  squareWritten: number;
+  squareConflicts: number;
 }
+
+export const emptyApplyResult = (): ApplyResult => ({
+  applied: 0,
+  stale: 0,
+  logged: 0,
+  queued: 0,
+  superseded: 0,
+  deferred: 0,
+  squareWritten: 0,
+  squareConflicts: 0,
+});
 
 export async function applyEnrichment(
   payload: PayloadLike,
@@ -183,13 +210,63 @@ export async function applyEnrichment(
   runId: string,
   opts: ApplyOptions = {},
 ): Promise<ApplyResult> {
-  const result: ApplyResult = { applied: 0, stale: 0, logged: 0, queued: 0, superseded: 0 };
-  const writes = changes.filter(isWrite);
+  const result = emptyApplyResult();
+  let writes = changes.filter(isWrite);
   const conflicts = changes.filter((c) => c.action === 'conflict');
   if (writes.length === 0 && conflicts.length === 0 && !opts.withinTransaction) return result;
   const now = (opts.now ?? (() => new Date()))().toISOString();
 
+  // Square first. A Square failure throws here, before any Payload write for this book. A
+  // Payload failure after a Square success is not retried: the catalog sync converges.
+  let squareWritten: WrittenObject[] = [];
+  const planned = planSquareWrites(book, writes);
+  if (planned.length) {
+    let blocked: Set<string>;
+    if (!opts.square) {
+      blocked = new Set(planned.map((w) => w.key));
+    } else {
+      const res = await applySquareWrites(opts.square.client, planned, { dryRun: false });
+      squareWritten = res.written;
+      result.squareWritten = res.written.length;
+      result.squareConflicts = res.conflicts.length;
+      blocked = new Set([...res.conflicts, ...res.skipped].map((w) => w.key));
+    }
+    // A subtitle without its cleaned title would duplicate text already in the title.
+    if (blocked.has('title')) blocked.add('subtitle');
+    const kept = writes.filter((w) => !blocked.has(w.key));
+    result.deferred = writes.length - kept.length;
+    writes = kept;
+    if (opts.requireAll && result.deferred) {
+      throw new Error(
+        opts.square
+          ? 'Square no longer holds the value this proposal was based on (changed at the POS); not applied.'
+          : 'This change must be written to Square first, and Square write-back is off (INGRAM_ENRICHMENT_SQUARE_WRITEBACK).',
+      );
+    }
+  }
+
   return inTransaction(payload, async (req) => {
+    for (const w of squareWritten) {
+      await payload.create({
+        collection: LOG_COLLECTION as any,
+        data: {
+          book: book.id,
+          fieldPath: w.write.key,
+          editionIsbn: w.write.editionIsbn,
+          target: 'square',
+          action: opts.logAction ?? 'correct',
+          previousValue: wrapValue(w.previous),
+          newValue: wrapValue(w.write.next),
+          squareObjectId: w.write.objectId,
+          squareVersion: w.previousVersion ?? undefined,
+          ingramRecordDate: opts.recordDate ?? undefined,
+          runId,
+        } as any,
+        req: req as any,
+      });
+      result.logged += 1;
+    }
+
     if (writes.length) {
       // Re-read inside the transaction: the diff may be minutes old.
       const fresh = await payload.findByID({ collection: 'books', id: book.id, depth: 0, req: req as any });

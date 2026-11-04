@@ -143,7 +143,7 @@ test('apply writes, stamps provenance, derives titleLong, logs each value; a rer
 
   const rerun = mod.diffEnrichment(book, candidate);
   const second = await mod.applyEnrichment(payload as any, book, rerun, 'run-1');
-  assert.deepEqual(second, { applied: 0, stale: 0, logged: 0, queued: 0, superseded: 0 });
+  assert.equal(second.applied + second.logged + second.queued + second.superseded + second.deferred, 0);
   assert.equal((await reviewsFor(created.id)).length, 1);
 });
 

@@ -5,6 +5,7 @@
 import type { FieldChange } from './diffEnrichment';
 import { applyEnrichment, REVIEW_COLLECTION, unwrapValue, type ApplyResult, type PayloadLike } from './applyEnrichment';
 import type { EnrichmentField } from './enrichmentFields';
+import type { SquareWriteOption } from './squareWriteBack';
 
 export const isReviewStaff = (user: unknown): boolean => {
   const u = user as { collection?: string; role?: string } | null | undefined;
@@ -25,7 +26,8 @@ async function pendingRow(payload: PayloadLike, id: string | number) {
  * caller so this module stays free of the Square SDK.
  */
 export interface AcceptExtras {
-  beforeApply?: (book: Record<string, any>, change: FieldChange) => Promise<void>;
+  /** Square write-back for accepted price/title proposals on Square-linked books. */
+  square?: SquareWriteOption;
 }
 
 export async function acceptReview(
@@ -47,13 +49,13 @@ export async function acceptReview(
     proposed: unwrapValue(row.proposedValue),
     action: 'correct',
   };
-  await extras.beforeApply?.(book, change);
   return applyEnrichment(payload, book, [change], `review-${String(id)}`, {
     now,
     recordDate: row.ingramRecordDate,
     logAction: 'accept',
     reviewId: row.id,
     requireAll: true,
+    square: extras.square,
     withinTransaction: async (req) => {
       await payload.update({
         collection: REVIEW_COLLECTION as any,
