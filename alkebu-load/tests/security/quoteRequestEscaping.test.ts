@@ -9,6 +9,7 @@ import {
 } from '../../src/app/utils/quoteRequestSystem';
 import type { ExternalBookData } from '../../src/app/utils/externalBookAPI';
 import { createRateLimiter } from '../../src/app/utils/rateLimit';
+import { generateQuoteFollowupTemplate } from '../../src/app/utils/emailTemplates';
 
 const SCRIPT = '<script>alert(1)</script>';
 const SCRIPT_ESCAPED = '&lt;script&gt;alert(1)&lt;/script&gt;';
@@ -53,8 +54,13 @@ const staffEmail = (req: QuoteRequest, books: ExternalBookData[] = []) =>
   quoteRequestSystem['generateStaffNotificationEmail'](req, '42', books);
 const initialContent = (req: QuoteRequest) =>
   quoteRequestSystem['generateInitialRequestContent'](req);
-const followupEmail = (quote: Record<string, unknown>) =>
-  quoteRequestSystem['generateFollowupEmail'](quote);
+const followupEmail = (quote: Record<string, any>) =>
+  generateQuoteFollowupTemplate({
+    customerName: quote.customerName,
+    customerEmail: quote.customerEmail,
+    bookTitle: quote.bookTitle,
+    unsubscribeUrl: 'https://alkebulanimages.com/unsubscribe?t=x',
+  });
 
 function assertEscaped(html: string, payload: (typeof PAYLOADS)[number], label: string) {
   assert.ok(!html.includes(payload.rawMarker), `${label}: raw "${payload.rawMarker}" must not appear`);

@@ -134,6 +134,31 @@ export function parseQuoteRequestBody(
   };
 }
 
+const FOLLOWUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+export const MAX_QUOTE_FOLLOWUPS = 2;
+
+/**
+ * Whether an open quote is due a follow-up: at most MAX_QUOTE_FOLLOWUPS, a week
+ * apart, and never once the quote's own "valid until" date has passed.
+ */
+export function decideQuoteFollowup(
+  quote: any,
+  now: number,
+): 'send' | 'expired' | 'limit-reached' | 'too-soon' {
+  const validUntil = quote?.quote?.validUntil ? Date.parse(quote.quote.validUntil) : NaN;
+  if (Number.isFinite(validUntil) && validUntil < now) return 'expired';
+
+  const sent = Array.isArray(quote?.communications)
+    ? quote.communications.filter((entry: any) => entry?.type === 'followup-email').length
+    : 0;
+  if (sent >= MAX_QUOTE_FOLLOWUPS) return 'limit-reached';
+
+  const last = quote?.lastFollowup ? Date.parse(quote.lastFollowup) : NaN;
+  if (Number.isFinite(last) && now - last < FOLLOWUP_INTERVAL_MS) return 'too-soon';
+
+  return 'send';
+}
+
 class QuoteRequestSystem {
   
   /**
@@ -618,87 +643,77 @@ class QuoteRequestSystem {
    */
   async processQuoteFollowups(payload: any) {
     try {
-      // Find quotes that need follow-up
-      const pendingQuotes = await payload.find({
-        collection: 'bookQuotes',
-        where: {
-          status: { in: ['quote-sent', 'awaiting-response'] },
-          quoteDate: {
-            less_than: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
-          }
-        }
-      });
+      const { buildUnsubscribeLinks, isMarketingEmailSuppressed, listUnsubscribeHeaders } = await import('./marketingEmail');
+      const { sendQuoteFollowupEmail } = await import('./emailService');
 
-      for (const quote of pendingQuotes.docs) {
-        // Check if we've already sent a follow-up recently
-        const lastFollowup = quote.lastFollowup ? new Date(quote.lastFollowup) : null;
-        const daysSinceFollowup = lastFollowup ? 
-          (Date.now() - lastFollowup.getTime()) / (1000 * 60 * 60 * 24) : 
-          Infinity;
-
-        if (daysSinceFollowup >= 7) { // Follow up every 7 days
-          await this.sendFollowupEmail(payload, quote);
-          
-          // Update last follow-up date
-          await payload.update({
-            collection: 'bookQuotes',
-            id: quote.id,
-            data: {
-              lastFollowup: new Date().toISOString()
-            }
-          });
-        }
+      const now = Date.now();
+      const candidates: any[] = [];
+      for (let page = 1; ; page += 1) {
+        const result = await payload.find({
+          collection: 'bookQuotes',
+          where: {
+            status: { in: ['quote-sent', 'awaiting-response'] },
+            quoteDate: { less_than: new Date(now - FOLLOWUP_INTERVAL_MS).toISOString() },
+          },
+          depth: 0,
+          limit: 100,
+          page,
+          sort: 'id',
+        });
+        candidates.push(...result.docs);
+        if (!result.hasNextPage) break;
       }
+
+      const tally: Record<string, number> = {};
+      const count = (key: string) => { tally[key] = (tally[key] ?? 0) + 1; };
+
+      for (const quote of candidates) {
+        const decision = decideQuoteFollowup(quote, now);
+        if (decision !== 'send') { count(decision); continue; }
+
+        if (!quote.customerEmail || (await isMarketingEmailSuppressed(payload, quote.customerEmail))) {
+          count('suppressed');
+          continue;
+        }
+
+        const result = await sendQuoteFollowupEmail({
+          customerName: quote.customerName,
+          customerEmail: quote.customerEmail,
+          bookTitle: quote.bookTitle,
+          author: quote.author,
+          quantity: quote.quantity,
+          pricePerBook: quote.quote?.pricePerBook,
+          totalPrice: quote.quote?.totalPrice,
+          estimatedArrival: quote.quote?.estimatedArrival,
+          validUntil: quote.quote?.validUntil,
+          unsubscribeUrl: buildUnsubscribeLinks(quote.customerEmail).pageUrl,
+          unsubscribeHeaders: listUnsubscribeHeaders(quote.customerEmail),
+        });
+
+        // Only a delivered follow-up counts: a failed send is retried next run.
+        if (!result.success) {
+          console.error(`Quote ${quote.id}: follow-up email failed:`, result.error);
+          count('failed');
+          continue;
+        }
+
+        await payload.update({
+          collection: 'bookQuotes',
+          id: quote.id,
+          data: {
+            lastFollowup: new Date().toISOString(),
+            communications: [
+              ...(Array.isArray(quote.communications) ? quote.communications : []),
+              { date: new Date().toISOString(), type: 'followup-email', subject: result.subject, content: 'Automated quote follow-up' },
+            ],
+          },
+        });
+        count('sent');
+      }
+      console.log(`Quote follow-ups: ${JSON.stringify(tally)}`);
     } catch (error) {
       console.error('Error processing quote follow-ups:', error);
     }
-  }
-
-  /**
-   * Generate follow-up email for a stored quote
-   */
-  private generateFollowupEmail(quote: any): QuoteEmail {
-    return {
-      to: quote.customerEmail,
-      subject: `Following up on your book quote - ${subjectSafe(quote.bookTitle)}`,
-      html: `
-        <p>Hi ${escapeHtml(quote.customerName)},</p>
-        <p>We wanted to follow up on the quote we sent for "${escapeHtml(quote.bookTitle)}". 
-           If you have any questions or would like to proceed with the order, please let us know!</p>
-        <p>Quote ID: ${escapeHtml(quote.id)}</p>
-        <p>Best regards,<br>The Alkebulanimages Team</p>
-      `,
-      text: `Hi ${quote.customerName}, we wanted to follow up on your quote for "${quote.bookTitle}". Quote ID: ${quote.id}. Please let us know if you have questions or would like to proceed!`
-    };
-  }
-
-  /**
-   * Send follow-up email to customer
-   */
-  private async sendFollowupEmail(payload: any, quote: any) {
-    const email = this.generateFollowupEmail(quote);
-
-    const result = await sendRawEmail(email);
-    if (!result.success) {
-      console.error(`Quote ${quote.id}: follow-up email failed:`, result.error);
-    }
-
-    // Log the communication
-    await payload.update({
-      collection: 'bookQuotes',
-      id: quote.id,
-      data: {
-        communications: [
-          ...quote.communications,
-          {
-            date: new Date().toISOString(),
-            type: 'followup-email',
-            subject: email.subject,
-            content: email.html
-          }
-        ]
-      }
-    });
   }
 }
 

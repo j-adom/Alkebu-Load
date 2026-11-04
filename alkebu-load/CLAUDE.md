@@ -85,8 +85,9 @@ This single Payload instance handles:
 - Transport: `@payloadcms/email-nodemailer` → Amazon SES SMTP, with generic SMTP fallback
 - Templates (`src/app/utils/emailTemplates.ts`) — Afrocentric branded (Kente Gold, Forest Green): order confirmation, staff notification, status updates, daily digest, abandoned cart
 - Payload job queue (`src/payload.config.ts`), run only when `ENABLE_JOB_AUTORUN=true` (set in production Coolify, confirmed 2026-11-03). **The Square webhook only queues `square-catalog-sync` / `square-inventory-sync`; nothing executes them unless that flag is on**, so with it unset Square changes never reach Payload.
-  - `cleanup-abandoned-carts` every 2 hours — emails customers about carts idle. **Also needs `ENABLE_CUSTOMER_EMAIL_JOBS=true`.**
-  - `quote-followups` daily at 15:00 UTC — emails customers about quote requests idle >7 days. **Also needs `ENABLE_CUSTOMER_EMAIL_JOBS=true`.**
+  - `cleanup-abandoned-carts` every 2 hours — one reminder per guest cart idle 1–48 h (status `active` or `checkout`, i.e. left at Stripe), skipping opt-outs and shoppers who ordered since; deletes abandoned/checkout carts idle 30 days. The link is a signed 7-day `/cart/recover?t=` token (`marketingEmail.ts`, `POST /api/cart-recovery/claim`). **Also needs `ENABLE_CUSTOMER_EMAIL_JOBS=true`.**
+  - `quote-followups` daily at 15:00 UTC — branded follow-up on open quotes, at most two a week apart, never after the quote's `validUntil`. **Also needs `ENABLE_CUSTOMER_EMAIL_JOBS=true`.**
+  - Both carry an unsubscribe link and RFC 8058 `List-Unsubscribe` headers. Opt-outs set `customers.preferences.marketingEmails = false` (creating a ghost customer if needed) via `POST /api/email/unsubscribe`; storefront page `/unsubscribe`.
   - `daily-order-digest` at 12:00 UTC (7 AM CT) — emails staff a digest
   - `recover-stripe-orders` hourly at :15 — recreates orders the webhook missed (`stripeRecovery.ts`), emails staff via `sendRecoveryAlert`; recovery skips customer emails by design. Preview first with `POST /api/admin/recover-stripe-orders?dryRun=true`.
   - `square-catalog-sync`, `square-inventory-sync` — queued by the Square webhook, not scheduled

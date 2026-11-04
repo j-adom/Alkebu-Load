@@ -111,6 +111,18 @@ That script reads the payment provider selected in Payload Site Settings and wri
 - The refund is issued via Stripe, per-line refund state is recorded on the order, and a refund-notification email is sent to the customer.
 - Surfaced in the Order Dashboard RefundPanel (`/admin/order-dashboard`).
 
+## Abandoned-Cart Reminders
+
+- Runs only with `ENABLE_JOB_AUTORUN=true` **and** `ENABLE_CUSTOMER_EMAIL_JOBS=true`.
+- One email per guest cart idle 1–48 hours whose guest email is known (captured when the shopper
+  goes to Stripe). Skipped for opt-outs, shoppers who placed an order since, and account carts.
+- "Return to Your Cart" links to `/cart/recover?t=<token>`: an HMAC-signed (`PAYLOAD_SECRET`),
+  7-day token naming the cart. The storefront posts it to `POST /api/cart-recovery/claim`, which
+  reactivates the cart and returns its session token for the `cart_session` cookie. Purchased
+  carts and account carts are refused.
+- Unsubscribe: `/unsubscribe?t=` (button press, never on page load) or the mail client's
+  one-click button (`List-Unsubscribe` header to `POST /api/email/unsubscribe`).
+
 ## Shipping and Tax
 
 - Book-only orders default to USPS Media Mail; other carts default to the cheapest rate.
