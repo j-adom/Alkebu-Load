@@ -18,6 +18,8 @@ export interface NormalizedProduct {
   priceLabel: string;
   comparePriceLabel: string | null;
   subtitle: string;
+  /** A book's own subtitle (Books.subtitle), shown under the title. Empty for other products. */
+  titleSubtitle: string;
   badge: string | null;
   /** true → show the quick add-to-cart button; false → "Select options" (variants). */
   canAddDirectly: boolean;
@@ -65,6 +67,7 @@ export function normalizeProduct(
 
   let name = product?.title || product?.name || 'Untitled';
   let subtitle = '';
+  let titleSubtitle = '';
   const badge: string | null = null;
   let priceLabel = '';
   let priceCents = 0;
@@ -80,6 +83,7 @@ export function normalizeProduct(
       product?.editions?.find((e: any) => e?.isPrimary) || product?.editions?.[0] || {};
     const binding = (primaryEdition?.binding || product?.binding || '').toString();
     if (binding) name = `${name} (${binding})`;
+    titleSubtitle = (product?.subtitle || '').toString().trim();
     if (product?.authors?.length) {
       subtitle = 'by ' + product.authors.map((a: any) => a?.name || a).join(', ');
     }
@@ -154,6 +158,7 @@ export function normalizeProduct(
     priceLabel,
     comparePriceLabel,
     subtitle,
+    titleSubtitle,
     badge,
     canAddDirectly,
     inStock,

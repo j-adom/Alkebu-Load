@@ -177,7 +177,9 @@
           >
             {book?.title}
           </h1>
-          {#if book?.titleLong}
+          {#if book?.subtitle}
+            <p class="text-xl text-muted-foreground">{book.subtitle}</p>
+          {:else if book?.titleLong && book.titleLong !== book.title}
             <p class="text-lg text-muted-foreground">{book.titleLong}</p>
           {/if}
 
