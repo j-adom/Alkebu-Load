@@ -89,7 +89,9 @@ export function bookUpdateForSquareItem(
   // ownership and the sync overwrites the bad id with the real one.
   const ownsBook = !existingBook.squareItemId || existingBook.squareItemId === squareItemId || legacyBookLink;
   if (!ownsBook) return { editions, lastSyncedAt: mappedData.lastSyncedAt };
-  const { title, ...rest } = mappedData;
+  // importSource records where a book came from (the link repair tells originals from
+  // sync-made copies by it), so an update never rewrites it.
+  const { title, importSource: _importSource, ...rest } = mappedData;
   const hasTitle = typeof existingBook.title === 'string' && existingBook.title.trim() !== '';
-  return hasTitle ? { ...rest, editions } : { ...mappedData, editions };
+  return hasTitle ? { ...rest, editions } : { ...rest, title, editions };
 }

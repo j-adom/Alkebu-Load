@@ -135,6 +135,29 @@ export function describeBookChanges(existing: any, update: Record<string, unknow
   return changes;
 }
 
+const sameStored = (next: unknown, current: unknown): boolean => {
+  if (next === undefined) return true;
+  if (next === null || typeof next !== 'object') {
+    return (next ?? null) === (current ?? null) || (typeof next === 'number' && Number(current) === next);
+  }
+  if (Array.isArray(next)) {
+    return Array.isArray(current) && next.length === current.length && next.every((row, i) => sameStored(row, current[i]));
+  }
+  if (!current || typeof current !== 'object') return false;
+  return Object.entries(next as Record<string, unknown>).every(([key, value]) =>
+    sameStored(value, (current as Record<string, unknown>)[key]),
+  );
+};
+
+/**
+ * True when writing `update` would leave every stored field of `existing` as it is
+ * (ignoring the lastSyncedAt stamp). Most catalog items match their book exactly, and
+ * saving them anyway runs the Books hooks and bumps updatedAt for nothing.
+ */
+export function isNoopBookUpdate(existing: Record<string, unknown>, update: Record<string, unknown>): boolean {
+  return Object.entries(update).every(([key, value]) => key === 'lastSyncedAt' || sameStored(value, existing[key]));
+}
+
 /** Every ITEM in the Square catalog, plus image URLs keyed by image id. */
 export async function listSquareCatalog(): Promise<{
   items: Record<string, unknown>[];
@@ -158,9 +181,9 @@ export async function listSquareCatalog(): Promise<{
 export type CatalogItemOutcome = {
   squareItemId: string;
   name: string;
-  outcome: 'create' | 'update' | 'stage' | 'skip-rejected' | 'skip-non-book' | 'unresolved';
+  outcome: 'create' | 'update' | 'unchanged' | 'stage' | 'skip-rejected' | 'skip-non-book' | 'unresolved';
   reason: string;
-  /** Dry-run updates only: current vs Square value for changed title / price. */
+  /** Updates only: current vs Square value for changed title / price. */
   detail?: string;
 };
 
@@ -179,6 +202,8 @@ export async function processCatalogItems(
 ): Promise<{
   created: number;
   updated: number;
+  /** Matched an existing book that already agrees with Square: nothing written. */
+  unchanged: number;
   staged: number;
   skippedNonBook: number;
   unresolved: number;
@@ -189,6 +214,7 @@ export async function processCatalogItems(
 
   let created = 0;
   let updated = 0;
+  let unchanged = 0;
   let staged = 0;
   let skippedNonBook = 0;
   let unresolved = 0;
@@ -267,39 +293,46 @@ export async function processCatalogItems(
         const existingBook = await findBookForSquareItem(payload, squareItemId, variationIds);
         const imageUrls = squareImageUrls(item, imageUrlsById);
 
-        if (existingBook && dryRun) {
-          updated++;
-          const update = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
-          const changes = describeBookChanges(existingBook, update);
-          const detail: string[] = [];
-          if (changes.some((c) => c.startsWith('title'))) detail.push(`title: "${existingBook.title}" -> "${String(update.title)}"`);
-          if (changes.includes('price')) {
-            detail.push(`price: ${existingBook.pricing?.retailPrice ?? 'none'} -> ${(update.pricing as any)?.retailPrice} (cents)`);
+        if (existingBook) {
+          const bookData = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
+          // A photo staff took in Square fills a missing cover; it never replaces one.
+          const fillsCover = imageUrls.length > 0 && bookHasNoCover(existingBook);
+          if (fillsCover) bookData.scrapedImageUrls = imageUrls.map((url) => ({ url }));
+
+          if (isNoopBookUpdate(existingBook, bookData)) {
+            unchanged++;
+            report({ squareItemId, name: itemName, outcome: 'unchanged', reason: 'no field changes' });
+            continue;
           }
+
+          const changes = describeBookChanges(existingBook, bookData);
+          if (fillsCover) changes.push('cover');
+          if (changes.length === 0) changes.push('square edition details');
+          const detail: string[] = [];
+          if (changes.some((c) => c.startsWith('title'))) detail.push(`title: "${existingBook.title}" -> "${String(bookData.title)}"`);
+          if (changes.includes('price')) {
+            detail.push(`price: ${existingBook.pricing?.retailPrice ?? 'none'} -> ${(bookData.pricing as any)?.retailPrice} (cents)`);
+          }
+
+          if (!dryRun) {
+            await payload.update({
+              collection: 'books',
+              id: existingBook.id,
+              data: bookData,
+              context: SKIP_ENRICHMENT_CONTEXT,
+            });
+          }
+          updated++;
           report({
             squareItemId,
             name: itemName,
             outcome: 'update',
-            reason: changes.length > 0 ? `would change ${changes.join(', ')}` : 'no field changes',
+            reason: `${dryRun ? 'would change' : 'changed'} ${changes.join(', ')}`,
             ...(detail.length > 0 ? { detail: detail.join('; ') } : {}),
           });
-        } else if (!existingBook && dryRun) {
+        } else if (dryRun) {
           created++;
           report({ squareItemId, name: itemName, outcome: 'create', reason: 'complete item with no matching book' });
-        } else if (existingBook) {
-          const bookData = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
-          // A photo staff took in Square fills a missing cover; it never replaces one.
-          if (imageUrls.length > 0 && bookHasNoCover(existingBook)) {
-            bookData.scrapedImageUrls = imageUrls.map((url) => ({ url }));
-          }
-          await payload.update({
-            collection: 'books',
-            id: existingBook.id,
-            data: bookData,
-            context: SKIP_ENRICHMENT_CONTEXT,
-          });
-          updated++;
-          report({ squareItemId, name: itemName, outcome: 'update', reason: 'matches an existing book' });
         } else {
           try {
             const bookData = await withNewBookEnrichment({
@@ -391,7 +424,7 @@ export async function processCatalogItems(
     }
   }
 
-  return { created, updated, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt };
+  return { created, updated, unchanged, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt };
 }
 
 /**
@@ -441,11 +474,11 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
     return new Date(updatedAt).getTime() >= windowStart.getTime();
   });
 
-  const { created, updated, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt } =
+  const { created, updated, unchanged, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt } =
     await processCatalogItems(payload, changedItems, imageUrlsById, now);
 
   console.log(
-    `📦 square-catalog-sync: created=${created} updated=${updated} staged=${staged} skippedNonBook=${skippedNonBook} unresolved=${unresolved}`,
+    `📦 square-catalog-sync: created=${created} updated=${updated} unchanged=${unchanged} staged=${staged} skippedNonBook=${skippedNonBook} unresolved=${unresolved}`,
   );
 
   const checkpoint = computeCatalogCheckpoint(windowEnd, oldestUnresolvedUpdatedAt);
