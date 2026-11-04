@@ -205,7 +205,10 @@ export async function listSquareCatalog(): Promise<{
   imageUrlsById: Map<string, string>;
 }> {
   const client = await getSquareClient();
-  const catalogResponse = await client.catalog.list({ types: 'ITEM,IMAGE' });
+  // Square's list endpoint throws an occasional 500 mid-pagination; the SDK's default two
+  // retries (1 s, 2 s) were not enough on 2026-11-04. Six back off for about a minute,
+  // and every page of the pager reuses these options.
+  const catalogResponse = await client.catalog.list({ types: 'ITEM,IMAGE' }, { maxRetries: 6 });
 
   const items: Record<string, unknown>[] = [];
   const imageUrlsById = new Map<string, string>();
