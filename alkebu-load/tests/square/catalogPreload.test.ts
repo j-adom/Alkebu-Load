@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import test from 'node:test';
 
 import { createPreloadedCatalogPayload, matchesSimpleWhere } from '../../src/app/utils/squareCatalogPreload';
-import { isNoopBookUpdate } from '../../src/app/utils/squareCatalogSync';
+import { changedBookFields, isNoopBookUpdate } from '../../src/app/utils/squareCatalogSync';
 import { bookUpdateForSquareItem } from '../../src/app/utils/squareBookMatch';
 
 const book = {
@@ -87,4 +87,27 @@ test('isNoopBookUpdate: price, edition and link changes still write', () => {
   );
   assert.equal(isNoopBookUpdate(book, { editions: [...book.editions, { isbn: '9780807083680' }] }), false);
   assert.equal(isNoopBookUpdate(book, { scrapedImageUrls: [{ url: 'https://example.com/c.jpg' }] }), false);
+});
+
+test('changedBookFields names the stored paths an update would change', () => {
+  const stored = {
+    editions: [
+      { isbn: '9780807083680', squareVariationId: 'VAR_A', squareItemId: null, isAvailable: false },
+      { isbn: '9780000000002', squareVariationId: 'VAR_B', squareItemId: 'ITEM1', isAvailable: true },
+    ],
+  };
+  assert.deepEqual(
+    changedBookFields(stored, {
+      editions: [
+        { isbn: '9780807083680', squareVariationId: 'VAR_A', squareItemId: 'ITEM1', isAvailable: true },
+        stored.editions[1],
+      ],
+      lastSyncedAt: '2026-11-04T00:00:00.000Z',
+    }),
+    ['editions.isAvailable', 'editions.squareItemId'],
+  );
+  assert.deepEqual(changedBookFields(stored, { editions: [stored.editions[1], stored.editions[0]] }), [
+    'editions (order only)',
+  ]);
+  assert.deepEqual(changedBookFields(stored, { editions: [stored.editions[0]] }), ['editions (count)']);
 });

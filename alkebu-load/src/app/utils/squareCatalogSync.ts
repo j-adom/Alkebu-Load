@@ -135,19 +135,59 @@ export function describeBookChanges(existing: any, update: Record<string, unknow
   return changes;
 }
 
-const sameStored = (next: unknown, current: unknown): boolean => {
-  if (next === undefined) return true;
+/**
+ * Paths (array indexes dropped, e.g. `editions.isAvailable`) whose stored value
+ * `next` would change. Keys absent from `next` are left alone by an update, so they
+ * never count; numbers match numeric strings because Postgres numerics can load as text.
+ */
+function storedDifferences(next: unknown, current: unknown, path: string, out: Set<string>): void {
+  if (next === undefined) return;
   if (next === null || typeof next !== 'object') {
-    return (next ?? null) === (current ?? null) || (typeof next === 'number' && Number(current) === next);
+    const same = (next ?? null) === (current ?? null) || (typeof next === 'number' && Number(current) === next);
+    if (!same) out.add(path);
+    return;
   }
   if (Array.isArray(next)) {
-    return Array.isArray(current) && next.length === current.length && next.every((row, i) => sameStored(row, current[i]));
+    if (!Array.isArray(current) || next.length !== current.length) {
+      out.add(`${path} (count)`);
+      return;
+    }
+    const rowDiffs = new Set<string>();
+    next.forEach((row, i) => storedDifferences(row, current[i], path, rowDiffs));
+    if (rowDiffs.size === 0) return;
+    // The same rows in another order: report the reorder, not every field of every row.
+    const unmatched = [...current];
+    const reordered = next.every((row) => {
+      const at = unmatched.findIndex((candidate) => {
+        const probe = new Set<string>();
+        storedDifferences(row, candidate, path, probe);
+        return probe.size === 0;
+      });
+      if (at === -1) return false;
+      unmatched.splice(at, 1);
+      return true;
+    });
+    if (reordered) out.add(`${path} (order only)`);
+    else rowDiffs.forEach((diff) => out.add(diff));
+    return;
   }
-  if (!current || typeof current !== 'object') return false;
-  return Object.entries(next as Record<string, unknown>).every(([key, value]) =>
-    sameStored(value, (current as Record<string, unknown>)[key]),
-  );
-};
+  if (!current || typeof current !== 'object') {
+    out.add(path);
+    return;
+  }
+  for (const [key, value] of Object.entries(next as Record<string, unknown>)) {
+    storedDifferences(value, (current as Record<string, unknown>)[key], path ? `${path}.${key}` : key, out);
+  }
+}
+
+/** Stored fields `update` would change on `existing`, ignoring the lastSyncedAt stamp. */
+export function changedBookFields(existing: Record<string, unknown>, update: Record<string, unknown>): string[] {
+  const out = new Set<string>();
+  for (const [key, value] of Object.entries(update)) {
+    if (key !== 'lastSyncedAt') storedDifferences(value, existing[key], key, out);
+  }
+  return [...out].sort();
+}
 
 /**
  * True when writing `update` would leave every stored field of `existing` as it is
@@ -155,7 +195,7 @@ const sameStored = (next: unknown, current: unknown): boolean => {
  * saving them anyway runs the Books hooks and bumps updatedAt for nothing.
  */
 export function isNoopBookUpdate(existing: Record<string, unknown>, update: Record<string, unknown>): boolean {
-  return Object.entries(update).every(([key, value]) => key === 'lastSyncedAt' || sameStored(value, existing[key]));
+  return changedBookFields(existing, update).length === 0;
 }
 
 /** Every ITEM in the Square catalog, plus image URLs keyed by image id. */
@@ -299,7 +339,8 @@ export async function processCatalogItems(
           const fillsCover = imageUrls.length > 0 && bookHasNoCover(existingBook);
           if (fillsCover) bookData.scrapedImageUrls = imageUrls.map((url) => ({ url }));
 
-          if (isNoopBookUpdate(existingBook, bookData)) {
+          const changedFields = changedBookFields(existingBook, bookData);
+          if (changedFields.length === 0) {
             unchanged++;
             report({ squareItemId, name: itemName, outcome: 'unchanged', reason: 'no field changes' });
             continue;
@@ -307,7 +348,11 @@ export async function processCatalogItems(
 
           const changes = describeBookChanges(existingBook, bookData);
           if (fillsCover) changes.push('cover');
-          if (changes.length === 0) changes.push('square edition details');
+          // Name every other stored field the write would change, by path (e.g.
+          // `editions.isAvailable`), unless a broader label above already covers it.
+          const covered = ['title', 'pricing.retailPrice', 'squareItemId', 'scrapedImageUrls'];
+          if (changes.includes('editions')) covered.push('editions');
+          changes.push(...changedFields.filter((f) => !covered.some((c) => f === c || f.startsWith(`${c}.`) || f.startsWith(`${c} `))));
           const detail: string[] = [];
           if (changes.some((c) => c.startsWith('title'))) detail.push(`title: "${existingBook.title}" -> "${String(bookData.title)}"`);
           if (changes.includes('price')) {
