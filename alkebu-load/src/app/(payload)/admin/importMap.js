@@ -32,6 +32,7 @@ import { default as default_d332efdb223a279bb2176e68fc22c417 } from '@/app/compo
 import { PromoteStagedItemButton as PromoteStagedItemButton_b13142fa147daed5a35ea6ee1a82adae } from '@/app/components/admin/PromoteStagedItemButton'
 import { default as default_950b25dead4eeff48d3139bb1fe8e71c } from '../../../app/components/OrderDashboardNavLink'
 import { default as default_846aa68adb78999624f0876d04284df0 } from '../../../app/components/OrderDashboardView'
+import { default as default_5b7bcc3f7ca06f65be26503f700fd4d1 } from '../../../app/components/IngramEnrichmentReview'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 
@@ -71,6 +72,7 @@ export const importMap = {
   "@/app/components/admin/PromoteStagedItemButton#PromoteStagedItemButton": PromoteStagedItemButton_b13142fa147daed5a35ea6ee1a82adae,
   "/app/components/OrderDashboardNavLink#default": default_950b25dead4eeff48d3139bb1fe8e71c,
   "/app/components/OrderDashboardView#default": default_846aa68adb78999624f0876d04284df0,
+  "/app/components/IngramEnrichmentReview#default": default_5b7bcc3f7ca06f65be26503f700fd4d1,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24
 }

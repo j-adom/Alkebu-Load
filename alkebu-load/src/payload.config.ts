@@ -46,6 +46,8 @@ import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
 import { PartnershipInquiries } from './collections/PartnershipInquiries'
 import { SquareCatalogStaging } from './collections/SquareCatalogStaging'
+import { IngramEnrichmentLog } from './collections/IngramEnrichmentLog'
+import { IngramEnrichmentReview } from './collections/IngramEnrichmentReview'
 import { SquareSyncState } from './globals/SquareSyncState'
 import { getEmailRuntimeConfig, getEmailTransportOptions, shouldSkipEmailTransportVerify } from './app/utils/emailConfig'
 // (getEmailRuntimeConfig also backs the schema-drift boot alert below)
@@ -158,6 +160,10 @@ export default buildConfig({
           Component: '/app/components/OrderDashboardView',
           path: '/order-dashboard',
         },
+        'ingram-review': {
+          Component: '/app/components/IngramEnrichmentReview',
+          path: '/ingram-review',
+        },
       },
     },
   },
@@ -197,7 +203,9 @@ export default buildConfig({
     SearchAnalytics,
     BookQuotes,
     ExternalBooks,
-    SquareCatalogStaging
+    SquareCatalogStaging,
+    IngramEnrichmentLog,
+    IngramEnrichmentReview,
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',

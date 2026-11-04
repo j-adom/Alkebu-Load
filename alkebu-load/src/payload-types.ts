@@ -93,6 +93,8 @@ export interface Config {
     bookQuotes: BookQuote;
     externalBooks: ExternalBook;
     'square-catalog-staging': SquareCatalogStaging;
+    'ingram-enrichment-log': IngramEnrichmentLog;
+    'ingram-enrichment-review': IngramEnrichmentReview;
     'payload-mcp-api-keys': PayloadMcpApiKey;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -126,6 +128,8 @@ export interface Config {
     bookQuotes: BookQuotesSelect<false> | BookQuotesSelect<true>;
     externalBooks: ExternalBooksSelect<false> | ExternalBooksSelect<true>;
     'square-catalog-staging': SquareCatalogStagingSelect<false> | SquareCatalogStagingSelect<true>;
+    'ingram-enrichment-log': IngramEnrichmentLogSelect<false> | IngramEnrichmentLogSelect<true>;
+    'ingram-enrichment-review': IngramEnrichmentReviewSelect<false> | IngramEnrichmentReviewSelect<true>;
     'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -5318,6 +5322,103 @@ export interface SquareCatalogStaging {
   createdAt: string;
 }
 /**
+ * Audit log of Ingram enrichment writes. Written only by the enrichment job; read-only here.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-log".
+ */
+export interface IngramEnrichmentLog {
+  id: number;
+  book?: (number | null) | Book;
+  /**
+   * Provenance key, e.g. title or editions.<EAN>.pricing.shippingWeight
+   */
+  fieldPath: string;
+  editionIsbn?: string | null;
+  target: 'payload' | 'square';
+  action?: ('fill' | 'correct' | 'accept') | null;
+  previousValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  newValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * fieldSources before this write (manual / ingram / empty = other import)
+   */
+  previousSource?: string | null;
+  squareObjectId?: string | null;
+  /**
+   * Square object version before the write
+   */
+  squareVersion?: string | null;
+  ingramRecordDate?: string | null;
+  runId: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Ingram enrichment proposals awaiting review. Use the review screen at /admin/ingram-review to compare and accept or reject. Rejected proposals are not proposed again.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-review".
+ */
+export interface IngramEnrichmentReview {
+  id: number;
+  book?: (number | null) | Book;
+  /**
+   * Provenance key, e.g. synopsis or editions.<EAN>.pricing.retailPrice
+   */
+  fieldPath: string;
+  /**
+   * Field type, for bulk accept
+   */
+  path: string;
+  editionIsbn?: string | null;
+  currentValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  proposedValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Normalized proposal, used to de-duplicate and to suppress rejected proposals
+   */
+  proposedKey?: string | null;
+  state: 'pending' | 'accepted' | 'rejected' | 'superseded';
+  reason?: string | null;
+  runId?: string | null;
+  ingramRecordDate?: string | null;
+  reviewedBy?: (number | null) | User;
+  reviewedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * API keys control which collections, resources, tools, and prompts MCP clients can access
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5710,6 +5811,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'square-catalog-staging';
         value: number | SquareCatalogStaging;
+      } | null)
+    | ({
+        relationTo: 'ingram-enrichment-log';
+        value: number | IngramEnrichmentLog;
+      } | null)
+    | ({
+        relationTo: 'ingram-enrichment-review';
+        value: number | IngramEnrichmentReview;
       } | null)
     | ({
         relationTo: 'payload-mcp-api-keys';
@@ -7704,6 +7813,47 @@ export interface SquareCatalogStagingSelect<T extends boolean = true> {
   proposedIsbn?: T;
   proposedPriceCents?: T;
   lastSeenAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-log_select".
+ */
+export interface IngramEnrichmentLogSelect<T extends boolean = true> {
+  book?: T;
+  fieldPath?: T;
+  editionIsbn?: T;
+  target?: T;
+  action?: T;
+  previousValue?: T;
+  newValue?: T;
+  previousSource?: T;
+  squareObjectId?: T;
+  squareVersion?: T;
+  ingramRecordDate?: T;
+  runId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-review_select".
+ */
+export interface IngramEnrichmentReviewSelect<T extends boolean = true> {
+  book?: T;
+  fieldPath?: T;
+  path?: T;
+  editionIsbn?: T;
+  currentValue?: T;
+  proposedValue?: T;
+  proposedKey?: T;
+  state?: T;
+  reason?: T;
+  runId?: T;
+  ingramRecordDate?: T;
+  reviewedBy?: T;
+  reviewedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

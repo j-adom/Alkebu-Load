@@ -30,7 +30,7 @@ export interface DiffOptions {
   rejected?: ReadonlySet<string>;
 }
 
-export const rejectionKey = (key: string, path: string, value: unknown): string => `${key}\u0000${comparable(path, value) ?? ''}`;
+export const rejectionKey = (key: string, path: string, value: unknown): string => `${key}\u001f${comparable(path, value) ?? ''}`;
 
 export const isWrite = (change: FieldChange): boolean => change.action === 'fill' || change.action === 'correct';
 
