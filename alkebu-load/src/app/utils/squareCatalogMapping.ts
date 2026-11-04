@@ -149,6 +149,26 @@ function evaluateVariation(
   };
 }
 
+const BINDING_SUFFIX =
+  /\s*-?\s*\((?:paperback|hardcover|hardback|board ?book|mass market(?: paperback)?|spiral[- ]bound|library binding|softcover)\)\s*$/i;
+
+/**
+ * Website title from a Square POS name. Staff (and the vendor feeds they copy from)
+ * append the binding and author: "Black Girl You Are Atlas - by Renée Watson (Hardcover)",
+ * "Black Star - (The Door of No Return) by Kwame Alexander (Hardcover)". Strip only those
+ * unambiguous suffixes; a bare " by Author" stays, since "Stand by Me" is a title.
+ */
+export function cleanSquareTitle(name: string): string {
+  let title = name.trim().replace(/,\s*books\s*$/i, '');
+  let previous: string;
+  do {
+    previous = title;
+    title = title.replace(BINDING_SUFFIX, '').trim();
+  } while (title !== previous);
+  title = title.replace(/\s+-\s+(?:by\s|\().*$/i, '').replace(/[\s:;,-]+$/, '').trim();
+  return title || name.trim();
+}
+
 export function mapSquareItemToBook(item: unknown, now: Date = new Date()): MappedComplete | MappedIncomplete {
   const issues: ValidationIssue[] = [];
 
@@ -166,7 +186,7 @@ export function mapSquareItemToBook(item: unknown, now: Date = new Date()): Mapp
 
   const rawName = itemData.name;
   const hasUsableTitle = typeof rawName === 'string' && rawName.trim().length > 0;
-  const title = hasUsableTitle ? (rawName as string) : undefined;
+  const title = hasUsableTitle ? cleanSquareTitle(rawName as string) : undefined;
 
   if (!hasUsableTitle) {
     // Item-level requirement (Books.title is required), not per-variation.
