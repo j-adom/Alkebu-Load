@@ -100,6 +100,41 @@ function squareCatalogVersionOf(rec: Record<string, unknown>): string {
   return 'unknown';
 }
 
+const formatValidationIssue = (issue: unknown): string => {
+  if (!issue || typeof issue !== 'object') return String(issue);
+  const { field, code, detail } = issue as { field?: string; code?: string; detail?: string };
+  return [code, field ? `(${field})` : '', detail ? `- ${detail}` : ''].filter(Boolean).join(' ');
+};
+
+/**
+ * Which visible fields a catalog update would change on an existing book, for the
+ * reconciliation dry run. `title (case only)` separates Square's capitalisation
+ * from real retitles.
+ */
+export function describeBookChanges(existing: any, update: Record<string, unknown>): string[] {
+  const changes: string[] = [];
+
+  if (typeof update.title === 'string' && update.title !== existing.title) {
+    const same = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    changes.push(same(update.title) === same(existing.title) ? 'title (case only)' : 'title');
+  }
+
+  const newPrice = (update.pricing as { retailPrice?: unknown } | undefined)?.retailPrice;
+  if (typeof newPrice === 'number' && newPrice !== existing.pricing?.retailPrice) changes.push('price');
+
+  const isbns = (editions: unknown) =>
+    ((Array.isArray(editions) ? editions : []) as Array<{ isbn?: unknown }>)
+      .map((edition) => String(edition?.isbn ?? ''))
+      .filter(Boolean)
+      .sort()
+      .join(',');
+  if (update.editions !== undefined && isbns(update.editions) !== isbns(existing.editions)) changes.push('editions');
+
+  if (update.squareItemId !== undefined && update.squareItemId !== existing.squareItemId) changes.push('square link');
+
+  return changes;
+}
+
 /** Every ITEM in the Square catalog, plus image URLs keyed by image id. */
 export async function listSquareCatalog(): Promise<{
   items: Record<string, unknown>[];
@@ -125,6 +160,8 @@ export type CatalogItemOutcome = {
   name: string;
   outcome: 'create' | 'update' | 'stage' | 'skip-rejected' | 'skip-non-book' | 'unresolved';
   reason: string;
+  /** Dry-run updates only: current vs Square value for changed title / price. */
+  detail?: string;
 };
 
 /**
@@ -232,7 +269,20 @@ export async function processCatalogItems(
 
         if (existingBook && dryRun) {
           updated++;
-          report({ squareItemId, name: itemName, outcome: 'update', reason: 'matches an existing book' });
+          const update = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
+          const changes = describeBookChanges(existingBook, update);
+          const detail: string[] = [];
+          if (changes.some((c) => c.startsWith('title'))) detail.push(`title: "${existingBook.title}" -> "${String(update.title)}"`);
+          if (changes.includes('price')) {
+            detail.push(`price: ${existingBook.pricing?.retailPrice ?? 'none'} -> ${(update.pricing as any)?.retailPrice} (cents)`);
+          }
+          report({
+            squareItemId,
+            name: itemName,
+            outcome: 'update',
+            reason: changes.length > 0 ? `would change ${changes.join(', ')}` : 'no field changes',
+            ...(detail.length > 0 ? { detail: detail.join('; ') } : {}),
+          });
         } else if (!existingBook && dryRun) {
           created++;
           report({ squareItemId, name: itemName, outcome: 'create', reason: 'complete item with no matching book' });
@@ -311,7 +361,7 @@ export async function processCatalogItems(
           squareItemId,
           name: itemName,
           outcome: 'stage',
-          reason: `${String(decision.status)}: ${validationIssues.map(String).join('; ')}`,
+          reason: `${String(decision.status)}: ${validationIssues.map(formatValidationIssue).join('; ')}`,
         });
 
         // Staged -- including as 'needs-review' -- is a resolved outcome.

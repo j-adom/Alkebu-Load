@@ -36,25 +36,39 @@ async function main() {
   const { items, imageUrlsById } = await listSquareCatalog()
   console.log(`[square-reconcile] Square catalog items: ${items.length}`)
 
-  const outcomes: { squareItemId: string; name: string; outcome: string; reason: string }[] = []
+  const outcomes: { squareItemId: string; name: string; outcome: string; reason: string; detail?: string }[] = []
   const result = await processCatalogItems(payload, items, imageUrlsById, new Date(), {
     dryRun: !commit,
     onOutcome: (o) => outcomes.push(o),
   })
 
-  const header = ['outcome', 'squareItemId', 'name', 'reason']
+  const header = ['outcome', 'squareItemId', 'name', 'reason', 'detail']
   const rows = outcomes
     .slice()
     .sort((a, b) => a.outcome.localeCompare(b.outcome) || a.name.localeCompare(b.name))
-    .map((o) => [o.outcome, o.squareItemId, o.name, o.reason])
+    .map((o) => [o.outcome, o.squareItemId, o.name, o.reason, o.detail ?? ''])
   await writeFile(reportPath, [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n')
 
-  const reasonCounts = new Map<string, number>()
+  const tallyBy = (filter: (o: (typeof outcomes)[number]) => boolean, keyOf: (o: (typeof outcomes)[number]) => string) => {
+    const counts = new Map<string, number>()
+    for (const o of outcomes) {
+      if (!filter(o)) continue
+      const key = keyOf(o)
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
+  }
+  // Group by the first issue without its free-text detail, so per-item values don't split buckets.
+  const stageKey = (o: (typeof outcomes)[number]) => o.reason.split(';')[0].split(' - ')[0].slice(0, 90)
+  const reasonCounts = tallyBy((o) => o.outcome !== 'create' && o.outcome !== 'update', (o) =>
+    o.outcome === 'stage' ? `stage: ${stageKey(o)}` : `${o.outcome}: ${o.reason.slice(0, 90)}`)
+  const updateCounts = tallyBy((o) => o.outcome === 'update', (o) => o.reason)
+  const fieldCounts = new Map<string, number>()
   for (const o of outcomes) {
-    if (o.outcome === 'create' || o.outcome === 'update') continue
-    // Group by the reason's leading phrase so per-item details don't split buckets.
-    const key = `${o.outcome}: ${o.reason.split(';')[0].slice(0, 90)}`
-    reasonCounts.set(key, (reasonCounts.get(key) ?? 0) + 1)
+    if (o.outcome !== 'update' || !o.reason.startsWith('would change ')) continue
+    for (const field of o.reason.slice('would change '.length).split(', ')) {
+      fieldCounts.set(field, (fieldCounts.get(field) ?? 0) + 1)
+    }
   }
 
   console.log('')
@@ -66,10 +80,19 @@ async function main() {
   console.log(`  skipped, not a book       ${result.skippedNonBook}`)
   console.log(`  unresolved (errors)       ${result.unresolved}`)
   console.log('')
+  console.log('[square-reconcile] Fields the updates would change (books can count in several rows):')
+  for (const [field, count] of [...fieldCounts.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${String(count).padStart(5)}  ${field}`)
+  }
+  console.log(`  ${String(updateCounts.find(([reason]) => reason === 'no field changes')?.[1] ?? 0).padStart(5)}  (no field changes)`)
+  console.log('')
   console.log('[square-reconcile] Ten most common non-write reasons:')
-  for (const [reason, count] of [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
+  for (const [reason, count] of reasonCounts.slice(0, 10)) {
     console.log(`  ${String(count).padStart(5)}  ${reason}`)
   }
+  console.log('')
+  console.log('[square-reconcile] The CSV lists every item; sort by outcome, then reason. The detail column')
+  console.log('  shows current vs Square title and price for every update that would change them.')
   console.log('')
   console.log(`[square-reconcile] Per-item report: ${reportPath}`)
 
