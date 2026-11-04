@@ -17,6 +17,7 @@ function matches(doc: Doc, where: any): boolean {
     if ('equals' in cond) return String(value) === String(cond.equals);
     if ('in' in cond) return cond.in.map(String).includes(String(value));
     if ('not_equals' in cond) return String(value) !== String(cond.not_equals);
+    if ('exists' in cond) return (value !== undefined && value !== null) === Boolean(cond.exists);
     throw new Error(`fakePayload: unsupported operator in ${JSON.stringify(cond)}`);
   });
 }
@@ -101,6 +102,13 @@ export function createFakePayload(seed: Record<string, Doc[]> = {}, opts: { tran
       const doc = { id, ...clone(data) };
       coll(target(req), collection).set(id, doc);
       return clone(doc);
+    },
+    async delete({ collection, where, req }: any) {
+      calls.push({ op: 'delete', collection });
+      const c = coll(target(req), collection);
+      const docs = [...c.values()].filter((d) => matches(d, where));
+      for (const d of docs) c.delete(String(d.id));
+      return { docs: docs.map(clone), errors: [] };
     },
     async update({ collection, id, data, req, context }: any) {
       calls.push({ op: 'update', collection, data: clone(data), context });
