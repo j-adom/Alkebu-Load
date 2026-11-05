@@ -67,7 +67,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@sanity/client": "^7.13.2",
-    "@sanity/image-url": "^1.2.0",
+    "@sanity/image-url": "^2.1.1",
     "@types/node": "^22.19.3",
     "@types/node-fetch": "^2.6.13",
     "@types/papaparse": "^5.5.2",
