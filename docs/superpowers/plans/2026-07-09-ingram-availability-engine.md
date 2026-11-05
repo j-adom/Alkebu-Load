@@ -1144,6 +1144,17 @@ Built first because the Web Service returns no `<Stock>` section yet. This is Ta
 
 ---
 
+### Status (2026-11-05): real layouts in, scope adjusted to the licensed files
+
+- The owner decided the vendor **format specs** (DeveloperSpecs/, the description and inventory guides) are not product or catalog data and may be read by Claude. Data files and `Samples/` are still owner-only; format checks on data report shapes and counts only.
+- **Titles Basic** (guide v2 r6) has 25 pipe-delimited, unqualified fields: derived title (subtitle and "[With …]" accessory included), one contributor, binding, one BISAC subject heading, and publisher imprint. It has **no** price, publication date, pages, dimensions, weight, language or record date. The parser splits the derived title at the first ": ". Field 16 (BISAC heading) may carry unquoted pipes, so extra fields fold back into it, anchored on field 22 (Accessory Code, always three digits).
+- **Price, publication date and weight** come from the Catalog Stock CSV. A 2026-11-05 delta (55,700 rows) wrote price and weight as decimals with 2 places, and dates as MM/DD/YYYY. The weekly titles job now reads the stock file by default (`INGRAM_ENRICH_WITH_STOCK_FILE=false` skips it).
+- **Pages, dimensions and language** have no licensed source (they'd need the full Titles file), so they're never proposed.
+- **Descriptions:** publisher marketing is fixed-width (EAN 1–13, length 14–18, text 19–end), and brief is `EAN|BD|length|text`. Each has its own layout. The Titles Basic annotation file is skipped by default because it holds only the first 100 characters.
+- Remote names as listed on the server: `DESC_BKLST/PMALL_active.zip`, `PubDescripi/ingmmthy-13.zip`.
+- `main` is merged into the branch. 811 tests pass.
+- **Next (owner):** Task 22 Steps 1–5.
+
 ## Companion: Edition Consolidation prerequisite *(decided and built 2026-10-02)*
 
 Square stays one item per binding. Built on this branch, before any books are merged:

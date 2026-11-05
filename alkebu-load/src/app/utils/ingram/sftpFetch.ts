@@ -53,7 +53,7 @@ export async function fetchIngramFile(
 }
 
 /**
- * Newest file in `dir` whose name matches `pattern` (e.g. the monthly `pmmthy-*.zip`
+ * Newest file in `dir` whose name matches `pattern` (e.g. the monthly `ingmmthy-*.zip`
  * adds/changes files, whose names carry a date). Null when none match.
  */
 export async function latestRemoteFile(

@@ -192,6 +192,19 @@ test('mapIngramRecord normalizes units and shapes', () => {
   assert.equal(c.recordDate, '2026-09-15');
 });
 
+test('mapIngramRecord takes price, publication date and weight from the stock file when Titles has none', () => {
+  const titles = { ean: EAN, title: 'T', contributors: [], bisac: [] };
+  const stock = { ean: EAN, mediaMail: false, onSaleDate: '20240305', pubListPrice: 24.99, publicationDate: '20240301', weightLbs: 1.05 };
+  const c = mapIngramRecord(titles, null, stock);
+  assert.equal(c.edition.listPriceCents, 2499);
+  assert.equal(c.edition.datePublished, '2024-03-01T00:00:00.000Z');
+  assert.equal(c.edition['pricing.shippingWeight'], 16.8);
+  // A Titles value wins when a layout carries one.
+  const withTitles = mapIngramRecord({ ...titles, listPrice: { amount: 19.99, unit: 'dollars' as const } }, null, stock);
+  assert.equal(withTitles.edition.listPriceCents, 1999);
+  assert.equal(mapIngramRecord(titles, null, { ...stock, publicationDate: '00010101' }).edition.datePublished, undefined);
+});
+
 test('mapper helpers', () => {
   assert.equal(toOunces(500, 'g'), 17.6);
   assert.equal(mapBinding('Mass Market Paperbound'), 'mass-market');

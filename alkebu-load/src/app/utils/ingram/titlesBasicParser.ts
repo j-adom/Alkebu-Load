@@ -1,17 +1,13 @@
 // Pure parser for Ingram's Titles Basic bibliographic file (TitlesBasic/ttlingbasic_pipe.zip,
 // pipe-delimited, one title per line).
 //
-// The column order lives in TITLES_BASIC_COLUMNS, which the OWNER transcribes from the
-// vendor layout in DeveloperSpecs/ on the SFTP server. Claude must not read the vendor spec
-// or sample files (agreement §2(c)), so until that happens the layout below is a
-// PLACEHOLDER and `placeholder: true` makes runEnrichment refuse to run against a real file.
-// Everything here, tests included, is driven by the constant, so filling in the real order
-// needs no other code change.
+// Column order from Ingram's Titles Basic Implementation Guide (v2 r6, "Titles Basic File
+// Format"): 25 pipe-delimited fields, no text qualifier, CRLF records. The file carries no
+// price, publication date, pages, dimensions, weight or language; price, publication date
+// and weight come from the inventory (Catalog Stock) file instead (see mapEnrichment).
 //
-// How to transcribe: list every vendor column, in file order. Use one of our field keys
-// for a column we read, and `skip:<vendor column name>` for every column we ignore. Keys
-// marked "repeatable" may appear several times (e.g. Contributor 1..3, BISAC 1..3); their
-// values are collected in column order.
+// The parser stays layout-driven: `skip:<vendor column name>` marks columns we ignore, and
+// keys marked "repeatable" may appear several times; their values are collected in order.
 
 export type TitlesBasicField =
   | 'ean'
@@ -48,47 +44,62 @@ export interface TitlesBasicLayout {
   quote: string | null;
   /** Escape character before a literal delimiter (e.g. `\|`), or null. */
   escape: string | null;
-  /** Separator inside one repeatable column holding several values. */
+  /** Separator inside one repeatable column holding several values; '' for none. */
   multiValueSeparator: string;
+  /** The title column holds "Title: Subtitle [With Accessory]" (no subtitle column). */
+  titleIncludesSubtitle?: boolean;
+  /**
+   * The one column whose text may contain the unquoted delimiter (`index`). Extra fields on
+   * a line are either its pipes or a trailing delimiter; the reading whose `anchor` column
+   * matches `pattern` wins, and a line with no matching reading is malformed.
+   */
+  delimiterInColumn?: { index: number; anchor: number; pattern: RegExp };
   weightUnit: WeightUnit;
   dimensionUnit: DimensionUnit;
   priceUnit: 'dollars' | 'cents';
 }
 
-// OWNER: transcribe from DeveloperSpecs/ (Titles Basic layout). PLACEHOLDER ORDER BELOW:
-// it is not the vendor order, and the units/quoting are guesses to be confirmed.
 export const TITLES_BASIC_COLUMNS: readonly TitlesBasicColumn[] = [
-  'ean',
-  'title',
-  'subtitle',
-  'contributor',
-  'contributor',
-  'contributor',
-  'publisher',
-  'skip:Imprint',
-  'pubDate',
-  'binding',
-  'pages',
-  'language',
-  'bisac',
-  'bisac',
-  'bisac',
-  'length',
-  'width',
-  'height',
-  'weight',
-  'listPrice',
-  'recordDate',
+  'ean', // 1
+  'title', // 2 "Title, derived": includes the subtitle and any accessory
+  'skip:Edition Number',
+  'skip:Edition Description',
+  'skip:Abridged Edition Flag',
+  'skip:Large Print Flag',
+  'skip:Contributor ID',
+  'contributor', // 8
+  'skip:Contributor Role Code',
+  'skip:Contributor Role Description',
+  'skip:Product Type',
+  'skip:Product Type Description',
+  'skip:BISAC Binding Type Code',
+  'binding', // 14 BISAC Binding Type Description, e.g. "Hardcover"
+  'skip:BISAC Subject Code',
+  'bisac', // 16 BISAC Subject Heading Description
+  'skip:Weekly Add/Change Flag',
+  'skip:Publisher Alpha Code',
+  'publisher', // 19 Publisher Imprint
+  'skip:Spring Arbor Division Flag',
+  'skip:Number of Units',
+  'skip:Accessory Code',
+  'skip:Accessory Code Description',
+  'skip:Ingram Subject Code',
+  'skip:Ingram Subject Description',
 ];
 
-// OWNER: confirm each value against DeveloperSpecs/, then set placeholder to false.
 export const TITLES_BASIC_LAYOUT: TitlesBasicLayout = {
-  placeholder: true,
+  placeholder: false,
   columns: TITLES_BASIC_COLUMNS,
   delimiter: '|',
-  quote: '"',
+  quote: null,
   escape: null,
-  multiValueSeparator: ';',
+  // One contributor and one BISAC subject per record: nothing to split.
+  multiValueSeparator: '',
+  titleIncludesSubtitle: true,
+  // Ingram's heading example is "Fiction | Mystery & Detective - Women Sleuths": a pipe in an
+  // unqualified pipe-delimited file. Field 22 (Accessory Code) is always three digits.
+  delimiterInColumn: { index: 15, anchor: 21, pattern: /^\d{3}$/ },
+  // Unused by this layout (no weight, dimension or price columns); Ingram's convention.
   weightUnit: 'lb',
   dimensionUnit: 'in',
   priceUnit: 'dollars',
@@ -193,6 +204,20 @@ const text = (value: string | undefined): string | undefined => {
   return v === '' ? undefined : v;
 };
 
+/**
+ * Ingram's derived title -> title and subtitle: "Coral Reef Hideaway: The Story of a Clown
+ * Anemone Fish [With Plush Fish]" -> { title: "Coral Reef Hideaway", subtitle: "The Story of
+ * a Clown Anemone Fish" }. The accessory note is dropped; the split is at the first ": ".
+ */
+export function splitDerivedTitle(derived: string): { title: string; subtitle?: string } {
+  const base = derived.replace(/\s*\[with\b[^\]]*\]\s*$/i, '').trim() || derived.trim();
+  const colon = base.indexOf(': ');
+  if (colon <= 0) return { title: base };
+  const title = base.slice(0, colon).trim();
+  const subtitle = base.slice(colon + 2).trim();
+  return subtitle ? { title, subtitle } : { title };
+}
+
 /** Cheap EAN extractor for the stream filter: never splits the whole line. */
 export function titlesBasicEan(line: string, layout: TitlesBasicLayout = TITLES_BASIC_LAYOUT): string | null {
   const index = layout.columns.indexOf('ean');
@@ -216,6 +241,30 @@ export function titlesBasicEan(line: string, layout: TitlesBasicLayout = TITLES_
 }
 
 /**
+ * Drops trailing empty fields (a trailing delimiter) and, for a layout with a
+ * `delimiterInColumn`, folds extra fields back into that column. Null when no reading
+ * satisfies the layout's anchor.
+ */
+function alignFields(fields: string[], layout: TitlesBasicLayout): string[] | null {
+  const width = layout.columns.length;
+  const fold = layout.delimiterInColumn;
+  if (!fold) {
+    const out = [...fields];
+    while (out.length > width && out[out.length - 1].trim() === '') out.pop();
+    return out;
+  }
+  // Try dropping 0, 1, 2... trailing empties, folding the rest into the pipe-bearing column.
+  for (let drop = 0; fields.length - drop >= width; drop += 1) {
+    if (drop > 0 && fields[fields.length - drop].trim() !== '') break;
+    const out = fields.slice(0, fields.length - drop);
+    const extra = out.length - width;
+    if (extra > 0) out.splice(fold.index, extra + 1, out.slice(fold.index, fold.index + extra + 1).join(layout.delimiter));
+    if (fold.pattern.test((out[fold.anchor] ?? '').trim())) return out;
+  }
+  return fields.length < width ? fields : null;
+}
+
+/**
  * One Titles Basic line -> a typed record, or null (counted in `errors.malformed`) when the
  * field count differs from the layout, the EAN isn't 13 digits, or the title is blank.
  * A header line is malformed by this rule; the stream filter drops it before parsing.
@@ -225,9 +274,11 @@ export function parseTitlesBasicLine(
   layout: TitlesBasicLayout = TITLES_BASIC_LAYOUT,
   errors: ParseErrors = emptyParseErrors(),
 ): TitlesBasicRecord | null {
-  const fields = splitDelimited(line, layout);
-  // Tolerate trailing empty fields from a trailing delimiter, nothing else.
-  while (fields.length > layout.columns.length && fields[fields.length - 1].trim() === '') fields.pop();
+  const fields = alignFields(splitDelimited(line, layout), layout);
+  if (!fields) {
+    errors.malformed += 1;
+    return null;
+  }
   if (fields.length !== layout.columns.length) {
     errors.malformed += 1;
     return null;
@@ -237,8 +288,7 @@ export function parseTitlesBasicLine(
   const contributors: string[] = [];
   const bisac: string[] = [];
   const splitMulti = (v: string) =>
-    v
-      .split(layout.multiValueSeparator)
+    (layout.multiValueSeparator ? v.split(layout.multiValueSeparator) : [v])
       .map((s) => text(s))
       .filter((s): s is string => Boolean(s));
 
@@ -257,8 +307,9 @@ export function parseTitlesBasicLine(
     return null;
   }
 
-  const record: TitlesBasicRecord = { ean, title, contributors, bisac };
-  const subtitle = text(single.get('subtitle'));
+  const split = layout.titleIncludesSubtitle ? splitDerivedTitle(title) : { title };
+  const record: TitlesBasicRecord = { ean, title: split.title, contributors, bisac };
+  const subtitle = text(single.get('subtitle')) ?? split.subtitle;
   if (subtitle) record.subtitle = subtitle;
   const publisher = text(single.get('publisher'));
   if (publisher) record.publisher = publisher;

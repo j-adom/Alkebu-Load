@@ -87,6 +87,12 @@ export function mapLanguage(raw: string | null | undefined): string | undefined 
 
 const isoDate = (yyyyMmDd: string | undefined) => (yyyyMmDd ? `${yyyyMmDd}T00:00:00.000Z` : undefined);
 
+/** YYYYMMDD -> YYYY-MM-DD; undefined for blanks, zeros and Ingram's '00010101' "no date". */
+function yyyyMmDd(value: string | undefined): string | undefined {
+  if (!value || !/^\d{8}$/.test(value) || value === '00010101' || /^0+$/.test(value)) return undefined;
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+}
+
 const BISAC_CODE = /^[A-Z]{3}\d{6}$/;
 
 /**
@@ -118,7 +124,7 @@ function byKind(descriptions?: DescriptionRecord[] | Descriptions | null): Descr
 export function mapIngramRecord(
   titles: TitlesBasicRecord | null | undefined,
   descriptions?: DescriptionRecord[] | Descriptions | null,
-  stock?: Pick<IngramStock, 'ean' | 'mediaMail' | 'onSaleDate'> | null,
+  stock?: Pick<IngramStock, 'ean' | 'mediaMail' | 'onSaleDate' | 'pubListPrice' | 'publicationDate' | 'weightLbs'> | null,
   opts: { bisacHeadings?: ReadonlyMap<string, string> } = {},
 ): EnrichmentCandidate {
   const descs = byKind(descriptions);
@@ -166,9 +172,17 @@ export function mapIngramRecord(
 
   if (stock) {
     candidate.edition.mediaMailEligible = Boolean(stock.mediaMail);
-    const onSale = stock.onSaleDate;
-    if (onSale && /^\d{8}$/.test(onSale) && onSale !== '00010101') {
-      candidate.edition.ingramOnSaleDate = isoDate(`${onSale.slice(0, 4)}-${onSale.slice(4, 6)}-${onSale.slice(6, 8)}`);
+    const onSale = yyyyMmDd(stock.onSaleDate);
+    if (onSale) candidate.edition.ingramOnSaleDate = isoDate(onSale);
+    // Titles Basic has no price, publication date or weight; the inventory file does.
+    // A Titles value (other layouts) wins when both are present.
+    const published = yyyyMmDd(stock.publicationDate);
+    if (published && !candidate.edition.datePublished) candidate.edition.datePublished = isoDate(published);
+    if (stock.pubListPrice && !candidate.edition.listPriceCents) {
+      candidate.edition.listPriceCents = Math.round(stock.pubListPrice * 100);
+    }
+    if (stock.weightLbs && !candidate.edition['pricing.shippingWeight']) {
+      candidate.edition['pricing.shippingWeight'] = toOunces(stock.weightLbs, 'lb');
     }
   }
   return candidate;

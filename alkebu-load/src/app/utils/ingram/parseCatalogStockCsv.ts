@@ -59,6 +59,17 @@ const count = (v: string | undefined) => {
   const n = Number((v ?? '').replace(/,/g, ''));
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 };
+/**
+ * A price or weight: "24.99" as written, or "2499" / "00002499" with Ingram's two implied
+ * decimals (the inventory guide's convention). Undefined when blank or not positive.
+ */
+export function impliedDecimal(v: string | undefined): number | undefined {
+  const raw = (v ?? '').replace(/[$,\s]/g, '');
+  if (!/^\d+(\.\d+)?$/.test(raw)) return undefined;
+  const n = raw.includes('.') ? Number(raw) : Number(raw) / 100;
+  return n > 0 ? n : undefined;
+}
+
 const yes = (v: string | undefined) => /^(y|yes|true|1)$/i.test((v ?? '').trim());
 
 export function createCatalogCsvFormat(): FeedFormat {
@@ -108,10 +119,12 @@ export function createCatalogCsvFormat(): FeedFormat {
           stockStatus: onHand > 0,
         };
       }
-      const listPrice = Number(field(fields, 'List Price'));
+      const publicationDate = normalizeOnSaleDate(field(fields, 'Publication Date') ?? '');
       return {
         ean,
-        pubListPrice: Number.isFinite(listPrice) && listPrice > 0 ? listPrice : undefined,
+        pubListPrice: impliedDecimal(field(fields, 'List Price')),
+        publicationDate: publicationDate === 'unrecognized' ? undefined : publicationDate,
+        weightLbs: impliedDecimal(field(fields, 'Weight')),
         productAvailability: field(fields, 'Product Availability Code') || undefined,
         onSaleDate: normalizeOnSaleDate(field(fields, 'On Sale Date') ?? ''),
         backorder: yes(field(fields, 'Back Order Only Indicator')),

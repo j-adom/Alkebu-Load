@@ -26,6 +26,8 @@ export function buildTitlesBasicLine(values: SyntheticTitle, layout: TitlesBasic
   const bisac = [...(values.bisac ?? [])];
   return layout.columns
     .map((column) => {
+      // Field 22 of the real layout is always three digits (the parser's alignment anchor).
+      if (column === 'skip:Accessory Code') return '000';
       if (column.startsWith('skip:')) return '';
       if (column === 'contributor') return encode(contributors.shift() ?? '', layout);
       if (column === 'bisac') return encode(bisac.shift() ?? '', layout);

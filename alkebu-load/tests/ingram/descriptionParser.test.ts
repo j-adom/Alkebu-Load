@@ -1,10 +1,12 @@
-// Synthetic description lines built from DESCRIPTION_LAYOUT (never vendor samples).
+// Synthetic description lines built from the layout constants (never vendor samples).
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
   createDescriptionReducer,
   DESCRIPTION_LAYOUT,
+  DESCRIPTION_LAYOUTS,
+  descriptionRecordEan,
   parseDescriptionRecord,
   parseDescriptionStream,
   type DescriptionLayout,
@@ -26,7 +28,7 @@ async function collect(lines: string[], opts: Parameters<typeof parseDescription
     for (const line of lines) yield line;
   }
   const out = [];
-  for await (const record of parseDescriptionStream(source(), 'marketing', opts)) out.push(record);
+  for await (const record of parseDescriptionStream(source(), 'marketing', { layout: DESCRIPTION_LAYOUT, ...opts })) out.push(record);
   return out;
 }
 
@@ -59,7 +61,7 @@ test('consecutive rows for one EAN are merged into one record', async () => {
 });
 
 test('records outside the catalog are dropped without accumulating their lines', () => {
-  const reducer = createDescriptionReducer('annotation', { eans: new Set([B]) });
+  const reducer = createDescriptionReducer('annotation', { eans: new Set([B]), layout: DESCRIPTION_LAYOUT });
   const out = [
     ...reducer.push(startLine(A, 'Not ours.')),
     ...reducer.push('a long continuation we never keep'),
@@ -84,4 +86,23 @@ test('an explicit end-of-record marker closes a record, and stray lines are coun
       [B, 'Next'],
     ],
   );
+});
+
+test('publisher marketing is fixed-width: EAN, a 5-digit length, then the text', async () => {
+  const layout = DESCRIPTION_LAYOUTS.marketing;
+  const line = (ean: string, text: string) => `${ean}${String(text.length).padStart(5, '0')}${text}`;
+  assert.equal(descriptionRecordEan(line(A, 'Copy.'), layout), A);
+  // A wrapped line that starts with 13 digits is not a new record unless the length follows.
+  assert.equal(descriptionRecordEan('9780000000019 copies sold worldwide.', layout), null);
+  const records = await collect([line(A, 'National Bestseller <BR>Copy | with a pipe.'), line(B, 'Other.')], { layout });
+  assert.deepEqual(records, [
+    { ean: A, kind: 'marketing', html: 'National Bestseller <BR>Copy | with a pipe.' },
+    { ean: B, kind: 'marketing', html: 'Other.' },
+  ]);
+});
+
+test('brief descriptions are EAN | BD | length | text, and each kind defaults to its own layout', () => {
+  assert.deepEqual(parseDescriptionRecord([`${A}|BD|00011|Short copy.`], 'brief'), { ean: A, kind: 'brief', html: 'Short copy.' });
+  assert.deepEqual(parseDescriptionRecord([`${A}00011Short copy.`], 'marketing'), { ean: A, kind: 'marketing', html: 'Short copy.' });
+  assert.deepEqual(parseDescriptionRecord([`${A}|  |First hundred.`], 'annotation'), { ean: A, kind: 'annotation', html: 'First hundred.' });
 });

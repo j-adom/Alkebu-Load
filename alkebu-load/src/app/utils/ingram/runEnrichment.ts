@@ -10,7 +10,7 @@ import { applyEnrichment, emptyApplyResult, loadRejectedProposals, type ApplyRes
 import { emptyFilterStats, filterCatalogLines, loadCatalogEans, type FilterStats } from './catalogFilter';
 import type { FeedFormat } from './catalogStockSnapshot';
 import {
-  DESCRIPTION_LAYOUT,
+  DESCRIPTION_LAYOUTS,
   parseDescriptionStream,
   type DescriptionKind,
   type DescriptionLayout,
@@ -35,7 +35,7 @@ import { zipLines } from './zipLines';
 export interface EnrichmentFiles {
   titles?: { path: string; entryName?: string };
   descriptions?: Array<{ path: string; kind: DescriptionKind; entryName?: string }>;
-  /** Optional Inventory file (Catalog Stock CSV) for media-mail eligibility and on-sale dates. */
+  /** Inventory file (Catalog Stock CSV): list price, publication date, weight, media mail, on-sale date. */
   stock?: { path: string; entryName?: string; format: FeedFormat };
 }
 
@@ -48,6 +48,7 @@ export interface RunOptions {
   square?: SquareWriteOption;
   bisacHeadings?: ReadonlyMap<string, string>;
   titlesLayout?: TitlesBasicLayout;
+  /** Overrides the per-kind layouts (DESCRIPTION_LAYOUTS) for every description file. */
   descriptionLayout?: DescriptionLayout;
   /** Tests only: allow the placeholder layouts (real files must never be parsed with them). */
   allowPlaceholderLayout?: boolean;
@@ -83,17 +84,18 @@ export class PlaceholderLayoutError extends Error {}
 function assertLayouts(opts: RunOptions) {
   if (opts.allowPlaceholderLayout) return;
   const titles = opts.titlesLayout ?? TITLES_BASIC_LAYOUT;
-  const descriptions = opts.descriptionLayout ?? DESCRIPTION_LAYOUT;
   if (opts.files.titles && titles.placeholder) {
-    throw new PlaceholderLayoutError(
-      'TITLES_BASIC_LAYOUT is still the placeholder. The owner must transcribe the column order from DeveloperSpecs/ (titlesBasicParser.ts) before a real run.',
-    );
+    throw new PlaceholderLayoutError('The Titles Basic layout is a placeholder (titlesBasicParser.ts); a real run needs the vendor column order.');
   }
-  if (opts.files.descriptions?.length && descriptions.placeholder) {
-    throw new PlaceholderLayoutError(
-      'DESCRIPTION_LAYOUT is still the placeholder. The owner must transcribe the record layout from DeveloperSpecs/ (descriptionParser.ts) before a real run.',
-    );
+  for (const file of opts.files.descriptions ?? []) {
+    if (descriptionLayoutFor(opts, file.kind).placeholder) {
+      throw new PlaceholderLayoutError(`The ${file.kind} description layout is a placeholder (descriptionParser.ts); a real run needs the vendor layout.`);
+    }
   }
+}
+
+function descriptionLayoutFor(opts: RunOptions, kind: DescriptionKind): DescriptionLayout {
+  return opts.descriptionLayout ?? DESCRIPTION_LAYOUTS[kind];
 }
 
 async function readTitles(files: EnrichmentFiles, eans: Set<string>, layout: TitlesBasicLayout, errors: { malformed: number }) {
@@ -108,11 +110,11 @@ async function readTitles(files: EnrichmentFiles, eans: Set<string>, layout: Tit
   return { records, stats };
 }
 
-async function readDescriptions(files: EnrichmentFiles, eans: Set<string>, layout: DescriptionLayout) {
+async function readDescriptions(files: EnrichmentFiles, eans: Set<string>, layoutFor: (kind: DescriptionKind) => DescriptionLayout) {
   const byEan = new Map<string, Partial<Record<DescriptionKind, string>>>();
   let count = 0;
   for (const file of files.descriptions ?? []) {
-    for await (const record of parseDescriptionStream(zipLines(file.path, file.entryName), file.kind, { eans, layout })) {
+    for await (const record of parseDescriptionStream(zipLines(file.path, file.entryName), file.kind, { eans, layout: layoutFor(file.kind) })) {
       count += 1;
       byEan.set(record.ean, { ...(byEan.get(record.ean) ?? {}), [record.kind]: record.html });
     }
@@ -149,13 +151,12 @@ export async function runEnrichment(payload: Payload | PayloadLike, opts: RunOpt
   assertLayouts(opts);
   const runId = opts.runId ?? `ingram-${new Date().toISOString().slice(0, 10)}-${randomUUID().slice(0, 8)}`;
   const titlesLayout = opts.titlesLayout ?? TITLES_BASIC_LAYOUT;
-  const descriptionLayout = opts.descriptionLayout ?? DESCRIPTION_LAYOUT;
   const pager = payload as Pick<Payload, 'find'>;
 
   const eans = await loadCatalogEans(pager);
   const errors = emptyParseErrors();
   const titles = await readTitles(opts.files, eans, titlesLayout, errors);
-  const descriptions = await readDescriptions(opts.files, eans, descriptionLayout);
+  const descriptions = await readDescriptions(opts.files, eans, (kind) => descriptionLayoutFor(opts, kind));
   const stock = await readStock(opts.files, eans);
   const rejected = await loadRejectedProposals(pager);
 

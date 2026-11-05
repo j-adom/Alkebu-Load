@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createCatalogCsvFormat, normalizeOnSaleDate, splitCsvLine } from '../../src/app/utils/ingram/parseCatalogStockCsv';
+import { createCatalogCsvFormat, impliedDecimal, normalizeOnSaleDate, splitCsvLine } from '../../src/app/utils/ingram/parseCatalogStockCsv';
 
 // Header exactly as Ingram's Catalog Stock CSV delivers it (column names only, 2026-10-02).
 const HEADER =
@@ -74,4 +74,17 @@ test('normalizeOnSaleDate accepts common date shapes and flags others', () => {
 
 test('splitCsvLine handles escaped quotes', () => {
   assert.deepEqual(splitCsvLine('a,"b,c","d""e"'), ['a', 'b,c', 'd"e']);
+});
+
+test('list price, publication date and weight: written decimals or two implied decimals', () => {
+  const format = createCatalogCsvFormat();
+  format.readHeader(HEADER);
+  const rec = format.parse(row({ EAN: '9780000000002', 'On Sale Date': '20250115', 'List Price': '24.99', 'Publication Date': '03/05/2024', Weight: '1.05' }))!;
+  assert.equal(rec.pubListPrice, 24.99);
+  assert.equal(rec.publicationDate, '20240305');
+  assert.equal(rec.weightLbs, 1.05);
+  assert.equal(impliedDecimal('00002499'), 24.99);
+  assert.equal(impliedDecimal('0'), undefined);
+  assert.equal(impliedDecimal(''), undefined);
+  assert.equal(impliedDecimal('n/a'), undefined);
 });

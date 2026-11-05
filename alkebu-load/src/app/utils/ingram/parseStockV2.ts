@@ -5,6 +5,7 @@ import type { IngramStock } from './parseStockResponse';
 
 export interface StockV2Record extends IngramStock {
   weightLbs: number;
+  publicationDate: string;
   /** Our discount level (= our cost basis), e.g. '40%' or 'REG'. */
   discountLevel: string;
   /** Publisher status code, e.g. 'IP' (see the pubstatus reference table). */
@@ -44,6 +45,7 @@ export function parseStockV2Line(rawLine: string): StockV2Record {
     pubListPrice: count(field(line, 151, 157)) / 100,
     productAvailability: field(line, 272, 273),
     onSaleDate: field(line, 197, 204),
+    publicationDate: field(line, 189, 196),
     backorder: field(line, 219, 219) === 'Y',
     mediaMail: field(line, 220, 220) === 'Y',
     dcs,

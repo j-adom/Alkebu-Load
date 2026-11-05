@@ -1,5 +1,5 @@
 // Pure stream reducer for Ingram's description files: publisher marketing descriptions
-// (DESC_BKLST/pmall_active.zip, PubDescripi/pmmthy-*.zip), brief descriptions
+// (DESC_BKLST/PMALL_active.zip, PubDescripi/ingmmthy-13.zip), brief descriptions
 // (DESC_BKLST/brdn_GBLFL.zip, BriefDesc/brdn.zip) and annotations (TitlesBasic/annobasic_pipe.zip).
 //
 // These records are variable-length and can span several lines, so a line-based filter
@@ -8,15 +8,24 @@
 // EAN (long text split across rows) are joined. Records for EANs outside the catalog are
 // dropped as they stream past and never accumulate.
 //
-// OWNER: the layout below is a PLACEHOLDER. Transcribe the record markers and field
-// positions from DeveloperSpecs/ (Claude must not read the vendor spec or samples), then
-// set placeholder to false. runEnrichment refuses a placeholder layout for live files.
+// Layouts per file, from Ingram's description specs (Description Data Files, Brief
+// Description and Publisher Marketing File Specifications, Titles Basic guide):
+//   - publisher marketing: fixed-width, EAN in positions 1-13, a 5-digit length in 14-18,
+//     the text from 19 to end of line;
+//   - brief: pipe-delimited EAN | "BD" | length | text;
+//   - annotation (Titles Basic): pipe-delimited EAN | filler | first 100 characters.
 import { splitDelimited } from './titlesBasicParser';
 
 export type DescriptionKind = 'marketing' | 'brief' | 'annotation';
 
 export interface DescriptionLayout {
   placeholder: boolean;
+  /**
+   * Fixed-width records (0-based character offsets): the EAN's 13 characters start at
+   * `eanStart`, the text runs from `textStart` to end of line, and everything between them
+   * must be digits or spaces. When set, the delimiter fields below are unused.
+   */
+  fixed?: { eanStart: number; textStart: number };
   delimiter: string;
   quote: string | null;
   escape: string | null;
@@ -28,16 +37,16 @@ export interface DescriptionLayout {
   recordEndMarker: string | null;
 }
 
-// OWNER: transcribe from DeveloperSpecs/ (description file layouts). PLACEHOLDER VALUES.
-export const DESCRIPTION_LAYOUT: DescriptionLayout = {
-  placeholder: true,
-  delimiter: '|',
-  quote: null,
-  escape: null,
-  eanField: 0,
-  textField: 1,
-  recordEndMarker: null,
+const PIPE = { delimiter: '|', quote: null, escape: null, recordEndMarker: null } as const;
+
+export const DESCRIPTION_LAYOUTS: Record<DescriptionKind, DescriptionLayout> = {
+  marketing: { placeholder: false, ...PIPE, eanField: 0, textField: 1, fixed: { eanStart: 0, textStart: 18 } },
+  brief: { placeholder: false, ...PIPE, eanField: 0, textField: 3 },
+  annotation: { placeholder: false, ...PIPE, eanField: 0, textField: 2 },
 };
+
+/** The default for callers that don't name a kind: a delimited layout. */
+export const DESCRIPTION_LAYOUT: DescriptionLayout = DESCRIPTION_LAYOUTS.brief;
 
 export interface DescriptionRecord {
   ean: string;
@@ -48,6 +57,14 @@ export interface DescriptionRecord {
 
 /** The EAN when `line` starts a record, else null. */
 export function descriptionRecordEan(line: string, layout: DescriptionLayout = DESCRIPTION_LAYOUT): string | null {
+  if (layout.fixed) {
+    const { eanStart, textStart } = layout.fixed;
+    const raw = line.slice(eanStart, eanStart + 13);
+    // The digits-or-spaces gap (the length field) keeps a wrapped line that happens to
+    // start with 13 digits from being read as a new record.
+    if (line.length < textStart || !/^[\d ]*$/.test(line.slice(eanStart + 13, textStart))) return null;
+    return /^\d{13}$/.test(raw) ? raw : null;
+  }
   const fields = splitDelimited(line, layout);
   if (fields.length <= Math.max(layout.eanField, layout.textField - 1)) return null;
   const raw = (fields[layout.eanField] ?? '').trim();
@@ -58,7 +75,7 @@ export function descriptionRecordEan(line: string, layout: DescriptionLayout = D
 export function parseDescriptionRecord(
   lines: string[],
   kind: DescriptionKind,
-  layout: DescriptionLayout = DESCRIPTION_LAYOUT,
+  layout: DescriptionLayout = DESCRIPTION_LAYOUTS[kind],
 ): DescriptionRecord | null {
   if (lines.length === 0) return null;
   const ean = descriptionRecordEan(lines[0], layout);
@@ -69,6 +86,7 @@ export function parseDescriptionRecord(
 }
 
 function textFrom(line: string, layout: DescriptionLayout): string {
+  if (layout.fixed) return line.slice(layout.fixed.textStart);
   // Everything from the text field on: description text may itself contain the delimiter.
   let start = 0;
   for (let i = 0; i < layout.textField; i += 1) {
@@ -95,7 +113,7 @@ export function createDescriptionReducer(
   kind: DescriptionKind,
   opts: { eans?: ReadonlySet<string>; layout?: DescriptionLayout } = {},
 ): DescriptionReducer {
-  const layout = opts.layout ?? DESCRIPTION_LAYOUT;
+  const layout = opts.layout ?? DESCRIPTION_LAYOUTS[kind];
   const stats = { records: 0, kept: 0, orphanLines: 0 };
   let current: { ean: string; keep: boolean; parts: string[] } | null = null;
   let pending: DescriptionRecord | null = null;

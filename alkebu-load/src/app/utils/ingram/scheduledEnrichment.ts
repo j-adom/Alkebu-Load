@@ -22,9 +22,13 @@ export interface RemoteSpec {
 export const STATE_GLOBAL = 'ingramEnrichmentState';
 
 /**
- * Remote files per job (2026-09-22 access sheet). Weekly: Titles Basic + annotations (Tue
- * 6 AM CT drop). Monthly: publisher marketing + brief descriptions; `backfill` uses the full
- * backlist files instead of the monthly adds/changes. Paths are overridable by env.
+ * Remote files per job (2026-09-22 access sheet; names as listed on the server 2026-11-05).
+ * Weekly: Titles Basic (Tue 6 AM CT drop) plus the Catalog Stock file, which carries the
+ * price, publication date and weight Titles Basic lacks (INGRAM_ENRICH_WITH_STOCK_FILE=false
+ * turns it off). The Titles Basic annotation file is skipped: it is only the first 100
+ * characters of a description. Monthly: publisher marketing + brief descriptions;
+ * `backfill` uses the full backlist files instead of the monthly adds/changes. Paths are
+ * overridable by env.
  */
 export function enrichmentFilesFor(
   job: EnrichmentJob,
@@ -34,21 +38,21 @@ export function enrichmentFilesFor(
   if (job === 'titles') {
     const specs: RemoteSpec[] = [
       { kind: 'titles', remote: env.INGRAM_TITLES_BASIC_PATH || 'TitlesBasic/ttlingbasic_pipe.zip' },
-      { kind: 'annotation', remote: env.INGRAM_ANNOTATIONS_PATH || 'TitlesBasic/annobasic_pipe.zip' },
     ];
-    if (env.INGRAM_ENRICH_WITH_STOCK_FILE === 'true') specs.push({ kind: 'stock', remote: stockFeedFromEnv(env).remotePath });
+    if (env.INGRAM_ANNOTATIONS_PATH) specs.push({ kind: 'annotation', remote: env.INGRAM_ANNOTATIONS_PATH });
+    if (env.INGRAM_ENRICH_WITH_STOCK_FILE !== 'false') specs.push({ kind: 'stock', remote: stockFeedFromEnv(env).remotePath });
     return specs;
   }
   if (opts.backfill) {
     return [
-      { kind: 'marketing', remote: env.INGRAM_MARKETING_DESC_BACKLIST_PATH || 'DESC_BKLST/pmall_active.zip' },
+      { kind: 'marketing', remote: env.INGRAM_MARKETING_DESC_BACKLIST_PATH || 'DESC_BKLST/PMALL_active.zip' },
       { kind: 'brief', remote: env.INGRAM_BRIEF_DESC_BACKLIST_PATH || 'DESC_BKLST/brdn_GBLFL.zip' },
     ];
   }
   return [
     {
       kind: 'marketing',
-      remote: env.INGRAM_MARKETING_DESC_PATH || { dir: 'PubDescripi', pattern: /^pmmthy-.*\.zip$/i },
+      remote: env.INGRAM_MARKETING_DESC_PATH || { dir: 'PubDescripi', pattern: /^ingmmthy-.*\.zip$/i },
     },
     { kind: 'brief', remote: env.INGRAM_BRIEF_DESC_PATH || 'BriefDesc/brdn.zip' },
   ];
