@@ -18,9 +18,12 @@
 -- idempotent. Additive only: new tables, nullable/defaulted columns, enum types and labels,
 -- indexes and foreign keys. Nothing is dropped, retyped or backfilled.
 --
--- NOT YET RUN ANYWHERE: there was no disposable PostgreSQL available when this was
--- written. Before production, apply it to a disposable copy (apply, re-run as a no-op,
--- run the verify block) the way add-ingram-availability-schema.sql was tested.
+-- Tested 2026-11-05 on a disposable PostgreSQL 18.6 (prod is 17.9): `main`'s Payload created
+-- the "before" schema with two seeded books; this script applied cleanly, a rerun was a
+-- no-op, and the verify block below was all true. The patched schema matched the branch's
+-- own pushed schema exactly, apart from column order. With dev push off, the branch wrote
+-- the new book, edition and enrichment fields, created a log row, and queued
+-- ingram-enrich-titles.
 --
 -- Single transaction, all-or-nothing, idempotent (safe to re-run).
 -- Requires PostgreSQL 12+ (ALTER TYPE ... ADD VALUE inside a transaction).

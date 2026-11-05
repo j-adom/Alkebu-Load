@@ -4,7 +4,7 @@
  * downloads the Ingram files, filters them to our EANs, diffs every book against the field
  * policy, and prints COUNTS ONLY (no titles or values), so the output can be shared.
  *
- *   pnpm ingram:enrich                                   # dry run, weekly files (Titles Basic + annotations)
+ *   pnpm ingram:enrich                                   # dry run, weekly files (Titles Basic + Catalog Stock)
  *   pnpm ingram:enrich -- --job descriptions             # dry run, monthly description files
  *   pnpm ingram:enrich -- --job descriptions --backfill  # full backlist description files
  *   pnpm ingram:enrich -- --apply --limit 50             # write the first 50 changed books (Payload only)
@@ -15,8 +15,7 @@
  * "deferred"): writing them to Payload alone would be reverted by the next Square sync.
  * --square changes IN-STORE prices: tell staff before a full run.
  *
- * It refuses to run until the owner has transcribed the Titles Basic / description layouts
- * (titlesBasicParser.ts, descriptionParser.ts) from DeveloperSpecs/.
+ * The weekly job downloads Titles Basic and the ~195 MB Catalog Stock file (allow ~20 min).
  *
  * Needs the production database (Postgres), e.g. through the SSH tunnel in CLAUDE.md:
  *   DATABASE_URI='postgresql://…@localhost:55433/alkebulan' pnpm ingram:enrich
