@@ -10,6 +10,7 @@ import type { Payload } from 'payload';
 import { editionEan, type CompactStock } from './applyIngramStock';
 import { planBookAvailability } from './availabilityPlan';
 import { buildSnapshot, type CatalogSnapshot, type FeedFormat } from './catalogStockSnapshot';
+import type { IngramStock } from './parseStockResponse';
 import { downloadIngramFile } from './sftp';
 import { zipLines } from './zipLines';
 
@@ -70,7 +71,12 @@ export async function fetchStockSnapshot(
   payload: BookPager,
   opts: FetchOptions,
   download: (remote: string, local: string) => Promise<void> = (remote, local) => downloadIngramFile(remote, local),
-): Promise<{ input: StockSnapshotInput; counts: Omit<CatalogSnapshot, 'stock'> & { catalogEans: number } }> {
+): Promise<{
+  input: StockSnapshotInput;
+  /** Full records for our EANs (kept out of `input`, which travels as job input). */
+  records: Map<string, IngramStock>;
+  counts: Omit<CatalogSnapshot, 'stock' | 'records'> & { catalogEans: number };
+}> {
   const catalogEans = await loadCatalogEans(payload);
   const dir = await mkdtemp(join(tmpdir(), 'ingram-stock-'));
   try {
@@ -93,6 +99,7 @@ export async function fetchStockSnapshot(
     }
     return {
       input: { stock: Object.fromEntries(snapshot.stock), fullCoverage: true, sourceFile: opts.remotePath },
+      records: snapshot.records,
       counts,
     };
   } finally {

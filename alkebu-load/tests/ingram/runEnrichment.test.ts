@@ -155,6 +155,42 @@ test('scheduled run: skips unchanged files, records checksums only after a clean
   assert.ok(!('skipped' in forced));
 });
 
+test('scheduled titles run reuses the daily refresh stock records instead of downloading', async () => {
+  const payload = createFakePayload({ books: [0, 1].map(book) });
+  const records = Object.fromEntries(
+    EANS.slice(0, 2).map((ean) => [ean, { ean, backorder: false, mediaMail: true, pubListPrice: 24.99, dcs: {} }]),
+  );
+  const downloads: string[] = [];
+  const result = await runScheduledEnrichment(payload as any, 'titles', { dryRun: false }, {
+    local: { titles: titlesZip },
+    square: null,
+    stockCache: async (source) => ({ savedAt: new Date().toISOString(), sourceFile: source, checksum: 'abc', records }),
+    download: async (remote) => {
+      downloads.push(remote);
+    },
+  });
+  assert.ok(!('skipped' in result));
+  assert.equal(downloads.length, 0, 'nothing downloaded');
+  assert.equal(result.byField['pricing.retailPrice']?.correct, 2, 'cached prices were used');
+  const state = payload.globals.get('ingramEnrichmentState')!;
+  assert.equal(state.processedFiles['Inventory/Catalog_Stock/cat_ing_stock.zip'].checksum, 'abc');
+
+  // No fresh cache: the stock file is downloaded as before.
+  const fresh = createFakePayload({ books: [0, 1].map(book) });
+  const fallback = await runScheduledEnrichment(fresh as any, 'titles', { dryRun: true }, {
+    local: { titles: titlesZip },
+    square: null,
+    stockCache: async () => null,
+    download: async (remote, local) => {
+      downloads.push(remote);
+      const { copyFile } = await import('node:fs/promises');
+      await copyFile(stockZip, local);
+    },
+  });
+  assert.ok(!('skipped' in fallback));
+  assert.deepEqual(downloads, ['Inventory/Catalog_Stock/cat_ing_stock.zip']);
+});
+
 test('job file selection and the first-Monday rule', () => {
   assert.deepEqual(enrichmentFilesFor('titles', {}).map((s) => s.kind), ['titles', 'stock']);
   assert.deepEqual(enrichmentFilesFor('titles', { INGRAM_ENRICH_WITH_STOCK_FILE: 'false' }).map((s) => s.kind), ['titles']);

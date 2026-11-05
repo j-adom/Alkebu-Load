@@ -9,6 +9,7 @@ import { fetchIngramFile, latestRemoteFile, type Downloader, type FetchedFile } 
 import type { RemoteFile } from './sftp';
 import { squareWriteOptionFromEnv, type SquareWriteOption } from './squareWriteBack';
 import { stockFeedFromEnv } from './stockFeeds';
+import { loadStockRecords, type StockRecordCache } from './stockRecordCache';
 
 export type EnrichmentJob = 'titles' | 'descriptions';
 type FileKind = 'titles' | 'stock' | DescriptionKind;
@@ -66,6 +67,8 @@ export interface ScheduledDeps {
   list?: (dir: string) => Promise<RemoteFile[]>;
   /** Local copies instead of SFTP, by kind (CLI --local). */
   local?: Partial<Record<FileKind, string>>;
+  /** The daily refresh's saved stock records; defaults to loadStockRecords. Null: always download. */
+  stockCache?: ((sourceFile: string) => Promise<StockRecordCache | null>) | null;
   square?: SquareWriteOption | null;
   env?: Record<string, string | undefined>;
   now?: () => Date;
@@ -100,6 +103,7 @@ export async function runScheduledEnrichment(
   const processed: Processed = { ...(state?.processedFiles ?? {}) };
 
   const fetched: Array<{ spec: RemoteSpec; remote: string; file: FetchedFile }> = [];
+  let cachedStock: { remote: string; cache: StockRecordCache } | null = null;
   try {
     for (const spec of specs) {
       const remote =
@@ -107,6 +111,13 @@ export async function runScheduledEnrichment(
       if (!remote) {
         console.warn(`Ingram enrichment: no ${spec.kind} file found on the server; continuing without it`);
         continue;
+      }
+      if (spec.kind === 'stock' && !deps.local?.stock && deps.stockCache !== null) {
+        const cache = await (deps.stockCache ?? loadStockRecords)(remote);
+        if (cache) {
+          cachedStock = { remote, cache };
+          continue;
+        }
       }
       const localCopy = deps.local?.[spec.kind];
       const download: Downloader | undefined = localCopy
@@ -118,8 +129,12 @@ export async function runScheduledEnrichment(
       fetched.push({ spec, remote, file: await fetchIngramFile(remote, { download }) });
     }
 
-    const changes = fetched.map((f) => ({ kind: f.spec.kind, remote: f.remote, changed: processed[f.remote]?.checksum !== f.file.checksum }));
-    if (fetched.length === 0) return { skipped: 'no Ingram files available' };
+    const sources = [
+      ...fetched.map((f) => ({ kind: f.spec.kind, remote: f.remote, checksum: f.file.checksum })),
+      ...(cachedStock ? [{ kind: 'stock' as const, remote: cachedStock.remote, checksum: cachedStock.cache.checksum }] : []),
+    ];
+    const changes = sources.map((f) => ({ kind: f.kind, remote: f.remote, changed: processed[f.remote]?.checksum !== f.checksum }));
+    if (sources.length === 0) return { skipped: 'no Ingram files available' };
     if (!opts.force && changes.every((c) => !c.changed)) return { skipped: 'files unchanged since the last applied run' };
 
     const files: EnrichmentFiles = {};
@@ -128,6 +143,7 @@ export async function runScheduledEnrichment(
       else if (spec.kind === 'stock') files.stock = { path: file.localPath, format: stockFeedFromEnv(env).createFormat() };
       else (files.descriptions ??= []).push({ path: file.localPath, kind: spec.kind });
     }
+    if (cachedStock) files.stock = { records: cachedStock.cache.records };
 
     const square = opts.dryRun ? undefined : deps.square === undefined ? await squareWriteOptionFromEnv(env) : (deps.square ?? undefined);
     const summary = await runEnrichment(payload, {
@@ -143,7 +159,7 @@ export async function runScheduledEnrichment(
     // A bounded (--limit) run hasn't covered every book, so it never marks files processed.
     if (!opts.dryRun && summary.booksFailed === 0 && opts.limit === undefined) {
       const at = (deps.now ?? (() => new Date()))().toISOString();
-      for (const { remote, file } of fetched) processed[remote] = { checksum: file.checksum, processedAt: at };
+      for (const { remote, checksum } of sources) processed[remote] = { checksum, processedAt: at };
       await payload.updateGlobal({
         slug: STATE_GLOBAL as any,
         data: { processedFiles: processed, lastRunAt: at, lastRunSummary: summary } as any,

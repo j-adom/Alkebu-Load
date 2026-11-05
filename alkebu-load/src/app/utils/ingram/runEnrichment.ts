@@ -35,8 +35,11 @@ import { zipLines } from './zipLines';
 export interface EnrichmentFiles {
   titles?: { path: string; entryName?: string };
   descriptions?: Array<{ path: string; kind: DescriptionKind; entryName?: string }>;
-  /** Inventory file (Catalog Stock CSV): list price, publication date, weight, media mail, on-sale date. */
-  stock?: { path: string; entryName?: string; format: FeedFormat };
+  /**
+   * Inventory file (Catalog Stock CSV): list price, publication date, weight, media mail,
+   * on-sale date. Either the file, or records the daily stock refresh already parsed.
+   */
+  stock?: { path: string; entryName?: string; format: FeedFormat } | { records: Record<string, IngramStock> };
 }
 
 export interface RunOptions {
@@ -125,11 +128,16 @@ async function readDescriptions(files: EnrichmentFiles, eans: Set<string>, layou
 async function readStock(files: EnrichmentFiles, eans: Set<string>) {
   const stock = new Map<string, IngramStock>();
   if (!files.stock) return { stock, stats: null };
-  const { format } = files.stock;
+  if ('records' in files.stock) {
+    for (const [ean, record] of Object.entries(files.stock.records)) if (eans.has(ean)) stock.set(ean, record);
+    return { stock, stats: null };
+  }
+  const file = files.stock;
+  const { format } = file;
   const stats = emptyFilterStats();
   let first = true;
   async function* body() {
-    for await (const line of zipLines(files.stock!.path, files.stock!.entryName)) {
+    for await (const line of zipLines(file.path, file.entryName)) {
       if (first) {
         first = false;
         if (format.readHeader(line)) continue;

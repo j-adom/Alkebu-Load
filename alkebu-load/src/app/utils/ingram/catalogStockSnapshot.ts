@@ -21,6 +21,8 @@ export const stockV2Format: FeedFormat = {
 
 export interface CatalogSnapshot {
   stock: Map<string, CompactStock>;
+  /** The full parsed records behind `stock` (our EANs only), for enrichment to reuse. */
+  records: Map<string, IngramStock>;
   scannedLines: number;
   matched: number;
   /** Lines with no readable EAN (blank, truncated, malformed). */
@@ -38,6 +40,7 @@ export async function buildSnapshot(
   opts: { threshold: number; today?: Date },
 ): Promise<CatalogSnapshot> {
   const stock = new Map<string, CompactStock>();
+  const records = new Map<string, IngramStock>();
   let scannedLines = 0;
   let skippedLines = 0;
   let unrecognizedOnSaleDates = 0;
@@ -64,6 +67,7 @@ export async function buildSnapshot(
     if (record.onSaleDate === 'unrecognized') unrecognizedOnSaleDates += 1;
     const code = record.productAvailability?.trim();
     if (code && !KNOWN_AVAILABILITY_CODES.has(code)) unrecognizedAvailabilityCodes += 1;
+    records.set(ean, record);
     stock.set(ean, {
       onHand: ingramOnHand(record),
       available: isIngramAvailable(record, opts.threshold, { today: opts.today }),
@@ -72,6 +76,7 @@ export async function buildSnapshot(
 
   return {
     stock,
+    records,
     scannedLines,
     matched: stock.size,
     skippedLines,

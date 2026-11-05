@@ -365,13 +365,18 @@ export default buildConfig({
           const { fetchStockSnapshot } = await import('./app/utils/ingram/refreshCatalogStock');
           const { stockFeedFromEnv } = await import('./app/utils/ingram/stockFeeds');
           const feed = stockFeedFromEnv();
-          const { input, counts } = await fetchStockSnapshot(req.payload, {
+          const { input, records, counts } = await fetchStockSnapshot(req.payload, {
             remotePath: feed.remotePath,
             format: feed.createFormat(),
             minLines: feed.minLines,
             threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
           });
           await req.payload.jobs.queue({ task: 'ingram-stock-apply', input: input as any });
+          // Saved for the weekly enrichment job, so it needn't download the same file again.
+          const { saveStockRecords } = await import('./app/utils/ingram/stockRecordCache');
+          await saveStockRecords(records, feed.remotePath).catch((error) =>
+            console.warn('Ingram stock refresh: could not save the stock cache for enrichment:', error),
+          );
           return { output: { feed: feed.name, ...counts } };
         },
         schedule: [{ cron: '30 11 * * *', queue: 'default' }], // 11:30 UTC = 6:30 AM CDT, after the 5 AM CT update
