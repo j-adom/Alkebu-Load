@@ -59,3 +59,4 @@ next-env.d.ts
 
 # Owner review list for scripts/wellness-untracked-availability.ts
 /wellness-untracked-review*.csv
+/square-reconcile-report*.csv

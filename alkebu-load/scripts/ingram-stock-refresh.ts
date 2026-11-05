@@ -6,6 +6,7 @@
  *
  *   pnpm ingram:stock-refresh                                  # dry run
  *   pnpm ingram:stock-refresh -- --apply                       # write changed books
+ *   pnpm ingram:stock-refresh -- --apply --only-rescues        # write only sales-rescued books
  *   pnpm ingram:stock-refresh -- --sold-since-years 3          # sales window (default 4; 0 = off)
  *   pnpm ingram:stock-refresh -- --report path/to/review.csv   # review list location
  *   pnpm ingram:stock-refresh -- --fresh                       # ignore the cached snapshot
@@ -22,6 +23,10 @@
  *     available-to-order.
  *
  * The review CSV lists every book that would change, from our own catalog plus a reason.
+ *
+ * Over an SSH tunnel each book write costs dozens of round trips, so a full apply takes
+ * hours. --only-rescues writes just the books only this script can save (the nightly job
+ * has no sales data); the nightly job then writes the rest next to the database.
  *
  * (Run through the pnpm script: it adds the CSS stub loader the Payload config needs.)
  */
@@ -89,13 +94,17 @@ async function main() {
   const { parseSnipcartOrders } = await import('../src/app/utils/ingram/legacyOrders')
 
   const apply = process.argv.includes('--apply')
+  const onlyRescues = process.argv.includes('--only-rescues')
   const soldSinceYears = Number(argValue('--sold-since-years') ?? 4)
   const reportPath = resolve(argValue('--report') ?? 'ingram-availability-review.csv')
   const payload = await getPayload({ config })
+  // Over a tunnel, idle pooled connections get cut. pg emits that on the pool, and with no
+  // listener it kills the process; the pool already discards the dead client on its own.
+  ;(payload.db as any).pool?.on('error', (error: Error) => console.warn(`[refresh] idle database connection dropped (${error.message}); continuing`))
   const feed = stockFeedFromEnv()
   const checkedAt = new Date().toISOString()
 
-  console.log(`[refresh] feed ${feed.name}: ${feed.remotePath} (${apply ? 'APPLY' : 'dry run'})`)
+  console.log(`[refresh] feed ${feed.name}: ${feed.remotePath} (${apply ? (onlyRescues ? 'APPLY, rescues only' : 'APPLY') : 'dry run'})`)
   const started = Date.now()
   let cached: { savedAt: string; input: StockSnapshotInput; counts: Record<string, number> } | null = null
   if (!process.argv.includes('--fresh')) {
@@ -188,7 +197,7 @@ async function main() {
         ])
       }
 
-      if (apply && plan.changed) {
+      if (apply && plan.changed && (!onlyRescues || plan.transition === 'rescued-by-sales')) {
         try {
           await payload.update({
             collection: 'books',
@@ -198,6 +207,7 @@ async function main() {
             context: { skipEnrichment: true, ingramStockRefresh: true },
           })
           written += 1
+          if (written % 25 === 0) console.log(`[refresh] written ${written} (at book ${books} of ~${result.totalDocs})`)
         } catch (error) {
           failed += 1
           console.error(`[refresh] failed to update book ${book.id}:`, error instanceof Error ? error.message : error)

@@ -94,6 +94,7 @@ describe('generateAbandonedCartTemplate – XSS escaping', () => {
     items: [{ productTitle: SCRIPT_PAYLOAD, quantity: 2, unitPrice: 500, totalPrice: 1000 }],
     subtotal: 1000,
     recoveryUrl: 'https://alkebulanimages.com/cart/abc',
+      unsubscribeUrl: 'https://alkebulanimages.com/unsubscribe?t=x',
   };
 
   it('does not leak raw <script> in customerName', () => {
@@ -234,6 +235,7 @@ describe('ctaButton – href protocol guard (defense-in-depth)', () => {
       items: [{ productTitle: 'Book', quantity: 1, unitPrice: 1000, totalPrice: 1000 }],
       subtotal: 1000,
       recoveryUrl: 'javascript:alert(1)',
+      unsubscribeUrl: 'https://alkebulanimages.com/unsubscribe?t=x',
     };
     const { html } = generateAbandonedCartTemplate(data);
     assert.ok(
@@ -250,6 +252,7 @@ describe('ctaButton – href protocol guard (defense-in-depth)', () => {
       items: [{ productTitle: 'Book', quantity: 1, unitPrice: 500, totalPrice: 500 }],
       subtotal: 500,
       recoveryUrl: 'data:text/html,<script>alert(1)</script>',
+      unsubscribeUrl: 'https://alkebulanimages.com/unsubscribe?t=x',
     };
     const { html } = generateAbandonedCartTemplate(data);
     assert.ok(
@@ -267,6 +270,7 @@ describe('ctaButton – href protocol guard (defense-in-depth)', () => {
       items: [{ productTitle: 'Book', quantity: 1, unitPrice: 1000, totalPrice: 1000 }],
       subtotal: 1000,
       recoveryUrl: validUrl,
+      unsubscribeUrl: 'https://alkebulanimages.com/unsubscribe?t=x',
     };
     const { html } = generateAbandonedCartTemplate(data);
     assert.ok(

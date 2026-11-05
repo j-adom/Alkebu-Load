@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import test from 'node:test';
 
-import { resolveJobAutoRunConfig } from '../../src/app/utils/jobRunnerConfig';
+import { customerEmailJobSchedule, customerEmailJobsEnabled, resolveJobAutoRunConfig } from '../../src/app/utils/jobRunnerConfig';
 
 test('is disabled by default so a developer machine never runs production crons', () => {
   assert.deepStrictEqual(resolveJobAutoRunConfig({}), []);
@@ -54,4 +54,18 @@ test('reads process.env when no environment is passed', () => {
       process.env.ENABLE_JOB_AUTORUN = previous;
     }
   }
+});
+
+test('customer-emailing tasks are never scheduled without ENABLE_CUSTOMER_EMAIL_JOBS', () => {
+  const schedule = [{ cron: '0 15 * * *', queue: 'default' }];
+  assert.deepStrictEqual(customerEmailJobSchedule(schedule, {}), []);
+  assert.deepStrictEqual(customerEmailJobSchedule(schedule, { ENABLE_JOB_AUTORUN: 'true' }), []);
+  assert.deepStrictEqual(customerEmailJobSchedule(schedule, { ENABLE_CUSTOMER_EMAIL_JOBS: '1' }), []);
+  assert.deepStrictEqual(customerEmailJobSchedule(schedule, { ENABLE_CUSTOMER_EMAIL_JOBS: 'true' }), schedule);
+});
+
+test('customer-email handlers skip already-queued runs unless the flag is exactly "true"', () => {
+  assert.strictEqual(customerEmailJobsEnabled({}), false);
+  assert.strictEqual(customerEmailJobsEnabled({ ENABLE_CUSTOMER_EMAIL_JOBS: 'TRUE' }), false);
+  assert.strictEqual(customerEmailJobsEnabled({ ENABLE_CUSTOMER_EMAIL_JOBS: 'true' }), true);
 });

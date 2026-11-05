@@ -100,47 +100,115 @@ function squareCatalogVersionOf(rec: Record<string, unknown>): string {
   return 'unknown';
 }
 
+const formatValidationIssue = (issue: unknown): string => {
+  if (!issue || typeof issue !== 'object') return String(issue);
+  const { field, code, detail } = issue as { field?: string; code?: string; detail?: string };
+  return [code, field ? `(${field})` : '', detail ? `- ${detail}` : ''].filter(Boolean).join(' ');
+};
+
 /**
- * Runs one incremental Square catalog sync: fetch changed items, map each
- * one, and either write a Book, stage it for human review, or skip it
- * (rejected rows stay rejected forever; non-book product lines -- wellness,
- * oils, fashion -- are skipped too, since they have their own import path
- * and don't belong in the Books mapper). Registered as the
- * 'square-catalog-sync' task in payload.config.ts, sharing the exclusive
- * 'books-write' concurrency key with 'square-inventory-sync'.
- *
- * Never fabricates: mapSquareItemToBook already refuses to invent an ISBN or
- * price, and decideStagingAction never auto-promotes a staged row -- only a
- * human calling promoteStagedItem ever creates a Book from staged data.
- *
- * "Unresolved" means neither a Book write NOR a staging write succeeded for
- * an item -- e.g. it has no id at all, or the write/stage attempt itself
- * threw. Successfully staging an item (including as 'needs-review') IS a
- * successful outcome: incomplete-but-staged is exactly what staging is for,
- * and treating it as unresolved would make the steady state throw every run
- * forever, burning all retry attempts and pinning the watermark. Only a
- * genuine per-item failure holds the watermark and forces the end-of-run
- * throw so Payload retries -- persisted checkpoint and counters first, since
- * returning a failure count instead of throwing would mean the retry never
- * happens.
+ * Which visible fields a catalog update would change on an existing book, for the
+ * reconciliation dry run. `title (case only)` separates Square's capitalisation
+ * from real retitles.
  */
-export async function runSquareCatalogSync(payload: Payload): Promise<{
-  created: number;
-  updated: number;
-  staged: number;
-  skippedNonBook: number;
-  unresolved: number;
+export function describeBookChanges(existing: any, update: Record<string, unknown>): string[] {
+  const changes: string[] = [];
+
+  if (typeof update.title === 'string' && update.title !== existing.title) {
+    const same = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    changes.push(same(update.title) === same(existing.title) ? 'title (case only)' : 'title');
+  }
+
+  const newPrice = (update.pricing as { retailPrice?: unknown } | undefined)?.retailPrice;
+  if (typeof newPrice === 'number' && newPrice !== existing.pricing?.retailPrice) changes.push('price');
+
+  const isbns = (editions: unknown) =>
+    ((Array.isArray(editions) ? editions : []) as Array<{ isbn?: unknown }>)
+      .map((edition) => String(edition?.isbn ?? ''))
+      .filter(Boolean)
+      .sort()
+      .join(',');
+  if (update.editions !== undefined && isbns(update.editions) !== isbns(existing.editions)) changes.push('editions');
+
+  if (update.squareItemId !== undefined && update.squareItemId !== existing.squareItemId) changes.push('square link');
+
+  return changes;
+}
+
+/**
+ * Paths (array indexes dropped, e.g. `editions.isAvailable`) whose stored value
+ * `next` would change. Keys absent from `next` are left alone by an update, so they
+ * never count; numbers match numeric strings because Postgres numerics can load as text.
+ */
+function storedDifferences(next: unknown, current: unknown, path: string, out: Set<string>): void {
+  if (next === undefined) return;
+  if (next === null || typeof next !== 'object') {
+    const same = (next ?? null) === (current ?? null) || (typeof next === 'number' && Number(current) === next);
+    // A flag's direction matters (hiding an edition vs restoring it), so name it.
+    if (!same) out.add(typeof next === 'boolean' ? `${path} -> ${next}` : path);
+    return;
+  }
+  if (Array.isArray(next)) {
+    if (!Array.isArray(current) || next.length !== current.length) {
+      out.add(`${path} (count)`);
+      return;
+    }
+    const rowDiffs = new Set<string>();
+    next.forEach((row, i) => storedDifferences(row, current[i], path, rowDiffs));
+    if (rowDiffs.size === 0) return;
+    // The same rows in another order: report the reorder, not every field of every row.
+    const unmatched = [...current];
+    const reordered = next.every((row) => {
+      const at = unmatched.findIndex((candidate) => {
+        const probe = new Set<string>();
+        storedDifferences(row, candidate, path, probe);
+        return probe.size === 0;
+      });
+      if (at === -1) return false;
+      unmatched.splice(at, 1);
+      return true;
+    });
+    if (reordered) out.add(`${path} (order only)`);
+    else rowDiffs.forEach((diff) => out.add(diff));
+    return;
+  }
+  if (!current || typeof current !== 'object') {
+    out.add(path);
+    return;
+  }
+  for (const [key, value] of Object.entries(next as Record<string, unknown>)) {
+    storedDifferences(value, (current as Record<string, unknown>)[key], path ? `${path}.${key}` : key, out);
+  }
+}
+
+/** Stored fields `update` would change on `existing`, ignoring the lastSyncedAt stamp. */
+export function changedBookFields(existing: Record<string, unknown>, update: Record<string, unknown>): string[] {
+  const out = new Set<string>();
+  for (const [key, value] of Object.entries(update)) {
+    if (key !== 'lastSyncedAt') storedDifferences(value, existing[key], key, out);
+  }
+  return [...out].sort();
+}
+
+/**
+ * True when writing `update` would leave every stored field of `existing` as it is
+ * (ignoring the lastSyncedAt stamp). Most catalog items match their book exactly, and
+ * saving them anyway runs the Books hooks and bumps updatedAt for nothing.
+ */
+export function isNoopBookUpdate(existing: Record<string, unknown>, update: Record<string, unknown>): boolean {
+  return changedBookFields(existing, update).length === 0;
+}
+
+/** Every ITEM in the Square catalog, plus image URLs keyed by image id. */
+export async function listSquareCatalog(): Promise<{
+  items: Record<string, unknown>[];
+  imageUrlsById: Map<string, string>;
 }> {
-  const now = new Date();
-  const windowEnd = now;
-
-  const syncState = (await payload.findGlobal({ slug: 'squareSyncState' })) as {
-    catalogSyncedThrough?: string | null;
-  };
-  const windowStart = computeCatalogWindowStart(syncState?.catalogSyncedThrough, now);
-
   const client = await getSquareClient();
-  const catalogResponse = await client.catalog.list({ types: 'ITEM,IMAGE' });
+  // Square's list endpoint throws an occasional 500 mid-pagination; the SDK's default two
+  // retries (1 s, 2 s) were not enough on 2026-11-04. Six back off for about a minute,
+  // and every page of the pager reuses these options.
+  const catalogResponse = await client.catalog.list({ types: 'ITEM,IMAGE' }, { maxRetries: 6 });
 
   const items: Record<string, unknown>[] = [];
   const imageUrlsById = new Map<string, string>();
@@ -151,15 +219,46 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
       imageUrlsById.set(obj.id, imageUrl);
     }
   }
+  return { items, imageUrlsById };
+}
 
-  const changedItems = items.filter((item) => {
-    const updatedAt = item.updatedAt;
-    if (typeof updatedAt !== 'string') return false;
-    return new Date(updatedAt).getTime() >= windowStart.getTime();
-  });
+export type CatalogItemOutcome = {
+  squareItemId: string;
+  name: string;
+  outcome: 'create' | 'update' | 'unchanged' | 'stage' | 'skip-rejected' | 'skip-non-book' | 'unresolved';
+  reason: string;
+  /** Updates only: current vs Square value for changed title / price. */
+  detail?: string;
+};
+
+/**
+ * The per-item half of the catalog sync, shared by the live job and the
+ * reconciliation backfill (scripts/reconcile-square-catalog.ts) so both make
+ * exactly the same decisions. With `dryRun` it reads (staging rows, matching
+ * books) but writes nothing and skips new-book enrichment's external calls.
+ */
+export async function processCatalogItems(
+  payload: Payload,
+  items: Record<string, unknown>[],
+  imageUrlsById: Map<string, string>,
+  now: Date,
+  options: { dryRun?: boolean; onOutcome?: (outcome: CatalogItemOutcome) => void } = {},
+): Promise<{
+  created: number;
+  updated: number;
+  /** Matched an existing book that already agrees with Square: nothing written. */
+  unchanged: number;
+  staged: number;
+  skippedNonBook: number;
+  unresolved: number;
+  oldestUnresolvedUpdatedAt: Date | null;
+}> {
+  const dryRun = options.dryRun === true;
+  const report = (outcome: CatalogItemOutcome) => options.onOutcome?.(outcome);
 
   let created = 0;
   let updated = 0;
+  let unchanged = 0;
   let staged = 0;
   let skippedNonBook = 0;
   let unresolved = 0;
@@ -172,7 +271,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
     }
   };
 
-  for (const item of changedItems) {
+  for (const item of items) {
     const itemUpdatedAt = new Date(item.updatedAt as string);
 
     // Wellness/oils/fashion product lines have their own tested import path
@@ -183,8 +282,10 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
     // before anything else so these items never touch staging lookups.
     const itemData = (item.itemData ?? {}) as Record<string, unknown>;
     const itemName = typeof itemData.name === 'string' ? itemData.name : '';
+    const squareId = typeof item.id === 'string' ? item.id : '(no id)';
     if (matchProductLine(itemName)) {
       skippedNonBook++;
+      report({ squareItemId: squareId, name: itemName, outcome: 'skip-non-book', reason: 'wellness/oils product line' });
       console.log(`⏭️ square-catalog-sync: skipping non-book product line "${itemName}" (has its own import path)`);
       continue;
     }
@@ -192,6 +293,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
     // not a book, and staging it would only park it as "invalid ISBN" forever.
     if (isNonBookCategory(item)) {
       skippedNonBook++;
+      report({ squareItemId: squareId, name: itemName, outcome: 'skip-non-book', reason: 'reporting category is not Books' });
       console.log(`⏭️ square-catalog-sync: skipping "${itemName}" (Square reporting category is not Books)`);
       continue;
     }
@@ -238,16 +340,48 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
         if (existingBook) {
           const bookData = bookUpdateForSquareItem(existingBook, squareItemId, mapped.data);
           // A photo staff took in Square fills a missing cover; it never replaces one.
-          if (imageUrls.length > 0 && bookHasNoCover(existingBook)) {
-            bookData.scrapedImageUrls = imageUrls.map((url) => ({ url }));
+          const fillsCover = imageUrls.length > 0 && bookHasNoCover(existingBook);
+          if (fillsCover) bookData.scrapedImageUrls = imageUrls.map((url) => ({ url }));
+
+          const changedFields = changedBookFields(existingBook, bookData);
+          if (changedFields.length === 0) {
+            unchanged++;
+            report({ squareItemId, name: itemName, outcome: 'unchanged', reason: 'no field changes' });
+            continue;
           }
-          await payload.update({
-            collection: 'books',
-            id: existingBook.id,
-            data: bookData,
-            context: SKIP_ENRICHMENT_CONTEXT,
-          });
+
+          const changes = describeBookChanges(existingBook, bookData);
+          if (fillsCover) changes.push('cover');
+          // Name every other stored field the write would change, by path (e.g.
+          // `editions.isAvailable`), unless a broader label above already covers it.
+          const covered = ['title', 'pricing.retailPrice', 'squareItemId', 'scrapedImageUrls'];
+          if (changes.includes('editions')) covered.push('editions');
+          changes.push(...changedFields.filter((f) => !covered.some((c) => f === c || f.startsWith(`${c}.`) || f.startsWith(`${c} `))));
+          const detail: string[] = [];
+          if (changes.some((c) => c.startsWith('title'))) detail.push(`title: "${existingBook.title}" -> "${String(bookData.title)}"`);
+          if (changes.includes('price')) {
+            detail.push(`price: ${existingBook.pricing?.retailPrice ?? 'none'} -> ${(bookData.pricing as any)?.retailPrice} (cents)`);
+          }
+
+          if (!dryRun) {
+            await payload.update({
+              collection: 'books',
+              id: existingBook.id,
+              data: bookData,
+              context: SKIP_ENRICHMENT_CONTEXT,
+            });
+          }
           updated++;
+          report({
+            squareItemId,
+            name: itemName,
+            outcome: 'update',
+            reason: `${dryRun ? 'would change' : 'changed'} ${changes.join(', ')}`,
+            ...(detail.length > 0 ? { detail: detail.join('; ') } : {}),
+          });
+        } else if (dryRun) {
+          created++;
+          report({ squareItemId, name: itemName, outcome: 'create', reason: 'complete item with no matching book' });
         } else {
           try {
             const bookData = await withNewBookEnrichment({
@@ -257,6 +391,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
             });
             await payload.create({ collection: 'books', data: bookData as any, context: SKIP_ENRICHMENT_CONTEXT });
             created++;
+            report({ squareItemId, name: itemName, outcome: 'create', reason: 'complete item with no matching book' });
           } catch (err) {
             if (!isSquareItemIdUniqueViolation(err)) throw err;
 
@@ -273,6 +408,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
               context: SKIP_ENRICHMENT_CONTEXT,
             });
             updated++;
+            report({ squareItemId, name: itemName, outcome: 'update', reason: 'matches an existing book (after create race)' });
           }
         }
       } else if (decision.action === 'stage') {
@@ -296,11 +432,19 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
           if (proposedPriceCents !== undefined) stagingData.proposedPriceCents = proposedPriceCents;
         }
 
-        if (stagingRow) {
+        if (dryRun) {
+          // counted below
+        } else if (stagingRow) {
           await payload.update({ collection: 'square-catalog-staging', id: stagingRow.id, data: stagingData });
         } else {
           await payload.create({ collection: 'square-catalog-staging', data: stagingData as any });
         }
+        report({
+          squareItemId,
+          name: itemName,
+          outcome: 'stage',
+          reason: `${String(decision.status)}: ${validationIssues.map(formatValidationIssue).join('; ')}`,
+        });
 
         // Staged -- including as 'needs-review' -- is a resolved outcome.
         // Staging IS the resolution path for an incomplete item; it is not
@@ -308,22 +452,82 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
         staged++;
       } else {
         // skip: rejected is sticky -- touch lastSeenAt only, never resurrect.
-        if (stagingRow) {
+        if (stagingRow && !dryRun) {
           await payload.update({
             collection: 'square-catalog-staging',
             id: stagingRow.id,
             data: { lastSeenAt: now.toISOString() },
           });
         }
+        report({ squareItemId, name: itemName, outcome: 'skip-rejected', reason: 'staging row was rejected (sticky)' });
       }
     } catch (err) {
       console.error(`❌ square-catalog-sync: failed to resolve item ${String(item.id ?? '(no id)')}:`, err);
       markUnresolved(itemUpdatedAt);
+      report({
+        squareItemId: squareId,
+        name: itemName,
+        outcome: 'unresolved',
+        reason: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
+  return { created, updated, unchanged, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt };
+}
+
+/**
+ * Runs one incremental Square catalog sync: fetch changed items, map each
+ * one, and either write a Book, stage it for human review, or skip it
+ * (rejected rows stay rejected forever; non-book product lines -- wellness,
+ * oils, fashion -- are skipped too, since they have their own import path
+ * and don't belong in the Books mapper). Registered as the
+ * 'square-catalog-sync' task in payload.config.ts, sharing the exclusive
+ * 'books-write' concurrency key with 'square-inventory-sync'.
+ *
+ * Never fabricates: mapSquareItemToBook already refuses to invent an ISBN or
+ * price, and decideStagingAction never auto-promotes a staged row -- only a
+ * human calling promoteStagedItem ever creates a Book from staged data.
+ *
+ * "Unresolved" means neither a Book write NOR a staging write succeeded for
+ * an item -- e.g. it has no id at all, or the write/stage attempt itself
+ * threw. Successfully staging an item (including as 'needs-review') IS a
+ * successful outcome: incomplete-but-staged is exactly what staging is for,
+ * and treating it as unresolved would make the steady state throw every run
+ * forever, burning all retry attempts and pinning the watermark. Only a
+ * genuine per-item failure holds the watermark and forces the end-of-run
+ * throw so Payload retries -- persisted checkpoint and counters first, since
+ * returning a failure count instead of throwing would mean the retry never
+ * happens.
+ */
+export async function runSquareCatalogSync(payload: Payload): Promise<{
+  created: number;
+  updated: number;
+  staged: number;
+  skippedNonBook: number;
+  unresolved: number;
+}> {
+  const now = new Date();
+  const windowEnd = now;
+
+  const syncState = (await payload.findGlobal({ slug: 'squareSyncState' })) as {
+    catalogSyncedThrough?: string | null;
+  };
+  const windowStart = computeCatalogWindowStart(syncState?.catalogSyncedThrough, now);
+
+  const { items, imageUrlsById } = await listSquareCatalog();
+
+  const changedItems = items.filter((item) => {
+    const updatedAt = item.updatedAt;
+    if (typeof updatedAt !== 'string') return false;
+    return new Date(updatedAt).getTime() >= windowStart.getTime();
+  });
+
+  const { created, updated, unchanged, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt } =
+    await processCatalogItems(payload, changedItems, imageUrlsById, now);
+
   console.log(
-    `📦 square-catalog-sync: created=${created} updated=${updated} staged=${staged} skippedNonBook=${skippedNonBook} unresolved=${unresolved}`,
+    `📦 square-catalog-sync: created=${created} updated=${updated} unchanged=${unchanged} staged=${staged} skippedNonBook=${skippedNonBook} unresolved=${unresolved}`,
   );
 
   const checkpoint = computeCatalogCheckpoint(windowEnd, oldestUnresolvedUpdatedAt);

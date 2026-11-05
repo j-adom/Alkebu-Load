@@ -9,6 +9,7 @@ import {
   generatePartnershipStaffTemplate,
   generatePartnershipAckTemplate,
   generateRecoveryAlertTemplate,
+  generateQuoteFollowupTemplate,
   type RecoveryAlertData,
 } from './emailTemplates';
 import { getEmailRuntimeConfig, type EmailProvider } from './emailConfig';
@@ -69,6 +70,10 @@ export interface AbandonedCartData {
   customerName?: string;
   customerEmail: string;
   cartId: string;
+  /** Storefront page that turns off these reminders (required: commercial email). */
+  unsubscribeUrl: string;
+  /** List-Unsubscribe headers for mail clients' built-in unsubscribe button. */
+  unsubscribeHeaders?: Record<string, string>;
   items: Array<{
     productTitle: string;
     quantity: number;
@@ -172,8 +177,9 @@ const fromLine = () => {
 async function sendTemplateEmail(params: {
   to: string;
   template: EmailTemplate;
+  headers?: Record<string, string>;
 }): Promise<EmailSendResult> {
-  const { to, template } = params;
+  const { to, template, headers } = params;
 
   try {
     const { config, transporter } = getTransporter();
@@ -184,6 +190,7 @@ async function sendTemplateEmail(params: {
       subject: template.subject,
       html: template.html,
       text: template.text,
+      ...(headers ? { headers } : {}),
     });
 
     return {
@@ -241,6 +248,7 @@ export async function sendAbandonedCartEmail(data: AbandonedCartData): Promise<E
   const result = await sendTemplateEmail({
     to: data.customerEmail,
     template,
+    headers: data.unsubscribeHeaders,
   });
 
   if (result.success) {
@@ -248,6 +256,29 @@ export async function sendAbandonedCartEmail(data: AbandonedCartData): Promise<E
   }
 
   return result;
+}
+
+export interface QuoteFollowupData {
+  customerName?: string;
+  customerEmail: string;
+  bookTitle: string;
+  author?: string;
+  quantity?: number;
+  /** Staff-entered quote amounts, in dollars. */
+  pricePerBook?: number;
+  totalPrice?: number;
+  estimatedArrival?: string;
+  validUntil?: string;
+  unsubscribeUrl: string;
+  unsubscribeHeaders?: Record<string, string>;
+}
+
+/**
+ * Send a follow-up on a quote the customer hasn't answered.
+ */
+export async function sendQuoteFollowupEmail(data: QuoteFollowupData): Promise<EmailSendResult> {
+  const template = generateQuoteFollowupTemplate(data);
+  return sendTemplateEmail({ to: data.customerEmail, template, headers: data.unsubscribeHeaders });
 }
 
 /**

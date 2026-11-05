@@ -1,4 +1,4 @@
-import type { EmailTemplate, EmailLineItem, OrderConfirmationData, AbandonedCartData, StaffNotificationData, DailyDigestData, RefundNotificationData, PartnershipInquiryData } from './emailService';
+import type { EmailTemplate, EmailLineItem, OrderConfirmationData, AbandonedCartData, QuoteFollowupData, StaffNotificationData, DailyDigestData, RefundNotificationData, PartnershipInquiryData } from './emailService';
 
 // ─── Security helper ───────────────────────────────────────────────────────────
 // Escape user-controlled values before interpolating them into HTML.
@@ -282,8 +282,15 @@ Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
 
 // ─── ABANDONED CART (Customer) ────────────────────────────────────────
 
+function unsubscribeNote(url: string, what: string): string {
+  const safeUrl = /^https?:\/\//i.test(url) ? escapeHtml(url) : '';
+  return `<p style="color: ${BRAND.mutedText}; font-size: 12px; margin-top: 28px; border-top: 1px solid ${BRAND.borderLight}; padding-top: 12px;">
+      Don't want ${what}? ${safeUrl ? `<a href="${safeUrl}" style="color: ${BRAND.mutedText};">Unsubscribe</a>.` : 'Reply to this email and we will stop.'}
+    </p>`;
+}
+
 export function generateAbandonedCartTemplate(data: AbandonedCartData): EmailTemplate {
-  const subject = "Your books are waiting for you | Alkebu-Lan Images";
+  const subject = 'You left something in your cart | Alkebu-Lan Images';
 
   const itemsList = data.items.map(item => `
     <tr>
@@ -294,39 +301,107 @@ export function generateAbandonedCartTemplate(data: AbandonedCartData): EmailTem
     </tr>`).join('');
 
   const content = `
-    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Your Books Are Waiting</h2>
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">We Saved Your Cart</h2>
     <p>Hello${data.customerName ? ` ${escapeHtml(data.customerName)}` : ''},</p>
-    <p>You left some items in your cart. They're still available and ready for you.</p>
+    <p>You didn't finish checking out, so we kept your cart for you. Pick up right where you left off:</p>
 
     ${sectionBox(`
       <table style="width: 100%; border-collapse: collapse;">
         ${itemsList}
       </table>
       <p style="font-size: 17px; font-weight: bold; margin: 16px 0 0; color: ${BRAND.forest}; text-align: right;">
-        Cart Total: ${formatCents(data.subtotal)}
+        Subtotal: ${formatCents(data.subtotal)}
       </p>
     `)}
 
-    ${ctaButton('Complete Your Purchase', data.recoveryUrl)}
+    ${ctaButton('Return to Your Cart', data.recoveryUrl)}
 
-    <p style="color: ${BRAND.mutedText}; font-size: 13px;">Your items are reserved for a limited time.</p>
+    <p style="color: ${BRAND.mutedText}; font-size: 13px;">
+      Many of our titles come in small quantities and we can't hold items in a cart, so some may sell out.
+      Questions? Just reply to this email or call us at ${BRAND.phone}.
+    </p>
+    ${unsubscribeNote(data.unsubscribeUrl, 'cart reminders')}
   `;
 
-  const text = `Your Books Are Waiting
+  const text = `We Saved Your Cart
 
 Hello${data.customerName ? ` ${data.customerName}` : ''},
 
-You left some items in your cart:
+You didn't finish checking out, so we kept your cart for you:
 
 ${data.items.map(item => `  ${item.productTitle} (Qty: ${item.quantity}) - ${formatCents(item.totalPrice)}`).join('\n')}
 
-Cart Total: ${formatCents(data.subtotal)}
+Subtotal: ${formatCents(data.subtotal)}
 
-Complete your purchase: ${data.recoveryUrl}
+Return to your cart: ${data.recoveryUrl}
+
+Many of our titles come in small quantities and we can't hold items in a cart, so some may sell out.
+Questions? Reply to this email or call ${BRAND.phone}.
+
+Unsubscribe from cart reminders: ${data.unsubscribeUrl}
 
 Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
 
-  return { subject, html: emailWrapper('Complete Your Purchase', content), text };
+  return { subject, html: emailWrapper('We Saved Your Cart', content), text };
+}
+
+// ─── QUOTE FOLLOW-UP (Customer) ───────────────────────────────────────
+
+const formatDollars = (amount: number): string =>
+  `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatDate = (value: string): string => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+};
+
+export function generateQuoteFollowupTemplate(data: QuoteFollowupData): EmailTemplate {
+  const subject = `Still interested in "${data.bookTitle.replace(/[\r\n]+/g, ' ').slice(0, 80)}"? | Alkebu-Lan Images`;
+
+  const rows: Array<[string, string]> = [];
+  rows.push(['Book', data.author ? `${data.bookTitle} by ${data.author}` : data.bookTitle]);
+  if (data.quantity) rows.push(['Quantity', String(data.quantity)]);
+  if (typeof data.pricePerBook === 'number' && data.pricePerBook > 0) rows.push(['Price per book', formatDollars(data.pricePerBook)]);
+  if (typeof data.totalPrice === 'number' && data.totalPrice > 0) rows.push(['Quoted total', formatDollars(data.totalPrice)]);
+  if (data.estimatedArrival) rows.push(['Estimated arrival', data.estimatedArrival]);
+  if (data.validUntil) rows.push(['Quote valid until', formatDate(data.validUntil)]);
+
+  const detailRows = rows.map(([label, value]) => `
+        <tr>
+          <td style="padding: 6px 8px; color: ${BRAND.mutedText}; font-size: 14px; white-space: nowrap; vertical-align: top;">${escapeHtml(label)}</td>
+          <td style="padding: 6px 8px; color: ${BRAND.darkText}; font-size: 14px;"><strong>${escapeHtml(value)}</strong></td>
+        </tr>`).join('');
+
+  const content = `
+    <h2 style="color: ${BRAND.forest}; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px;">Your Book Quote</h2>
+    <p>Hello${data.customerName ? ` ${escapeHtml(data.customerName)}` : ''},</p>
+    <p>We're checking in on the quote we sent you. We'd be glad to order it for you.</p>
+
+    ${sectionBox(`<table style="width: 100%; border-collapse: collapse;">${detailRows}</table>`)}
+
+    <p><strong>To place your order, just reply to this email</strong> or call us at ${BRAND.phone}.
+    If your plans have changed, a quick reply lets us close the request.</p>
+    ${unsubscribeNote(data.unsubscribeUrl, 'quote reminders')}
+  `;
+
+  const text = `Your Book Quote
+
+Hello${data.customerName ? ` ${data.customerName}` : ''},
+
+We're checking in on the quote we sent you. We'd be glad to order it for you.
+
+${rows.map(([label, value]) => `  ${label}: ${value}`).join('\n')}
+
+To place your order, reply to this email or call ${BRAND.phone}.
+If your plans have changed, a quick reply lets us close the request.
+
+Unsubscribe from quote reminders: ${data.unsubscribeUrl}
+
+Alkebu-Lan Images | ${BRAND.address} | ${BRAND.website}`;
+
+  return { subject, html: emailWrapper('Your Book Quote', content), text };
 }
 
 // ─── REFUND NOTIFICATION (Customer) ───────────────────────────────────

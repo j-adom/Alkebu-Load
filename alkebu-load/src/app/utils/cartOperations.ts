@@ -909,128 +909,170 @@ export async function findOrCreateCart(
 /**
  * Cleanup abandoned carts and send recovery emails (run via cron job)
  */
+// Reminders go to carts idle at least this long...
+const REMINDER_MIN_IDLE_MS = 60 * 60 * 1000;
+// ...but never to carts idle longer than this, so turning the job on (or a long
+// outage) can't mail every stale cart in the database at once.
+const REMINDER_MAX_IDLE_MS = 48 * 60 * 60 * 1000;
+
+type ReminderOutcome = 'sent' | 'failed' | 'empty' | 'no-email' | 'signed-in' | 'suppressed' | 'already-ordered';
+
+/**
+ * Decide whether one idle cart should get a reminder. Pure apart from the
+ * injected lookups so it can be tested without Payload.
+ */
+export async function remindAbandonedCart(
+  cart: any,
+  deps: {
+    getItems: (cartId: string) => Promise<any[]>;
+    isSuppressed: (email: string) => Promise<boolean>;
+    hasOrderSince: (email: string, sinceIso: string) => Promise<boolean>;
+    send: (data: AbandonedCartData) => Promise<{ success: boolean }>;
+    markAbandoned: (cartId: string, emailSent: boolean) => Promise<void>;
+    buildRecoveryUrl: (cartId: string) => string;
+    buildUnsubscribe: (email: string) => { pageUrl: string; headers: Record<string, string> };
+  },
+): Promise<ReminderOutcome> {
+  const cartId = String(cart.id);
+  const items = await deps.getItems(cartId);
+
+  if (items.length === 0) {
+    await deps.markAbandoned(cartId, false);
+    return 'empty';
+  }
+
+  // The storefront has no customer login, so a user-owned cart is a staff/test
+  // cart and a recovery link (which restores guest carts) can't restore it.
+  if (cart.user) return 'signed-in';
+
+  const email = typeof cart.guestEmail === 'string' ? cart.guestEmail.trim() : '';
+  if (!email) return 'no-email';
+
+  if (await deps.isSuppressed(email)) {
+    await deps.markAbandoned(cartId, false);
+    return 'suppressed';
+  }
+
+  const since = String(cart.lastActivity ?? cart.updatedAt ?? '');
+  if (since && (await deps.hasOrderSince(email, since))) {
+    await deps.markAbandoned(cartId, false);
+    return 'already-ordered';
+  }
+
+  const shippingName = cart.shippingAddress?.firstName;
+  const unsubscribe = deps.buildUnsubscribe(email);
+  const result = await deps.send({
+    customerName: typeof shippingName === 'string' ? shippingName.trim() : '',
+    customerEmail: email,
+    cartId,
+    items: items.map((item: any) => ({
+      productTitle: item.productTitle,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.quantity * item.unitPrice,
+    })),
+    subtotal: items.reduce((total: number, item: any) => total + item.quantity * item.unitPrice, 0),
+    recoveryUrl: deps.buildRecoveryUrl(cartId),
+    unsubscribeUrl: unsubscribe.pageUrl,
+    unsubscribeHeaders: unsubscribe.headers,
+  });
+
+  // A failed send leaves the cart as it was, so the next run retries it while
+  // it is still inside the reminder window.
+  if (!result.success) return 'failed';
+
+  await deps.markAbandoned(cartId, true);
+  return 'sent';
+}
+
 export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
   try {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { buildCartRecoveryUrl, buildUnsubscribeLinks, isMarketingEmailSuppressed, listUnsubscribeHeaders } =
+      await import('./marketingEmail');
 
-    // Find active carts older than 1 hour that haven't had abandoned email sent
-    const abandonedCarts = await payload.find({
-      collection: 'carts',
-      where: {
-        and: [
-          { status: { equals: 'active' } },
-          { lastActivity: { less_than: oneHourAgo } },
-          { abandonedEmailSent: { not_equals: true } },
-        ],
-      },
-      depth: 2,
-    });
+    const now = Date.now();
+    const newestIdle = new Date(now - REMINDER_MIN_IDLE_MS).toISOString();
+    const oldestIdle = new Date(now - REMINDER_MAX_IDLE_MS).toISOString();
 
-    for (const cart of abandonedCarts.docs) {
-      // Get cart items for email
-      const items = await payload.find({
-        collection: 'cart-items',
+    // 'checkout' carts are the ones left at the Stripe payment page: the guest
+    // email is only captured there, so they are the main audience.
+    const candidates: any[] = [];
+    for (let page = 1; ; page += 1) {
+      const result = await payload.find({
+        collection: 'carts',
         where: {
-          cart: { equals: cart.id },
+          and: [
+            { status: { in: ['active', 'checkout'] } },
+            { lastActivity: { less_than: newestIdle } },
+            { lastActivity: { greater_than: oldestIdle } },
+            { abandonedEmailSent: { not_equals: true } },
+          ],
         },
-        depth: 2,
+        depth: 0,
+        limit: 100,
+        page,
+        sort: 'id',
       });
+      candidates.push(...result.docs);
+      if (!result.hasNextPage) break;
+    }
 
-      if (items.docs.length === 0) {
-        // Empty cart - just mark as abandoned without email
-        await payload.update({
-          collection: 'carts',
-          id: cart.id,
-          data: {
-            status: 'abandoned',
-          },
-        });
-        continue;
-      }
-
-      // Determine customer email
-      let customerEmail = '';
-      let customerName = '';
-
-      if (cart.user && typeof cart.user === 'object') {
-        customerEmail = (cart.user as any).email;
-        customerName = (cart.user as any).name || '';
-      } else if (cart.guestEmail) {
-        customerEmail = cart.guestEmail;
-      }
-
-      if (!customerEmail) {
-        console.log(`No email found for abandoned cart ${cart.id}`);
-        continue;
-      }
-
-      // Calculate subtotal
-      const subtotal = items.docs.reduce((total, item) => {
-        return total + (item.quantity * item.unitPrice);
-      }, 0);
-
-      // Generate recovery URL with cart ID
-      const recoveryUrl = `${process.env.PAYLOAD_PUBLIC_SERVER_URL}/cart?recover=${cart.id}`;
-
-      // Prepare email data
-      const emailData: AbandonedCartData = {
-        customerName,
-        customerEmail,
-        cartId: String(cart.id),
-        items: items.docs.map(item => ({
-          productTitle: item.productTitle,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.quantity * item.unitPrice,
-        })),
-        subtotal,
-        recoveryUrl,
-      };
-
-      // Send abandoned cart email
+    const tally: Record<string, number> = {};
+    for (const cart of candidates) {
       try {
-        const emailResult = await sendAbandonedCartEmail(emailData);
-        const emailSent = emailResult.success;
-
-        // Update cart status and mark email as sent
-        await payload.update({
-          collection: 'carts',
-          id: cart.id,
-          data: {
-            status: 'abandoned',
-            abandonedEmailSent: emailSent,
-            abandonedEmailSentAt: emailSent ? new Date().toISOString() : null,
+        const outcome = await remindAbandonedCart(cart, {
+          getItems: async (cartId) =>
+            (await payload.find({ collection: 'cart-items', where: { cart: { equals: cartId } }, depth: 0, limit: 200 })).docs,
+          isSuppressed: (email) => isMarketingEmailSuppressed(payload, email),
+          hasOrderSince: async (email, sinceIso) =>
+            (await payload.count({
+              collection: 'orders',
+              where: {
+                and: [
+                  { guestEmail: { equals: email } },
+                  { createdAt: { greater_than: sinceIso } },
+                ],
+              },
+            })).totalDocs > 0,
+          send: sendAbandonedCartEmail,
+          markAbandoned: async (cartId, emailSent) => {
+            await payload.update({
+              collection: 'carts',
+              id: cartId,
+              data: {
+                status: 'abandoned',
+                ...(emailSent ? { abandonedEmailSent: true, abandonedEmailSentAt: new Date().toISOString() } : {}),
+              },
+            });
           },
+          buildRecoveryUrl: (cartId) => buildCartRecoveryUrl(cartId),
+          buildUnsubscribe: (email) => ({
+            pageUrl: buildUnsubscribeLinks(email).pageUrl,
+            headers: listUnsubscribeHeaders(email),
+          }),
         });
-
-        if (emailSent) {
-          console.log(`Sent abandoned cart email to ${customerEmail} for cart ${cart.id}`);
-        }
-      } catch (emailError) {
-        console.error(`Failed to send abandoned cart email for cart ${cart.id}:`, emailError);
-
-        // Still mark as abandoned even if email failed
-        await payload.update({
-          collection: 'carts',
-          id: cart.id,
-          data: {
-            status: 'abandoned',
-          },
-        });
+        tally[outcome] = (tally[outcome] ?? 0) + 1;
+      } catch (error) {
+        tally.error = (tally.error ?? 0) + 1;
+        console.error(`Abandoned cart reminder failed for cart ${cart.id}:`, error);
       }
     }
+    console.log(`Abandoned cart reminders: ${JSON.stringify(tally)}`);
 
     // Delete very old abandoned carts (30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Includes carts left in 'checkout' (Stripe session never completed): they
+    // used to be skipped here and stayed in the database forever.
     const oldCarts = await payload.find({
       collection: 'carts',
       where: {
         and: [
-          { status: { equals: 'abandoned' } },
+          { status: { in: ['abandoned', 'checkout'] } },
           { lastActivity: { less_than: thirtyDaysAgo } },
         ],
       },
+      limit: 200,
     });
 
     for (const cart of oldCarts.docs) {

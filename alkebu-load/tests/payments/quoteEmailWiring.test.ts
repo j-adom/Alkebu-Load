@@ -26,6 +26,8 @@ test('quote request system sends real emails instead of console.log stubs', () =
   // The three senders must call the email service; the commented-out stubs
   // silently dropped every B2B/quote inquiry notification in production.
   assert.equal(/\/\/\s*await emailService\.send/.test(source), false);
-  const sendCalls = source.match(/await sendRawEmail\(/g) || [];
-  assert.ok(sendCalls.length >= 3, `expected >=3 sendRawEmail calls, found ${sendCalls.length}`);
+  // Confirmation + staff notification use sendRawEmail; follow-ups use the
+  // branded sendQuoteFollowupEmail.
+  const sendCalls = source.match(/await (sendRawEmail|sendQuoteFollowupEmail)\(/g) || [];
+  assert.ok(sendCalls.length >= 3, `expected >=3 email send calls, found ${sendCalls.length}`);
 });

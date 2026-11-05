@@ -63,11 +63,16 @@ export async function findBookForSquareItem(
 
 /**
  * Update data for an existing book from one Square item. The book's own (book-level)
- * item owns its title, price and squareItemId. A different item -- another binding
+ * item owns its price and squareItemId. A different item -- another binding
  * consolidated into this book -- only reconciles its own editions.
+ *
+ * Square never retitles an existing book: POS names carry "- by Author (Hardcover)"
+ * suffixes and truncations, while website titles are curated or enriched (the
+ * 2026-11-03 reconcile dry run found 181 such retitles). Square's name only fills a
+ * book that has no title.
  */
 export function bookUpdateForSquareItem(
-  existingBook: { squareItemId?: string | null; editions?: unknown },
+  existingBook: { squareItemId?: string | null; editions?: unknown; title?: unknown },
   squareItemId: string,
   mappedData: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -83,5 +88,10 @@ export function bookUpdateForSquareItem(
   // A legacy book-level id names no current item, so the first real item to match takes
   // ownership and the sync overwrites the bad id with the real one.
   const ownsBook = !existingBook.squareItemId || existingBook.squareItemId === squareItemId || legacyBookLink;
-  return ownsBook ? { ...mappedData, editions } : { editions, lastSyncedAt: mappedData.lastSyncedAt };
+  if (!ownsBook) return { editions, lastSyncedAt: mappedData.lastSyncedAt };
+  // importSource records where a book came from (the link repair tells originals from
+  // sync-made copies by it), so an update never rewrites it.
+  const { title, importSource: _importSource, ...rest } = mappedData;
+  const hasTitle = typeof existingBook.title === 'string' && existingBook.title.trim() !== '';
+  return hasTitle ? { ...rest, editions } : { ...rest, title, editions };
 }

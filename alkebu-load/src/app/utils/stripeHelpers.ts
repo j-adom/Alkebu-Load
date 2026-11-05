@@ -72,6 +72,12 @@ const getCartItemProductId = (item: any): string | number | undefined => {
   return relation as string | number | undefined;
 };
 
+/**
+ * The order's ship-to address. The storefront checkout collects the address and the
+ * tax/shipping quote is locked to it, so the cart's address is used whole. Stripe's
+ * details are only a fallback for carts with no usable address (old sessions found by
+ * the recovery job); the two are never mixed field by field.
+ */
 export function buildOrderShippingAddress(
   cartShippingAddress: AddressRecord | null | undefined,
   session: any,
@@ -79,20 +85,71 @@ export function buildOrderShippingAddress(
   const cartAddress = cartShippingAddress && typeof cartShippingAddress === 'object'
     ? cartShippingAddress
     : {};
-  const stripeAddress = session?.shipping_details?.address || session?.customer_details?.address || {};
-  const stripeName = splitFullName(session?.shipping_details?.name || session?.customer_details?.name);
+  const stripePhone = readString(session?.customer_details?.phone);
+
+  if (hasUsableCartAddress(cartAddress)) {
+    return {
+      firstName: readString(cartAddress.firstName) || 'Customer',
+      lastName: readString(cartAddress.lastName) || 'Order',
+      company: readString(cartAddress.company),
+      street: readString(cartAddress.street) || '',
+      street2: readString(cartAddress.street2),
+      city: readString(cartAddress.city) || '',
+      state: readString(cartAddress.state) || '',
+      zip: readString(cartAddress.zip) || '',
+      country: readString(cartAddress.country) || 'US',
+      phone: readString(cartAddress.phone) || stripePhone,
+    };
+  }
+
+  const stripeShipping = session?.collected_information?.shipping_details || session?.shipping_details;
+  const stripeAddress = stripeShipping?.address || session?.customer_details?.address || {};
+  const stripeName = splitFullName(stripeShipping?.name || session?.customer_details?.name);
 
   return {
     firstName: readString(cartAddress.firstName) || stripeName.firstName || 'Customer',
     lastName: readString(cartAddress.lastName) || stripeName.lastName || 'Order',
     company: readString(cartAddress.company),
-    street: readString(cartAddress.street) || readString(stripeAddress.line1) || '',
-    street2: readString(cartAddress.street2) || readString(stripeAddress.line2),
-    city: readString(cartAddress.city) || readString(stripeAddress.city) || '',
-    state: readString(cartAddress.state) || readString(stripeAddress.state) || '',
-    zip: readString(cartAddress.zip) || readString(stripeAddress.postal_code) || '',
-    country: readString(cartAddress.country) || readString(stripeAddress.country) || 'US',
-    phone: readString(cartAddress.phone) || readString(session?.customer_details?.phone),
+    street: readString(stripeAddress.line1) || '',
+    street2: readString(stripeAddress.line2),
+    city: readString(stripeAddress.city) || '',
+    state: readString(stripeAddress.state) || '',
+    zip: readString(stripeAddress.postal_code) || '',
+    country: readString(stripeAddress.country) || 'US',
+    phone: readString(cartAddress.phone) || stripePhone,
+  };
+}
+
+function hasUsableCartAddress(address: AddressRecord): boolean {
+  return Boolean(
+    readString(address.street) && readString(address.city) && readString(address.state) && readString(address.zip),
+  );
+}
+
+/**
+ * The cart's address as Stripe payment shipping details, so it appears on the payment in
+ * the Stripe Dashboard without Stripe Checkout asking the customer to type it again.
+ */
+export function stripeShippingFromCart(
+  cartShippingAddress: AddressRecord | null | undefined,
+): Stripe.Checkout.SessionCreateParams.PaymentIntentData.Shipping {
+  const address = cartShippingAddress && typeof cartShippingAddress === 'object' ? cartShippingAddress : {};
+  if (!hasUsableCartAddress(address)) {
+    throw new Error('Shipping address is missing from the cart');
+  }
+  const name = [readString(address.firstName), readString(address.lastName)].filter(Boolean).join(' ');
+  const phone = readString(address.phone);
+  return {
+    name: name || 'Customer',
+    ...(phone ? { phone } : {}),
+    address: {
+      line1: readString(address.street)!,
+      ...(readString(address.street2) ? { line2: readString(address.street2) } : {}),
+      city: readString(address.city)!,
+      state: readString(address.state)!,
+      postal_code: readString(address.zip)!,
+      country: readString(address.country) || 'US',
+    },
   };
 }
 
@@ -249,8 +306,10 @@ export async function createCheckoutSession(
         shippingRateId,
         shippingMethod: String((cart as any).shippingMethod || 'standard'),
       },
-      shipping_address_collection: {
-        allowed_countries: ['US'],
+      // The storefront already collected the ship-to address and locked tax and shipping
+      // to it; Stripe only takes payment, the billing address and a phone number.
+      payment_intent_data: {
+        shipping: stripeShippingFromCart((cart as any).shippingAddress),
       },
       billing_address_collection: 'required',
       phone_number_collection: {

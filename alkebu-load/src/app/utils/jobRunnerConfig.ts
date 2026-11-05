@@ -44,3 +44,28 @@ export function resolveJobAutoRunConfig(
     },
   ];
 }
+
+type ScheduleEntry = { cron: string; queue: string };
+
+/**
+ * Customer-emailing tasks (abandoned-cart reminders, quote follow-ups) need a
+ * second, separate opt-in: `ENABLE_CUSTOMER_EMAIL_JOBS=true`. That lets
+ * ENABLE_JOB_AUTORUN run the queue the store depends on (Square catalog and
+ * inventory sync, Stripe order recovery, the staff digest) without also
+ * starting to mail customers. Without the flag these tasks are never queued.
+ */
+export function customerEmailJobSchedule(
+  schedule: ScheduleEntry[],
+  env: Record<string, string | undefined> = process.env,
+): ScheduleEntry[] {
+  return env.ENABLE_CUSTOMER_EMAIL_JOBS === 'true' ? schedule : [];
+}
+
+/**
+ * Run-time half of the opt-in. Removing a task's schedule stops new runs from
+ * being queued, but Payload queues each next run as soon as the previous one
+ * finishes, so a job queued before the flag changed would still execute. The
+ * handlers check this too and skip.
+ */
+export const customerEmailJobsEnabled = (env: Record<string, string | undefined> = process.env): boolean =>
+  env.ENABLE_CUSTOMER_EMAIL_JOBS === 'true';

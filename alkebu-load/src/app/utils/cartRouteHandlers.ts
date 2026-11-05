@@ -3,6 +3,7 @@ import type { Payload } from 'payload';
 import {
   authorizeCartAccess,
   generateCartSessionToken,
+  isCurrentCartSessionToken,
   readCartSessionToken,
   type CartAccessGranted,
   type CartAccessResult,
@@ -16,6 +17,8 @@ import {
   updateCartItemQuantity,
   type CartItem,
 } from './cartOperations';
+
+import { verifyCartRecoveryToken } from './marketingEmail';
 
 // Route logic for /api/cart/* and /api/cart-recovery, kept out of the route files
 // so the ownership checks can be exercised without booting Payload.
@@ -360,5 +363,59 @@ export async function handleCartRecoveryPost(payload: Payload, request: Request)
       { error: 'Failed to update cart email' },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * POST /api/cart-recovery/claim { token } — the emailed recovery link.
+ *
+ * The signed, expiring token (marketingEmail.buildCartRecoveryUrl) is the proof
+ * of ownership: only the address the reminder went to has it. On success the
+ * cart is reactivated and its session token returned so the storefront can put
+ * it in the shopper's cart cookie. The cart's existing current-format token is
+ * reused rather than rotated, so the shopper's other browser keeps the cart.
+ */
+export async function handleCartRecoveryClaim(payload: Payload, request: Request): Promise<Response> {
+  try {
+    const body = await readJsonBody(request);
+    const cartId = verifyCartRecoveryToken(body.token);
+    if (!cartId) {
+      return Response.json({ error: 'This link has expired or is not valid.' }, { status: 410 });
+    }
+
+    let cart: any = null;
+    try {
+      cart = await payload.findByID({ collection: 'carts', id: cartId, depth: 0 });
+    } catch {
+      cart = null;
+    }
+
+    if (!cart || CLOSED_CART_STATUSES.has(cart.status)) {
+      return Response.json(
+        { error: 'This cart has already been checked out or is no longer available.' },
+        { status: 410 },
+      );
+    }
+
+    // Recovery links restore guest carts only; an account's cart needs its login.
+    if (cart.user) {
+      return Response.json({ error: 'This cart belongs to an account.' }, { status: 409 });
+    }
+
+    const sessionId = isCurrentCartSessionToken(cart.sessionId) ? cart.sessionId : generateCartSessionToken();
+    await payload.update({
+      collection: 'carts',
+      id: cart.id,
+      data: {
+        status: 'active',
+        lastActivity: new Date().toISOString(),
+        ...(sessionId !== cart.sessionId ? { sessionId } : {}),
+      },
+    });
+
+    return Response.json({ success: true, cartId: String(cart.id), sessionId });
+  } catch (error) {
+    console.error('Cart recovery claim error:', error);
+    return Response.json({ error: 'Failed to restore cart' }, { status: 500 });
   }
 }

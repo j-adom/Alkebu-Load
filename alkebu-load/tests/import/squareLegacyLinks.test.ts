@@ -132,3 +132,13 @@ test('new-book enrichment folds gap-fills into the create data, never editions, 
   assert.deepEqual(await withNewBookEnrichment(data, async () => null), data);
   assert.deepEqual(await withNewBookEnrichment(data, async () => { throw new Error("ISBNdb down"); }), data);
 });
+
+test('Square fills a missing title but never retitles an existing book', () => {
+  const titled = { ...csvImported, title: 'Countering the Conspiracy to Destroy Black Boys' };
+  const update = bookUpdateForSquareItem(titled, 'ITEM_P5WR', mappedFromSquare) as any;
+  assert.equal('title' in update, false);
+  assert.equal(update.squareItemId, 'ITEM_P5WR');
+
+  const untitled = bookUpdateForSquareItem({ ...csvImported, title: '  ' }, 'ITEM_P5WR', mappedFromSquare) as any;
+  assert.equal(untitled.title, 'Countering the Conspiracy');
+});
