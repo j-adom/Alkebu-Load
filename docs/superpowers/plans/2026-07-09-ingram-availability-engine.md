@@ -908,6 +908,15 @@ Built first because the Web Service returns no `<Stock>` section yet. This is Ta
 - Tasks 11, 13 and 14 still wait on Ingram's Stock Check add-on. Phase 3 (Tasks 16–22) waits on the owner transcribing the Titles Basic column layout (Task 17 Step 1).
 - The stacked branch `fix/square-duplicate-books` carries the Square duplicate fix and `pnpm square:link-repair` (see that commit).
 
+### Status (2026-11-05): Stage-1 refresh live
+
+- The owner skipped the manual review and accepted the refresh's rules: request-only and discontinued books are protected, books sold in the last 4 years (Square or website) are rescued with `availableToOrder`, and everything else follows Ingram.
+- Dry run (2026-11-04): 5,540 books, 3,932 matched EANs, 951 buyable-to-request (739 not carried, 212 can't supply), 597 rescued by sales, 77 protected.
+- A full `--apply` over the SSH tunnel is too slow (dozens of round trips per book; the tunnel dropped twice). The owner ran `--apply --only-rescues` to write the rescues, and the scheduled job wrote the rest server-side.
+- `INGRAM_STOCK_REFRESH_ENABLED=true` in Coolify. The first scheduled apply ran 2026-11-05 16:35 UTC, after the app restart, and stamped 2,794 books.
+- Verified 2026-11-05: 956 books on Request from Ingram, 77 staff-set, 4,520 buyable. The next fetch is queued for 11:30 UTC daily.
+- Still waiting: Tasks 11, 13 and 14 need Ingram's Stock Check add-on, and Phase 3 needs the Titles Basic layout (Task 17 Step 1).
+
 ### Task 11: Live Ingram Web Service client + provider wiring
 
 **Files:**
