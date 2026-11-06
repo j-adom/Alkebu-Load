@@ -17,6 +17,8 @@ export type PolicyKind =
   | 'title'
   /** Auto-apply only when empty; a different existing value goes to review. */
   | 'fill-gap'
+  /** Auto-apply only when empty; a different existing value is kept, not reviewed. */
+  | 'fill-only'
   /** Differences always go to review; never auto-applied. */
   | 'review-only';
 
@@ -37,12 +39,15 @@ export const FIELD_POLICY: Readonly<Record<EnrichmentField, PolicyKind>> = {
   // Book
   title: 'title',
   subtitle: 'title',
-  publisherText: 'fill-gap',
-  subjects: 'fill-gap',
+  // Owner decision 2026-11-05: Titles Basic carries only the imprint (30 chars), one BISAC
+  // heading and one contributor (40 chars), so it fills these when empty and otherwise
+  // defers to what we have. Reviewing every difference queued ~8,800 items in the dry run.
+  publisherText: 'fill-only',
+  subjects: 'fill-only',
   synopsis: 'fill-gap',
   description: 'fill-gap',
   excerpt: 'fill-gap',
-  authorsText: 'review-only',
+  authorsText: 'fill-only',
 };
 
 /** A price more than this multiple of the current one goes to review (data/unit errors). */

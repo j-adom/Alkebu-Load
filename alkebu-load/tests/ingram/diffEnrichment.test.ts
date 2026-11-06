@@ -60,9 +60,10 @@ for (const path of Object.keys(VALUES)) {
     assert.equal(find(diffEnrichment(bookWith(path, null), candidateWith(path, proposed)), keyOf(path))?.action, 'fill');
   });
 
-  test(`${path} (${policy}): differing value from a non-manual source -> ${policy === 'authoritative' ? 'correct' : 'conflict'}`, () => {
+  const differing = policy === 'authoritative' ? 'correct' : policy === 'fill-only' ? 'kept' : 'conflict';
+  test(`${path} (${policy}): differing value from a non-manual source -> ${differing}`, () => {
     const change = find(diffEnrichment(bookWith(path, current), candidateWith(path, proposed), {}), keyOf(path));
-    assert.equal(change?.action, policy === 'authoritative' ? 'correct' : 'conflict');
+    assert.equal(change?.action, differing);
   });
 
   test(`${path} (${policy}): manual source -> protected`, () => {
@@ -83,9 +84,17 @@ test('a previously rejected proposal (same value) is same; a new value is not', 
   assert.equal(find(diffEnrichment(b, candidate({}, { synopsis: 'Newer copy' }), {}, { rejected }), 'synopsis')?.action, 'conflict');
 });
 
-test('authors are review-only: a difference is a conflict, never a fill', () => {
-  const changes = diffEnrichment(book({ authorsText: [] }), candidate({}, { contributors: ['Jane Doe', 'Richard Roe'] }));
-  assert.equal(find(changes, 'authorsText')?.action, 'conflict');
+test('authors, publisher and subjects are fill-only: empty fills, a difference keeps ours unqueued', () => {
+  const empty = diffEnrichment(book({ authorsText: [], subjects: [] }), candidate({}, { contributors: ['Jane Doe'], subjects: [{ subject: 'History' }] }));
+  assert.equal(find(empty, 'authorsText')?.action, 'fill');
+  assert.equal(find(empty, 'subjects')?.action, 'fill');
+  const ours = diffEnrichment(
+    book({ authorsText: [{ name: 'Jane Doe' }, { name: 'Richard Roe' }], publisherText: 'Penguin Random House' }),
+    candidate({}, { contributors: ['Jane Doe'], publisherText: 'Vintage' }),
+  );
+  assert.equal(find(ours, 'authorsText')?.action, 'kept');
+  assert.equal(find(ours, 'publisherText')?.action, 'kept');
+  assert.ok(!ours.some((c) => c.action === 'conflict'));
 });
 
 test('stock, images, categories and slug are never emitted; price only ever rises', () => {

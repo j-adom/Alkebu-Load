@@ -3,13 +3,14 @@
 //   correct   authoritative field (or title cleanup / price uplift) -> apply
 //   same      nothing to do (equal ignoring case/whitespace, or a proposal staff rejected)
 //   conflict  differs on a field we never overwrite silently -> review queue
+//   kept      differs on a fill-only field: our value stays, nothing is queued
 //   protected staff own the field (fieldSources says manual) -> left alone
 import { comparable, editionEanOf, getPath, sourceKey, type EnrichmentField, type FieldSources } from './enrichmentFields';
 import { FIELD_POLICY, priceUplift } from './enrichmentPolicy';
 import type { EnrichmentCandidate } from './mapEnrichment';
 import { cleanTitle } from './titleCleanup';
 
-export type ChangeAction = 'fill' | 'correct' | 'same' | 'conflict' | 'protected';
+export type ChangeAction = 'fill' | 'correct' | 'same' | 'conflict' | 'kept' | 'protected';
 
 export interface FieldChange {
   /** Provenance key: `title`, or `editions.<EAN>.pricing.shippingWeight`. */
@@ -71,6 +72,9 @@ export function diffEnrichment(
       case 'fill-gap':
         if (manual(key)) return push({ ...base, action: 'protected' });
         return push({ ...base, action: empty ? 'fill' : 'conflict' });
+      case 'fill-only':
+        if (manual(key)) return push({ ...base, action: 'protected' });
+        return push({ ...base, action: empty ? 'fill' : 'kept' });
       case 'review-only':
         if (manual(key)) return push({ ...base, action: 'protected' });
         return push({ ...base, action: 'conflict' });

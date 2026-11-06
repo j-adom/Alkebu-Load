@@ -8,7 +8,7 @@ import {
 } from '../app/utils/ingram/reviewEndpoints';
 
 // Proposed Ingram changes that need a person: fill-gap fields that already hold different
-// curated text, review-only authors, ambiguous title cleanups and >3x price uplifts.
+// curated text, ambiguous title cleanups and >3x price uplifts.
 // State: pending -> accepted | rejected | superseded (the Square staging pattern).
 // Work the queue at /admin/ingram-review.
 export const IngramEnrichmentReview: CollectionConfig = {
