@@ -32,16 +32,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
     const booksData = await payloadGet<any>(
       `/api/books?${appendBookStorefrontFilters(booksParams).toString()}`,
     );
-    
-    // Get featured books in this collection
-    const featuredBooksData = await payloadGet<any>(
-      `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
-        'where[collections][in]': collection.slug,
-        'where[featured][equals]': 'true',
-        limit: '4',
-        depth: '1',
-      })).toString()}`,
-    );
 
     // Build breadcrumbs
     const breadcrumbs = [
@@ -77,7 +67,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
         hasPrevPage: booksData.hasPrevPage || false,
         totalDocs: booksData.totalDocs || 0
       },
-      featuredBooks: featuredBooksData.docs || [],
       currentSort: sort,
       seo: seoData
     };

@@ -30,9 +30,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
     });
 
     const productsData = await payloadGet<any>(`/api/fashion-jewelry?${productsParams.toString()}`);
-    
-    // Get featured products with this tag
-    const featuredProductsData = await payloadGet<any>(`/api/fashion-jewelry?where[tags][in]=${tag.id}&where[featured][equals]=true&limit=4&depth=1`);
 
     // Build breadcrumbs
     const breadcrumbs = [
@@ -68,7 +65,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
         hasPrevPage: productsData.hasPrevPage || false,
         totalDocs: productsData.totalDocs || 0
       },
-      featuredProducts: featuredProductsData.docs || [],
       currentSort: sort,
       seo: seoData
     };
