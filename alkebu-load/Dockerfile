@@ -64,8 +64,9 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Health check. Coolify uses a Dockerfile HEALTHCHECK instead of its own, so this
-# is the production check. `--max-time` matters: Coolify's generated check ran
+# Health check. This is the production check, but only while Coolify's dashboard
+# health check is Disabled: enabled, Coolify writes its own (timeout-less) check
+# into the compose file and overrides this one. See docs/vps-hardening.md §3. `--max-time` matters: Coolify's generated check ran
 # curl with no timeout, and when the server hung on 2026-11-07 every 10-second
 # timeout left an orphaned curl behind (1,116 of them after 12 hours), which is
 # what pushed the container to its 1 GiB memory cap. curl must exit on its own

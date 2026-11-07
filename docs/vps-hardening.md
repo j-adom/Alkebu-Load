@@ -74,8 +74,13 @@ with a read-only root, uses ~180 MB idle, and only writes to `.next/cache`.
   (Was `1g` until 2026-11-07. The container hit that cap twice: an OOM kill on 2026-11-05 and a
   12-hour outage on 2026-11-07 when orphaned health-check `curl` processes filled it. Node itself
   idles near 200 MB; the headroom is for the FlexSearch index, the job runner and bad days.)
-- **Health check:** defined by the `HEALTHCHECK` in `alkebu-load/Dockerfile`, which Coolify uses in
-  place of the dashboard check. Keep `curl --max-time` on it: without a curl timeout, a hung server
+- **Health check:** defined by the `HEALTHCHECK` in `alkebu-load/Dockerfile`. **Coolify's dashboard
+  health check must be Disabled** for it to apply (Healthcheck → Disable, then Redeploy). In Coolify
+  4.6.0, an enabled dashboard check writes its own `healthcheck:` block into the generated compose
+  file, which overrides the image's; only when disabled does Coolify drop that block, detect the
+  Dockerfile instruction (`custom_healthcheck_found`) and still poll health during rolling deploys.
+  Verify with `docker inspect -f '{{json .Config.Healthcheck.Test}}' <container>`: it must contain
+  `--max-time`. Keep `curl --max-time` on it: without a curl timeout, a hung server
   leaks one orphaned `curl` per failed check (they reparent to Node, which never reaps them).
   Docker and Coolify mark the container unhealthy but neither restarts it, so the Uptime Kuma
   monitor on `/api/health` (uptime.alkebu.link) is what actually tells someone.
