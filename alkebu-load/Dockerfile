@@ -64,6 +64,15 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Health check. Coolify uses a Dockerfile HEALTHCHECK instead of its own, so this
+# is the production check. `--max-time` matters: Coolify's generated check ran
+# curl with no timeout, and when the server hung on 2026-11-07 every 10-second
+# timeout left an orphaned curl behind (1,116 of them after 12 hours), which is
+# what pushed the container to its 1 GiB memory cap. curl must exit on its own
+# before Docker's timeout so a hung server produces failed checks, not leaks.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -sf --max-time 8 http://localhost:3000/api/health > /dev/null || exit 1
+
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]

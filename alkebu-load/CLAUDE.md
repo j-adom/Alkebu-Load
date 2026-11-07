@@ -234,7 +234,7 @@ This single Payload instance handles:
 
 - **Host**: Coolify-managed deployment to `payload.alkebulanimages.com`
 - **Auto-deploy**: webhook-triggered on `main` push (verified `d2b6387`)
-- **Health check**: `GET /api/health` → `https://payload.alkebulanimages.com/api/health`
+- **Health check**: `GET /api/health` → `https://payload.alkebulanimages.com/api/health`. The check itself is the `HEALTHCHECK` in `Dockerfile` (Coolify uses it instead of the dashboard check). Keep `curl --max-time` on it; see `docs/vps-hardening.md` §3.
 - See [../docs/deployment.md](../docs/deployment.md)
 
 ## Reference Docs

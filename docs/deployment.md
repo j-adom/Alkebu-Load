@@ -141,7 +141,7 @@ npm run build runs check:svelte before vite build, so Svelte contract errors blo
 
 ## Monitoring and Backups
 
-- Monitor /api/health with UptimeRobot or equivalent.
+- Monitor `https://payload.alkebulanimages.com/api/health` from the self-hosted Uptime Kuma at `uptime.alkebu.link` (keyword `"status":"healthy"`), with a notification attached. An unhealthy container is not restarted by Coolify; the alert is the recovery path.
 - Keep PostgreSQL backups enabled with at least 7 days retention.
 - Watch Coolify logs for webhook failures, SMTP errors, and database connection errors.
 - Track disk usage for media volume/R2 sync paths.
