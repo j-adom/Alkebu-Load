@@ -175,7 +175,7 @@ export async function handleCheckout(
 
     // Log if tax-exempt was requested but not validated
     if (taxExempt && !taxExemptValidation.valid) {
-      console.log(
+      console.info(
         `Tax-exempt request denied for cart ${cartId}: ${taxExemptValidation.reason}`
       );
     }

@@ -49,11 +49,16 @@ const nextConfig = {
     ]
   },
 
-  // Disable telemetry in production
+  // Production builds strip console.log/console.debug (per-item enrichment,
+  // Square skip lines, retry chatter: noisy, and some carry customer emails).
+  // console.info is kept: it is the channel for operational lines that must
+  // reach the Coolify container log (job summaries, order/email outcomes,
+  // webhook receipts, search index ready). Use console.info for those, and
+  // keep customer email addresses out of them.
   ...(process.env.NODE_ENV === 'production' && {
     compiler: {
       removeConsole: {
-        exclude: ['error', 'warn'],
+        exclude: ['error', 'warn', 'info'],
       },
     },
   }),

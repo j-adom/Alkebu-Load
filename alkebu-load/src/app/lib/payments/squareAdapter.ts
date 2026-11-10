@@ -320,7 +320,7 @@ async function handlePaymentCompleted(payload: any, payment: any): Promise<void>
     data: orderData,
   });
 
-  console.log('Order created from Square payment:', orderData.orderNumber);
+  console.info('Order created from Square payment:', orderData.orderNumber);
 
   // Decrement inventory
   for (const item of cartItems) {

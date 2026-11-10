@@ -845,7 +845,7 @@ export class SearchEngine {
     this.businessIndex = replacement.businessIndex;
     this.productIndex = replacement.productIndex;
     this.loadedAt = Date.now();
-    console.log(`Search index ready: ${count} documents in ${Date.now() - startedAt}ms`);
+    console.info(`Search index ready: ${count} documents in ${Date.now() - startedAt}ms`);
   }
 
 }

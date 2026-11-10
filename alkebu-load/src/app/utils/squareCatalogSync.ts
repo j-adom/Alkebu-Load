@@ -526,7 +526,7 @@ export async function runSquareCatalogSync(payload: Payload): Promise<{
   const { created, updated, unchanged, staged, skippedNonBook, unresolved, oldestUnresolvedUpdatedAt } =
     await processCatalogItems(payload, changedItems, imageUrlsById, now);
 
-  console.log(
+  console.info(
     `📦 square-catalog-sync: created=${created} updated=${updated} unchanged=${unchanged} staged=${staged} skippedNonBook=${skippedNonBook} unresolved=${unresolved}`,
   );
 
@@ -675,7 +675,7 @@ export async function runSquareInventorySync(
     }
   }
 
-  console.log(`📦 Inventory sync complete: updated ${updated}/${counts.length}`);
+  console.info(`📦 Inventory sync complete: updated ${updated}/${counts.length}`);
 
   return { updated, total: counts.length };
 }

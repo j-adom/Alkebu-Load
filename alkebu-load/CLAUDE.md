@@ -216,6 +216,8 @@ This single Payload instance handles:
 
 - **Strict build mode**: type errors fail production builds (`985dbcb`). Next 16 removed lint from `next build`, so run `pnpm lint` (`eslint src`) separately before pushing.
 
+- **`console.log` never reaches production logs.** `next.config.mjs` `compiler.removeConsole` strips `log`/`debug` from production builds and keeps only `error`/`warn`/`info`. Use `console.info` for any line that must appear in the Coolify container log (job summaries, order/email outcomes, webhook receipts), and keep customer email addresses out of it. `payload.logger` (pino) is unaffected.
+
 - **Payload upgrades need prod DDL.** Production Postgres doesn't auto-migrate on boot. After bumping `payload`, diff `pnpm generate:types` output for new stored fields and apply a guarded SQL patch (e.g. `scripts/fix-payload-3-90-schema.sql`) before deploying, or reads of those collections fail with 42703.
 
 - **Books collection is `Books.tsx`**, not `Books.ts` — it has admin UI custom JSX. Don't rename without updating Payload registration.

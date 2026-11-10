@@ -53,7 +53,7 @@ export async function generateDailyOrderDigest(payload: Payload): Promise<void> 
     };
 
     await sendDailyOrderDigest(digestData);
-    console.log(`Daily digest: ${orders.length} orders needing attention, $${(digestData.totalRevenuePending / 100).toFixed(2)} pending`);
+    console.info(`Daily digest: ${orders.length} orders needing attention, $${(digestData.totalRevenuePending / 100).toFixed(2)} pending`);
   } catch (error) {
     console.error('Error generating daily order digest:', error);
   }

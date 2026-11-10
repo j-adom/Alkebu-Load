@@ -429,7 +429,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
       },
     });
     if (existingOrder.docs.length) {
-      console.log('Order already exists for session', session.id);
+      console.info('Order already exists for session', session.id);
       return;
     }
 
@@ -511,7 +511,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
       data: orderData as any,
     });
 
-    console.log('Order created successfully:', orderData.orderNumber);
+    console.info('Order created successfully:', orderData.orderNumber);
 
     // Decrement inventory for each item
     for (const item of cartItems as any[]) {

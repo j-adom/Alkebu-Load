@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
     }
 
     const totalRefunded = alreadyRefunded + plan.amount;
-    console.log(
+    console.info(
       `Refund processed by ${user.email}: ${stripeRefund.id} for order ${order.orderNumber}, amount: $${(plan.amount / 100).toFixed(2)} (${plan.paymentStatus})`
     );
 

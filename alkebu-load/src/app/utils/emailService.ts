@@ -234,7 +234,7 @@ export async function sendOrderConfirmation(data: OrderConfirmationData): Promis
   });
 
   if (result.success) {
-    console.log(`Order confirmation sent to ${data.customerEmail} for order ${data.orderNumber}`);
+    console.info(`Order confirmation sent for order ${data.orderNumber}`);
   }
 
   return result;
@@ -252,7 +252,7 @@ export async function sendAbandonedCartEmail(data: AbandonedCartData): Promise<E
   });
 
   if (result.success) {
-    console.log(`Abandoned cart email sent to ${data.customerEmail} for cart ${data.cartId}`);
+    console.info(`Abandoned cart email sent for cart ${data.cartId}`);
   }
 
   return result;
@@ -298,7 +298,7 @@ export async function sendOrderStatusUpdate(
   });
 
   if (result.success) {
-    console.log(`Order status update sent to ${customerEmail} for order ${orderNumber}: ${oldStatus} → ${newStatus}`);
+    console.info(`Order status update sent for order ${orderNumber}: ${oldStatus} → ${newStatus}`);
   }
 
   return result;
@@ -315,8 +315,8 @@ export async function sendRefundNotification(data: RefundNotificationData): Prom
   });
 
   if (result.success) {
-    console.log(
-      `Refund notification sent to ${data.customerEmail} for order ${data.orderNumber}: $${(data.refundAmount / 100).toFixed(2)}`
+    console.info(
+      `Refund notification sent for order ${data.orderNumber}: $${(data.refundAmount / 100).toFixed(2)}`
     );
   }
 
@@ -335,7 +335,7 @@ export async function sendStaffOrderNotification(data: StaffNotificationData): P
   });
 
   if (result.success) {
-    console.log(`Staff order notification sent to ${staffEmail} for order ${data.orderNumber}`);
+    console.info(`Staff order notification sent to ${staffEmail} for order ${data.orderNumber}`);
   }
 
   return result;
@@ -378,7 +378,7 @@ export async function sendDailyOrderDigest(data: DailyDigestData): Promise<Email
   });
 
   if (result.success) {
-    console.log(`Daily order digest sent to ${staffEmail}: ${data.totalOrderCount} orders`);
+    console.info(`Daily order digest sent to ${staffEmail}: ${data.totalOrderCount} orders`);
   }
 
   return result;
@@ -398,7 +398,7 @@ export async function sendPartnershipStaffNotification(
   });
 
   if (result.success) {
-    console.log(
+    console.info(
       `Partnership staff notification sent to ${staffEmail} for ${data.typeLabel} inquiry from ${data.organizationName || data.name}`,
     );
   }
@@ -419,8 +419,8 @@ export async function sendPartnershipAcknowledgement(
   });
 
   if (result.success) {
-    console.log(
-      `Partnership acknowledgement sent to ${data.email} for ${data.typeLabel} inquiry`,
+    console.info(
+      `Partnership acknowledgement sent for ${data.typeLabel} inquiry`,
     );
   }
 

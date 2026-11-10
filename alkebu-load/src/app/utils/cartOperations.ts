@@ -1057,7 +1057,7 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
         console.error(`Abandoned cart reminder failed for cart ${cart.id}:`, error);
       }
     }
-    console.log(`Abandoned cart reminders: ${JSON.stringify(tally)}`);
+    console.info(`Abandoned cart reminders: ${JSON.stringify(tally)}`);
 
     // Delete very old abandoned carts (30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -1098,7 +1098,7 @@ export async function cleanupAbandonedCarts(payload: Payload): Promise<void> {
       });
     }
 
-    console.log(`Cleaned up ${oldCarts.docs.length} old abandoned carts`);
+    console.info(`Cleaned up ${oldCarts.docs.length} old abandoned carts`);
 
   } catch (error) {
     console.error('Error cleaning up abandoned carts:', error);

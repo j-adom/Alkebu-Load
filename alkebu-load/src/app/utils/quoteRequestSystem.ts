@@ -710,7 +710,7 @@ class QuoteRequestSystem {
         });
         count('sent');
       }
-      console.log(`Quote follow-ups: ${JSON.stringify(tally)}`);
+      console.info(`Quote follow-ups: ${JSON.stringify(tally)}`);
     } catch (error) {
       console.error('Error processing quote follow-ups:', error);
     }

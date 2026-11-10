@@ -648,7 +648,7 @@ export const Orders: CollectionConfig = {
       async ({ doc, previousDoc, operation, req: { payload } }) => {
         // Handle order status changes
         if (operation === 'update' && doc.status !== previousDoc?.status) {
-          console.log(`Order ${doc.orderNumber} status changed: ${previousDoc?.status} → ${doc.status}`);
+          console.info(`Order ${doc.orderNumber} status changed: ${previousDoc?.status} → ${doc.status}`);
 
           // Restore stock on cancellation/return
           if ((doc.status === 'cancelled' || doc.status === 'returned') &&

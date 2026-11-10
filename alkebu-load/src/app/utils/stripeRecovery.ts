@@ -357,7 +357,7 @@ export async function runScheduledStripeRecovery(
   }
 
   if (results.length > 0) {
-    console.log(
+    console.info(
       `Stripe recovery job: scanned=${stripeSessions.data.length} candidates=${candidates.length} recovered=${recovered.length} failed=${failed.length}`,
     )
   }

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the received event
-    console.log('📦 Square webhook received:', {
+    console.info('📦 Square webhook received:', {
       type: webhookEvent.type,
       merchant_id: webhookEvent.merchant_id,
       version: webhookEvent.data?.object?.catalog_version?.updated_at,
