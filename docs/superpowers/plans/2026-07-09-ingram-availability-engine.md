@@ -1155,6 +1155,19 @@ Built first because the Web Service returns no `<Stock>` section yet. This is Ta
 - `main` is merged into the branch. 811 tests pass.
 - **Next (owner):** Task 22 Steps 1–5.
 
+### Status (2026-11-11): enrichment branch ready to deploy
+
+- `main` (`f85f0cb`) merged into `feat/ingram-enrichment`. Backend: 813 tests pass, `check:types`, `check:scripts` and `pnpm build` exit 0, lint 0 errors. Storefront: 48 tests pass. svelte-check shows only `$env/static/public` errors from the worktree having no `.env.local`.
+- Drafted (not sent) a reply on Ingram Data Services ticket 5898468. It asks about the Stock Check add-on (Tasks 11/13/14), §3(c) query approval, the monthly hit limit, and storing cover images. No earlier question to Ingram was found in the owner's mail.
+- **Compliance gap (spec §3(b)):** `alkebu-web/src/routes/terms-of-service` has no Ingram no-copy/no-redistribution clause. Add it before Phase 3 puts Ingram metadata on the site.
+- **Owner rollout (Task 22), in order:**
+  1. Open the tunnel (CLAUDE.md, "Reaching the production database") and run `scripts/add-ingram-enrichment-schema.sql` with `psql -v ON_ERROR_STOP=1 -f`. It is idempotent, so rerun it even if it was applied for the 2026-11-05 dry run. Expect `COMMIT`, then every row `ok = t` in the optional check at the bottom of the file.
+  2. Merge `feat/ingram-enrichment` into `main`. Coolify auto-deploys. Leave `INGRAM_ENRICHMENT_ENABLED` unset for now.
+  3. Dry run: `DATABASE_URI='postgresql://…@localhost:55433/alkebulan' pnpm ingram:enrich`. Share only the printed counts. Revisit the policy if any field has hundreds of `conflict`.
+  4. Tell staff that in-store prices will rise where Ingram list is higher. Then run `pnpm ingram:enrich -- --apply --limit 50 --square` and spot-check 5 product pages, the same 5 items in Square POS, and one Shippo quote.
+  5. Let the server do the full run rather than the tunnel (a full stock `--apply` over the tunnel dropped twice). Set `INGRAM_ENRICHMENT_ENABLED=true` and `INGRAM_ENRICHMENT_SQUARE_WRITEBACK=true` in Coolify. The weekly titles job (Tue 14:00 UTC) applies everything, and reruns are idempotent. The CLI has no resume flag; rerunning it skips books already done but downloads the files again.
+  6. Work the review queue at `/admin/ingram-review`. Then run the description dry run (`pnpm ingram:enrich -- --job descriptions`) before the monthly job's first run.
+
 ## Companion: Edition Consolidation prerequisite *(decided and built 2026-10-02)*
 
 Square stays one item per binding. Built on this branch, before any books are merged:
