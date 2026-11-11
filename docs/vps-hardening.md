@@ -70,7 +70,20 @@ with a read-only root, uses ~180 MB idle, and only writes to `.next/cache`.
 **Coolify 4.4.6 (latest release as of Oct 20, 2026):**
 
 - **Settings → General → Runtime → Custom Docker Options:** `--cap-drop=ALL` (this is what production runs).
-- **Operations → Resource Limits:** CPU limit `1`, memory limit `1g`, and memory-and-swap limit `1g`.
+- **Operations → Resource Limits:** CPU limit `1`, memory limit `2g`, and memory-and-swap limit `2g`.
+  (Was `1g` until 2026-11-07. The container hit that cap twice: an OOM kill on 2026-11-05 and a
+  12-hour outage on 2026-11-07 when orphaned health-check `curl` processes filled it. Node itself
+  idles near 200 MB; the headroom is for the FlexSearch index, the job runner and bad days.)
+- **Health check:** defined by the `HEALTHCHECK` in `alkebu-load/Dockerfile`. **Coolify's dashboard
+  health check must be Disabled** for it to apply (Healthcheck → Disable, then Redeploy). In Coolify
+  4.6.0, an enabled dashboard check writes its own `healthcheck:` block into the generated compose
+  file, which overrides the image's; only when disabled does Coolify drop that block, detect the
+  Dockerfile instruction (`custom_healthcheck_found`) and still poll health during rolling deploys.
+  Verify with `docker inspect -f '{{json .Config.Healthcheck.Test}}' <container>`: it must contain
+  `--max-time`. Keep `curl --max-time` on it: without a curl timeout, a hung server
+  leaks one orphaned `curl` per failed check (they reparent to Node, which never reaps them).
+  Docker and Coolify mark the container unhealthy but neither restarts it, so the Uptime Kuma
+  monitor on `/api/health` (uptime.alkebu.link) is what actually tells someone.
 
 The limits matter as much as the flags. With them in place, a compromised container
 can't pin every core, which is what triggers the abuse suspensions.
