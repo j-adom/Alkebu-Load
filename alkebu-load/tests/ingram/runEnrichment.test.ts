@@ -205,3 +205,155 @@ test('job file selection and the first-Monday rule', () => {
   assert.equal(isFirstMondayUtc(new Date('2026-11-09T14:00:00Z')), false);
   assert.equal(isFirstMondayUtc(new Date('2026-11-03T14:00:00Z')), false);
 });
+
+// --- Square "Author" fills at the end of a run ----------------------------------------
+
+const AUTHOR_KEY = 'Square:0de92ab4-c183-40a9-8b69-109842f52da7';
+
+function authorSquare(seed: Record<string, string | null>) {
+  const store = new Map<string, any>();
+  for (const [id, author] of Object.entries(seed)) {
+    store.set(id, {
+      type: 'ITEM_VARIATION',
+      id,
+      version: 1n,
+      itemVariationData: { itemId: `ITEM-${id}`, priceMoney: { amount: 1999n, currency: 'USD' } },
+      ...(author ? { customAttributeValues: { [AUTHOR_KEY]: { stringValue: author } } } : {}),
+    });
+  }
+  const calls = { batchGet: 0, batchUpsert: 0 };
+  const client = {
+    store,
+    calls,
+    catalog: {
+      async batchGet({ objectIds }: { objectIds: string[] }) {
+        calls.batchGet += 1;
+        return { objects: objectIds.map((id) => store.get(id)).filter(Boolean).map((o) => structuredClone(o)) };
+      },
+      async batchUpsert({ batches }: { batches: Array<{ objects: any[] }> }) {
+        calls.batchUpsert += 1;
+        const out = batches.flatMap((b) => b.objects).map((o) => ({ ...o, version: BigInt(Number(o.version ?? 0) + 1) }));
+        for (const o of out) store.set(o.id, o);
+        return { objects: out };
+      },
+    },
+  };
+  return client;
+}
+const squareAuthor = (client: ReturnType<typeof authorSquare>, id: string) => client.store.get(id)?.customAttributeValues?.[AUTHOR_KEY]?.stringValue;
+
+// Books 0-2 match Ingram, book 3 doesn't (no record), book 4 has no authors.
+const linked = (i: number) => ({ ...book(i), editions: [{ ...book(i).editions[0], squareVariationId: `VAR-${i}` }] });
+const authorBooks = (): any[] => ([0, 1, 2, 3].map(linked) as any[]).concat([{ ...linked(3), id: '5', authorsText: [], editions: [{ isbn: '9780000000040', squareVariationId: 'VAR-4' }] }]);
+
+test('a full run fills an empty Square Author, keeps staff values, and logs each fill', async () => {
+  const payload = createFakePayload({ books: authorBooks() });
+  const client = authorSquare({ 'VAR-0': null, 'VAR-1': 'Jane Doe', 'VAR-2': 'Staff Typed Name', 'VAR-3': null, 'VAR-4': null });
+  const summary = await runEnrichment(payload as any, { files: files(), dryRun: false, square: { client: client as any } });
+
+  assert.deepEqual(summary.squareAuthors, { planned: 4, filled: 2, kept: 1, alreadySet: 1, skipped: 0, failed: 0 });
+  assert.equal(squareAuthor(client, 'VAR-0'), 'Jane Doe');
+  assert.equal(squareAuthor(client, 'VAR-2'), 'Staff Typed Name');
+  assert.equal(squareAuthor(client, 'VAR-3'), 'Jane Doe', 'books Ingram does not carry get their author too');
+  assert.equal(squareAuthor(client, 'VAR-4'), undefined, 'no authors, no fill');
+
+  const logs = payload.all('ingram-enrichment-log').filter((l) => l.fieldPath === 'squareAuthor');
+  assert.deepEqual(logs.map((l) => [l.target, l.squareObjectId, l.action]).sort(), [
+    ['square', 'VAR-0', 'fill'],
+    ['square', 'VAR-3', 'fill'],
+  ]);
+  assert.ok(!JSON.stringify(summary).includes('Jane Doe'), 'the summary stays counts-only');
+
+  const again = await runEnrichment(payload as any, { files: files(), dryRun: false, square: { client: client as any } });
+  assert.equal(again.squareAuthors.filled, 0, 'a rerun fills nothing new');
+});
+
+test('Square Author fills: --limit covers only touched books; a dry run or write-back off only plans', async () => {
+  const client = authorSquare({ 'VAR-0': null, 'VAR-1': null, 'VAR-2': null, 'VAR-3': null, 'VAR-4': null });
+  const limited = await runEnrichment(createFakePayload({ books: authorBooks() }) as any, {
+    files: files(),
+    dryRun: false,
+    limit: 1,
+    square: { client: client as any },
+  });
+  assert.equal(limited.squareAuthors.planned, 1);
+  assert.equal(limited.squareAuthors.filled, 1);
+
+  const before = { ...client.calls };
+  const dry = await runEnrichment(createFakePayload({ books: authorBooks() }) as any, { files: files(), dryRun: true, square: { client: client as any } });
+  assert.equal(dry.squareAuthors.planned, 4);
+  assert.equal(dry.squareAuthors.filled, 0);
+  const off = await runEnrichment(createFakePayload({ books: authorBooks() }) as any, { files: files(), dryRun: false });
+  assert.equal(off.squareAuthors.planned, 4);
+  assert.equal(off.squareAuthors.filled, 0);
+  assert.deepEqual(client.calls, before, 'no Square calls without write-back');
+});
+
+test('a Square author batch that fails is counted, and the run still finishes', async () => {
+  const client = authorSquare({ 'VAR-3': null });
+  client.catalog.batchUpsert = async () => {
+    throw new Error('Square is down');
+  };
+  const books = [linked(3)];
+  const summary = await runEnrichment(createFakePayload({ books }) as any, { files: files(), dryRun: false, square: { client: client as any } });
+  assert.equal(summary.squareAuthors.failed, 1);
+  assert.equal(summary.squareAuthors.filled, 0);
+});
+
+test('price write-back is batched across books: two Square calls for many books, not two per book', async () => {
+  // Each book has its own EAN, which the stock file lists at a higher price: every book
+  // gets a price uplift.
+  const count = 60;
+  const eans = Array.from({ length: count }, (_, i) => {
+    const body = `978100000${String(i).padStart(3, '0')}`;
+    let sum = 0;
+    for (let d = 0; d < 12; d += 1) sum += Number(body[d]) * (d % 2 ? 3 : 1);
+    return body + String((10 - (sum % 10)) % 10);
+  });
+  const stockRows = eans.map((ean) => `${ean},24.99,03/05/2024,03/05/2024,Y,1.05,21,40`);
+  const zip = join(dir, 'stock-many.zip');
+  await writeFile(zip, makeZip([{ name: 'cat_ing_stock.csv', content: `${[STOCK_HEADER, ...stockRows].join('\n')}\n` }]));
+  const books = eans.map((ean, i) => ({
+    id: String(i + 1),
+    title: `Book ${i}`,
+    authorsText: [],
+    pricing: { retailPrice: 1999 },
+    editions: [{ isbn: ean, squareVariationId: `VAR-${i}`, pricing: { retailPrice: 1999 } }],
+  }));
+  const client = authorSquare(Object.fromEntries(eans.map((_, i) => [`VAR-${i}`, null])));
+  const payload = createFakePayload({ books });
+  const summary = await runEnrichment(payload as any, {
+    files: { stock: { path: zip, format: createCatalogCsvFormat() } },
+    dryRun: false,
+    square: { client: client as any },
+  });
+
+  assert.equal(summary.booksTouched, count);
+  assert.equal(summary.applied.squareWritten, count);
+  assert.equal(summary.booksFailed, 0);
+  // 60 books = 2 apply batches (50 + 10): one batchGet and one upsert each.
+  assert.deepEqual(client.calls, { batchGet: 2, batchUpsert: 2 });
+  assert.equal(client.store.get('VAR-59').itemVariationData.priceMoney.amount, 2499n);
+  assert.equal(payload.all('books').filter((b) => b.editions[0].pricing.retailPrice === 2499).length, count);
+});
+
+test('a failed batched Square write falls back to per-book calls', async () => {
+  const client = authorSquare({ 'VAR-0': null, 'VAR-1': null });
+  let failNext = true;
+  const upsert = client.catalog.batchUpsert;
+  client.catalog.batchUpsert = async (req) => {
+    if (failNext) {
+      failNext = false;
+      throw new Error('Square 500');
+    }
+    return upsert(req);
+  };
+  const summary = await runEnrichment(createFakePayload({ books: [0, 1].map(linked) }) as any, {
+    files: files(),
+    dryRun: false,
+    square: { client: client as any },
+  });
+  assert.equal(summary.booksFailed, 0);
+  assert.equal(summary.applied.squareWritten, 2);
+  assert.equal(client.store.get('VAR-1').itemVariationData.priceMoney.amount, 2499n);
+});

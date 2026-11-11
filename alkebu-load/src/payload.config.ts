@@ -398,7 +398,8 @@ export default buildConfig({
         // Basic drop. Holds the books-write lock for the whole run (download included), so
         // queued Square stock writes wait until it finishes; they are delayed, not dropped.
         // Off unless INGRAM_ENRICHMENT_ENABLED=true (on top of ENABLE_JOB_AUTORUN). Price and
-        // title changes reach Square only with INGRAM_ENRICHMENT_SQUARE_WRITEBACK=true.
+        // title changes, and Author fills on empty Square variations, reach Square only with
+        // INGRAM_ENRICHMENT_SQUARE_WRITEBACK=true.
         slug: 'ingram-enrich-titles',
         retries: { attempts: 1, backoff: { type: 'exponential', delay: 60_000 } },
         concurrency: { key: () => 'books-write' },

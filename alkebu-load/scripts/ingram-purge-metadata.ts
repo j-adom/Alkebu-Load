@@ -9,7 +9,8 @@
  * another source) or clears it, then deletes the enrichment log and review rows. If any
  * book fails, the log is kept (it holds the previous values) and the script exits 1.
  *
- * Square is never changed. Price uplifts and title cleanups written to Square are listed
+ * Square is never changed. Price uplifts, title cleanups and Author fills (fieldPath
+ * squareAuthor, previous value empty) written to Square are listed
  * in the --square-report CSV (object id, field, previous value, previous version) so the
  * owner can revert them deliberately. Write that report BEFORE --apply deletes the log.
  *

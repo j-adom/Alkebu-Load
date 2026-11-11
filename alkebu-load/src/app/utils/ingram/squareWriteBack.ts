@@ -18,9 +18,24 @@ import { normalizeTitle } from './titleCleanup';
 
 export const SQUARE_BATCH_LIMIT = 100;
 
+/**
+ * The seller's "Author" catalog custom attribute (a Square-defined STRING, definition
+ * V7MQSLK2YTE74PDBPJUKROZD). Staff fill it on the item VARIATION. The map key on catalog
+ * objects is "Square:<definition key>". Override with SQUARE_AUTHOR_ATTRIBUTE_KEY.
+ */
+export const SQUARE_AUTHOR_ATTRIBUTE_KEY = 'Square:0de92ab4-c183-40a9-8b69-109842f52da7';
+/** Square's limit for a STRING custom attribute value. */
+export const SQUARE_AUTHOR_MAX_LENGTH = 255;
+/** Log/summary key for author fills (Square only; Payload's authorsText is unchanged). */
+export const SQUARE_AUTHOR_FIELD = 'squareAuthor';
+
+export const squareAuthorAttributeKey = (env: Record<string, string | undefined> = process.env) =>
+  env.SQUARE_AUTHOR_ATTRIBUTE_KEY?.trim() || SQUARE_AUTHOR_ATTRIBUTE_KEY;
+
 export interface SquareWrite {
-  kind: 'price' | 'name';
-  /** ITEM_VARIATION id (price) or ITEM id (name). */
+  /** author: fill-only, written only where Square's Author is empty. */
+  kind: 'price' | 'name' | 'author';
+  /** ITEM_VARIATION id (price, author) or ITEM id (name). */
   objectId: string;
   /** The FieldChange key this write carries (`title`, `editions.<EAN>.pricing.retailPrice`). */
   key: string;
@@ -28,6 +43,8 @@ export interface SquareWrite {
   /** Square values that count as "unchanged since the diff". */
   expected: Array<number | string>;
   next: number | string;
+  /** author: the custom attribute map key. */
+  attributeKey?: string;
 }
 
 export interface WrittenObject {
@@ -39,10 +56,15 @@ export interface WrittenObject {
 
 export interface SquareWriteResult {
   written: WrittenObject[];
-  /** Square no longer holds the expected value (changed at the POS), or versions kept clashing. */
+  /**
+   * Square no longer holds the expected value (changed at the POS), or versions kept clashing.
+   * For an author fill: Square already has a different Author, which is kept.
+   */
   conflicts: SquareWrite[];
   /** Not attempted: dry run, or the object no longer exists in Square. */
   skipped: SquareWrite[];
+  /** Square already holds the value (author fills only). */
+  unchanged: SquareWrite[];
   /** Upsert calls made (for tests and run summaries). */
   upserts: number;
 }
@@ -105,6 +127,63 @@ export function planSquareWrites(book: Record<string, any>, changes: FieldChange
   return writes;
 }
 
+/**
+ * Pure: the Square "Author" value for a list of names. Duplicates (ignoring case and spacing)
+ * are dropped, names are joined with ", ", and names that would push the value past Square's
+ * 255-character limit are left off. Null when there is no name.
+ */
+export function squareAuthorValue(names: Array<string | null | undefined>): string | null {
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  let length = 0;
+  for (const raw of names) {
+    const name = String(raw ?? '').replace(/\s+/g, ' ').trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    const added = (kept.length ? 2 : 0) + name.length;
+    if (length + added > SQUARE_AUTHOR_MAX_LENGTH) {
+      if (kept.length === 0) return name.slice(0, SQUARE_AUTHOR_MAX_LENGTH).trim();
+      continue;
+    }
+    kept.push(name);
+    length += added;
+  }
+  return kept.length ? kept.join(', ') : null;
+}
+
+/**
+ * Pure: fill Square's Author on every Square-linked variation of the book with the book's
+ * authors. Fill-only: applySquareWrites writes a variation only when its Author is empty, so
+ * a name staff typed at the POS is never replaced.
+ */
+export function planSquareAuthorFills(
+  book: Record<string, any>,
+  authorNames: Array<string | null | undefined>,
+  attributeKey: string = squareAuthorAttributeKey(),
+): SquareWrite[] {
+  const value = squareAuthorValue(authorNames);
+  if (!value) return [];
+  const writes: SquareWrite[] = [];
+  const seen = new Set<string>();
+  for (const edition of Array.isArray(book?.editions) ? book.editions : []) {
+    const variationId = edition?.squareVariationId;
+    if (!variationId || seen.has(variationId)) continue;
+    seen.add(variationId);
+    const ean = editionEanOf(edition) ?? undefined;
+    writes.push({
+      kind: 'author',
+      objectId: variationId,
+      key: SQUARE_AUTHOR_FIELD,
+      editionIsbn: ean,
+      expected: [''],
+      next: value,
+      attributeKey,
+    });
+  }
+  return writes;
+}
+
 /** Changes that need a Square write before Payload may take them. */
 export function squareBoundKeys(book: Record<string, any>, changes: FieldChange[]): Set<string> {
   return new Set(planSquareWrites(book, changes).map((w) => w.key));
@@ -116,9 +195,15 @@ const priceOf = (obj: any): number | null => {
 };
 const nameOf = (obj: any): string | null => (typeof obj?.itemData?.name === 'string' ? obj.itemData.name : null);
 const versionOf = (obj: any): string | null => (obj?.version === undefined || obj?.version === null ? null : String(obj.version));
+const authorOf = (obj: any, key: string): string => {
+  const value = obj?.customAttributeValues?.[key]?.stringValue;
+  return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+};
+const authorKeyOf = (write: SquareWrite) => write.attributeKey ?? SQUARE_AUTHOR_ATTRIBUTE_KEY;
 
 function stillExpected(write: SquareWrite, obj: any): boolean {
   if (write.kind === 'price') return write.expected.some((e) => Number(e) === priceOf(obj));
+  if (write.kind === 'author') return authorOf(obj, authorKeyOf(write)) === '';
   const current = normalizeTitle(nameOf(obj));
   return write.expected.some((e) => normalizeTitle(String(e)) === current);
 }
@@ -132,6 +217,14 @@ function withPrice(variation: any, cents: number): any {
       pricingType: 'FIXED_PRICING',
       priceMoney: { currency: money.currency ?? 'USD', ...money, amount: BigInt(cents) },
     },
+  };
+}
+
+function withAuthor(variation: any, key: string, value: string): any {
+  const values = variation.customAttributeValues ?? {};
+  return {
+    ...variation,
+    customAttributeValues: { ...values, [key]: { ...(values[key] ?? {}), stringValue: value } },
   };
 }
 
@@ -163,15 +256,16 @@ interface Built {
   applied: Array<{ write: SquareWrite; previous: number | string | null; previousVersion: string | null; objectId: string }>;
   conflicts: SquareWrite[];
   skipped: SquareWrite[];
+  unchanged: SquareWrite[];
 }
 
 /**
- * Builds the upsert objects for `writes` from freshly fetched Square objects. A price write
- * on a variation whose item is also being renamed is folded into that item's nested
- * variation, so one batch never carries the same variation twice.
+ * Builds the upsert objects for `writes` from freshly fetched Square objects. A price or
+ * author write on a variation whose item is also being renamed is folded into that item's
+ * nested variation, so one batch never carries the same variation twice.
  */
 function build(writes: SquareWrite[], fetched: Map<string, any>): Built {
-  const out: Built = { objects: [], applied: [], conflicts: [], skipped: [] };
+  const out: Built = { objects: [], applied: [], conflicts: [], skipped: [], unchanged: [] };
   const updated = new Map<string, any>();
   const itemsRenamed = new Set(writes.filter((w) => w.kind === 'name').map((w) => w.objectId));
 
@@ -190,6 +284,19 @@ function build(writes: SquareWrite[], fetched: Map<string, any>): Built {
     out.applied.push({ write, previous: nameOf(obj), previousVersion: versionOf(obj), objectId: write.objectId });
   }
 
+  const updateVariation = (obj: any, change: (variation: any) => any) => {
+    const itemId = obj.itemVariationData?.itemId;
+    const parent = itemId && itemsRenamed.has(itemId) ? updated.get(itemId) : undefined;
+    const nested = parent?.itemData?.variations?.findIndex((v: any) => v?.id === obj.id) ?? -1;
+    if (parent && nested >= 0) {
+      const variations = [...parent.itemData.variations];
+      variations[nested] = change(variations[nested]);
+      updated.set(itemId, { ...parent, itemData: { ...parent.itemData, variations } });
+    } else {
+      updated.set(obj.id, change(updated.get(obj.id) ?? obj));
+    }
+  };
+
   for (const write of writes.filter((w) => w.kind === 'price')) {
     const obj = fetched.get(write.objectId);
     if (!obj) {
@@ -200,17 +307,24 @@ function build(writes: SquareWrite[], fetched: Map<string, any>): Built {
       out.conflicts.push(write);
       continue;
     }
-    const itemId = obj.itemVariationData?.itemId;
-    const parent = itemId && itemsRenamed.has(itemId) ? updated.get(itemId) : undefined;
-    const nested = parent?.itemData?.variations?.findIndex((v: any) => v?.id === write.objectId) ?? -1;
-    if (parent && nested >= 0) {
-      const variations = [...parent.itemData.variations];
-      variations[nested] = withPrice(variations[nested], Number(write.next));
-      updated.set(itemId, { ...parent, itemData: { ...parent.itemData, variations } });
-    } else {
-      updated.set(write.objectId, withPrice(updated.get(write.objectId) ?? obj, Number(write.next)));
-    }
+    updateVariation(obj, (v) => withPrice(v, Number(write.next)));
     out.applied.push({ write, previous: priceOf(obj), previousVersion: versionOf(obj), objectId: write.objectId });
+  }
+
+  for (const write of writes.filter((w) => w.kind === 'author')) {
+    const obj = fetched.get(write.objectId);
+    if (!obj) {
+      out.skipped.push(write);
+      continue;
+    }
+    if (!stillExpected(write, obj)) {
+      // Square already has an Author: the same one is done, a different one is staff's.
+      const same = authorOf(obj, authorKeyOf(write)).toLowerCase() === String(write.next).toLowerCase();
+      (same ? out.unchanged : out.conflicts).push(write);
+      continue;
+    }
+    updateVariation(obj, (v) => withAuthor(v, authorKeyOf(write), String(write.next)));
+    out.applied.push({ write, previous: null, previousVersion: versionOf(obj), objectId: write.objectId });
   }
 
   out.objects = [...updated.values()];
@@ -222,7 +336,7 @@ export async function applySquareWrites(
   writes: SquareWrite[],
   opts: { dryRun: boolean; idempotencyKey?: () => string },
 ): Promise<SquareWriteResult> {
-  const result: SquareWriteResult = { written: [], conflicts: [], skipped: [], upserts: 0 };
+  const result: SquareWriteResult = { written: [], conflicts: [], skipped: [], unchanged: [], upserts: 0 };
   if (writes.length === 0) return result;
   if (opts.dryRun) return { ...result, skipped: [...writes] };
   const key = opts.idempotencyKey ?? (() => randomUUID());
@@ -232,7 +346,7 @@ export async function applySquareWrites(
   const fetched = await fetchObjects(client, writes.map((w) => w.objectId));
   for (const write of writes) {
     const obj = fetched.get(write.objectId);
-    const group = write.kind === 'price' ? (obj?.itemVariationData?.itemId ?? write.objectId) : write.objectId;
+    const group = write.kind === 'name' ? write.objectId : (obj?.itemVariationData?.itemId ?? write.objectId);
     groups.set(group, [...(groups.get(group) ?? []), write]);
   }
 
@@ -254,6 +368,7 @@ export async function applySquareWrites(
       if (built.objects.length === 0) {
         result.conflicts.push(...built.conflicts);
         result.skipped.push(...built.skipped);
+        result.unchanged.push(...built.unchanged);
         break;
       }
       try {
@@ -275,6 +390,7 @@ export async function applySquareWrites(
         }
         result.conflicts.push(...built.conflicts);
         result.skipped.push(...built.skipped);
+        result.unchanged.push(...built.unchanged);
         break;
       } catch (error) {
         if (!isVersionConflict(error)) throw error;
@@ -288,6 +404,28 @@ export async function applySquareWrites(
     }
   }
   return result;
+}
+
+const writeId = (w: SquareWrite) => `${w.kind}|${w.objectId}|${w.key}`;
+
+/**
+ * The part of a multi-book write result that belongs to `planned` (one book's writes),
+ * matched on kind, object and key. Lets a run write many books to Square in a few batched
+ * calls and still apply each book's Payload changes from its own outcome.
+ */
+export function pickSquareResult(result: SquareWriteResult, planned: SquareWrite[]): SquareWriteResult {
+  const ids = new Set(planned.map(writeId));
+  const mine = (list: SquareWrite[]) => list.filter((w) => ids.has(writeId(w)));
+  const written = result.written.filter((w) => ids.has(writeId(w.write)));
+  const accounted = new Set([...written.map((w) => w.write), ...result.conflicts, ...result.skipped, ...result.unchanged].map(writeId));
+  return {
+    written,
+    conflicts: mine(result.conflicts),
+    // A planned write the batch never reached (e.g. it failed before this book) counts as skipped.
+    skipped: [...mine(result.skipped), ...planned.filter((w) => !accounted.has(writeId(w)))],
+    unchanged: mine(result.unchanged),
+    upserts: 0,
+  };
 }
 
 export interface SquareWriteOption {

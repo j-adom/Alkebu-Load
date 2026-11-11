@@ -24,9 +24,11 @@
  *
  * The review CSV lists every book that would change, from our own catalog plus a reason.
  *
- * Over an SSH tunnel each book write costs dozens of round trips, so a full apply takes
- * hours. --only-rescues writes just the books only this script can save (the nightly job
- * has no sales data); the nightly job then writes the rest next to the database.
+ * Writes go in bulk on Postgres (one UPDATE per 500 editions, see bulkEditionStock.ts), so a
+ * full apply over the SSH tunnel takes minutes rather than hours. A book whose plan changes
+ * more than the stock columns still goes through payload.update (dozens of round trips).
+ * --only-rescues writes just the books only this script can save (the nightly job has no
+ * sales data).
  *
  * (Run through the pnpm script: it adds the CSS stub loader the Payload config needs.)
  */
@@ -86,7 +88,7 @@ async function main() {
 
   const { getPayload } = await import('payload')
   const { default: config } = await import('../src/payload.config.js')
-  const { fetchStockSnapshot } = await import('../src/app/utils/ingram/refreshCatalogStock')
+  const { createStockWriter, fetchStockSnapshot } = await import('../src/app/utils/ingram/refreshCatalogStock')
   const { stockFeedFromEnv } = await import('../src/app/utils/ingram/stockFeeds')
   const { planBookAvailability } = await import('../src/app/utils/ingram/availabilityPlan')
   const { fetchSoldVariationIds } = await import('../src/app/utils/ingram/squareSales')
@@ -164,9 +166,9 @@ async function main() {
   const reasons: Record<string, number> = {}
   const rows: string[][] = []
   let books = 0
-  let written = 0
-  let failed = 0
+  let queued = 0
   const stock = new Map(Object.entries(input.stock))
+  const writer = createStockWriter(payload)
 
   for (let page = 1; ; page += 1) {
     const result = await payload.find({ collection: 'books', page, limit: 200, depth: 0, sort: 'id' })
@@ -198,24 +200,17 @@ async function main() {
       }
 
       if (apply && plan.changed && (!onlyRescues || plan.transition === 'rescued-by-sales')) {
-        try {
-          await payload.update({
-            collection: 'books',
-            id: book.id,
-            data: { editions: plan.editions },
-            depth: 0,
-            context: { skipEnrichment: true, ingramStockRefresh: true },
-          })
-          written += 1
-          if (written % 25 === 0) console.log(`[refresh] written ${written} (at book ${books} of ~${result.totalDocs})`)
-        } catch (error) {
-          failed += 1
-          console.error(`[refresh] failed to update book ${book.id}:`, error instanceof Error ? error.message : error)
-        }
+        // Bulk on Postgres (one UPDATE per 500 editions), so a tunnel run takes minutes.
+        await writer.write(book, plan.editions)
+        queued += 1
+        if (queued % 250 === 0) console.log(`[refresh] queued ${queued} (at book ${books} of ~${result.totalDocs})`)
       }
     }
     if (!result.hasNextPage) break
   }
+  await writer.flush()
+  const written = writer.counts.updated
+  const failed = writer.counts.failed
 
   const header = ['book_id', 'title', 'isbns', 'store_stock', 'change', 'reason', 'last_sale', 'sale_source', 'admin_url']
   await writeFile(reportPath, [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n')
@@ -224,7 +219,7 @@ async function main() {
   console.log('[refresh] buy-button changes:', tally)
   console.log('[refresh] reasons for buyable -> Request:', reasons)
   console.log(`[refresh] review list (${rows.length} books): ${reportPath}`)
-  if (apply) console.log(`[refresh] written: ${written}, failed: ${failed}`)
+  if (apply) console.log(`[refresh] written: ${written} (${writer.counts.bulk} in bulk), failed: ${failed}`)
   process.exit(failed > 0 ? 1 : 0)
 }
 

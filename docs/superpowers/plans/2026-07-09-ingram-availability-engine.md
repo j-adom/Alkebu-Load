@@ -1164,9 +1164,23 @@ Built first because the Web Service returns no `<Stock>` section yet. This is Ta
   1. Open the tunnel (CLAUDE.md, "Reaching the production database") and run `scripts/add-ingram-enrichment-schema.sql` with `psql -v ON_ERROR_STOP=1 -f`. It is idempotent, so rerun it even if it was applied for the 2026-11-05 dry run. Expect `COMMIT`, then every row `ok = t` in the optional check at the bottom of the file.
   2. Merge `feat/ingram-enrichment` into `main`. Coolify auto-deploys. Leave `INGRAM_ENRICHMENT_ENABLED` unset for now.
   3. Dry run: `DATABASE_URI='postgresql://…@localhost:55433/alkebulan' pnpm ingram:enrich`. Share only the printed counts. Revisit the policy if any field has hundreds of `conflict`.
-  4. Tell staff that in-store prices will rise where Ingram list is higher. Then run `pnpm ingram:enrich -- --apply --limit 50 --square` and spot-check 5 product pages, the same 5 items in Square POS, and one Shippo quote.
+  4. Tell staff that in-store prices will rise where Ingram list is higher. Then run `pnpm ingram:enrich -- --apply --limit 50 --square` and spot-check 5 product pages, the same 5 items in Square POS (name, price and **Author**), and one Shippo quote. The summary's `squareAuthors.filled` should be above 0. If it is 0 while `planned` is not, or Square shows no Author, stop: the attribute key is wrong (set `SQUARE_AUTHOR_ATTRIBUTE_KEY`).
   5. Let the server do the full run rather than the tunnel (a full stock `--apply` over the tunnel dropped twice). Set `INGRAM_ENRICHMENT_ENABLED=true` and `INGRAM_ENRICHMENT_SQUARE_WRITEBACK=true` in Coolify. The weekly titles job (Tue 14:00 UTC) applies everything, and reruns are idempotent. The CLI has no resume flag; rerunning it skips books already done but downloads the files again.
   6. Work the review queue at `/admin/ingram-review`. Then run the description dry run (`pnpm ingram:enrich -- --job descriptions`) before the monthly job's first run.
+
+### Status (2026-11-11, later): Square Author fills and batched writes
+
+- **Square Author (owner request).** Square has a seller "Author" custom attribute (Square-defined STRING, definition `V7MQSLK2YTE74PDBPJUKROZD`, key `Square:0de92ab4-c183-40a9-8b69-109842f52da7`), which staff fill on the item **variation**. A spot check found it on only a few books. With Square write-back on, each enrichment run ends with a Square-only pass:
+  - **Fill-only:** a variation is written only when its Author is empty. A different existing name is kept (`kept`), and a matching one is left alone (`alreadySet`).
+  - **Source:** the book's `authorsText`, or Ingram's contributor when this run fills an empty list. Names are joined with ", " and capped at Square's 255 characters.
+  - **Scope:** a full run covers every Square-linked book with authors, including books Ingram doesn't carry. `--limit` covers only the touched books. Payload is unchanged, and the catalog sync doesn't read the attribute, so nothing reverts it.
+  - **Logging:** each fill is logged (`target: square`, `fieldPath: squareAuthor`), so the termination purge's Square report lists it.
+  - **Not verified against live Square:** that the upsert accepts the `Square:`-prefixed map key. Rollout step 4 checks this.
+- **Batched writes:**
+  - **Enrichment:** Square price/title writes go to Square 50 books at a time (one batchGet and one upsert per 100 objects), not two calls per book. A failed batch falls back to per-book calls. Log and review rows are created at depth 0; the default depth 2 re-read the whole book on every row.
+  - **Nightly stock refresh and `pnpm ingram:stock-refresh -- --apply`:** on Postgres, edition stock columns are written with one `UPDATE … FROM (VALUES …)` per 500 editions (`bulkEditionStock.ts`), which also bumps `books.updated_at`. Books whose plan changes anything else, editions without a row id, rows the UPDATE missed, and a failed chunk all fall back to `payload.update`. The summary's `bulk` counts the bulk path.
+  - **Verified** on a disposable PostgreSQL 18.6 with the schema Payload pushes: values correct, other edition fields untouched, `updated_at` bumped, rerun a no-op.
+- Backend: 829 tests pass, `check:types`, `check:scripts` and `pnpm build` exit 0, lint 0 errors.
 
 ## Companion: Edition Consolidation prerequisite *(decided and built 2026-10-02)*
 

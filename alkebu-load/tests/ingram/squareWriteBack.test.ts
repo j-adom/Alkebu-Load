@@ -6,8 +6,11 @@ import { applyEnrichment } from '../../src/app/utils/ingram/applyEnrichment';
 import type { FieldChange } from '../../src/app/utils/ingram/diffEnrichment';
 import {
   applySquareWrites,
+  planSquareAuthorFills,
   planSquareWrites,
+  SQUARE_AUTHOR_ATTRIBUTE_KEY,
   SQUARE_BATCH_LIMIT,
+  squareAuthorValue,
   type SquareCatalogClient,
   type SquareWrite,
 } from '../../src/app/utils/ingram/squareWriteBack';
@@ -230,4 +233,92 @@ test('Square item names carry the binding, and the catalog sync strips it back o
   });
   assert.equal(mapped.kind, 'complete');
   assert.equal((mapped as any).data.title, 'Wayward Lives');
+});
+
+// --- Square "Author" fills --------------------------------------------------------------
+
+const AUTHOR_KEY = SQUARE_AUTHOR_ATTRIBUTE_KEY;
+const withAuthorValue = (obj: any, value: string) => ({
+  ...obj,
+  customAttributeValues: { [AUTHOR_KEY]: { name: 'Author', stringValue: value, key: AUTHOR_KEY, type: 'STRING' } },
+});
+const authorOfObject = (obj: any) => obj?.customAttributeValues?.[AUTHOR_KEY]?.stringValue;
+
+test('squareAuthorValue: trims, drops duplicates, joins, and fits Square\'s 255-character limit', () => {
+  assert.equal(squareAuthorValue([' Alice  Faye Duncan ', 'Chris Raschka', 'alice faye duncan', '', null]), 'Alice Faye Duncan, Chris Raschka');
+  assert.equal(squareAuthorValue([]), null);
+  assert.equal(squareAuthorValue(['  ']), null);
+  const long = 'A'.repeat(200);
+  assert.equal(squareAuthorValue([long, 'B'.repeat(60), 'Short Name']), `${long}, Short Name`);
+  assert.equal(squareAuthorValue(['C'.repeat(300)])?.length, 255);
+});
+
+test('planSquareAuthorFills: one fill per Square-linked variation, none without names or links', () => {
+  const writes = planSquareAuthorFills(linkedBook(), ['Saidiya Hartman']);
+  assert.deepEqual(
+    writes.map((w) => [w.kind, w.objectId, w.editionIsbn, w.next, w.attributeKey]),
+    [
+      ['author', 'VAR-P', EAN_P, 'Saidiya Hartman', AUTHOR_KEY],
+      ['author', 'VAR-H', EAN_H, 'Saidiya Hartman', AUTHOR_KEY],
+    ],
+  );
+  assert.deepEqual(planSquareAuthorFills(linkedBook(), []), []);
+  assert.deepEqual(planSquareAuthorFills({ id: '2', editions: [{ isbn: EAN_P }] }, ['Someone']), []);
+  assert.equal(planSquareAuthorFills(linkedBook(), ['X'], 'Square:other')[0].attributeKey, 'Square:other');
+});
+
+test('author fill: writes only an empty Author, keeps staff values, leaves a matching one alone', async () => {
+  const otherAttribute = { 'Square:book-category': { stringValue: 'History' } };
+  const client = mockClient([
+    { ...variation('VAR-EMPTY', 'ITEM-1', 1999), customAttributeValues: otherAttribute },
+    withAuthorValue(variation('VAR-SAME', 'ITEM-2', 1999), 'saidiya hartman'),
+    withAuthorValue(variation('VAR-STAFF', 'ITEM-3', 1999), 'Staff Typed Name'),
+  ]);
+  const fill = (id: string): SquareWrite => ({ kind: 'author', objectId: id, key: 'squareAuthor', expected: [''], next: 'Saidiya Hartman', attributeKey: AUTHOR_KEY });
+
+  const dry = await applySquareWrites(client, [fill('VAR-EMPTY')], { dryRun: true });
+  assert.equal(client.calls.batchUpsert, 0);
+  assert.equal(dry.skipped.length, 1);
+
+  const res = await applySquareWrites(client, ['VAR-EMPTY', 'VAR-SAME', 'VAR-STAFF', 'VAR-GONE'].map(fill), { dryRun: false });
+  assert.deepEqual(res.written.map((w) => w.write.objectId), ['VAR-EMPTY']);
+  assert.equal(res.written[0].previous, null);
+  assert.equal(res.written[0].previousVersion, '1');
+  assert.deepEqual(res.unchanged.map((w) => w.objectId), ['VAR-SAME']);
+  assert.deepEqual(res.conflicts.map((w) => w.objectId), ['VAR-STAFF']);
+  assert.deepEqual(res.skipped.map((w) => w.objectId), ['VAR-GONE']);
+
+  assert.deepEqual(client.calls.upserted.map((o) => o.id), ['VAR-EMPTY'], 'only the empty variation is upserted');
+  const written = client.store.get('VAR-EMPTY');
+  assert.equal(authorOfObject(written), 'Saidiya Hartman');
+  assert.equal(written.customAttributeValues['Square:book-category'].stringValue, 'History', 'other attributes kept');
+  assert.equal(written.itemVariationData.priceMoney.amount, 1999n, 'price untouched');
+  assert.equal(authorOfObject(client.store.get('VAR-STAFF')), 'Staff Typed Name');
+});
+
+test('author fill and price uplift on the same variation travel as one object', async () => {
+  const client = mockClient([variation('VAR-P', 'ITEM-P', 1999)]);
+  const writes: SquareWrite[] = [
+    { kind: 'price', objectId: 'VAR-P', key: `editions.${EAN_P}.pricing.retailPrice`, editionIsbn: EAN_P, expected: [1999], next: 2499 },
+    { kind: 'author', objectId: 'VAR-P', key: 'squareAuthor', editionIsbn: EAN_P, expected: [''], next: 'Saidiya Hartman', attributeKey: AUTHOR_KEY },
+  ];
+  const res = await applySquareWrites(client, writes, { dryRun: false });
+  assert.equal(res.written.length, 2);
+  assert.deepEqual(client.calls.upsertSizes, [1]);
+  const obj = client.store.get('VAR-P');
+  assert.equal(obj.itemVariationData.priceMoney.amount, 2499n);
+  assert.equal(authorOfObject(obj), 'Saidiya Hartman');
+});
+
+test('author fill on a variation whose item is renamed is folded into the nested variation', async () => {
+  const nested = variation('VAR-P', 'ITEM-P', 1999);
+  const client = mockClient([item('ITEM-P', 'Old Name (Paperback)', [nested]), nested]);
+  const writes: SquareWrite[] = [
+    { kind: 'name', objectId: 'ITEM-P', key: 'title', expected: ['Old Name (Paperback)'], next: 'New Name (Paperback)' },
+    { kind: 'author', objectId: 'VAR-P', key: 'squareAuthor', expected: [''], next: 'Saidiya Hartman', attributeKey: AUTHOR_KEY },
+  ];
+  const res = await applySquareWrites(client, writes, { dryRun: false });
+  assert.equal(res.written.length, 2);
+  assert.deepEqual(client.calls.upserted.map((o) => o.id), ['ITEM-P']);
+  assert.equal(authorOfObject(client.calls.upserted[0].itemData.variations[0]), 'Saidiya Hartman');
 });

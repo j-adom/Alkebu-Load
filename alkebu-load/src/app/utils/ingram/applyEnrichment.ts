@@ -11,8 +11,10 @@ import type { Payload } from 'payload';
 import { isWrite, rejectionKey, type FieldChange } from './diffEnrichment';
 import {
   applySquareWrites,
+  pickSquareResult,
   planSquareWrites,
   type SquareWriteOption,
+  type SquareWriteResult,
   type WrittenObject,
 } from './squareWriteBack';
 import {
@@ -178,6 +180,11 @@ export interface ApplyOptions {
    * reverted by the next Square catalog sync.
    */
   square?: SquareWriteOption;
+  /**
+   * Square already written for a batch of books by the caller (runEnrichment). This book's
+   * outcome is picked out of it instead of making its own Square calls.
+   */
+  squareResult?: SquareWriteResult;
 }
 
 export interface ApplyResult {
@@ -225,7 +232,9 @@ export async function applyEnrichment(
     if (!opts.square) {
       blocked = new Set(planned.map((w) => w.key));
     } else {
-      const res = await applySquareWrites(opts.square.client, planned, { dryRun: false });
+      const res = opts.squareResult
+        ? pickSquareResult(opts.squareResult, planned)
+        : await applySquareWrites(opts.square.client, planned, { dryRun: false });
       squareWritten = res.written;
       result.squareWritten = res.written.length;
       result.squareConflicts = res.conflicts.length;
@@ -249,6 +258,7 @@ export async function applyEnrichment(
     for (const w of squareWritten) {
       await payload.create({
         collection: LOG_COLLECTION as any,
+        depth: 0,
         data: {
           book: book.id,
           fieldPath: w.write.key,
@@ -288,6 +298,7 @@ export async function applyEnrichment(
         for (const value of applied) {
           await payload.create({
             collection: LOG_COLLECTION as any,
+            depth: 0,
             data: {
               book: book.id,
               fieldPath: value.key,
@@ -338,6 +349,7 @@ export async function applyEnrichment(
         if (kept.has(conflict.key)) continue;
         await payload.create({
           collection: REVIEW_COLLECTION as any,
+          depth: 0,
           data: {
             book: book.id,
             fieldPath: conflict.key,

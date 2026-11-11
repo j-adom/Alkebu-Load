@@ -13,7 +13,10 @@
  *
  * Without --square, price and title changes on Square-linked books are deferred (counted as
  * "deferred"): writing them to Payload alone would be reverted by the next Square sync.
- * --square changes IN-STORE prices: tell staff before a full run.
+ * --square changes IN-STORE prices: tell staff before a full run. It also fills Square's
+ * "Author" field on linked variations where it is empty (summary: squareAuthors). With
+ * --limit, only the touched books get an Author; a full run covers every linked book.
+ * Square writes are batched across 50 books (one fetch and one upsert per 100 objects).
  *
  * The weekly job downloads Titles Basic and the ~195 MB Catalog Stock file (allow ~20 min).
  *

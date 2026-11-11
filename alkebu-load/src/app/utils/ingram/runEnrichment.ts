@@ -6,7 +6,15 @@
 import { randomUUID } from 'node:crypto';
 import type { Payload } from 'payload';
 
-import { applyEnrichment, emptyApplyResult, loadRejectedProposals, type ApplyResult, type PayloadLike } from './applyEnrichment';
+import {
+  applyEnrichment,
+  emptyApplyResult,
+  loadRejectedProposals,
+  LOG_COLLECTION,
+  wrapValue,
+  type ApplyResult,
+  type PayloadLike,
+} from './applyEnrichment';
 import { emptyFilterStats, filterCatalogLines, loadCatalogEans, type FilterStats } from './catalogFilter';
 import type { FeedFormat } from './catalogStockSnapshot';
 import {
@@ -15,12 +23,28 @@ import {
   type DescriptionKind,
   type DescriptionLayout,
 } from './descriptionParser';
-import { diffEnrichment, type ChangeAction } from './diffEnrichment';
+import { diffEnrichment, isWrite, type ChangeAction, type FieldChange } from './diffEnrichment';
 import { editionEanOf } from './enrichmentFields';
 import { mapIngramRecord, type EnrichmentCandidate } from './mapEnrichment';
 import type { IngramStock } from './parseStockResponse';
 import { allBooks } from './refreshCatalogStock';
-import type { SquareWriteOption } from './squareWriteBack';
+import {
+  applySquareWrites,
+  planSquareAuthorFills,
+  planSquareWrites,
+  SQUARE_AUTHOR_FIELD,
+  SQUARE_BATCH_LIMIT,
+  type SquareWrite,
+  type SquareWriteOption,
+  type SquareWriteResult,
+} from './squareWriteBack';
+
+/**
+ * Books applied per Square round: their price/title writes go to Square together (one
+ * batchGet and one upsert per 100 objects) instead of two calls per book, then each book's
+ * Payload transaction runs with its own share of the result.
+ */
+export const APPLY_BATCH_BOOKS = 50;
 import { authorKey, cleanTitle, findDisambiguationTitles } from './titleCleanup';
 import {
   emptyParseErrors,
@@ -80,7 +104,26 @@ export interface RunSummary {
   titleCleanup: { exact: number; ambiguous: number; authorKept: number };
   /** Totals from the apply step (all zero on a dry run). */
   applied: ApplyResult;
+  /**
+   * Square "Author" fills, one per Square-linked variation of a book with authors. Fill-only:
+   * `kept` is a variation that already had a different Author (left alone), `alreadySet` one
+   * that already matched. Only `planned` is counted on a dry run or with write-back off.
+   */
+  squareAuthors: SquareAuthorSummary;
 }
+
+export interface SquareAuthorSummary {
+  planned: number;
+  filled: number;
+  kept: number;
+  alreadySet: number;
+  /** The variation no longer exists in Square. */
+  skipped: number;
+  /** In a batch Square rejected (logged; the next run retries). */
+  failed: number;
+}
+
+const emptySquareAuthorSummary = (): SquareAuthorSummary => ({ planned: 0, filled: 0, kept: 0, alreadySet: 0, skipped: 0, failed: 0 });
 
 export class PlaceholderLayoutError extends Error {}
 
@@ -155,6 +198,60 @@ async function readStock(files: EnrichmentFiles, eans: Set<string>) {
 const namesOf = (book: any): string[] =>
   ((book?.authorsText ?? []) as Array<{ name?: string }>).map((a) => a?.name ?? '').filter(Boolean);
 
+/** The book's authors after this run: ours, or Ingram's when this run fills an empty list. */
+function authorsAfter(book: any, changes: FieldChange[]): string[] {
+  const ours = namesOf(book);
+  if (ours.length) return ours;
+  const fill = changes.find((c) => c.key === 'authorsText' && isWrite(c));
+  return Array.isArray(fill?.proposed) ? namesOf({ authorsText: fill.proposed }) : [];
+}
+
+/**
+ * Writes the queued Author fills to Square in batches of 100 and logs each one (target
+ * 'square', so the termination purge lists it). A batch Square rejects is counted as failed
+ * and retried by the next run; it never stops the others.
+ */
+async function fillSquareAuthors(
+  payload: Pick<Payload, 'create'>,
+  fills: Array<{ bookId: string; write: SquareWrite }>,
+  square: SquareWriteOption,
+  runId: string,
+  counts: SquareAuthorSummary,
+): Promise<void> {
+  const bookOf = new Map(fills.map((f) => [f.write.objectId, f.bookId]));
+  for (let i = 0; i < fills.length; i += SQUARE_BATCH_LIMIT) {
+    const writes = fills.slice(i, i + SQUARE_BATCH_LIMIT).map((f) => f.write);
+    try {
+      const res = await applySquareWrites(square.client, writes, { dryRun: false });
+      counts.filled += res.written.length;
+      counts.kept += res.conflicts.length;
+      counts.alreadySet += res.unchanged.length;
+      counts.skipped += res.skipped.length;
+      for (const w of res.written) {
+        await payload.create({
+          collection: LOG_COLLECTION as any,
+          depth: 0,
+          data: {
+            book: bookOf.get(w.write.objectId),
+            fieldPath: SQUARE_AUTHOR_FIELD,
+            editionIsbn: w.write.editionIsbn,
+            target: 'square',
+            action: 'fill',
+            previousValue: wrapValue(null),
+            newValue: wrapValue(w.write.next),
+            squareObjectId: w.write.objectId,
+            squareVersion: w.previousVersion ?? undefined,
+            runId,
+          } as any,
+        });
+      }
+    } catch (error) {
+      counts.failed += writes.length;
+      console.error('Ingram enrichment: Square author batch failed:', error instanceof Error ? error.message : error);
+    }
+  }
+}
+
 export async function runEnrichment(payload: Payload | PayloadLike, opts: RunOptions): Promise<RunSummary> {
   assertLayouts(opts);
   const runId = opts.runId ?? `ingram-${new Date().toISOString().slice(0, 10)}-${randomUUID().slice(0, 8)}`;
@@ -212,13 +309,67 @@ export async function runEnrichment(payload: Payload | PayloadLike, opts: RunOpt
     byField: {},
     titleCleanup: { exact: 0, ambiguous: 0, authorKept: 0 },
     applied: emptyApplyResult(),
+    squareAuthors: emptySquareAuthorSummary(),
+  };
+
+  // Square "Author" fills. With --limit only the touched books get one, so a limited
+  // spot-check run stays small; a full run covers every Square-linked book with authors.
+  const limited = opts.limit !== undefined;
+  const authorFills: Array<{ bookId: string; write: SquareWrite }> = [];
+  const queuedVariations = new Set<string>();
+  const queueAuthors = (book: any, names: string[]) => {
+    for (const write of planSquareAuthorFills(book, names)) {
+      if (queuedVariations.has(write.objectId)) continue;
+      queuedVariations.add(write.objectId);
+      authorFills.push({ bookId: String(book.id), write });
+    }
+  };
+
+  const pending: Array<{ book: any; changes: FieldChange[]; recordDate: string | null }> = [];
+  const flush = async () => {
+    const batch = pending.splice(0);
+    if (batch.length === 0) return;
+    let squareResult: SquareWriteResult | undefined;
+    if (opts.square) {
+      const planned = batch.flatMap((p) => planSquareWrites(p.book, p.changes.filter(isWrite)));
+      if (planned.length) {
+        try {
+          squareResult = await applySquareWrites(opts.square.client, planned, { dryRun: false });
+        } catch (error) {
+          // Fall back to per-book Square calls so one bad object fails only its own book.
+          // Writes that landed before the error now read as changed-in-Square (conflict),
+          // and the catalog sync copies them into Payload.
+          console.error('Ingram enrichment: batched Square write failed, retrying book by book:', error instanceof Error ? error.message : error);
+        }
+      }
+    }
+    for (const { book, changes, recordDate } of batch) {
+      try {
+        const result = await applyEnrichment(payload as PayloadLike, book, changes, runId, {
+          now: opts.now,
+          recordDate,
+          square: opts.square,
+          squareResult,
+        });
+        for (const k of Object.keys(result) as Array<keyof ApplyResult>) summary.applied[k] += result[k];
+        queueAuthors(book, authorsAfter(book, changes));
+      } catch (error) {
+        // One book's failure never stops the run, and is never retried here (a Square write
+        // that succeeded before a Payload failure converges through the catalog sync).
+        summary.booksFailed += 1;
+        console.error(`Ingram enrichment: book ${String(book.id)} failed:`, error instanceof Error ? error.message : error);
+      }
+    }
   };
 
   // Pass 2: diff and (unless dry run) apply, book by book.
   for await (const book of allBooks(pager)) {
     summary.scanned += 1;
     const candidates = candidatesFor(book);
-    if (candidates.length === 0) continue;
+    if (candidates.length === 0) {
+      if (!limited) queueAuthors(book, namesOf(book));
+      continue;
+    }
     summary.matched += 1;
     if (opts.limit !== undefined && summary.booksTouched >= opts.limit) continue;
 
@@ -236,24 +387,25 @@ export async function runEnrichment(payload: Payload | PayloadLike, opts: RunOpt
     if (keep) summary.titleCleanup.authorKept += 1;
 
     const actionable = changes.some((c) => c.action === 'fill' || c.action === 'correct' || c.action === 'conflict');
-    if (!actionable) continue;
-    summary.booksTouched += 1;
-    if (opts.dryRun) continue;
-
-    try {
-      const result = await applyEnrichment(payload as PayloadLike, book, changes, runId, {
-        now: opts.now,
-        recordDate: candidates[0]?.recordDate ?? null,
-        square: opts.square,
-      });
-      for (const k of Object.keys(result) as Array<keyof ApplyResult>) summary.applied[k] += result[k];
-    } catch (error) {
-      // One book's failure never stops the run, and is never retried here (a Square write
-      // that succeeded before a Payload failure converges through the catalog sync).
-      summary.booksFailed += 1;
-      console.error(`Ingram enrichment: book ${String(book.id)} failed:`, error instanceof Error ? error.message : error);
+    if (!actionable) {
+      if (!limited) queueAuthors(book, namesOf(book));
+      continue;
     }
+    summary.booksTouched += 1;
+    if (opts.dryRun) {
+      queueAuthors(book, authorsAfter(book, changes));
+      continue;
+    }
+
+    pending.push({ book, changes, recordDate: candidates[0]?.recordDate ?? null });
+    if (pending.length >= APPLY_BATCH_BOOKS) await flush();
   }
+  await flush();
   summary.disambiguationKept = keepAuthor.size;
+
+  summary.squareAuthors.planned = authorFills.length;
+  if (!opts.dryRun && opts.square && authorFills.length) {
+    await fillSquareAuthors(payload as Pick<Payload, 'create'>, authorFills, opts.square, runId, summary.squareAuthors);
+  }
   return summary;
 }

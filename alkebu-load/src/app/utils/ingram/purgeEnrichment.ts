@@ -3,7 +3,7 @@
 // value it had before Ingram first wrote it (from the log, when that value came from a
 // non-Ingram source), otherwise clear it; then delete the log and review rows.
 //
-// Square: price uplifts and title cleanups also went to Square. Those are reported (object
+// Square: price uplifts, title cleanups and Author fills also went to Square. Those are reported (object
 // ids and the previous values, from the log) but never changed here; reverting the POS is
 // a separate, deliberate owner step.
 import type { Payload } from 'payload';
