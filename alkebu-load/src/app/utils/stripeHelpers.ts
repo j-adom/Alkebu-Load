@@ -1,4 +1,5 @@
 import type { Payload } from 'payload';
+import type { Order } from '@/payload-types';
 import Stripe from 'stripe';
 import { getEmailRuntimeConfig } from './emailConfig';
 import {
@@ -654,32 +655,81 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
 }
 
 /**
+ * Payment-intent events can arrive more than once (automatic retries, a manual
+ * "Resend" from the Stripe Workbench) and out of order. The handlers below only
+ * ever move an order forward, so a stale or duplicate event is a no-op instead
+ * of dragging a shipped order back into "Needs Attention".
+ */
+
+/** Fulfillment states a payment event is still allowed to move. */
+const INITIAL_ORDER_STATUSES = new Set(['pending', 'paid']);
+
+/** Payment states that mean the money was captured (and possibly refunded since). */
+const SETTLED_PAYMENT_STATUSES = new Set(['succeeded', 'partially_refunded', 'refunded']);
+
+/** Payment states a payment_failed event may overwrite. */
+const FAILABLE_PAYMENT_STATUSES = new Set(['pending', 'processing']);
+
+async function findOrderByPaymentIntent(payload: Payload, paymentIntentId: string): Promise<Order | null> {
+  const orders = await payload.find({
+    collection: 'orders',
+    where: {
+      'payment.stripePaymentIntentId': {
+        equals: paymentIntentId,
+      },
+    },
+    limit: 1,
+    depth: 0,
+  });
+
+  return orders.docs[0] ?? null;
+}
+
+/**
  * Handle successful payment
  */
 async function handlePaymentSucceeded(payload: Payload, paymentIntent: any): Promise<void> {
   try {
-    // Update order payment status
-    const orders = await payload.find({
-      collection: 'orders',
-      where: {
-        'payment.stripePaymentIntentId': {
-          equals: paymentIntent.id,
-        },
-      },
-    });
+    const order = await findOrderByPaymentIntent(payload, paymentIntent.id);
+    if (!order) return;
 
-    if (orders.docs.length) {
-      await (payload as any).update({
-        collection: 'orders',
-        id: orders.docs[0].id,
-        data: {
-          'payment.provider': 'stripe',
-          'payment.providerPaymentId': paymentIntent.id,
-          'payment.paymentStatus': 'succeeded',
-          status: 'processing',
-        } as any,
-      });
+    const currentStatus: string | undefined = order.status ?? undefined;
+    const currentPaymentStatus: string | undefined = order.payment?.paymentStatus ?? undefined;
+    const data: Record<string, unknown> = {};
+
+    if (order.payment?.provider !== 'stripe') {
+      data['payment.provider'] = 'stripe';
     }
+    if (order.payment?.providerPaymentId !== paymentIntent.id) {
+      data['payment.providerPaymentId'] = paymentIntent.id;
+    }
+
+    // Never turn a refunded payment back into "succeeded".
+    if (!currentPaymentStatus || !SETTLED_PAYMENT_STATUSES.has(currentPaymentStatus)) {
+      data['payment.paymentStatus'] = 'succeeded';
+    }
+
+    // Only advance fulfillment from an initial state. The one exception is an
+    // order our own payment_failed handler cancelled: the intent has now
+    // succeeded, so that cancellation is superseded.
+    const cancelledByFailedPayment =
+      currentStatus === 'cancelled' && currentPaymentStatus === 'failed';
+    if (!currentStatus || INITIAL_ORDER_STATUSES.has(currentStatus) || cancelledByFailedPayment) {
+      data.status = 'processing';
+    }
+
+    if (!Object.keys(data).length) {
+      console.log(
+        `payment_intent.succeeded for ${paymentIntent.id}: order ${order.id} already ${currentStatus}/${currentPaymentStatus}; nothing to update`,
+      );
+      return;
+    }
+
+    await (payload as any).update({
+      collection: 'orders',
+      id: order.id,
+      data: data as any,
+    });
   } catch (error) {
     console.error('Error handling payment success:', error);
     throw error;
@@ -691,26 +741,35 @@ async function handlePaymentSucceeded(payload: Payload, paymentIntent: any): Pro
  */
 async function handlePaymentFailed(payload: Payload, paymentIntent: any): Promise<void> {
   try {
-    // Update order payment status
-    const orders = await payload.find({
-      collection: 'orders',
-      where: {
-        'payment.stripePaymentIntentId': {
-          equals: paymentIntent.id,
-        },
-      },
-    });
+    const order = await findOrderByPaymentIntent(payload, paymentIntent.id);
+    if (!order) return;
 
-    if (orders.docs.length) {
-      await (payload as any).update({
-        collection: 'orders',
-        id: orders.docs[0].id,
-        data: {
-          'payment.paymentStatus': 'failed',
-          status: 'cancelled',
-        } as any,
-      });
+    const currentStatus: string | undefined = order.status ?? undefined;
+    const currentPaymentStatus: string | undefined = order.payment?.paymentStatus ?? undefined;
+
+    // A failure only applies to an order whose payment is still unresolved and
+    // that staff have not started fulfilling. Anything else — a succeeded or
+    // refunded payment, an order already failed, or a shipped order — means
+    // this event is stale or a duplicate.
+    const paymentUnresolved =
+      !currentPaymentStatus || FAILABLE_PAYMENT_STATUSES.has(currentPaymentStatus);
+    const fulfillmentNotStarted = !currentStatus || INITIAL_ORDER_STATUSES.has(currentStatus);
+
+    if (!paymentUnresolved || !fulfillmentNotStarted) {
+      console.log(
+        `payment_intent.payment_failed for ${paymentIntent.id}: order ${order.id} is ${currentStatus}/${currentPaymentStatus}; ignoring stale failure`,
+      );
+      return;
     }
+
+    await (payload as any).update({
+      collection: 'orders',
+      id: order.id,
+      data: {
+        'payment.paymentStatus': 'failed',
+        status: 'cancelled',
+      } as any,
+    });
   } catch (error) {
     console.error('Error handling payment failure:', error);
     throw error;
