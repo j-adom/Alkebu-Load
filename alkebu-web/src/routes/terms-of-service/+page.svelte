@@ -21,7 +21,7 @@
 
 <section class="py-12 lg:py-16">
   <div class="container mx-auto px-6 lg:px-12 max-w-4xl">
-    <p class="text-sm text-muted-foreground mb-8">Last updated: February 2026</p>
+    <p class="text-sm text-muted-foreground mb-8">Last updated: November 2026</p>
 
     <div class="prose max-w-none space-y-10">
 
@@ -58,7 +58,7 @@
         <ul class="list-disc list-inside space-y-2 text-foreground/80 pl-2">
           <li>We reserve the right to refuse service to anyone for any reason at any time</li>
           <li>Your content (excluding payment information) may be transmitted unencrypted across networks and adapted to technical requirements. Payment card information is always encrypted during transfer</li>
-          <li>You agree not to reproduce, duplicate, copy, sell, resell, or exploit any portion of the Service without our express written permission</li>
+          <li>You agree not to reproduce, duplicate, copy, sell, resell, or exploit any portion of the Service without our express written permission. Product Information is further restricted by Section 4</li>
           <li>We may update, modify, or discontinue any aspect of the Service at any time without prior notice</li>
         </ul>
       </div>
@@ -79,9 +79,29 @@
         </ul>
       </div>
 
-      <!-- Section 4: Ordering & Billing -->
+      <!-- Section 4: Product Information & Data Use -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">4. Orders & Billing Accuracy</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">4. Product Information & Data Use</h2>
+        <p class="text-foreground/80 mb-3">
+          Book and product information on this site, including titles, contributors, publishers, descriptions, prices, and availability ("Product Information"), is supplied in part by third-party data providers and their licensors, who retain all rights in it. We make Product Information available to you only so you can browse and buy products from us. You may view it and share links to our product pages for personal, non-commercial purposes.
+        </p>
+        <p class="text-foreground/80 mb-3">You may not:</p>
+        <ul class="list-disc list-inside space-y-2 text-foreground/80 pl-2">
+          <li>Copy, distribute, license, sell, or otherwise transfer any Product Information or other related materials obtained from this site</li>
+          <li>Scrape, harvest, or compile Product Information, by automated means or otherwise, or use it to build or add to any database, catalog, listing, or service</li>
+          <li>Use any artificial intelligence system, machine learning model, or automated process to access, analyze, summarize, or derive works from Product Information, or to train or develop such systems</li>
+        </ul>
+        <p class="text-foreground/80 mt-3 mb-3">
+          These restrictions apply even where other parts of these Terms allow use with our written permission. We cannot grant rights in Product Information that we do not own.
+        </p>
+        <p class="text-foreground/80">
+          If your permission to use this site ends, or our right to display any Product Information ends, you must delete all Product Information you obtained from this site, including from your internal systems, databases, backups, and any external websites. All rights to use that Product Information end immediately at that time. We or our data providers may ask you to confirm in writing that it has been deleted.
+        </p>
+      </div>
+
+      <!-- Section 5: Ordering & Billing -->
+      <div>
+        <h2 class="text-2xl font-bold text-foreground mb-4">5. Orders & Billing Accuracy</h2>
         <p class="text-foreground/80 mb-3">
           We reserve the right to refuse or cancel any order at our sole discretion. We may limit or cancel quantities purchased per person, per household, or per order. If we cancel or modify an order, we will attempt to notify you using the contact information provided at the time of purchase.
         </p>
@@ -90,9 +110,9 @@
         </p>
       </div>
 
-      <!-- Section 5: Communications Consent -->
+      <!-- Section 6: Communications Consent -->
       <div class="bg-card rounded-xl p-6 lg:p-8 border-2 border-primary/20">
-        <h2 class="text-2xl font-bold text-foreground mb-4">5. Communications Consent</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">6. Communications Consent</h2>
         <p class="text-foreground/80 mb-4">
           By placing an order or initiating contact with us, you consent to receiving the following types of communications:
         </p>
@@ -121,9 +141,9 @@
         </div>
       </div>
 
-      <!-- Section 6: Accuracy of Information -->
+      <!-- Section 7: Accuracy of Information -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">6. Accuracy of Information</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">7. Accuracy of Information</h2>
         <p class="text-foreground/80 mb-3">
           We are not responsible if information made available on this site is not accurate, complete, or current. The material on this site is provided for general information only and should not be relied upon as the sole basis for making decisions.
         </p>
@@ -132,9 +152,9 @@
         </p>
       </div>
 
-      <!-- Section 7: Third-Party Links -->
+      <!-- Section 8: Third-Party Links -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">7. Third-Party Links & Services</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">8. Third-Party Links & Services</h2>
         <p class="text-foreground/80 mb-3">
           Our website may include links to third-party websites, tools, or services. We are not responsible for the content, accuracy, or practices of third-party sites and do not endorse them.
         </p>
@@ -143,9 +163,9 @@
         </p>
       </div>
 
-      <!-- Section 8: User Comments & Submissions -->
+      <!-- Section 9: User Comments & Submissions -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">8. User Comments & Submissions</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">9. User Comments & Submissions</h2>
         <p class="text-foreground/80 mb-3">
           If you submit comments, reviews, suggestions, or other materials to us (collectively, "comments"), you agree that we may use, edit, copy, publish, distribute, or translate them in any medium without restriction, compensation, or obligation of confidence.
         </p>
@@ -161,17 +181,17 @@
         </p>
       </div>
 
-      <!-- Section 9: Personal Information -->
+      <!-- Section 10: Personal Information -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">9. Personal Information</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">10. Personal Information</h2>
         <p class="text-foreground/80">
           Your submission of personal information through our website is governed by our <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>. This includes information about how we collect, use, and protect your data, as well as your right to request data access, correction, or deletion.
         </p>
       </div>
 
-      <!-- Section 10: Prohibited Uses -->
+      <!-- Section 11: Prohibited Uses -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">10. Prohibited Uses</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">11. Prohibited Uses</h2>
         <p class="text-foreground/80 mb-3">In addition to other prohibitions in these Terms, you are prohibited from using the site or its content:</p>
         <div class="bg-muted rounded-lg p-5">
           <ul class="list-disc list-inside space-y-2 text-sm text-foreground/80 pl-2">
@@ -191,9 +211,9 @@
         </p>
       </div>
 
-      <!-- Section 11: Disclaimer -->
+      <!-- Section 12: Disclaimer -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">11. Disclaimer of Warranties & Limitation of Liability</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">12. Disclaimer of Warranties & Limitation of Liability</h2>
         <p class="text-foreground/80 mb-3">
           We do not guarantee, represent, or warrant that your use of our Service will be uninterrupted, timely, secure, or error-free. We do not warrant that the results obtained from use of the Service will be accurate or reliable.
         </p>
@@ -205,25 +225,25 @@
         </p>
       </div>
 
-      <!-- Section 12: Indemnification -->
+      <!-- Section 13: Indemnification -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">12. Indemnification</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">13. Indemnification</h2>
         <p class="text-foreground/80">
           You agree to indemnify, defend, and hold harmless Alkebu-Lan Images and our officers, directors, agents, contractors, service providers, and employees from any claim or demand, including reasonable attorneys' fees, made by any third party due to or arising out of your breach of these Terms, your violation of any law, or your violation of the rights of a third party.
         </p>
       </div>
 
-      <!-- Section 13: Severability -->
+      <!-- Section 14: Severability -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">13. Severability</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">14. Severability</h2>
         <p class="text-foreground/80">
           If any provision of these Terms is determined to be unlawful, void, or unenforceable, such provision shall be enforceable to the fullest extent permitted by applicable law, and the unenforceable portion shall be severed from these Terms without affecting the validity and enforceability of the remaining provisions.
         </p>
       </div>
 
-      <!-- Section 14: Termination -->
+      <!-- Section 15: Termination -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">14. Termination</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">15. Termination</h2>
         <p class="text-foreground/80 mb-3">
           These Terms are effective until terminated by either you or us. You may terminate by ceasing to use our site and notifying us. We may terminate or suspend your access at any time, without notice, if you fail to comply with any provision of these Terms.
         </p>
@@ -232,17 +252,17 @@
         </p>
       </div>
 
-      <!-- Section 15: Governing Law -->
+      <!-- Section 16: Governing Law -->
       <div class="bg-muted rounded-xl p-6">
-        <h2 class="text-2xl font-bold text-foreground mb-4">15. Governing Law</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">16. Governing Law</h2>
         <p class="text-foreground/80">
           These Terms of Service and any separate agreements whereby we provide you Services shall be governed by and construed in accordance with the laws of the <strong>State of Tennessee, USA</strong>, with venue in <strong>Davidson County, Tennessee</strong>.
         </p>
       </div>
 
-      <!-- Section 16: Entire Agreement -->
+      <!-- Section 17: Entire Agreement -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">16. Entire Agreement</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">17. Entire Agreement</h2>
         <p class="text-foreground/80 mb-3">
           The failure of us to exercise or enforce any right or provision of these Terms shall not constitute a waiver of such right or provision.
         </p>
@@ -251,9 +271,9 @@
         </p>
       </div>
 
-      <!-- Section 17: Changes -->
+      <!-- Section 18: Changes -->
       <div>
-        <h2 class="text-2xl font-bold text-foreground mb-4">17. Changes to Terms of Service</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">18. Changes to Terms of Service</h2>
         <p class="text-foreground/80">
           You can review the most current version of these Terms at any time on this page. We reserve the right to update, change, or replace any part of these Terms by posting updates to our website. It is your responsibility to check this page periodically for changes. Your continued use of the website following the posting of any changes constitutes acceptance of those changes.
         </p>
@@ -261,7 +281,7 @@
 
       <!-- Contact -->
       <div class="bg-card rounded-xl p-6 lg:p-8 border border-border">
-        <h2 class="text-2xl font-bold text-foreground mb-4">18. Contact Information</h2>
+        <h2 class="text-2xl font-bold text-foreground mb-4">19. Contact Information</h2>
         <p class="text-foreground/80 mb-4">Questions about these Terms of Service should be directed to:</p>
         <div class="space-y-3 text-sm text-foreground/80">
           <div class="flex items-center gap-3">
