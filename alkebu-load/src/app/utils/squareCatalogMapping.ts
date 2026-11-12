@@ -12,6 +12,7 @@
  * never coerced to zero, and an unvalidated SKU is never treated as an ISBN.
  * It never throws -- malformed input always resolves to `{ kind: 'incomplete' }`.
  */
+import { stripBindingSuffix } from './squareItemName';
 
 export type ValidationIssue = {
   field: string;
@@ -186,7 +187,8 @@ export function mapSquareItemToBook(item: unknown, now: Date = new Date()): Mapp
 
   const rawName = itemData.name;
   const hasUsableTitle = typeof rawName === 'string' && rawName.trim().length > 0;
-  const title = hasUsableTitle ? cleanSquareTitle(rawName as string) : undefined;
+  // The binding lives on the edition; "(Paperback)" in a Square name is POS labelling.
+  const title = hasUsableTitle ? cleanSquareTitle(stripBindingSuffix(rawName as string)) : undefined;
 
   if (!hasUsableTitle) {
     // Item-level requirement (Books.title is required), not per-variation.

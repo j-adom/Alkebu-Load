@@ -87,6 +87,7 @@ export function appendBookCardSelect(params: URLSearchParams): URLSearchParams {
 export interface Book extends PayloadDoc {
   title: string;
   titleLong?: string;
+  subtitle?: string;
   slug: string;
   availabilityStatus?: BookAvailabilityStatus;
   description?: string;

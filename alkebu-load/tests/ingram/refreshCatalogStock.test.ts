@@ -46,7 +46,7 @@ test('applyStockSnapshot writes only changed books, with the refresh context', a
     { stock: { '9780000000002': { onHand: 40, available: true } }, fullCoverage: true },
     { checkedAt: NOW },
   );
-  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 0, protected: 0 });
+  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 0, protected: 0, bulk: 0 });
   assert.equal(updates[0].id, 'a');
   assert.equal(updates[0].data.editions[0].inventory.ingramOnHand, 40);
   assert.equal(updates[0].context.ingramStockRefresh, true);
@@ -60,7 +60,7 @@ test('applyStockSnapshot counts per-book failures and keeps going', async () => 
   ];
   const { payload, updates } = fakePayload(books);
   const summary = await applyStockSnapshot(payload, { stock: {}, fullCoverage: true }, { checkedAt: NOW });
-  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 1, protected: 0 });
+  assert.deepEqual(summary, { scanned: 2, updated: 1, failed: 1, protected: 0, bulk: 0 });
   assert.equal(updates.length, 1);
 });
 
@@ -82,6 +82,6 @@ test('applyStockSnapshot never writes request-only or discontinued books', async
     { stock: { '9780000000002': { onHand: 40, available: true } }, fullCoverage: true },
     { checkedAt: NOW },
   );
-  assert.deepEqual(summary, { scanned: 2, updated: 0, failed: 0, protected: 2 });
+  assert.deepEqual(summary, { scanned: 2, updated: 0, failed: 0, protected: 2, bulk: 0 });
   assert.equal(updates.length, 0);
 });

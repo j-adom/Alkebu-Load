@@ -24,6 +24,8 @@
     "square:link-repair": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/square-link-repair.ts",
     "books:delete-duplicates": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/delete-duplicate-books.ts",
     "ingram:stock-refresh": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/ingram-stock-refresh.ts",
+    "ingram:enrich": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/ingram-enrich.ts",
+    "ingram:purge-metadata": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/ingram-purge-metadata.ts",
     "oils:fill-square-sizes": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/oils-fill-square-sizes.ts",
     "oils:poured-to-order": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/oils-poured-to-order.ts",
     "wellness:untracked-availability": "cross-env NODE_OPTIONS=\"--no-deprecation --loader ./css-stub-loader.mjs\" tsx scripts/wellness-untracked-availability.ts"

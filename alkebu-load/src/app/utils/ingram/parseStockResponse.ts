@@ -21,6 +21,10 @@ export interface IngramStock {
   productAvailability?: string;
   /** YYYYMMDD street date; '00010101' or unset means sellable on receipt. */
   onSaleDate?: string;
+  /** YYYYMMDD publication date (inventory files only). */
+  publicationDate?: string;
+  /** Shipping weight in pounds (inventory files only). */
+  weightLbs?: number;
   backorder: boolean;
   mediaMail: boolean;
   /** Keyed by distribution-center name, e.g. "LaVergne". */

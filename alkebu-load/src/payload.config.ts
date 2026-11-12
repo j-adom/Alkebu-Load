@@ -46,7 +46,10 @@ import { Customers } from './collections/Customers'
 import { InstitutionalAccounts } from './collections/InstitutionalAccounts'
 import { PartnershipInquiries } from './collections/PartnershipInquiries'
 import { SquareCatalogStaging } from './collections/SquareCatalogStaging'
+import { IngramEnrichmentLog } from './collections/IngramEnrichmentLog'
+import { IngramEnrichmentReview } from './collections/IngramEnrichmentReview'
 import { SquareSyncState } from './globals/SquareSyncState'
+import { IngramEnrichmentState } from './globals/IngramEnrichmentState'
 import { getEmailRuntimeConfig, getEmailTransportOptions, shouldSkipEmailTransportVerify } from './app/utils/emailConfig'
 // (getEmailRuntimeConfig also backs the schema-drift boot alert below)
 
@@ -158,6 +161,10 @@ export default buildConfig({
           Component: '/app/components/OrderDashboardView',
           path: '/order-dashboard',
         },
+        'ingram-review': {
+          Component: '/app/components/IngramEnrichmentReview',
+          path: '/ingram-review',
+        },
       },
     },
   },
@@ -168,6 +175,7 @@ export default buildConfig({
     ShopPage,
     SiteSettings,
     SquareSyncState,
+    IngramEnrichmentState,
   ],
   collections: [
     Users,
@@ -197,7 +205,9 @@ export default buildConfig({
     SearchAnalytics,
     BookQuotes,
     ExternalBooks,
-    SquareCatalogStaging
+    SquareCatalogStaging,
+    IngramEnrichmentLog,
+    IngramEnrichmentReview,
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
@@ -355,13 +365,18 @@ export default buildConfig({
           const { fetchStockSnapshot } = await import('./app/utils/ingram/refreshCatalogStock');
           const { stockFeedFromEnv } = await import('./app/utils/ingram/stockFeeds');
           const feed = stockFeedFromEnv();
-          const { input, counts } = await fetchStockSnapshot(req.payload, {
+          const { input, records, counts } = await fetchStockSnapshot(req.payload, {
             remotePath: feed.remotePath,
             format: feed.createFormat(),
             minLines: feed.minLines,
             threshold: Number(process.env.INGRAM_STOCK_THRESHOLD) || 10,
           });
           await req.payload.jobs.queue({ task: 'ingram-stock-apply', input: input as any });
+          // Saved for the weekly enrichment job, so it needn't download the same file again.
+          const { saveStockRecords } = await import('./app/utils/ingram/stockRecordCache');
+          await saveStockRecords(records, feed.remotePath).catch((error) =>
+            console.warn('Ingram stock refresh: could not save the stock cache for enrichment:', error),
+          );
           return { output: { feed: feed.name, ...counts } };
         },
         schedule: [{ cron: '30 11 * * *', queue: 'default' }], // 11:30 UTC = 6:30 AM CDT, after the 5 AM CT update
@@ -377,6 +392,41 @@ export default buildConfig({
           const summary = await applyStockSnapshot(req.payload, input as any, { checkedAt: new Date().toISOString() });
           return { output: summary };
         },
+      },
+      {
+        // Ingram catalog enrichment (plan Phase 3), weekly after the Tuesday 6 AM CT Titles
+        // Basic drop. Holds the books-write lock for the whole run (download included), so
+        // queued Square stock writes wait until it finishes; they are delayed, not dropped.
+        // Off unless INGRAM_ENRICHMENT_ENABLED=true (on top of ENABLE_JOB_AUTORUN). Price and
+        // title changes, and Author fills on empty Square variations, reach Square only with
+        // INGRAM_ENRICHMENT_SQUARE_WRITEBACK=true.
+        slug: 'ingram-enrich-titles',
+        retries: { attempts: 1, backoff: { type: 'exponential', delay: 60_000 } },
+        concurrency: { key: () => 'books-write' },
+        handler: async ({ req }) => {
+          if (process.env.INGRAM_ENRICHMENT_ENABLED !== 'true') {
+            return { output: { skipped: 'INGRAM_ENRICHMENT_ENABLED is not true' } };
+          }
+          const { runScheduledEnrichment } = await import('./app/utils/ingram/scheduledEnrichment');
+          return { output: (await runScheduledEnrichment(req.payload, 'titles', { dryRun: false })) as any };
+        },
+        schedule: [{ cron: '0 14 * * 2', queue: 'default' }], // Tue 14:00 UTC = 9 AM CDT / 8 AM CST
+      },
+      {
+        // Monthly publisher marketing + brief descriptions. Cron can't say "first Monday",
+        // so this is scheduled every Monday and skips all but the first of the month.
+        slug: 'ingram-enrich-descriptions',
+        retries: { attempts: 1, backoff: { type: 'exponential', delay: 60_000 } },
+        concurrency: { key: () => 'books-write' },
+        handler: async ({ req }) => {
+          if (process.env.INGRAM_ENRICHMENT_ENABLED !== 'true') {
+            return { output: { skipped: 'INGRAM_ENRICHMENT_ENABLED is not true' } };
+          }
+          const { isFirstMondayUtc, runScheduledEnrichment } = await import('./app/utils/ingram/scheduledEnrichment');
+          if (!isFirstMondayUtc(new Date())) return { output: { skipped: 'not the first Monday of the month' } };
+          return { output: (await runScheduledEnrichment(req.payload, 'descriptions', { dryRun: false })) as any };
+        },
+        schedule: [{ cron: '0 14 * * 1', queue: 'default' }], // Mondays 14:00 UTC; runs on the first
       },
     ],
   },

@@ -117,6 +117,10 @@
         </h3>
       </a>
 
+      {#if norm.titleSubtitle}
+        <p class="text-sm text-foreground/80 line-clamp-1 mt-0.5">{norm.titleSubtitle}</p>
+      {/if}
+
       {#if norm.subtitle}
         <p class="text-sm text-muted-foreground line-clamp-1 mt-1">{norm.subtitle}</p>
       {/if}

@@ -93,6 +93,8 @@ export interface Config {
     bookQuotes: BookQuote;
     externalBooks: ExternalBook;
     'square-catalog-staging': SquareCatalogStaging;
+    'ingram-enrichment-log': IngramEnrichmentLog;
+    'ingram-enrichment-review': IngramEnrichmentReview;
     'payload-mcp-api-keys': PayloadMcpApiKey;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -126,6 +128,8 @@ export interface Config {
     bookQuotes: BookQuotesSelect<false> | BookQuotesSelect<true>;
     externalBooks: ExternalBooksSelect<false> | ExternalBooksSelect<true>;
     'square-catalog-staging': SquareCatalogStagingSelect<false> | SquareCatalogStagingSelect<true>;
+    'ingram-enrichment-log': IngramEnrichmentLogSelect<false> | IngramEnrichmentLogSelect<true>;
+    'ingram-enrichment-review': IngramEnrichmentReviewSelect<false> | IngramEnrichmentReviewSelect<true>;
     'payload-mcp-api-keys': PayloadMcpApiKeysSelect<false> | PayloadMcpApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -144,6 +148,7 @@ export interface Config {
     shopPage: ShopPage;
     siteSettings: SiteSetting;
     squareSyncState: SquareSyncState;
+    ingramEnrichmentState: IngramEnrichmentState;
     'payload-jobs-stats': PayloadJobsStat;
   };
   globalsSelect: {
@@ -153,6 +158,7 @@ export interface Config {
     shopPage: ShopPageSelect<false> | ShopPageSelect<true>;
     siteSettings: SiteSettingsSelect<false> | SiteSettingsSelect<true>;
     squareSyncState: SquareSyncStateSelect<false> | SquareSyncStateSelect<true>;
+    ingramEnrichmentState: IngramEnrichmentStateSelect<false> | IngramEnrichmentStateSelect<true>;
     'payload-jobs-stats': PayloadJobsStatsSelect<false> | PayloadJobsStatsSelect<true>;
   };
   locale: null;
@@ -170,6 +176,8 @@ export interface Config {
       'square-inventory-sync': TaskSquareInventorySync;
       'ingram-stock-fetch': TaskIngramStockFetch;
       'ingram-stock-apply': TaskIngramStockApply;
+      'ingram-enrich-titles': TaskIngramEnrichTitles;
+      'ingram-enrich-descriptions': TaskIngramEnrichDescriptions;
       inline: {
         input: unknown;
         output: unknown;
@@ -892,7 +900,11 @@ export interface Book {
    */
   title: string;
   /**
-   * Full title with subtitle (maps to isbndb.title_long)
+   * Subtitle, shown under the title on the storefront. Keep it out of the title.
+   */
+  subtitle?: string | null;
+  /**
+   * Full title with subtitle. Derived as "Title: Subtitle" whenever a subtitle is set (otherwise maps to isbndb.title_long)
    */
   titleLong?: string | null;
   /**
@@ -995,6 +1007,14 @@ export interface Book {
      */
     dimensions?: string | null;
     /**
+     * System-set by Ingram enrichment: Ingram flags this edition as USPS Media Mail eligible
+     */
+    mediaMailEligible?: boolean | null;
+    /**
+     * System-set by Ingram enrichment: street (on-sale) date
+     */
+    ingramOnSaleDate?: string | null;
+    /**
      * Square POS item this edition belongs to. Each binding is its own Square item, so a consolidated book can span several.
      */
     squareItemId?: string | null;
@@ -1019,6 +1039,10 @@ export interface Book {
        * Weight in ounces for this edition
        */
       shippingWeight?: number | null;
+      /**
+       * Never raise this price to Ingram list (used copies under the same ISBN, deliberate promotions)
+       */
+      lockPrice?: boolean | null;
     };
     inventory?: {
       /**
@@ -1170,7 +1194,7 @@ export interface Book {
   /**
    * Source of this book data
    */
-  importSource?: ('manual' | 'isbndb' | 'google-books' | 'csv-import' | 'square-webhook') | null;
+  importSource?: ('manual' | 'isbndb' | 'google-books' | 'csv-import' | 'square-webhook' | 'ingram') | null;
   /**
    * Date when this book was imported
    */
@@ -1252,6 +1276,31 @@ export interface Book {
      * Date added to inventory
      */
     dateAdded?: string | null;
+  };
+  /**
+   * Where enrichable fields came from. Staff edits are stamped "manual" and never overwritten by Ingram enrichment.
+   */
+  enrichment?: {
+    /**
+     * fieldPath -> { source: manual | ingram, at }. Edition fields are keyed by EAN.
+     */
+    fieldSources?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Last time Ingram enrichment wrote to this book
+     */
+    ingramEnrichedAt?: string | null;
+    /**
+     * Record date of the Ingram data last applied
+     */
+    ingramRecordDate?: string | null;
   };
   seo?: {
     /**
@@ -5277,6 +5326,103 @@ export interface SquareCatalogStaging {
   createdAt: string;
 }
 /**
+ * Audit log of Ingram enrichment writes. Written only by the enrichment job; read-only here.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-log".
+ */
+export interface IngramEnrichmentLog {
+  id: number;
+  book?: (number | null) | Book;
+  /**
+   * Provenance key, e.g. title or editions.<EAN>.pricing.shippingWeight
+   */
+  fieldPath: string;
+  editionIsbn?: string | null;
+  target: 'payload' | 'square';
+  action?: ('fill' | 'correct' | 'accept') | null;
+  previousValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  newValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * fieldSources before this write (manual / ingram / empty = other import)
+   */
+  previousSource?: string | null;
+  squareObjectId?: string | null;
+  /**
+   * Square object version before the write
+   */
+  squareVersion?: string | null;
+  ingramRecordDate?: string | null;
+  runId: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Ingram enrichment proposals awaiting review. Use the review screen at /admin/ingram-review to compare and accept or reject. Rejected proposals are not proposed again.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-review".
+ */
+export interface IngramEnrichmentReview {
+  id: number;
+  book?: (number | null) | Book;
+  /**
+   * Provenance key, e.g. synopsis or editions.<EAN>.pricing.retailPrice
+   */
+  fieldPath: string;
+  /**
+   * Field type, for bulk accept
+   */
+  path: string;
+  editionIsbn?: string | null;
+  currentValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  proposedValue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Normalized proposal, used to de-duplicate and to suppress rejected proposals
+   */
+  proposedKey?: string | null;
+  state: 'pending' | 'accepted' | 'rejected' | 'superseded';
+  reason?: string | null;
+  runId?: string | null;
+  ingramRecordDate?: string | null;
+  reviewedBy?: (number | null) | User;
+  reviewedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * API keys control which collections, resources, tools, and prompts MCP clients can access
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -5502,7 +5648,9 @@ export interface PayloadJob {
           | 'square-catalog-sync'
           | 'square-inventory-sync'
           | 'ingram-stock-fetch'
-          | 'ingram-stock-apply';
+          | 'ingram-stock-apply'
+          | 'ingram-enrich-titles'
+          | 'ingram-enrich-descriptions';
         taskID: string;
         input?:
           | {
@@ -5546,6 +5694,8 @@ export interface PayloadJob {
         | 'square-inventory-sync'
         | 'ingram-stock-fetch'
         | 'ingram-stock-apply'
+        | 'ingram-enrich-titles'
+        | 'ingram-enrich-descriptions'
       )
     | null;
   queue?: string | null;
@@ -5669,6 +5819,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'square-catalog-staging';
         value: number | SquareCatalogStaging;
+      } | null)
+    | ({
+        relationTo: 'ingram-enrichment-log';
+        value: number | IngramEnrichmentLog;
+      } | null)
+    | ({
+        relationTo: 'ingram-enrichment-review';
+        value: number | IngramEnrichmentReview;
       } | null)
     | ({
         relationTo: 'payload-mcp-api-keys';
@@ -6519,6 +6677,7 @@ export interface VendorsSelect<T extends boolean = true> {
  */
 export interface BooksSelect<T extends boolean = true> {
   title?: T;
+  subtitle?: T;
   titleLong?: T;
   slug?: T;
   authors?: T;
@@ -6547,6 +6706,8 @@ export interface BooksSelect<T extends boolean = true> {
         pages?: T;
         language?: T;
         dimensions?: T;
+        mediaMailEligible?: T;
+        ingramOnSaleDate?: T;
         squareItemId?: T;
         squareVariationId?: T;
         stripePriceId?: T;
@@ -6556,6 +6717,7 @@ export interface BooksSelect<T extends boolean = true> {
               retailPrice?: T;
               wholesalePrice?: T;
               shippingWeight?: T;
+              lockPrice?: T;
             };
         inventory?:
           | T
@@ -6653,6 +6815,13 @@ export interface BooksSelect<T extends boolean = true> {
         location?: T;
         isConsignment?: T;
         dateAdded?: T;
+      };
+  enrichment?:
+    | T
+    | {
+        fieldSources?: T;
+        ingramEnrichedAt?: T;
+        ingramRecordDate?: T;
       };
   seo?:
     | T
@@ -7657,6 +7826,47 @@ export interface SquareCatalogStagingSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-log_select".
+ */
+export interface IngramEnrichmentLogSelect<T extends boolean = true> {
+  book?: T;
+  fieldPath?: T;
+  editionIsbn?: T;
+  target?: T;
+  action?: T;
+  previousValue?: T;
+  newValue?: T;
+  previousSource?: T;
+  squareObjectId?: T;
+  squareVersion?: T;
+  ingramRecordDate?: T;
+  runId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingram-enrichment-review_select".
+ */
+export interface IngramEnrichmentReviewSelect<T extends boolean = true> {
+  book?: T;
+  fieldPath?: T;
+  path?: T;
+  editionIsbn?: T;
+  currentValue?: T;
+  proposedValue?: T;
+  proposedKey?: T;
+  state?: T;
+  reason?: T;
+  runId?: T;
+  ingramRecordDate?: T;
+  reviewedBy?: T;
+  reviewedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-mcp-api-keys_select".
  */
 export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
@@ -8026,6 +8236,40 @@ export interface SquareSyncState {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingramEnrichmentState".
+ */
+export interface IngramEnrichmentState {
+  id: number;
+  /**
+   * remotePath -> { checksum, processedAt } of the last successful apply
+   */
+  processedFiles?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  lastRunAt?: string | null;
+  /**
+   * Counts-only summary of the last applied run (no Ingram titles or values)
+   */
+  lastRunSummary?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats".
  */
 export interface PayloadJobsStat {
@@ -8231,6 +8475,18 @@ export interface SquareSyncStateSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingramEnrichmentState_select".
+ */
+export interface IngramEnrichmentStateSelect<T extends boolean = true> {
+  processedFiles?: T;
+  lastRunAt?: T;
+  lastRunSummary?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs-stats_select".
  */
 export interface PayloadJobsStatsSelect<T extends boolean = true> {
@@ -8310,6 +8566,22 @@ export interface TaskIngramStockFetch {
  * via the `definition` "TaskIngram-stock-apply".
  */
 export interface TaskIngramStockApply {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-enrich-titles".
+ */
+export interface TaskIngramEnrichTitles {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngram-enrich-descriptions".
+ */
+export interface TaskIngramEnrichDescriptions {
   input?: unknown;
   output?: unknown;
 }

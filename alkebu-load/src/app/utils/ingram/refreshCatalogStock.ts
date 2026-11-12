@@ -9,7 +9,16 @@ import type { Payload } from 'payload';
 
 import { editionEan, type CompactStock } from './applyIngramStock';
 import { planBookAvailability } from './availabilityPlan';
+import {
+  BULK_EDITION_CHUNK,
+  editionStockRows,
+  supportsBulkEditionWrites,
+  writeEditionStockChunk,
+  type BulkDb,
+  type EditionStockRow,
+} from './bulkEditionStock';
 import { buildSnapshot, type CatalogSnapshot, type FeedFormat } from './catalogStockSnapshot';
+import type { IngramStock } from './parseStockResponse';
 import { downloadIngramFile } from './sftp';
 import { zipLines } from './zipLines';
 
@@ -26,7 +35,7 @@ const REFRESH_CONTEXT = { skipEnrichment: true, ingramStockRefresh: true };
 
 type BookPager = Pick<Payload, 'find'>;
 
-async function* allBooks(payload: BookPager, pageSize = PAGE_SIZE): AsyncGenerator<any> {
+export async function* allBooks(payload: BookPager, pageSize = PAGE_SIZE): AsyncGenerator<any> {
   for (let page = 1; ; page += 1) {
     const result = await payload.find({ collection: 'books', page, limit: pageSize, depth: 0, sort: 'id' });
     for (const doc of result.docs) yield doc;
@@ -70,7 +79,12 @@ export async function fetchStockSnapshot(
   payload: BookPager,
   opts: FetchOptions,
   download: (remote: string, local: string) => Promise<void> = (remote, local) => downloadIngramFile(remote, local),
-): Promise<{ input: StockSnapshotInput; counts: Omit<CatalogSnapshot, 'stock'> & { catalogEans: number } }> {
+): Promise<{
+  input: StockSnapshotInput;
+  /** Full records for our EANs (kept out of `input`, which travels as job input). */
+  records: Map<string, IngramStock>;
+  counts: Omit<CatalogSnapshot, 'stock' | 'records'> & { catalogEans: number };
+}> {
   const catalogEans = await loadCatalogEans(payload);
   const dir = await mkdtemp(join(tmpdir(), 'ingram-stock-'));
   try {
@@ -93,6 +107,7 @@ export async function fetchStockSnapshot(
     }
     return {
       input: { stock: Object.fromEntries(snapshot.stock), fullCoverage: true, sourceFile: opts.remotePath },
+      records: snapshot.records,
       counts,
     };
   } finally {
@@ -100,15 +115,71 @@ export async function fetchStockSnapshot(
   }
 }
 
+/**
+ * Writes refreshed books. On PostgreSQL, books whose plan only touches the four stock
+ * columns are buffered and written in bulk (bulkEditionStock.ts); anything else, and any
+ * book the bulk UPDATE didn't fully reach, goes through payload.update.
+ */
+export function createStockWriter(payload: Pick<Payload, 'update'> & { db?: unknown }, opts: { chunk?: number } = {}) {
+  const db = payload.db as BulkDb | undefined;
+  const bulk = supportsBulkEditionWrites(db);
+  const chunk = opts.chunk ?? BULK_EDITION_CHUNK;
+  const counts = { updated: 0, failed: 0, bulk: 0 };
+  let buffer: Array<{ book: any; editions: any[]; rows: EditionStockRow[] }> = [];
+  let buffered = 0;
+
+  const updateOne = async (book: any, editions: any[]) => {
+    try {
+      await payload.update({ collection: 'books', id: book.id, data: { editions }, depth: 0, context: REFRESH_CONTEXT });
+      counts.updated += 1;
+    } catch (error) {
+      counts.failed += 1;
+      console.error(`Ingram stock refresh: failed to update book ${book.id}:`, error);
+    }
+  };
+
+  const flush = async () => {
+    const batch = buffer;
+    buffer = [];
+    buffered = 0;
+    if (batch.length === 0) return;
+    let done = new Set<string>();
+    try {
+      done = await writeEditionStockChunk(db!, batch.flatMap((b) => b.rows));
+    } catch (error) {
+      console.error('Ingram stock refresh: bulk edition write failed, writing book by book:', error instanceof Error ? error.message : error);
+    }
+    for (const item of batch) {
+      if (item.rows.every((r) => done.has(r.editionId))) {
+        counts.updated += 1;
+        counts.bulk += 1;
+      } else {
+        await updateOne(item.book, item.editions);
+      }
+    }
+  };
+
+  return {
+    counts,
+    flush,
+    async write(book: any, editions: any[]) {
+      const rows = bulk ? editionStockRows(book, editions) : null;
+      if (!rows || rows.length === 0) return updateOne(book, editions);
+      buffer.push({ book, editions, rows });
+      buffered += rows.length;
+      if (buffered >= chunk) await flush();
+    },
+  };
+}
+
 export async function applyStockSnapshot(
-  payload: BookPager & Pick<Payload, 'update'>,
+  payload: BookPager & Pick<Payload, 'update'> & { db?: unknown },
   input: StockSnapshotInput,
-  opts: { checkedAt: string },
-): Promise<{ scanned: number; updated: number; failed: number; protected: number }> {
+  opts: { checkedAt: string; chunk?: number },
+): Promise<{ scanned: number; updated: number; failed: number; protected: number; bulk: number }> {
   const stock = new Map(Object.entries(input.stock));
+  const writer = createStockWriter(payload, { chunk: opts.chunk });
   let scanned = 0;
-  let updated = 0;
-  let failed = 0;
   let protectedBooks = 0;
 
   for await (const book of allBooks(payload)) {
@@ -116,22 +187,11 @@ export async function applyStockSnapshot(
     // Request-only / discontinued books are staff decisions: never written by the refresh.
     const plan = planBookAvailability(book, stock, { checkedAt: opts.checkedAt, fullCoverage: input.fullCoverage });
     if (plan.protected) protectedBooks += 1;
-    const { editions, changed } = plan;
-    if (!changed) continue;
-    try {
-      await payload.update({
-        collection: 'books',
-        id: book.id,
-        data: { editions },
-        depth: 0,
-        context: REFRESH_CONTEXT,
-      });
-      updated += 1;
-    } catch (error) {
-      failed += 1;
-      console.error(`Ingram stock refresh: failed to update book ${book.id}:`, error);
-    }
+    if (!plan.changed) continue;
+    await writer.write(book, plan.editions);
   }
+  await writer.flush();
 
-  return { scanned, updated, failed, protected: protectedBooks };
+  const { updated, failed, bulk } = writer.counts;
+  return { scanned, updated, failed, protected: protectedBooks, bulk };
 }
