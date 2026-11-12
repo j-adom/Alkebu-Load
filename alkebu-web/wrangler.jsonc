@@ -1,0 +1,23 @@
+{
+	// Workers Builds config for the storefront Worker. Without this file, production's
+	// `wrangler deploy` generated an equivalent config on every build (autoconfig), but
+	// non-production branch builds run `wrangler versions upload`, which doesn't, so every
+	// PR's "Workers Builds: alkebu-kit" check failed with a missing entry point.
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "alkebu-kit",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-11-12",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	// PAYLOAD_API_URL / PAYLOAD_API_KEY and the other runtime settings live in the
+	// dashboard (read via $env/dynamic). Never let a deploy delete them.
+	"keep_vars": true,
+	// Preview URLs for non-production branch builds.
+	"preview_urls": true,
+	"observability": {
+		"enabled": true
+	}
+}
