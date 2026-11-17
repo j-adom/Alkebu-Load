@@ -31,8 +31,16 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 
     const productsData = await payloadGet<any>(`/api/fashion-jewelry?${productsParams.toString()}`);
     
-    // Get featured products in this category
-    const featuredProductsData = await payloadGet<any>(`/api/fashion-jewelry?where[categories][in]=${category.slug}&where[featured][equals]=true&limit=4&depth=1`);
+    // Featured products in this category. Decorative, so a failure leaves the section empty
+    // rather than failing the page.
+    const featuredProductsData = await payloadGet<any>(
+      `/api/fashion-jewelry?${new URLSearchParams({
+        'where[categories][in]': category.slug,
+        'where[isFeatured][equals]': 'true',
+        limit: '4',
+        depth: '1',
+      }).toString()}`,
+    ).catch(() => ({ docs: [] }));
 
     // Build breadcrumbs
     const breadcrumbs = [

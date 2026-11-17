@@ -26,22 +26,23 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       limit: limit.toString(),
       depth: '2',
       sort: sort,
-      'where[collections][in]': collection.slug
+      'where[collections.collectionName][in]': collection.slug
     });
 
     const booksData = await payloadGet<any>(
       `/api/books?${appendBookStorefrontFilters(booksParams).toString()}`,
     );
     
-    // Get featured books in this collection
+    // Featured books in this collection. Decorative, so a failure leaves the section empty
+    // rather than failing the page.
     const featuredBooksData = await payloadGet<any>(
       `/api/books?${appendBookStorefrontFilters(new URLSearchParams({
-        'where[collections][in]': collection.slug,
-        'where[featured][equals]': 'true',
+        'where[collections.collectionName][in]': collection.slug,
+        'where[isFeatured][equals]': 'true',
         limit: '4',
         depth: '1',
       })).toString()}`,
-    );
+    ).catch(() => ({ docs: [] }));
 
     // Build breadcrumbs
     const breadcrumbs = [
