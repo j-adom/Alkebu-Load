@@ -9,9 +9,12 @@
 //     mismatch we re-fetch and recompute once, then report a conflict.
 //   - Batches of at most 100 objects; a dry run never calls the upsert.
 //   - Books with no Square ids are Payload-only and produce no writes.
+//   - A Square-linked change with no real Square object to write (legacy ids, an edition
+//     with no variation id) is deferred, never written to Payload alone.
 import { randomUUID } from 'node:crypto';
 
 import { squareItemName } from '../squareItemName';
+import { bookVariationIds, isLegacySquareItemId } from '../squareLinks';
 import { isWrite, type FieldChange } from './diffEnrichment';
 import { editionEanOf } from './enrichmentFields';
 import { normalizeTitle } from './titleCleanup';
@@ -104,12 +107,19 @@ export function planSquareWrites(book: Record<string, any>, changes: FieldChange
 
   const title = proposedOf(changes, 'title');
   if (title) {
+    // Legacy ids (numeric, or a variation id stored as the item id) name no Square item:
+    // a rename sent there is "not found" at best. Those books defer the title instead
+    // (unplannableSquareKeys) until the Square link repair gives them real item ids.
+    const variationIds = bookVariationIds(book);
+    const realItem = (id: unknown): string | null =>
+      typeof id === 'string' && id !== '' && !isLegacySquareItemId(id, variationIds) ? id : null;
     const items = new Map<string, any>();
     for (const edition of editions) {
-      const itemId = edition?.squareItemId || (edition?.squareVariationId ? book?.squareItemId : null);
+      const itemId = realItem(edition?.squareItemId) || (edition?.squareVariationId ? realItem(book?.squareItemId) : null);
       if (itemId && !items.has(itemId)) items.set(itemId, edition);
     }
-    if (items.size === 0 && book?.squareItemId) items.set(book.squareItemId, editions[0]);
+    const bookItem = realItem(book?.squareItemId);
+    if (items.size === 0 && bookItem) items.set(bookItem, editions[0]);
     for (const [itemId, edition] of items) {
       const ean = editionEanOf(edition);
       const bindingChange = ean ? proposedOf(changes, `editions.${ean}.binding`) : undefined;
@@ -125,6 +135,44 @@ export function planSquareWrites(book: Record<string, any>, changes: FieldChange
     }
   }
   return writes;
+}
+
+/**
+ * True when this edition is sold through Square: it carries its own Square ids (real or
+ * legacy), or it is the only edition of a book linked at book level (not yet backfilled).
+ * An unlinked extra edition of a linked book is online-only: its price is Payload's alone.
+ */
+export function editionInSquare(book: Record<string, any>, edition: any): boolean {
+  const editions: any[] = Array.isArray(book?.editions) ? book.editions : [];
+  return Boolean(edition?.squareItemId || edition?.squareVariationId) || (Boolean(book?.squareItemId) && editions.length === 1);
+}
+
+/** True when the book carries any Square id, real or legacy. */
+function bookSquareLinked(book: Record<string, any>): boolean {
+  const editions: any[] = Array.isArray(book?.editions) ? book.editions : [];
+  return Boolean(book?.squareItemId) || editions.some((e) => e?.squareItemId || e?.squareVariationId);
+}
+
+/**
+ * Pure: keys of price/title writes on a Square-linked book that planSquareWrites can't
+ * send to a real Square object (an edition with no variation id, or only legacy item ids).
+ * They must be deferred like a Square refusal: written to Payload alone, the website would
+ * disagree with the POS until the catalog sync copied Square's value back over it.
+ * Square-free books (no ids at all) return nothing: their changes are Payload-only.
+ */
+export function unplannableSquareKeys(book: Record<string, any>, changes: FieldChange[]): string[] {
+  if (!bookSquareLinked(book)) return [];
+  const editions: any[] = Array.isArray(book?.editions) ? book.editions : [];
+  const planned = planSquareWrites(book, changes);
+  const keys: string[] = [];
+  for (const change of changes) {
+    if (!isWrite(change) || change.path !== 'pricing.retailPrice' || !change.editionIsbn) continue;
+    const edition = editions.find((e) => editionEanOf(e) === change.editionIsbn);
+    if (!editionInSquare(book, edition)) continue;
+    if (!planned.some((w) => w.kind === 'price' && w.key === change.key)) keys.push(change.key);
+  }
+  if (proposedOf(changes, 'title') && !planned.some((w) => w.kind === 'name')) keys.push('title');
+  return keys;
 }
 
 /**

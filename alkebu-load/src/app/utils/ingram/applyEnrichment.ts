@@ -13,6 +13,7 @@ import {
   applySquareWrites,
   pickSquareResult,
   planSquareWrites,
+  unplannableSquareKeys,
   type SquareWriteOption,
   type SquareWriteResult,
   type WrittenObject,
@@ -227,10 +228,14 @@ export async function applyEnrichment(
   // Payload failure after a Square success is not retried: the catalog sync converges.
   let squareWritten: WrittenObject[] = [];
   const planned = planSquareWrites(book, writes);
-  if (planned.length) {
+  // Square-linked changes with no real Square object to write (legacy ids): deferred too.
+  const unplannable = unplannableSquareKeys(book, writes);
+  if (planned.length || unplannable.length) {
     let blocked: Set<string>;
     if (!opts.square) {
       blocked = new Set(planned.map((w) => w.key));
+    } else if (planned.length === 0) {
+      blocked = new Set();
     } else {
       const res = opts.squareResult
         ? pickSquareResult(opts.squareResult, planned)
@@ -240,6 +245,7 @@ export async function applyEnrichment(
       result.squareConflicts = res.conflicts.length;
       blocked = new Set([...res.conflicts, ...res.skipped].map((w) => w.key));
     }
+    for (const key of unplannable) blocked.add(key);
     // A subtitle without its cleaned title would duplicate text already in the title.
     if (blocked.has('title')) blocked.add('subtitle');
     const kept = writes.filter((w) => !blocked.has(w.key));
@@ -247,9 +253,11 @@ export async function applyEnrichment(
     writes = kept;
     if (opts.requireAll && result.deferred) {
       throw new Error(
-        opts.square
-          ? 'Square no longer holds the value this proposal was based on (changed at the POS); not applied.'
-          : 'This change must be written to Square first, and Square write-back is off (INGRAM_ENRICHMENT_SQUARE_WRITEBACK).',
+        unplannable.length
+          ? "This book's Square link is a legacy id, so the change can't be written to Square yet. Run the Square link repair (pnpm square:link-repair) first."
+          : opts.square
+            ? 'Square no longer holds the value this proposal was based on (changed at the POS); not applied.'
+            : 'This change must be written to Square first, and Square write-back is off (INGRAM_ENRICHMENT_SQUARE_WRITEBACK).',
       );
     }
   }
