@@ -41,6 +41,29 @@ const setFulfillmentSources: BeforeChangeHook = async ({ data, operation, req })
   return data;
 };
 
+/**
+ * Stamp `fulfillment.shippedAt` / `deliveredAt` when the status moves to shipped or
+ * delivered and the caller did not supply the date.
+ *
+ * This must stay in beforeChange. It used to be an afterChange hook that called
+ * `payload.update` on the same order without `req`: afterChange runs before the outer
+ * transaction commits, so on Postgres the nested update opened a second transaction
+ * and waited forever on the row lock the first one held. Each occurrence left the
+ * request hanging and two pool connections stuck.
+ */
+export const stampFulfillmentDates: BeforeChangeHook = ({ data, originalDoc, operation }) => {
+  if (operation !== 'update' || !data?.status || data.status === originalDoc?.status) return data;
+
+  const stamp = (field: 'shippedAt' | 'deliveredAt') => {
+    if (data.fulfillment?.[field] || originalDoc?.fulfillment?.[field]) return;
+    data.fulfillment = { ...data.fulfillment, [field]: new Date().toISOString() };
+  };
+
+  if (data.status === 'shipped') stamp('shippedAt');
+  if (data.status === 'delivered') stamp('deliveredAt');
+  return data;
+};
+
 export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
@@ -634,6 +657,7 @@ export const Orders: CollectionConfig = {
   hooks: {
     beforeChange: [
       setFulfillmentSources,
+      stampFulfillmentDates,
       ({ data }) => {
         // Generate order number if not exists
         if (!data.orderNumber) {
@@ -676,25 +700,6 @@ export const Orders: CollectionConfig = {
                 console.error(`Failed to restore stock for ${item.productTitle}:`, error);
               }
             }
-          }
-
-          // Update fulfillment dates based on status
-          const updateData: any = {};
-
-          if (doc.status === 'shipped' && !doc.fulfillment?.shippedAt) {
-            updateData['fulfillment.shippedAt'] = new Date().toISOString();
-          }
-
-          if (doc.status === 'delivered' && !doc.fulfillment?.deliveredAt) {
-            updateData['fulfillment.deliveredAt'] = new Date().toISOString();
-          }
-
-          if (Object.keys(updateData).length > 0) {
-            await payload.update({
-              collection: 'orders',
-              id: doc.id,
-              data: updateData,
-            });
           }
 
           // Send status update emails to customers
