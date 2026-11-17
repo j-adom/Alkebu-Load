@@ -236,7 +236,8 @@ This single Payload instance handles:
 
 - **Host**: Coolify-managed deployment to `payload.alkebulanimages.com`
 - **Auto-deploy**: webhook-triggered on `main` push (verified `d2b6387`)
-- **Health check**: `GET /api/health` → `https://payload.alkebulanimages.com/api/health`. The check itself is the `HEALTHCHECK` in `Dockerfile`, which only applies while Coolify's dashboard health check is **Disabled** (enabled, Coolify's generated check overrides the image's). Keep `curl --max-time` on it; see `docs/vps-hardening.md` §3.
+- **Health check**: `GET /api/health` → `https://payload.alkebulanimages.com/api/health`. The check itself is the `HEALTHCHECK` in `Dockerfile`, which only applies while Coolify's dashboard health check is **Disabled** (enabled, Coolify's generated check overrides the image's). Keep `curl --max-time` on it; see `docs/vps-hardening.md` §3. Docker never restarts an unhealthy container on its own; the `autoheal` container on the VPS restarts anything with the Dockerfile's `LABEL autoheal=true`.
+- **Resource log**: `src/instrumentation.ts` starts `memoryLogger.ts`, which writes a `[resources]` line every 10 min. It uses `process.stdout.write`, so `compiler.removeConsole` in `next.config.mjs` (which strips `console.log`/`debug` in production) can never silence it.
 - See [../docs/deployment.md](../docs/deployment.md)
 
 ## Reference Docs

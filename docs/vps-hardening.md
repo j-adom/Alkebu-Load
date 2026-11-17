@@ -82,8 +82,26 @@ with a read-only root, uses ~180 MB idle, and only writes to `.next/cache`.
   Verify with `docker inspect -f '{{json .Config.Healthcheck.Test}}' <container>`: it must contain
   `--max-time`. Keep `curl --max-time` on it: without a curl timeout, a hung server
   leaks one orphaned `curl` per failed check (they reparent to Node, which never reaps them).
-  Docker and Coolify mark the container unhealthy but neither restarts it, so the Uptime Kuma
-  monitor on `/api/health` (uptime.alkebu.link) is what actually tells someone.
+  Docker and Coolify mark the container unhealthy but neither restarts it. Since 2026-11-10 a
+  standalone `autoheal` container on the VPS does: it restarts any container labelled
+  `autoheal=true` (the Dockerfile sets that label, so every Coolify deploy carries it) once Docker
+  marks it unhealthy, i.e. after about 90 s of failed checks. It was added after the server froze
+  at ~45 h of uptime on 2026-11-07 and again on 2026-11-09 and stayed down until a manual restart.
+  `docker restart` keeps the same container, so the hung run's logs survive the restart; Uptime
+  Kuma on `/api/health` (uptime.alkebu.link) still alerts. Check it with `docker logs autoheal`.
+  It is not managed by Coolify; recreate it with:
+
+  ```bash
+  docker run -d --name autoheal --restart unless-stopped \
+    -e AUTOHEAL_CONTAINER_LABEL=autoheal -e AUTOHEAL_INTERVAL=30 -e AUTOHEAL_START_PERIOD=60 \
+    -e AUTOHEAL_DEFAULT_STOP_TIMEOUT=20 --memory 64m --log-opt max-size=10m --log-opt max-file=3 \
+    -v /var/run/docker.sock:/var/run/docker.sock willfarrell/autoheal:1.2.0
+  ```
+
+- **Resource log:** the server prints a `[resources]` line every 10 minutes (heap vs. limit, RSS,
+  open handles, event-loop delay; `src/app/utils/memoryLogger.ts`, `MEMORY_LOG_INTERVAL_MS=0`
+  disables it). After a hang or restart, `docker logs <container> 2>&1 | grep '\[resources\]'`
+  shows what was growing. The `loopP99`/`loopMax` floor is ~20 ms (the sampling resolution).
 
 The limits matter as much as the flags. With them in place, a compromised container
 can't pin every core, which is what triggers the abuse suspensions.
