@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 import { ValidationError } from 'payload';
 
 import { applyPouredAvailability, unknownPouredNames } from '../app/utils/pouredToOrder';
@@ -540,6 +541,7 @@ const OilsIncense: CollectionConfig = {
       if (role === 'admin' || role === 'staff' || role === 'editor') return true
       return { publishOnline: { equals: true } }
     },
+    ...backOfficeWriteAccess,
   },
 
   hooks: {

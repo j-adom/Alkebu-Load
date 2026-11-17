@@ -15,18 +15,18 @@ export const Carts: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (isCommerceStaff(user)) return true;
-      if (user) return { user: { equals: user.id } }; // Only owner can read their cart
+      if (user?.collection === 'users') return { user: { equals: user.id } }; // Only owner can read their cart
       return false;
     },
     create: ({ req: { user } }) => isCommerceStaff(user),
     update: ({ req: { user } }) => {
       if ((user as any)?.role === 'admin') return true;
-      if (user) return { user: { equals: user.id } };
+      if (user?.collection === 'users') return { user: { equals: user.id } };
       return false;
     },
     delete: ({ req: { user } }) => {
       if ((user as any)?.role === 'admin') return true;
-      if (user) return { user: { equals: user.id } };
+      if (user?.collection === 'users') return { user: { equals: user.id } };
       return false;
     },
   },

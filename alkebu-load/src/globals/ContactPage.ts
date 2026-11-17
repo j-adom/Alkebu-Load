@@ -1,11 +1,13 @@
 // src/globals/ContactPage.ts
 import type { GlobalConfig } from 'payload'
+import { backOfficeOnly } from '../access/roles'
 
 export const ContactPage: GlobalConfig = {
   slug: 'contactPage',
   label: 'Contact Page',
   access: {
     read: () => true,
+    update: backOfficeOnly,
   },
   fields: [
     {

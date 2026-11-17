@@ -483,13 +483,15 @@ const Users: CollectionConfig = {
 
   // === ACCESS CONTROL ===
   access: {
-    // Customers can read their own data, admins can read all
+    // Users can read their own row, admins and staff can read all. The own-row rule
+    // must check the collection: ids are per-collection, so a `customers` login with
+    // id N would otherwise match `users` row N.
     read: ({ req: { user } }) => {
       if ((user as any)?.role === 'admin' || (user as any)?.role === 'staff') {
         return true;
       }
 
-      if (user) {
+      if (user?.collection === 'users') {
         return {
           id: {
             equals: user.id,
@@ -506,7 +508,7 @@ const Users: CollectionConfig = {
         return true;
       }
 
-      if (user) {
+      if (user?.collection === 'users') {
         return {
           id: {
             equals: user.id,

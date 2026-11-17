@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 import { autoEnrichBookFromISBN, autoLinkAuthors } from '@/app/utils/autoEnrichBook';
 import { autoLinkPublisher } from '@/app/utils/autoLinkPublisher';
 import { assertSquareItemsUnclaimed } from '@/app/utils/squareItemOwnership';
@@ -903,6 +904,7 @@ const Books: CollectionConfig = {
   // Hooks for auto-processing scraped data
   access: {
     read: () => true,
+    ...backOfficeWriteAccess,
   },
 
   hooks: {

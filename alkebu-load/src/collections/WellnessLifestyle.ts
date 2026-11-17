@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 import { collapsedVariations } from '../fields/collapsedVariations';
 
 const WellnessLifestyle: CollectionConfig = {
@@ -932,6 +933,7 @@ const WellnessLifestyle: CollectionConfig = {
       if (role === 'admin' || role === 'staff' || role === 'editor') return true
       return { publishOnline: { equals: true } }
     },
+    ...backOfficeWriteAccess,
   },
 
   hooks: {

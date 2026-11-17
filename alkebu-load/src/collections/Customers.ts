@@ -23,13 +23,13 @@ export const Customers: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (isCommerceStaff(user)) return true;
-      if (user) return { id: { equals: user.id } };
+      if (user?.collection === 'customers') return { id: { equals: user.id } };
       return false;
     },
     create: ({ req: { user } }) => isCommerceStaff(user),
     update: ({ req: { user }, id }) => {
       if (isCommerceStaff(user)) return true;
-      return user?.id === id;
+      return user?.collection === 'customers' && user.id === id;
     },
     delete: ({ req: { user } }) => (user as any)?.role === 'admin',
   },

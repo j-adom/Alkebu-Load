@@ -1,11 +1,14 @@
 // src/globals/SiteSettings.ts
 import type { GlobalConfig } from 'payload'
+import { staffOnly } from '../access/roles'
 
 export const SiteSettings: GlobalConfig = {
   slug: 'siteSettings',
   label: 'Site Settings',
   access: {
     read: () => true,
+    // Holds the payment provider switch, so editors are excluded.
+    update: staffOnly,
   },
   fields: [
     {

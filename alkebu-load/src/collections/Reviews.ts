@@ -370,8 +370,8 @@ const Reviews: CollectionConfig = {
       };
     },
 
-    // Only authenticated users can create reviews
-    create: ({ req: { user } }) => !!user,
+    // `author` relates to `users`, so only a `users` login can write a review.
+    create: ({ req: { user } }) => user?.collection === 'users',
 
     // Users can edit their own reviews (before approval)
     update: ({ req: { user } }) => {
@@ -379,7 +379,7 @@ const Reviews: CollectionConfig = {
         return true;
       }
 
-      if (user) {
+      if (user?.collection === 'users') {
         return {
           author: {
             equals: user.id,

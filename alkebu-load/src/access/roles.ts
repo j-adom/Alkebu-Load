@@ -16,8 +16,16 @@ export const isStaffUser = (user: unknown): boolean => {
   return role === 'admin' || role === 'staff'
 }
 
+// Everyone who works in the admin panel. `editor` manages catalog and content but
+// not commerce data, so it is included here and excluded from isStaffUser.
+export const isBackOfficeUser = (user: unknown): boolean => {
+  const role = roleOf(user)
+  return role === 'admin' || role === 'staff' || role === 'editor'
+}
+
 export const adminOnly: Access = ({ req: { user } }) => isAdminUser(user)
 export const staffOnly: Access = ({ req: { user } }) => isStaffUser(user)
+export const backOfficeOnly: Access = ({ req: { user } }) => isBackOfficeUser(user)
 export const adminOnlyField: FieldAccess = ({ req: { user } }) => isAdminUser(user)
 
 // For collections that had no access block: Payload's default lets any logged-in
@@ -27,4 +35,13 @@ export const staffCollectionAccess = {
   create: staffOnly,
   update: staffOnly,
   delete: adminOnly,
+}
+
+// For publicly readable catalog/content collections and globals. Spread next to a
+// `read` rule: without explicit write rules Payload falls back to "any logged-in
+// principal", and a `customers` login is one.
+export const backOfficeWriteAccess = {
+  create: backOfficeOnly,
+  update: backOfficeOnly,
+  delete: backOfficeOnly,
 }

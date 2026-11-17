@@ -13,7 +13,7 @@ const callRead = (col: any, user: any) => access(col).read({ req: { user } });
 
 const STAFF = { id: 's1', role: 'staff' };
 const ADMIN = { id: 'a1', role: 'admin' };
-const CUSTOMER = { id: 'c1', role: 'customer' };
+const CUSTOMER = { id: 'c1', collection: 'customers' };
 
 test('Orders.read: staff sees all orders', () => {
   assert.strictEqual(callRead(Orders, STAFF), true);
@@ -56,7 +56,10 @@ test('Carts.read: staff sees all carts', () => {
 });
 
 test('Carts.read: customer scoped to own cart via filter', () => {
-  assert.deepStrictEqual(callRead(Carts, CUSTOMER), { user: { equals: 'c1' } });
+  // Carts.user relates to `users`, so the owner is a users-collection login.
+  const owner = { id: 'u1', role: 'customer', collection: 'users' };
+  assert.deepStrictEqual(callRead(Carts, owner), { user: { equals: 'u1' } });
+  assert.strictEqual(callRead(Carts, CUSTOMER), false);
 });
 
 test('CartItems.read: staff can read cart items', () => {

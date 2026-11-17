@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 
 const Events: CollectionConfig = {
   slug: 'events',
@@ -514,6 +515,7 @@ const Events: CollectionConfig = {
   // Public read access
   access: {
     read: () => true,
+    ...backOfficeWriteAccess,
   },
 
   hooks: {
