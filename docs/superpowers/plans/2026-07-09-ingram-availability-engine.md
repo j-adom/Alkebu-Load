@@ -1182,6 +1182,27 @@ Built first because the Web Service returns no `<Stock>` section yet. This is Ta
   - **Verified** on a disposable PostgreSQL 18.6 with the schema Payload pushes: values correct, other edition fields untouched, `updated_at` bumped, rerun a no-op.
 - Backend: 829 tests pass, `check:types`, `check:scripts` and `pnpm build` exit 0, lint 0 errors.
 
+### Status (2026-11-17): rollout steps 1–4 run; Square links block step 5
+
+- **Done:** schema SQL applied (all checks true), PR #18 merged and deployed, dry run, and step 4 (`--apply --limit 50 --square`, run `ingram-2026-11-17-870112a2`).
+  - **Dry run (counts only):** 3,968 of 5,561 books matched, 0 parse errors, 0 failed books.
+  - **Fields:** price uplift 1,498 (81 to review), shipping weight corrected 1,958, binding corrected 1,003, publish date corrected 1,260, titles cleaned 873, and **689 ambiguous titles**, which go to review. Square Author fills planned: 4,345.
+  - **Laptop runs:** download both files with `sftp -R 1` and pass `--local titles=… --local stock=…`. Ingram's server resets long downloads, and plain `sftp` parallel reads produced a corrupt zip.
+- **Step 4 found that Square write-back can't reach most books.** Payload applied 97 changes on 50 books, but Square got 0 writes, 55 changes were deferred, and both Author fills failed.
+  - **Cause:** a 40-book sample showed 39 books with legacy numeric `squareItemId`s, and only 1 with a real variation id. `pnpm square:link-repair` (`b5427fa`) was never run in production.
+  - **The bug it exposed:** a price change on a legacy-linked edition with no variation id was treated as Payload-only and applied. About 22 books from this run now show the Ingram price online but the old price at the POS.
+- **Fix (`fix/ingram-square-price-guard`):**
+  - **Guard:** `unplannableSquareKeys` defers price and title changes on Square-linked books that have no real Square object to write. That covers editions with Square ids but no variation id, and titles where only legacy item ids exist. Renames are no longer sent to legacy ids.
+  - **Exception:** an unlinked extra edition of a linked book is online-only and still applies.
+  - **Revert:** `pnpm ingram:revert-unsynced-prices -- --run <runId> [--apply]` undoes one run's Payload-only price writes on Square-linked editions. It restores the logged previous price only where the price is unchanged since the run, removes their provenance and log rows, and re-derives the book price.
+- **Next, in order:**
+  1. Deploy the fix.
+  2. Revert run `ingram-2026-11-17-870112a2`.
+  3. `pnpm square:link-repair`: dry run, then `--apply`.
+  4. Repeat step 4.
+  5. Check why the 2 Author fills failed (console lines start `Ingram enrichment: Square author batch failed:`).
+  6. Decide on the ambiguous-title pattern before step 5.
+
 ## Companion: Edition Consolidation prerequisite *(decided and built 2026-10-02)*
 
 Square stays one item per binding. Built on this branch, before any books are merged:

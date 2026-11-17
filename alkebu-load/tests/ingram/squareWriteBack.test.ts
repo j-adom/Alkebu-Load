@@ -11,6 +11,7 @@ import {
   SQUARE_AUTHOR_ATTRIBUTE_KEY,
   SQUARE_BATCH_LIMIT,
   squareAuthorValue,
+  unplannableSquareKeys,
   type SquareCatalogClient,
   type SquareWrite,
 } from '../../src/app/utils/ingram/squareWriteBack';
@@ -214,6 +215,74 @@ test('with write-back off, price/title changes on Square-linked books are deferr
   const ok = await applyEnrichment(payload2 as any, unlinked, [priceChange(EAN_P, 1999, 2499), titleChange, subtitleChange], 'run-1');
   assert.equal(ok.deferred, 0);
   assert.equal(payload2.all('books')[0].subtitle, 'Beautiful Experiments');
+});
+
+// Legacy imports: a numeric pre-Square id, or the variation id stored as the item id.
+const legacyBook = () => ({
+  id: '2',
+  title: 'Wayward Lives: Beautiful Experiments',
+  squareItemId: '210000008854',
+  pricing: { retailPrice: 1999 },
+  editions: [{ isbn: EAN_P, binding: 'paperback', squareItemId: '210000008854', pricing: { retailPrice: 1999 } }],
+});
+
+test('legacy Square ids: nothing is sent to Square, and the price/title are unplannable', () => {
+  const changes = [priceChange(EAN_P, 1999, 2499), titleChange, subtitleChange];
+  assert.deepEqual(planSquareWrites(legacyBook(), changes), []);
+  assert.deepEqual(unplannableSquareKeys(legacyBook(), changes), [`editions.${EAN_P}.pricing.retailPrice`, 'title']);
+
+  // Variation id stored as the item id: the price still goes to the variation, the rename doesn't.
+  const varAsItem = {
+    ...legacyBook(),
+    squareItemId: 'VAR-P',
+    editions: [{ isbn: EAN_P, binding: 'paperback', squareItemId: 'VAR-P', squareVariationId: 'VAR-P', pricing: { retailPrice: 1999 } }],
+  };
+  assert.deepEqual(
+    planSquareWrites(varAsItem, changes).map((w) => [w.kind, w.objectId]),
+    [['price', 'VAR-P']],
+  );
+  assert.deepEqual(unplannableSquareKeys(varAsItem, changes), ['title']);
+
+  // A real link plans everything; a Square-free book is Payload-only.
+  assert.deepEqual(unplannableSquareKeys(linkedBook(), changes), []);
+  const unlinked = { ...legacyBook(), squareItemId: null, editions: [{ isbn: EAN_P, binding: 'paperback', pricing: { retailPrice: 1999 } }] };
+  assert.deepEqual(unplannableSquareKeys(unlinked, changes), []);
+});
+
+test('an online-only extra edition of a Square-linked book keeps its price change', () => {
+  const book = {
+    ...linkedBook(),
+    editions: [linkedBook().editions[0], { isbn: EAN_H, binding: 'hardcover', pricing: { retailPrice: 2999 } }],
+  };
+  assert.deepEqual(unplannableSquareKeys(book, [priceChange(EAN_H, 2999, 3499)]), []);
+  // ...but the single edition of a book linked only at book level (not backfilled) is in Square.
+  const notBackfilled = { ...book, squareItemId: 'ITEM-P', editions: [{ isbn: EAN_P, binding: 'paperback', pricing: { retailPrice: 1999 } }] };
+  assert.deepEqual(unplannableSquareKeys(notBackfilled, [priceChange(EAN_P, 1999, 2499)]), [`editions.${EAN_P}.pricing.retailPrice`]);
+});
+
+test('applyEnrichment defers legacy-linked price and title changes, with write-back on or off', async () => {
+  const changes = [priceChange(EAN_P, 1999, 2499), titleChange, subtitleChange];
+  for (const square of [{ client: mockClient([]) }, undefined]) {
+    const payload = createFakePayload({ books: [legacyBook()] });
+    const result = await applyEnrichment(payload as any, legacyBook(), changes, 'run-1', { square });
+    assert.equal(result.deferred, 3, 'price, title, and the subtitle that follows the title');
+    assert.equal(result.applied, 0);
+    const saved = payload.all('books')[0];
+    assert.equal(saved.editions[0].pricing.retailPrice, 1999, 'website price stays in step with the POS');
+    assert.equal(saved.title, 'Wayward Lives: Beautiful Experiments');
+    assert.equal(payload.all('ingram-enrichment-log').length, 0);
+  }
+  const client = mockClient([]);
+  await applyEnrichment(createFakePayload({ books: [legacyBook()] }) as any, legacyBook(), changes, 'run-1', { square: { client } });
+  assert.equal(client.calls.batchGet, 0, 'legacy ids are never sent to Square');
+});
+
+test('accepting a review row on a legacy-linked book explains the link repair', async () => {
+  const payload = createFakePayload({ books: [legacyBook()] });
+  await assert.rejects(
+    applyEnrichment(payload as any, legacyBook(), [priceChange(EAN_P, 1999, 2499)], 'run-1', { square: { client: mockClient([]) }, requireAll: true }),
+    /square:link-repair/,
+  );
 });
 
 test('Square item names carry the binding, and the catalog sync strips it back off', () => {
