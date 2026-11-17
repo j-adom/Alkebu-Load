@@ -74,6 +74,13 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -sf --max-time 8 http://localhost:3000/api/health > /dev/null || exit 1
 
+# Docker only marks a hung container unhealthy; it never restarts it. The autoheal
+# container on the VPS restarts containers carrying this label once they go unhealthy
+# (the server froze after ~45h on 2026-11-07 and 2026-11-09 and sat dead until a
+# manual restart). Image labels carry onto Coolify's containers on every deploy.
+# See docs/vps-hardening.md §3.
+LABEL autoheal=true
+
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]

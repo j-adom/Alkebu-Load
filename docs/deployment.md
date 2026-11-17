@@ -141,7 +141,7 @@ npm run build runs check:svelte before vite build, so Svelte contract errors blo
 
 ## Monitoring and Backups
 
-- Monitor `https://payload.alkebulanimages.com/api/health` from the self-hosted Uptime Kuma at `uptime.alkebu.link` (keyword `"status":"healthy"`), with a notification attached. An unhealthy container is not restarted by Coolify; the alert is the recovery path.
+- Monitor `https://payload.alkebulanimages.com/api/health` from the self-hosted Uptime Kuma at `uptime.alkebu.link` (keyword `"status":"healthy"`), with a notification attached. Coolify and Docker don't restart an unhealthy container; the `autoheal` container on the VPS does (see `vps-hardening.md` §3), and the alert tells someone it happened.
 - Keep PostgreSQL backups enabled with at least 7 days retention.
 - Watch Coolify logs for webhook failures, SMTP errors, and database connection errors.
 - Track disk usage for media volume/R2 sync paths.
