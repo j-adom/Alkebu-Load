@@ -6,19 +6,15 @@ import { error } from '@sveltejs/kit';
 import { is404Error } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
-  const tagSlug = decodeURIComponent(params.slug);
+  // SvelteKit has already decoded the param; it is the tag text itself.
+  const tagName = params.slug;
   const page = parseInt(url.searchParams.get('p') || '1');
   const sort = url.searchParams.get('sort') || '-createdAt';
   const limit = 24;
 
   try {
-    // Get tag information
-    const tagsData = await payloadGet<any>(`/api/tags?where[slug][equals]=${tagSlug}&limit=1`);
-    const tag = tagsData.docs?.[0];
-    
-    if (!tag) {
-      throw error(404, 'Tag not found');
-    }
+    // Tags are free text on each product (`tags[].tag`); there is no tags collection.
+    const tag = { name: tagName, description: '' };
 
     // Get fashion/jewelry products with this tag
     const productsParams = new URLSearchParams({
@@ -26,34 +22,46 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
       limit: limit.toString(),
       depth: '2',
       sort: sort,
-      'where[tags][in]': tag.id
+      'where[tags.tag][equals]': tagName
     });
 
     const productsData = await payloadGet<any>(`/api/fashion-jewelry?${productsParams.toString()}`);
     
-    // Get featured products with this tag
-    const featuredProductsData = await payloadGet<any>(`/api/fashion-jewelry?where[tags][in]=${tag.id}&where[featured][equals]=true&limit=4&depth=1`);
+    if (!productsData.totalDocs) {
+      throw error(404, 'Tag not found');
+    }
+
+    // Featured products with this tag. Decorative, so a failure leaves the section empty
+    // rather than failing the page.
+    const featuredProductsData = await payloadGet<any>(
+      `/api/fashion-jewelry?${new URLSearchParams({
+        'where[tags.tag][equals]': tagName,
+        'where[isFeatured][equals]': 'true',
+        limit: '4',
+        depth: '1',
+      }).toString()}`,
+    ).catch(() => ({ docs: [] }));
 
     // Build breadcrumbs
     const breadcrumbs = [
       { name: 'Home', url: `${PUBLIC_SITE_URL}/` },
       { name: 'Fashion & Jewelry', url: `${PUBLIC_SITE_URL}/shop/apparel` },
       { name: 'Tags', url: `${PUBLIC_SITE_URL}/shop/apparel/tags` },
-      { name: tag.name, url: `${PUBLIC_SITE_URL}/shop/apparel/tags/${tagSlug}` }
+      { name: tag.name, url: `${PUBLIC_SITE_URL}/shop/apparel/tags/${encodeURIComponent(tagName)}` }
     ];
 
     // Set strong edge caching (6 hours) with long stale window (24 hours)
     setHeaders({
       'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600, stale-if-error=86400',
       'Vary': 'Accept-Encoding',
-      'x-key': `tag:${tag.id},fashion-by-tag`
+      'x-key': `tag:${encodeURIComponent(tagName)},fashion-by-tag`
     });
 
     // Build SEO data
     const seoData = buildSEOData({
       title: `${tag.name} Fashion & Jewelry`,
-      description: `Shop fashion and jewelry items tagged with "${tag.name}". ${tag.description || `Discover beautiful pieces related to ${tag.name} themes and styles.`}`,
-      canonical: `${PUBLIC_SITE_URL}/shop/apparel/tags/${tagSlug}`,
+      description: `Shop fashion and jewelry items tagged with "${tag.name}". Discover beautiful pieces related to ${tag.name} themes and styles.`,
+      canonical: `${PUBLIC_SITE_URL}/shop/apparel/tags/${encodeURIComponent(tagName)}`,
       breadcrumbs,
       noIndex: page > 1
     });
