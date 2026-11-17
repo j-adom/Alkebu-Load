@@ -1,5 +1,6 @@
 // collections/Media.ts
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 
 /**
  * Helper function to generate Cloudflare Images URLs for different sizes
@@ -97,6 +98,7 @@ const Media: CollectionConfig = {
   // Public read access
   access: {
     read: () => true,
+    ...backOfficeWriteAccess,
   },
   
   // Add virtual fields for Cloudflare Images variants

@@ -1,11 +1,13 @@
 // src/globals/ShopPage.ts
 import type { GlobalConfig } from 'payload'
+import { backOfficeOnly } from '../access/roles'
 
 export const ShopPage: GlobalConfig = {
   slug: 'shopPage',
   label: 'Shop Page',
   access: {
     read: () => true,
+    update: backOfficeOnly,
   },
   fields: [
     {

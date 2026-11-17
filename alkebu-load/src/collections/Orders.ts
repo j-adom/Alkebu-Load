@@ -51,7 +51,7 @@ export const Orders: CollectionConfig = {
   access: {
     read: ({ req: { user } }) => {
       if (isCommerceStaff(user)) return true;
-      if (user) return { customer: { equals: user.id } };
+      if (user?.collection === 'customers') return { customer: { equals: user.id } };
       return false;
     },
     create: ({ req: { user } }) => isCommerceStaff(user),

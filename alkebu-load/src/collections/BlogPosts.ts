@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 
 const BlogPosts: CollectionConfig = {
   slug: 'blogPosts',
@@ -290,6 +291,7 @@ const BlogPosts: CollectionConfig = {
   // Public read access
   access: {
     read: () => true,
+    ...backOfficeWriteAccess,
   },
 
   hooks: {

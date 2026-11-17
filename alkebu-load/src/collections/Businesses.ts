@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 
 const Businesses: CollectionConfig = {
   slug: 'businesses',
@@ -638,6 +639,7 @@ const Businesses: CollectionConfig = {
   // Public read access
   access: {
     read: () => true,
+    ...backOfficeWriteAccess,
   },
 
   hooks: {

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { backOfficeWriteAccess } from '../access/roles';
 
 const FashionJewelry: CollectionConfig = {
   slug: 'fashion-jewelry',
@@ -958,6 +959,7 @@ const FashionJewelry: CollectionConfig = {
   // Public read access
   access: {
     read: () => true,
+    ...backOfficeWriteAccess,
   },
 
   hooks: {
