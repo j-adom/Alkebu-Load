@@ -139,8 +139,8 @@ importers:
         specifier: ^7.13.2
         version: 7.13.2
       '@sanity/image-url':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^2.1.1
+        version: 2.1.1
       '@types/node':
         specifier: ^22.19.3
         version: 22.19.3
@@ -203,20 +203,20 @@ packages:
     resolution: {integrity: sha512-V7nhHShPrU8LfjKKHoVJNS50SveSL77CexVuS4aeQyXx99HwdQVJwl2MK0KAYM6/b2ufQbJ7Eee2fzQT0TVXSQ==}
     engines: {node: '>=14.15.0 || >=16.0.0'}
 
-  '@apimatic/axios-client-adapter@0.3.20':
-    resolution: {integrity: sha512-HuwM3rtM+LLnJC6eu4FmniwEz3rsoy2rtTa0rcHv47JbHdp8/AR6Q1AQii1UzTLP9LA2LU7Cq+3xu1htRzvlQQ==}
+  '@apimatic/axios-client-adapter@0.3.21':
+    resolution: {integrity: sha512-pr/XvAvH9FjbpwM+B7vHQxM7alocOX1kLNtSpXKW3yxTYxksF3ydnUuQ85rRbCoNpyfMOIjnRBCNUBzX5p2Hnw==}
     engines: {node: '>=14.15.0 || >=16.0.0'}
 
-  '@apimatic/convert-to-stream@0.1.8':
-    resolution: {integrity: sha512-A4VO/wyGFksKtizp4aUOGGtSlejoVI1uAXLGPVymhfpion3wUwrlST/yif9SOj3faVAGeCTNx0w5A+BpVdzSEA==}
+  '@apimatic/convert-to-stream@0.1.9':
+    resolution: {integrity: sha512-C9NEKnDZoTRBRVeUGXVyAEmy6P5o+8oLwEckTKj0iBlExJLEXNt14nf4wxfzRO1KR8j5Bw8S6yStKCrQzcVERA==}
     engines: {node: '>=14.15.0 || >=16.0.0'}
 
   '@apimatic/core-interfaces@0.2.14':
     resolution: {integrity: sha512-PQmSU32ndxtDddMCjbkNY/sVvDwQAsHUGKrdG5aGVE7iw/qvB2Tm2zyCarOB5TlDr4OB+/tuLCVhji0icx6MHg==}
     engines: {node: '>=14.15.0 || >=16.0.0'}
 
-  '@apimatic/core@0.10.28':
-    resolution: {integrity: sha512-/1TsXtfuS6BOu1qRrKxnHuuBSSg3Q6ckf7ZPRyejzaA32PN0ke/eq+tK0tYGhnHrJtq869EXJ1r84mDw6Yb0zw==}
+  '@apimatic/core@0.10.30':
+    resolution: {integrity: sha512-MqODm1YwuW5yK7gkVtqiRQBgoAfjsTSNYTYJP4cg/JDaF8RokpiupSEDuUW6Xdo3fl/4tGCzphtAlKSeLUWKVA==}
     engines: {node: '>=14.15.0 || >=16.0.0'}
 
   '@apimatic/file-wrapper@0.3.9':
@@ -234,8 +234,8 @@ packages:
   '@apimatic/json-bigint@1.2.0':
     resolution: {integrity: sha512-+bmVzYMdZu0Ya5L+my4FXFUih54OvQA/qlZsFOYdOoostyUuB27UDrVWQs/WVCmS0ADdo5vTU0eeTrrBkHoySw==}
 
-  '@apimatic/proxy@0.1.3':
-    resolution: {integrity: sha512-2UQmmbhOxAXHgbkl6WzGiVLG96ubw7udUsm0cv3jqiCLUyC+c15NgC64pJ+jeYHpZm3BtsLG01rMA+dBdHsxYQ==}
+  '@apimatic/proxy@0.1.4':
+    resolution: {integrity: sha512-Vzgfu7wcA5aEJyj2SjQ00Tb06fhBof8gDo1kSsF6sZBm4QjdFywN5AMbQwhfFOKjHqcsNmJspdeqcdymUQ77jA==}
     engines: {node: '>=14.15.0 || >=16.0.0'}
 
   '@apimatic/schema@0.7.21':
@@ -1819,6 +1819,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@noble/ed25519@3.2.0':
+    resolution: {integrity: sha512-criDgRlnUA09hchYrTy/JUWPIEap5rZxQe6wDWzRx51oWWpDRcUpuNzlgPxDJaOK6AsW9c0wKcj3rKRv6t+bPQ==}
+
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
+    engines: {node: '>= 20.19.0'}
+
   '@nodable/entities@3.1.0':
     resolution: {integrity: sha512-LsS/DjHr+uDM647Gru/cA8+J3a3HfhttwCKLyuoyN7yXTFCxKBtSgMQBvrW9yNPa2/zDRUNuGPaH5QUFoa4arQ==}
 
@@ -1967,9 +1974,12 @@ packages:
   '@sanity/eventsource@5.0.2':
     resolution: {integrity: sha512-/B9PMkUvAlUrpRq0y+NzXgRv5lYCLxZNsBJD2WXVnqZYOfByL9oQBV7KiTaARuObp5hcQYuPfOAVjgXe3hrixA==}
 
-  '@sanity/image-url@1.2.0':
-    resolution: {integrity: sha512-pYRhti+lDi22it+npWXkEGuYyzbXJLF+d0TYLiyWbKu46JHhYhTDKkp6zmGu4YKF5cXUjT6pnUjFsaf2vlB9nQ==}
-    engines: {node: '>=10.0.0'}
+  '@sanity/image-url@2.1.1':
+    resolution: {integrity: sha512-qVXsF1teWR6FO3ZFAz46HDcRU+E6EQkpyncPnkGOzeJ1PgnaOiWMVbiSrZtX10s3txzzu/tAjKwbxbGHfDWgGw==}
+    engines: {node: '>=20.19.0'}
+
+  '@sanity/signed-urls@2.0.6':
+    resolution: {integrity: sha512-I8AeFzFHUjA6RTftKT2M2D8z/ygK7sm7FWYLZAmwOX7M7AGB2N1HfPA0mP4+mD5LOQB15wC0ihkbLznH4sihFg==}
 
   '@smithy/abort-controller@4.2.11':
     resolution: {integrity: sha512-Hj4WoYWMJnSpM6/kchsm4bUNTL9XiSyhvoMb2KIq4VJzyDt7JpGHUZHkVNPZVC7YE1tf8tPeVauxpFBKGW4/KQ==}
@@ -2138,6 +2148,7 @@ packages:
   '@smithy/smithy-client@4.10.1':
     resolution: {integrity: sha512-1ovWdxzYprhq+mWqiGZlt3kF69LJthuQcfY9BIyHx9MywTFKzFapluku1QXoaBB43GCsLDxNqS+1v30ure69AA==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/smithy-client@4.12.3':
     resolution: {integrity: sha512-7k4UxjSpHmPN2AxVhvIazRSzFQjWnud3sOsXcFStzagww17j1cFQYqTSiQ8xuYK3vKLR1Ni8FzuT3VlKr3xCNw==}
@@ -3348,6 +3359,7 @@ packages:
   eslint@9.39.2:
     resolution: {integrity: sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -4038,8 +4050,8 @@ packages:
       typescript:
         optional: true
 
-  lib0@0.2.115:
-    resolution: {integrity: sha512-noaW4yNp6hCjOgDnWWxW0vGXE3kZQI5Kqiwz+jIWXavI9J9WyfJ9zjsbQlQlgjIbHBrvlA/x3TSIXBUJj+0L6g==}
+  lib0@0.2.119:
+    resolution: {integrity: sha512-vh+TiejVy8Xm+hCdnRfn9BthGNvNUZdEXltNjVZL3TzRIKP3s1lnQh8pWd/Q0wCgY0FPAGVVjFF4ZiHUV3LFgA==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -5042,6 +5054,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  tslib@2.9.1:
+    resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
+
   tsx@4.21.0:
     resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==}
     engines: {node: '>=18.0.0'}
@@ -5327,29 +5342,29 @@ snapshots:
       '@apimatic/core-interfaces': 0.2.14
       '@apimatic/http-headers': 0.3.8
       '@apimatic/http-query': 0.3.9
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@apimatic/axios-client-adapter@0.3.20':
+  '@apimatic/axios-client-adapter@0.3.21':
     dependencies:
-      '@apimatic/convert-to-stream': 0.1.8
+      '@apimatic/convert-to-stream': 0.1.9
       '@apimatic/core-interfaces': 0.2.14
       '@apimatic/file-wrapper': 0.3.9
       '@apimatic/http-headers': 0.3.8
       '@apimatic/http-query': 0.3.9
       '@apimatic/json-bigint': 1.2.0
-      '@apimatic/proxy': 0.1.3
+      '@apimatic/proxy': 0.1.4
       axios: 1.20.0
       detect-browser: 5.3.0
       detect-node: 2.1.0
       form-data: 4.0.6
       lodash.flatmap: 4.5.0
       tiny-warning: 1.0.3
-      tslib: 2.8.1
+      tslib: 2.9.1
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  '@apimatic/convert-to-stream@0.1.8':
+  '@apimatic/convert-to-stream@0.1.9':
     dependencies:
       tslib: 2.8.1
 
@@ -5357,11 +5372,11 @@ snapshots:
     dependencies:
       '@apimatic/file-wrapper': 0.3.9
       '@apimatic/json-bigint': 1.2.0
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@apimatic/core@0.10.28':
+  '@apimatic/core@0.10.30':
     dependencies:
-      '@apimatic/convert-to-stream': 0.1.8
+      '@apimatic/convert-to-stream': 0.1.9
       '@apimatic/core-interfaces': 0.2.14
       '@apimatic/file-wrapper': 0.3.9
       '@apimatic/http-headers': 0.3.8
@@ -5374,7 +5389,7 @@ snapshots:
       lodash.defaultsdeep: 4.6.1
       lodash.flatmap: 4.5.0
       tiny-warning: 1.0.3
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@apimatic/file-wrapper@0.3.9':
     dependencies:
@@ -5388,11 +5403,11 @@ snapshots:
     dependencies:
       '@apimatic/core-interfaces': 0.2.14
       '@apimatic/file-wrapper': 0.3.9
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@apimatic/json-bigint@1.2.0': {}
 
-  '@apimatic/proxy@0.1.3':
+  '@apimatic/proxy@0.1.4':
     dependencies:
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
@@ -5401,7 +5416,7 @@ snapshots:
 
   '@apimatic/schema@0.7.21':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@aws-crypto/crc32@5.2.0':
     dependencies:
@@ -5628,7 +5643,7 @@ snapshots:
       '@smithy/util-base64': 4.3.2
       '@smithy/util-middleware': 4.2.11
       '@smithy/util-utf8': 4.2.2
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@aws-sdk/credential-provider-env@3.947.0':
     dependencies:
@@ -5963,7 +5978,7 @@ snapshots:
 
   '@aws-sdk/util-arn-parser@3.972.3':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@aws-sdk/util-endpoints@3.936.0':
     dependencies:
@@ -6009,7 +6024,7 @@ snapshots:
     dependencies:
       '@smithy/types': 4.13.0
       fast-xml-parser: 5.11.2
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@aws/lambda-invoke-store@0.2.2': {}
 
@@ -6156,7 +6171,7 @@ snapshots:
   '@emnapi/core@1.7.1':
     dependencies:
       '@emnapi/wasi-threads': 1.1.0
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emnapi/runtime@1.11.3':
@@ -6166,7 +6181,7 @@ snapshots:
 
   '@emnapi/wasi-threads@1.1.0':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emotion/babel-plugin@11.13.5':
@@ -7160,6 +7175,10 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.4.5':
     optional: true
 
+  '@noble/ed25519@3.2.0': {}
+
+  '@noble/hashes@2.4.0': {}
+
   '@nodable/entities@3.1.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -7540,7 +7559,14 @@ snapshots:
       event-source-polyfill: 1.0.31
       eventsource: 2.0.2
 
-  '@sanity/image-url@1.2.0': {}
+  '@sanity/image-url@2.1.1':
+    dependencies:
+      '@sanity/signed-urls': 2.0.6
+
+  '@sanity/signed-urls@2.0.6':
+    dependencies:
+      '@noble/ed25519': 3.2.0
+      '@noble/hashes': 2.4.0
 
   '@smithy/abort-controller@4.2.11':
     dependencies:
@@ -7672,7 +7698,7 @@ snapshots:
 
   '@smithy/is-array-buffer@2.2.0':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   '@smithy/is-array-buffer@4.2.2':
     dependencies:
@@ -8009,7 +8035,7 @@ snapshots:
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@types/acorn@4.0.6':
@@ -9101,7 +9127,7 @@ snapshots:
       eslint: 9.39.2
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint@9.39.2))(eslint@9.39.2)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint@9.39.2))(eslint@9.39.2))(eslint@9.39.2)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.2)
       eslint-plugin-react: 7.37.5(eslint@9.39.2)
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.2)
@@ -9134,7 +9160,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint@9.39.2))(eslint@9.39.2))(eslint@9.39.2)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -9149,7 +9175,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint@9.39.2))(eslint@9.39.2))(eslint@9.39.2):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.71.2(eslint@9.39.2)(typescript@5.7.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -9982,7 +10008,7 @@ snapshots:
     optionalDependencies:
       typescript: 5.7.3
 
-  lib0@0.2.115:
+  lib0@0.2.119:
     dependencies:
       isomorphic.js: 0.2.5
 
@@ -11038,8 +11064,8 @@ snapshots:
   square@39.1.1:
     dependencies:
       '@apimatic/authentication-adapters': 0.5.14
-      '@apimatic/axios-client-adapter': 0.3.20
-      '@apimatic/core': 0.10.28
+      '@apimatic/axios-client-adapter': 0.3.21
+      '@apimatic/core': 0.10.30
       '@apimatic/json-bigint': 1.2.0
       '@apimatic/schema': 0.7.21
       '@types/node': 14.18.63
@@ -11250,6 +11276,8 @@ snapshots:
       strip-bom: 3.0.0
 
   tslib@2.8.1: {}
+
+  tslib@2.9.1: {}
 
   tsx@4.21.0:
     dependencies:
@@ -11535,7 +11563,7 @@ snapshots:
 
   yjs@13.6.27:
     dependencies:
-      lib0: 0.2.115
+      lib0: 0.2.119
 
   yocto-queue@0.1.0: {}
 
