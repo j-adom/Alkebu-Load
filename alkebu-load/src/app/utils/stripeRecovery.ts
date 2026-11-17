@@ -1,7 +1,7 @@
 import type { Payload } from 'payload'
 import Stripe from 'stripe'
 import { getCartItems } from './cartOperations'
-import { buildOrderShippingAddress } from './stripeHelpers'
+import { buildOrderShippingAddress, describeAmountMismatch } from './stripeHelpers'
 import { getEmailRuntimeConfig } from './emailConfig'
 
 /**
@@ -201,7 +201,9 @@ export async function recoverStripeSessionAsOrder(
         error: recoveryNote,
       },
     },
-    internalNotes: recoveryNote,
+    // Same check as the webhook: the order is rebuilt from the cart, so say so when it
+    // does not total what Stripe charged.
+    internalNotes: [recoveryNote, describeAmountMismatch(session, totalAmount)].filter(Boolean).join('\n\n'),
     source: 'website',
   }
 

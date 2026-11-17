@@ -603,3 +603,213 @@ test('migration: concurrent first touches do not mint two different tokens', asy
   assert.strictEqual(issued.length, 1, 'exactly one token issued');
   assert.strictEqual(cart.sessionId, issued[0]);
 });
+
+// --- Checkout lock -----------------------------------------------------------
+// A cart with an open Stripe session must not change while that session can still
+// be paid: the webhook builds the order from the cart, not from what was charged.
+
+/** Put a seeded cart into the state createCheckoutSession leaves it in. */
+const openStripeSession = (cart: Doc, sessionId = 'cs_open_1') => {
+  cart.status = 'checkout';
+  cart.stripeSessionId = sessionId;
+};
+
+const lockDeps = (outcome: 'expired' | 'paid' | Error) => {
+  const expired: string[] = [];
+  return {
+    expired,
+    expireSession: async (sessionId: string) => {
+      expired.push(sessionId);
+      if (outcome instanceof Error) throw outcome;
+      return outcome;
+    },
+  };
+};
+
+const cartEdits = (cartId: string, itemId: string, token: string) => [
+  {
+    label: 'update',
+    run: (env: ReturnType<typeof makePayload>, deps: any) =>
+      handleCartUpdate(env.api, request('POST', '/api/cart/update', { token, body: { cartId, cartItemId: itemId, quantity: 3 } }), deps),
+  },
+  {
+    label: 'remove',
+    run: (env: ReturnType<typeof makePayload>, deps: any) =>
+      handleCartRemove(env.api, request('POST', '/api/cart/remove', { token, body: { cartId, cartItemId: itemId } }), deps),
+  },
+  {
+    label: 'clear',
+    run: (env: ReturnType<typeof makePayload>, deps: any) =>
+      handleCartClear(env.api, request('POST', '/api/cart/clear', { token, body: { cartId } }), deps),
+  },
+];
+
+test('checkout lock: editing a cart expires its open Stripe session first', async () => {
+  for (const label of ['update', 'remove', 'clear', 'add']) {
+    const env = makePayload();
+    const { cartId, token, itemId, cart } = await seedGuestCart(env);
+    openStripeSession(cart);
+    const deps = lockDeps('expired');
+
+    const res =
+      label === 'add'
+        ? await handleCartAdd(
+            env.api,
+            request('POST', '/api/cart/add', { token, body: { cartId, productId: 'book_1', productType: 'books', quantity: 1 } }),
+            deps,
+          )
+        : await cartEdits(cartId, itemId, token).find((e) => e.label === label)!.run(env, deps);
+
+    assert.strictEqual(res.status, 200, label);
+    assert.deepStrictEqual(deps.expired, ['cs_open_1'], `${label}: the old session is expired`);
+    assert.strictEqual(cart.status, 'active', `${label}: cart is editable again`);
+    assert.strictEqual(cart.stripeSessionId, null, `${label}: the dead session is forgotten`);
+  }
+});
+
+test('checkout lock: a cart whose session was already paid cannot be edited', async () => {
+  const env = makePayload();
+  const { cartId, token, itemId, cart } = await seedGuestCart(env);
+  openStripeSession(cart);
+  const before = JSON.stringify(env.db['cart-items']);
+
+  for (const edit of cartEdits(cartId, itemId, token)) {
+    const res = await edit.run(env, lockDeps('paid'));
+    assert.strictEqual(res.status, 409, edit.label);
+    assert.strictEqual((await res.json()).code, 'cart_paid', edit.label);
+  }
+
+  assert.strictEqual(JSON.stringify(env.db['cart-items']), before, 'line items untouched');
+  assert.strictEqual(cart.status, 'checkout');
+  assert.strictEqual(cart.stripeSessionId, 'cs_open_1', 'the webhook can still find the cart');
+});
+
+test('checkout lock: adding to an already-paid cart starts a new cart instead', async () => {
+  const env = makePayload();
+  const { cartId, token, cart } = await seedGuestCart(env);
+  openStripeSession(cart);
+
+  const res = await handleCartAdd(
+    env.api,
+    request('POST', '/api/cart/add', { token, body: { cartId, productId: 'book_1', productType: 'books', quantity: 1 } }),
+    lockDeps('paid'),
+  );
+
+  assert.strictEqual(res.status, 200);
+  const body = await res.json();
+  assert.notStrictEqual(String(body.cartId), cartId, 'a fresh cart');
+  assert.strictEqual(env.db['cart-items'].filter((i) => String(i.cart) === cartId).length, 1, 'paid cart unchanged');
+});
+
+test('checkout lock: edits are refused when Stripe cannot confirm the session is dead', async () => {
+  const env = makePayload();
+  const { cartId, token, itemId, cart } = await seedGuestCart(env);
+  openStripeSession(cart);
+  const before = JSON.stringify(env.db['cart-items']);
+  const originalError = console.error;
+  console.error = () => {};
+
+  try {
+    const edits = [
+      ...cartEdits(cartId, itemId, token),
+      {
+        label: 'add',
+        run: (e: ReturnType<typeof makePayload>, deps: any) =>
+          handleCartAdd(e.api, request('POST', '/api/cart/add', { token, body: { cartId, productId: 'book_1', productType: 'books' } }), deps),
+      },
+    ];
+    for (const edit of edits) {
+      const res = await edit.run(env, lockDeps(new Error('stripe down')));
+      assert.strictEqual(res.status, 503, edit.label);
+    }
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.strictEqual(JSON.stringify(env.db['cart-items']), before);
+  assert.strictEqual(cart.stripeSessionId, 'cs_open_1');
+});
+
+test('checkout lock: preview and a new checkout supersede the earlier session', async () => {
+  const env = makePayload();
+  const { cartId, token, cart } = await seedGuestCart(env);
+  openStripeSession(cart, 'cs_first');
+
+  const previewDeps = { ...env.deps, ...lockDeps('expired') };
+  const preview = await handleCheckoutPreview(
+    env.api,
+    request('POST', '/api/checkout/preview', { token, body: { cartId, shippingAddress: ADDRESS } }),
+    previewDeps,
+  );
+  assert.strictEqual(preview.status, 200);
+  assert.deepStrictEqual(previewDeps.expired, ['cs_first']);
+  assert.strictEqual(cart.stripeSessionId, null);
+  const quote = await preview.json();
+
+  // A second "Continue to Payment" without a preview in between (two tabs).
+  openStripeSession(cart, 'cs_second');
+  const checkoutDeps = { ...env.deps, ...lockDeps('expired') };
+  const res = await handleCheckout(
+    env.api,
+    request('POST', '/api/checkout', {
+      token,
+      body: {
+        cartId,
+        customerEmail: 'owner@example.com',
+        successUrl: 'https://alkebulanimages.test/checkout/success',
+        cancelUrl: 'https://alkebulanimages.test/checkout/cancel',
+        shippingAddress: ADDRESS,
+        selectedShippingRateId: quote.selectedShippingRateId,
+      },
+    }),
+    checkoutDeps,
+  );
+  assert.strictEqual(res.status, 200);
+  assert.deepStrictEqual(checkoutDeps.expired, ['cs_second'], 'the superseded session is expired before a new one is made');
+  assert.strictEqual(env.calls.providerInit.length, 1);
+});
+
+test('checkout lock: preview and checkout are refused once the cart is paid', async () => {
+  const env = makePayload();
+  const { cartId, token, cart } = await seedGuestCart(env);
+  openStripeSession(cart);
+  cart.totalAmount = 1999;
+
+  const preview = await handleCheckoutPreview(
+    env.api,
+    request('POST', '/api/checkout/preview', { token, body: { cartId, shippingAddress: ADDRESS } }),
+    { ...env.deps, ...lockDeps('paid') },
+  );
+  assert.strictEqual(preview.status, 409);
+  assert.strictEqual(env.calls.shippo, 0, 'no rate call');
+  assert.strictEqual(cart.totalAmount, 1999, 'the paid quote is not rewritten');
+
+  const res = await handleCheckout(
+    env.api,
+    request('POST', '/api/checkout', {
+      token,
+      body: {
+        cartId,
+        customerEmail: 'owner@example.com',
+        successUrl: 'https://alkebulanimages.test/checkout/success',
+        cancelUrl: 'https://alkebulanimages.test/checkout/cancel',
+        shippingAddress: ADDRESS,
+      },
+    }),
+    { ...env.deps, ...lockDeps('paid') },
+  );
+  assert.strictEqual(res.status, 409);
+  assert.strictEqual(env.calls.providerInit.length, 0, 'no second payment session');
+});
+
+test('checkout lock: carts with no Stripe session never call Stripe', async () => {
+  const env = makePayload();
+  const { cartId, token, itemId } = await seedGuestCart(env);
+  const deps = lockDeps('expired');
+
+  for (const edit of cartEdits(cartId, itemId, token).slice(0, 1)) {
+    const res = await edit.run(env, deps);
+    assert.strictEqual(res.status, 200);
+  }
+  assert.deepStrictEqual(deps.expired, []);
+});
