@@ -199,6 +199,8 @@ This single Payload instance handles:
 
 - **Stripe webhook must fail loudly.** `handleCheckoutCompleted` throws on cart-not-found / no-items so the route 500s and Stripe retries (July 3, 2026). Never restore the old silent `return` — it acknowledged the event and permanently dropped paid orders. The `recover-stripe-orders` cron is the backstop, not a substitute.
 
+- **A cart with an open Stripe session is locked.** The webhook builds the order from the cart, not from Stripe's line items, so the cart must not change while a session can still be paid. Every route that writes to a cart (add/update/remove/clear, checkout preview, checkout) calls `releaseCheckoutLock` (`src/app/utils/checkoutLock.ts`) first: it expires the open session in Stripe, refuses the change if the session is already paid (409 `cart_paid`), and fails closed if Stripe is unreachable (503). Any new cart-writing route must do the same. As a backstop, the webhook and recovery job write a `PAYMENT MISMATCH` note to `internalNotes` (and the webhook emails staff) when the order total differs from `session.amount_total`.
+
 - **REST `select` uses bracket syntax** — `select[field]=true`. The comma form is silently ignored (returns id-only docs); it broke the storefront sitemap in production.
 
 - **Media has no `imageSizes`** — uploads store the raw original in R2; the `cloudflareImageId` field is unwired. Pre-optimize before upload. Payload dedupes filenames on re-upload (`name-1.jpg`), so "replacing" a file via admin changes the filename — overwrite the R2 object directly when the URL must stay stable.

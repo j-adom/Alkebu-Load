@@ -18,6 +18,11 @@ import {
   type CartItem,
 } from './cartOperations';
 
+import {
+  checkoutLockResponse,
+  releaseCheckoutLock,
+  type CheckoutLockDeps,
+} from './checkoutLock';
 import { verifyCartRecoveryToken } from './marketingEmail';
 
 // Route logic for /api/cart/* and /api/cart-recovery, kept out of the route files
@@ -91,7 +96,11 @@ export async function handleCartSummary(payload: Payload, request: Request): Pro
   }
 }
 
-export async function handleCartAdd(payload: Payload, request: Request): Promise<Response> {
+export async function handleCartAdd(
+  payload: Payload,
+  request: Request,
+  deps: CheckoutLockDeps = {},
+): Promise<Response> {
   try {
     const body = await readJsonBody(request);
     const {
@@ -110,8 +119,18 @@ export async function handleCartAdd(payload: Payload, request: Request): Promise
 
     // Resolves from cartId, the cart token, or the signed-in owner's open cart.
     const access = await authorizeFromBody(payload, request, body);
-    const owned =
+    let owned =
       access.ok && !CLOSED_CART_STATUSES.has(String(access.cart?.status)) ? access : null;
+
+    // A cart with an open payment page must not change under it (see checkoutLock.ts).
+    if (owned) {
+      const lock = await releaseCheckoutLock(payload, owned.cart, deps);
+      if (!lock.released) {
+        if (lock.reason !== 'paid') return checkoutLockResponse(lock);
+        // Already paid: that cart is the order now, so this add starts a new one.
+        owned = null;
+      }
+    }
 
     // A cart the caller can't prove they own (or one that no longer exists or
     // already checked out) is never touched; adding starts a fresh cart with a
@@ -165,7 +184,11 @@ export async function handleCartAdd(payload: Payload, request: Request): Promise
   }
 }
 
-export async function handleCartUpdate(payload: Payload, request: Request): Promise<Response> {
+export async function handleCartUpdate(
+  payload: Payload,
+  request: Request,
+  deps: CheckoutLockDeps = {},
+): Promise<Response> {
   try {
     const body = await readJsonBody(request);
     const { cartItemId, quantity } = body;
@@ -182,6 +205,9 @@ export async function handleCartUpdate(payload: Payload, request: Request): Prom
 
     const access = await authorizeFromBody(payload, request, body);
     if (!access.ok) return accessDeniedResponse(access);
+
+    const lock = await releaseCheckoutLock(payload, access.cart, deps);
+    if (!lock.released) return checkoutLockResponse(lock);
 
     const result = await updateCartItemQuantity(payload, access.cartId, cartItemId, quantity);
 
@@ -202,7 +228,11 @@ export async function handleCartUpdate(payload: Payload, request: Request): Prom
   }
 }
 
-export async function handleCartRemove(payload: Payload, request: Request): Promise<Response> {
+export async function handleCartRemove(
+  payload: Payload,
+  request: Request,
+  deps: CheckoutLockDeps = {},
+): Promise<Response> {
   try {
     const body = await readJsonBody(request);
     const { cartItemId } = body;
@@ -216,6 +246,9 @@ export async function handleCartRemove(payload: Payload, request: Request): Prom
 
     const access = await authorizeFromBody(payload, request, body);
     if (!access.ok) return accessDeniedResponse(access);
+
+    const lock = await releaseCheckoutLock(payload, access.cart, deps);
+    if (!lock.released) return checkoutLockResponse(lock);
 
     const result = await removeFromCart(payload, access.cartId, cartItemId);
 
@@ -236,11 +269,18 @@ export async function handleCartRemove(payload: Payload, request: Request): Prom
   }
 }
 
-export async function handleCartClear(payload: Payload, request: Request): Promise<Response> {
+export async function handleCartClear(
+  payload: Payload,
+  request: Request,
+  deps: CheckoutLockDeps = {},
+): Promise<Response> {
   try {
     const body = await readJsonBody(request);
     const access = await authorizeFromBody(payload, request, body);
     if (!access.ok) return accessDeniedResponse(access);
+
+    const lock = await releaseCheckoutLock(payload, access.cart, deps);
+    if (!lock.released) return checkoutLockResponse(lock);
 
     const result = await clearCart(payload, access.cartId);
 

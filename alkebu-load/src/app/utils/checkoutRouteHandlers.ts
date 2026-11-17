@@ -5,6 +5,7 @@ import { getAdapter } from '@/app/lib/payments/adapters';
 import { authorizeCartAccess, readCartSessionToken } from './cartAccess';
 import { getCartItems, mapStoredCartItemsForTax } from './cartOperations';
 import { issuedToken, readJsonBody } from './cartRouteHandlers';
+import { checkoutLockResponse, releaseCheckoutLock, type CheckoutLockDeps } from './checkoutLock';
 import {
   buildShippingQuoteFingerprint,
   formatShippingMethodLabel,
@@ -37,7 +38,7 @@ const normalizeShippingAddress = (shippingAddress: Record<string, unknown>): Shi
 export async function handleCheckout(
   payload: Payload,
   request: Request,
-  deps: { getAdapter?: typeof getAdapter } = {},
+  deps: { getAdapter?: typeof getAdapter } & CheckoutLockDeps = {},
 ): Promise<Response> {
   try {
     const body = await readJsonBody(request);
@@ -96,6 +97,11 @@ export async function handleCheckout(
     }
 
     const { cart, cartId } = access;
+
+    // Starting a new checkout supersedes any earlier one: expire the previous Stripe
+    // session so it can't be paid alongside (or instead of) the one created below.
+    const lock = await releaseCheckoutLock(payload, cart, deps);
+    if (!lock.released) return checkoutLockResponse(lock);
 
     const cartItems = await getCartItems(payload, cartId, 2);
 
@@ -252,7 +258,7 @@ export async function handleCheckoutPreview(
   deps: {
     getShippingQuotes?: typeof getShippingQuotes;
     validateShippingAddress?: typeof validateShippingAddress;
-  } = {},
+  } & CheckoutLockDeps = {},
 ): Promise<Response> {
   try {
     const body = await readJsonBody(request);
@@ -290,6 +296,11 @@ export async function handleCheckoutPreview(
     }
 
     const { cart, cartId } = access;
+
+    // Preview rewrites the cart's address, quote and totals, so it must not run
+    // while an earlier payment page for this cart is still payable.
+    const lock = await releaseCheckoutLock(payload, cart, deps);
+    if (!lock.released) return checkoutLockResponse(lock);
 
     // Line items: the cart.items relationship is not the source of truth for
     // active carts in this app; cart-items are.

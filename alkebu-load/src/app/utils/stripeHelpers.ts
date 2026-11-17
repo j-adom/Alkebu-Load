@@ -3,10 +3,12 @@ import Stripe from 'stripe';
 import { getEmailRuntimeConfig } from './emailConfig';
 import {
   sendOrderConfirmation,
+  sendRawEmail,
   sendStaffOrderNotification,
   type OrderConfirmationData,
   type StaffNotificationData,
 } from './emailService';
+import { escapeHtml } from './emailTemplates';
 import { getCartItems } from './cartOperations';
 import { buildOrderEmailLineItems, toCustomerLineItems } from './orderEmailItems';
 import { isShippingQuoteExpired } from './shippingQuotes';
@@ -349,6 +351,42 @@ export async function createCheckoutSession(
 }
 
 /**
+ * Make an open Checkout Session unpayable. Returns 'expired' once the session can
+ * no longer be paid, or 'paid' if it has already completed. Throws when Stripe
+ * cannot say either way (callers must then treat the session as still payable).
+ */
+export async function expireOpenCheckoutSession(sessionId: string): Promise<'expired' | 'paid'> {
+  const stripe = getStripe();
+  try {
+    await stripe.checkout.sessions.expire(sessionId);
+    return 'expired';
+  } catch (expireError) {
+    // expire() rejects any session that is not open; find out which state it is in.
+    if ((expireError as { code?: string })?.code === 'resource_missing') return 'expired';
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.status === 'expired') return 'expired';
+    if (session.status === 'complete') return 'paid';
+    throw expireError;
+  }
+}
+
+/**
+ * The order is built from the cart, so it must total what Stripe actually charged.
+ * Returns a staff-facing note when it does not, otherwise null.
+ */
+export function describeAmountMismatch(
+  session: { id?: string; amount_total?: number | null },
+  orderTotal: number,
+): string | null {
+  if (typeof session?.amount_total !== 'number' || session.amount_total === orderTotal) return null;
+  const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+  return (
+    `PAYMENT MISMATCH: Stripe charged ${dollars(session.amount_total)} for session ${session.id}, ` +
+    `but this order totals ${dollars(orderTotal)}. Do not ship until the difference is reconciled.`
+  );
+}
+
+/**
  * Verify Stripe webhook signature
  */
 export function verifyStripeWebhook(
@@ -438,6 +476,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     const taxAmount = typeof (cart as any).totalTax === 'number' ? (cart as any).totalTax : 0;
     const totalAmount = typeof (cart as any).totalAmount === 'number' ? (cart as any).totalAmount : 0;
     const subtotalAmount = totalAmount - taxAmount - shippingAmount;
+    const amountMismatch = describeAmountMismatch(session, totalAmount);
     const normalizedCarrier = (() => {
       const value = String((cart as any).shippingCarrier || '').toLowerCase();
       if (value === 'usps' || value === 'ups' || value === 'fedex') return value;
@@ -504,6 +543,7 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
         },
       },
       source: 'website',
+      ...(amountMismatch ? { internalNotes: amountMismatch } : {}),
     };
 
     const order = await (payload as any).create({
@@ -512,6 +552,21 @@ async function handleCheckoutCompleted(payload: Payload, session: any): Promise<
     });
 
     console.info('Order created successfully:', orderData.orderNumber);
+
+    if (amountMismatch) {
+      console.error(`Order ${orderData.orderNumber}: ${amountMismatch}`);
+      try {
+        const detail = `Order: ${orderData.orderNumber}. Customer: ${customerEmail || 'unknown'}.`;
+        await sendRawEmail({
+          to: emailConfig.staffNotificationEmail,
+          subject: `ACTION NEEDED: payment mismatch on order ${orderData.orderNumber}`,
+          text: `${amountMismatch}\n\n${detail}`,
+          html: `<p><strong>${escapeHtml(amountMismatch)}</strong></p><p>${escapeHtml(detail)}</p>`,
+        });
+      } catch (alertError) {
+        console.error('Error sending payment mismatch alert:', alertError);
+      }
+    }
 
     // Decrement inventory for each item
     for (const item of cartItems as any[]) {
